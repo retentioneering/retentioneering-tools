@@ -11,36 +11,45 @@ interface RangeSliderProps {
   formatValue?: (value: number) => string;
   variant?: "default" | "mini";
   scale?: "linear" | "log";
+  /** Lower bound of the log scale when min <= 0 (defaults to max * 0.0001).
+   *  Values below it collapse into the zero zone at the very start of the
+   *  track. Use it to keep the usable range tight, e.g. 0.005 for
+   *  probabilities so the track doesn't waste decades on sub-0.5% edges. */
+  logMin?: number;
 }
 
 export function RangeSlider({
   min, max, step = 0.01, value, onChange,
   formatValue = (v) => v.toFixed(2),
-  variant = "default", scale = "linear",
+  variant = "default", scale = "linear", logMin,
 }: RangeSliderProps) {
   const [local, setLocal] = React.useState<[number, number]>(value);
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const toSlider = React.useCallback((v: number) => {
     if (scale === "log" && max > 0) {
+      const effMin = min > 0 ? min : (logMin ?? max * 0.0001);
+      // Degenerate range (all weights equal) — fall back to linear
+      if (!(max > effMin)) return (v - min) / (max - min || 1);
       if (min <= 0 && v <= 0) return 0;
-      const effMin = min > 0 ? min : max * 0.0001;
-      const effV = v <= 0 ? effMin : v;
+      const effV = v <= effMin ? effMin : v;
       const pos = (Math.log(effV) - Math.log(effMin)) / (Math.log(max) - Math.log(effMin));
       return min <= 0 ? pos * 0.99 + 0.01 : pos;
     }
     return (v - min) / (max - min);
-  }, [scale, min, max]);
+  }, [scale, min, max, logMin]);
 
   const fromSlider = React.useCallback((pos: number) => {
     if (scale === "log" && max > 0) {
+      const effMin = min > 0 ? min : (logMin ?? max * 0.0001);
+      // Degenerate range (all weights equal) — fall back to linear
+      if (!(max > effMin)) return min + pos * (max - min);
       if (min <= 0 && pos <= 0.01) return 0;
-      const effMin = min > 0 ? min : max * 0.0001;
       const adj = min <= 0 ? (pos - 0.01) / 0.99 : pos;
       return Math.exp(Math.log(effMin) + adj * (Math.log(max) - Math.log(effMin)));
     }
     return min + pos * (max - min);
-  }, [scale, min, max]);
+  }, [scale, min, max, logMin]);
 
   const sliderVal = React.useMemo(() => [toSlider(value[0]), toSlider(value[1])] as [number, number], [value, toSlider]);
   React.useEffect(() => { setLocal(sliderVal); }, [sliderVal]);
@@ -60,9 +69,13 @@ export function RangeSlider({
 
   const normStep = scale === "log" ? 0.001 : step / (max - min);
 
-  const thumbStyle: React.CSSProperties = variant === "mini"
-    ? { display: "block", width: 8, height: 16, borderRadius: 2, background: "#475569", border: "1px solid #94a3b8", cursor: "ew-resize", outline: "none" }
-    : { display: "block", width: 16, height: 16, borderRadius: "50%", background: "#475569", border: "1px solid #94a3b8", cursor: "ew-resize", outline: "none" };
+  // Same rectangular thumb regardless of variant — "mini"/"default" only
+  // differ in whether the numeric value labels above the track are shown.
+  const thumbStyle: React.CSSProperties = {
+    display: "block", width: 8, height: 16, borderRadius: 2,
+    background: "#475569", border: "1px solid #94a3b8",
+    cursor: "ew-resize", outline: "none",
+  };
 
   return (
     <div style={{ flexGrow: 1 }}>

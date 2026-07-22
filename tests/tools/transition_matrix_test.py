@@ -254,6 +254,26 @@ class TestTransitionMatrix:
 
         pd.testing.assert_frame_equal(res, expected)
 
+    def test__diff_boolean_segment_accepts_stringified_values(self, fx_read_csv):
+        """JSON round-trips (the JS widget, MCP) stringify segment values;
+        'false'/'true' must resolve back to the typed False/True levels."""
+        df = fx_read_csv("tools/transition_matrix_input.csv", sep="\t")
+        df["is_new"] = df["country"] == "US"
+        stream = Eventstream(
+            df, {"path_cols": ["user_id", "session_id"], "segment_cols": ["is_new"]}
+        )
+
+        typed, _, _ = stream.transition_graph_data(
+            edge_weight="count", path_col="session_id", diff=("is_new", True, False)
+        )
+        stringified, _, _ = stream.transition_graph_data(
+            edge_weight="count",
+            path_col="session_id",
+            diff=("is_new", "true", "false"),
+        )
+
+        pd.testing.assert_frame_equal(stringified, typed)
+
     def test__diff_user_lists(self, fx_read_csv):
         df = fx_read_csv("tools/transition_matrix_input.csv", sep="\t")
         stream = Eventstream(df, {"path_cols": ["user_id", "session_id"]})

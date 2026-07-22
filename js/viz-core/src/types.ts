@@ -24,4 +24,6 @@ export interface GraphLayoutPosition {
 
 export interface GraphLayoutResponse {
   result: Record<string, GraphLayoutPosition>;
+  /** Set by the backend when the layout computation failed (result is empty). */
+  error?: string;
 }

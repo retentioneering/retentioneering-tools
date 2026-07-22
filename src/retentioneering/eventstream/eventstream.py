@@ -1318,6 +1318,28 @@ class Eventstream:
             if segment_col not in self.schema.segment_cols:
                 raise DiffConfigError(f"'{segment_col}' is not a segment column")
             all_vals = set(self.get_segment_levels().get(segment_col, []))
+
+            def _coerce(value):
+                """Match a value that arrived as a string (the JS widget, MCP
+                and any JSON round-trip stringify everything) back to the
+                actual typed segment level: 'false' -> False, '5' -> 5.
+                Returns the value unchanged when there is no unambiguous
+                match — the caller then raises its normal error."""
+                if value in all_vals or not isinstance(value, str):
+                    return value
+                matches = []
+                for candidate in all_vals:
+                    if isinstance(candidate, str):
+                        continue
+                    try:
+                        candidate_json = json.dumps(candidate)
+                    except (TypeError, ValueError):
+                        candidate_json = None
+                    if value in (candidate_json, str(candidate)):
+                        matches.append(candidate)
+                return matches[0] if len(matches) == 1 else value
+
+            v1 = _coerce(v1)
             if v1 not in all_vals:
                 raise SegmentValueNotFoundError(
                     segment_value=v1,
@@ -1333,6 +1355,7 @@ class Eventstream:
                         "'<REST>' requires at least one complementary value."
                     )
             else:
+                v2 = _coerce(v2)
                 if v2 not in all_vals:
                     raise SegmentValueNotFoundError(
                         segment_value=v2,
@@ -1442,6 +1465,42 @@ class Eventstream:
         from retentioneering.tools.transition_matrix import TransitionMatrix
 
         return TransitionMatrix(self).fit(edge_weight, diff, path_col)
+
+    @_tracked("headless_route_stats")
+    def route_stats(self, nodes: list, path_col: str | None = None) -> dict:
+        """
+        Compute statistics of a route — a strict contiguous sequence of
+        transitions A→B→…→N — over the eventstream's paths (headless). This
+        is the data behind the route badge shown when a path is focused in
+        the `transition_graph` widget.
+
+        Matching is strict: the route must appear as consecutive events, in
+        order, with no gaps. Overlapping occurrences count (consistent with
+        transition counts). Routes may include `path_start` / `path_end`.
+
+        Parameters
+        ----------
+        nodes : list of str
+            The route: two or more event names, in order.
+        path_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
+
+        Returns
+        -------
+        dict
+            `n_paths`, `unique_paths`, `unique_paths_share`, `occurrences`,
+            `avg_per_path`, `time_median`, `time_q95` (seconds from the
+            route's first to last event within one traversal; None when the
+            route never occurs), `proba` (Markov probability of the route:
+            the product of `P(next | source)` over its consecutive pairs).
+
+        Examples
+        --------
+            stream.route_stats(["catalog", "product_view", "cart"])
+        """
+        from retentioneering.tools.route_stats import RouteStats
+
+        return RouteStats(self).fit(nodes, path_col=path_col)
 
     @_tracked("headless_step_sankey")
     def step_sankey_data(
@@ -1707,6 +1766,8 @@ class Eventstream:
         path_col=None,
         height=None,
         sidebar_open=None,
+        views=None,
+        view=None,
         state_file=None,
     ):
         """
@@ -1729,6 +1790,18 @@ class Eventstream:
             Widget height in pixels.
         sidebar_open : bool, default True
             Whether the sidebar starts open.
+        views : list of dict, optional
+            Named visual presets rendered as pills above the graph. Each view
+            is a dict with the keys `name`, `focus`, `edgeFilter`,
+            `eventCountFilter`, `hiddenEvents`, `viewport` (all optional
+            except `name`) and describes only how the graph is *displayed* —
+            never the computed data. See the
+            [Views](/docs/widgets/transition-graph#views) section for a
+            detailed description of every key.
+        view : dict or str, optional
+            View applied once after the graph is built: a view dict (`name`
+            not required), or the name of an entry in `views`. See the
+            [Views](/docs/widgets/transition-graph#views) section.
         state_file : str, optional
             JSON file the widget state is bound to; see
             [Saving widget state](/docs/widgets#saving-widget-state).
@@ -1738,6 +1811,10 @@ class Eventstream:
             stream.transition_graph()
             stream.transition_graph(edge_weight="count", diff=("plan", "pro", "free"))
             stream.transition_graph(state_file="checkout_graph.json")
+            stream.transition_graph(
+                views=[{"name": "Checkout", "focus": {"type": "node", "event": "cart"}}],
+                view="Checkout",
+            )
         """
         from retentioneering.widgets.transition_graph import (
             TransitionGraphWidget,
@@ -1751,6 +1828,8 @@ class Eventstream:
             path_col=path_col if path_col is not None else _UNSET,
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
+            views=views if views is not None else _UNSET,
+            view=view if view is not None else _UNSET,
             state_file=state_file,
         )
 

@@ -20,12 +20,42 @@ import { render as renderFunnel }           from "./funnel";
 import { render as renderSegmentOverview }  from "./segment_overview";
 import { render as renderClusterAnalysis }  from "./cluster_analysis";
 
-/** Focus a node or animate an edge in a transition graph after renderStatic.
+/** Apply a GraphView (object, or a name from the widget's `views` list) to
+ *  a rendered transition graph. No-op for widgets that don't expose the
+ *  GraphView pipeline. */
+export function applyView(view: unknown, el: HTMLElement) {
+  const applier = (
+    el as HTMLElement & { __applyGraphView?: (v: unknown) => void }
+  ).__applyGraphView;
+  if (applier) applier(view);
+}
+
+/** Focus a node or an edge in a transition graph after renderStatic.
  *  eventRef can be:
- *    "basket"           → pan/zoom to node, activate click-mode
- *    "basket->purchase" → pan/zoom to edge, play marching-ants animation
+ *    "basket"           → focus node (dim the rest, fit its neighborhood)
+ *    "basket->purchase" → focus edge (dim the rest, fit the pair)
+ *  Prefers the GraphView pipeline when the widget exposes it; the legacy
+ *  cy-based path remains as a fallback for older embeds.
  */
 export function focusNode(eventRef: string, el: HTMLElement) {
+  const applier = (
+    el as HTMLElement & { __applyGraphView?: (v: unknown) => void }
+  ).__applyGraphView;
+  if (applier) {
+    const arrowIdx = eventRef.indexOf("->");
+    if (arrowIdx !== -1) {
+      applier({
+        focus: {
+          type: "edge",
+          source: eventRef.slice(0, arrowIdx).trim(),
+          target: eventRef.slice(arrowIdx + 2).trim(),
+        },
+      });
+    } else {
+      applier({ focus: { type: "node", event: eventRef } });
+    }
+    return;
+  }
   const findCy = (node: Element): any => {
     if ((node as any).__cy) return (node as any).__cy;
     for (let i = 0; i < node.children.length; i++) {
@@ -80,10 +110,16 @@ export function focusNode(eventRef: string, el: HTMLElement) {
     cy.on("tap", tapHandler);
     (cy as any).__stopEdgeAnim = stopAnim;
   } else {
-    // Node reference
+    // Node reference — fit the node together with its visible neighborhood so
+    // none of its edges end outside the viewport (fitting just the node
+    // over-zooms and cuts the focused edges off).
     const node = cy.getElementById(eventRef);
     if (node && node.length) {
-      cy.animate({ fit: { eles: node, padding: 80 } }, { duration: 400 });
+      const edges = node
+        .connectedEdges()
+        .filter((edge: any) => !edge.hasClass("filtered"));
+      const neighborhood = edges.union(edges.connectedNodes()).union(node);
+      cy.animate({ fit: { eles: neighborhood, padding: 80 } }, { duration: 400 });
       node.emit("tap");
     }
   }

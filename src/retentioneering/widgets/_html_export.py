@@ -122,6 +122,18 @@ def render_analysis(text: str, label_map: dict | None = None) -> str:
                         f' title="Open: {_html_mod.escape(label)}">'
                         f"{_html_mod.escape(label)}</a>"
                     )
+                # [Tab:view=Name] — apply a named GraphView from the tab's
+                # widget `views` list (visual preset: focus/filters/viewport)
+                if ref.startswith("view="):
+                    view_name = ref[len("view=") :]
+                    return (
+                        f'<a href="javascript:void(0)" class="node-link"'
+                        f' onclick="return focusLink(this)"'
+                        f' data-tab="{tab_id}"'
+                        f' data-view="{_html_mod.escape(view_name, quote=True)}"'
+                        f' title="Open view in: {_html_mod.escape(label)}">'
+                        f"{_html_mod.escape(view_name)}</a>"
+                    )
                 if widget_type == "segment_overview" and segment_col:
                     at = ref.find("@")
                     if at != -1:
@@ -305,6 +317,10 @@ _HTML_TEMPLATE_BARE = """<!DOCTYPE html>
     (function () {
       var override = new URLSearchParams(location.search).get('sidebar_open');
       if (override !== null) window.__HS_DATA__.sidebar_open = override === 'true';
+      // #view=<base64url> — GraphView from the URL fragment ("Copy view
+      // link" button produces these); decoded by the widget itself.
+      var vm = location.hash.match(/[#&]view=([A-Za-z0-9_-]+)/);
+      if (vm) window.__HS_DATA__.view = vm[1];
     })();
     RetentioneeringWidget.renderStatic(window.__HS_DATA__, document.getElementById('retentioneering-root'));
   </script>
@@ -438,6 +454,7 @@ _HTML_TEMPLATE_REPORT = """<!DOCTYPE html>
       window.focusLink = function (link) {
         var tabId     = link.dataset.tab;
         var eventName = link.dataset.node;
+        var viewName  = link.dataset.view;
         var root;
         if (tabId) {
           activateTab(tabId);
@@ -446,6 +463,10 @@ _HTML_TEMPLATE_REPORT = """<!DOCTYPE html>
         } else {
           var activePanel = document.querySelector('.tab-panel.active');
           root = activePanel && activePanel.querySelector('.widget-root');
+        }
+        if (root && viewName) {
+          RetentioneeringWidget.applyView(viewName, root);
+          return false;
         }
         if (root && eventName) {
           RetentioneeringWidget.focusNode(eventName, root);

@@ -20,7 +20,18 @@ Each skill is a directory with a `SKILL.md` entry point (objective, activation c
 
 ## Using a skill
 
-To use a skill, run the agent from inside a clone of the `retentioneering-tools` repository.
+There are two ways to give an agent access to a skill:
+
+- **Regular: import the skill's `SKILL.md`.** Point your agent at the `SKILL.md` of the
+  skill you want (from `.claude/skills/` or `.agents/skills/` in this repository), without
+  cloning anything else alongside it. The agent follows the skill's workflow but runs
+  retentioneering itself from the version installed from PyPI.
+- **Advanced: run the agent from inside a clone of the repository.** Clone
+  `retentioneering-tools` and run the agent from within the checkout. The agent still
+  picks up the skills from `.claude/skills/` or `.agents/skills/`, but now runs
+  retentioneering directly against the library code in the checkout instead of a PyPI
+  install — useful when you're developing against an unreleased change or want the skill
+  and the library code to always match exactly.
 
 ## Contributing to the skills
 

@@ -40,7 +40,9 @@ _STATIC_TOOL_DOCS: dict[str, str] = {
 Anchor link syntax for the analysis text passed to export_report().
 
   [Tab:event]           open tab, focus node in transition graph
-  [Tab:src->tgt]        open tab, animate edge (marching ants)
+  [Tab:src->tgt]        open tab, focus edge (dims the rest, fits the pair)
+  [Tab:view=Name]       open tab, apply a named view (visual preset passed
+                        via add_transition_graph(views=[...]))
   [Tab:event@step]      open tab, scroll to step-matrix cell; step_window expands automatically
   [Tab:metric@segment]  open tab, highlight segment overview cell
   [Tab:segment_value]   open tab, highlight segment overview column
@@ -150,7 +152,8 @@ def _static_instructions(tail: str = "") -> str:
         "- Use markdown: # Heading, ## Sub, **bold**, *italic*, - list, | table |.",
         "- Reference widgets using [tab_label:ref] syntax:",
         "    [Overall Flow:basket]               → focus node 'basket' in transition graph",
-        "    [Overall Flow:basket->purchase]      → animate edge basket→purchase (marching ants)",
+        "    [Overall Flow:basket->purchase]      → focus edge basket→purchase (dims the rest)",
+        "    [Overall Flow:view=Checkout]         → apply the named view passed via add_transition_graph(views=[...])",
         "    [Purchase Funnel:basket@4]           → scroll to cell basket at step 4 in step matrix",
         "                                           (step_window expands automatically if needed)",
         "    [Platform Breakdown:mobile]            → highlight 'mobile' column in segment_overview",

@@ -1,10 +1,10 @@
 "use client";
 import * as React from "react";
-import * as SliderPrimitive from "@radix-ui/react-slider";
 import { observer } from "mobx-react-lite";
 import { TransitionMatrixStore } from "../../stores/TransitionMatrixStore";
 import { RangeSlider } from "../TransitionGraph/RangeSlider";
-import { type MatrixValueType } from "../../utils/value-types";
+import { SingleSlider } from "../TransitionGraph/SingleSlider";
+import { type MatrixValueType, VALUE_TYPE_DESCRIPTIONS } from "../../utils/value-types";
 import { formatNumber, formatPopulation } from "../../utils/format-number";
 import { formatTime } from "../../utils/format-time";
 import { isTimeValueType } from "../../utils/value-types";
@@ -34,38 +34,15 @@ const C = {
 } as const;
 
 const VALUE_OPTIONS: { value: MatrixValueType; label: string; tooltip: string }[] = [
-  { value: "unique_paths", label: "Unique Paths",    tooltip: "Number of unique paths that have an A→B transition." },
-  { value: "count",        label: "Count",           tooltip: "Total number of A→B transitions." },
-  { value: "share_of_total", label: "Share of Total", tooltip: "Count divided by all transitions: #(A→B) / #(*→*)." },
-  { value: "avg_per_path",    label: "Avg per Path",       tooltip: "Count divided by total paths: #(A→B) / total paths." },
-  { value: "proba_out",   label: "Probability Out",  tooltip: "P(A→B) = #(A→B) / #(A→*). Markov transition probabilities." },
-  { value: "proba_in",    label: "Probability In",   tooltip: "P(A→B) = #(A→B) / #(*→B)." },
-  { value: "time_median", label: "Time Median",      tooltip: "Median time the A→B transition takes." },
-  { value: "time_q95",    label: "Time Q95",         tooltip: "95th percentile of time the A→B transition takes." },
-];
-
-// ── SingleSlider ───────────────────────────────────────────────────────────
-
-function SingleSlider({ min, max, value, onChange }: {
-  min: number; max: number; value: number; onChange: (v: number) => void;
-}) {
-  return (
-    <SliderPrimitive.Root
-      style={{ position: "relative", display: "flex", height: 20, width: "100%", alignItems: "center", userSelect: "none", touchAction: "none" }}
-      min={min} max={max} step={1} value={[value]}
-      onValueChange={([v]) => onChange(v)}
-    >
-      <SliderPrimitive.Track style={{ position: "relative", height: 6, flexGrow: 1, borderRadius: 9999, background: "#e2e8f0", overflow: "hidden" }}>
-        <SliderPrimitive.Range style={{ position: "absolute", height: "100%", borderRadius: 9999, background: C.accent }} />
-      </SliderPrimitive.Track>
-      <SliderPrimitive.Thumb style={{
-        display: "block", width: 16, height: 16, borderRadius: "50%",
-        background: "#ffffff", border: `1.5px solid ${C.borderLight}`,
-        boxShadow: "0 1px 3px rgba(0,0,0,0.15)", cursor: "pointer", outline: "none",
-      }} />
-    </SliderPrimitive.Root>
-  );
-}
+  { value: "unique_paths", label: "Unique Paths" },
+  { value: "count",        label: "Count" },
+  { value: "share_of_total", label: "Share of Total" },
+  { value: "avg_per_path",    label: "Avg per Path" },
+  { value: "proba_out",   label: "Probability Out" },
+  { value: "proba_in",    label: "Probability In" },
+  { value: "time_median", label: "Time Median" },
+  { value: "time_q95",    label: "Time Q95" },
+].map((opt) => ({ ...opt, tooltip: VALUE_TYPE_DESCRIPTIONS[opt.value] }));
 
 // ── small UI primitives ────────────────────────────────────────────────────
 
@@ -136,6 +113,11 @@ export const SettingsSidebar = observer(function SettingsSidebar({
   isStatic = false,
 }: SettingsSidebarProps) {
   const segmentCols = Object.keys(segmentLevels);
+  // Only TransitionMatrixStore has this field — other SettingsSidebar
+  // consumers (step sankey's StepMatrixStore) pass a differently-shaped
+  // store `as any`, so this naturally hides the slider for them without
+  // needing every future consumer to remember an opt-out prop.
+  const showFocusDimming = typeof (store as { focusDimStrength?: unknown }).focusDimStrength === "number";
   const isDiff = store.matrixType === "differential";
   const isTime = isTimeValueType(valuesType);
 
@@ -345,10 +327,10 @@ export const SettingsSidebar = observer(function SettingsSidebar({
           </div>
         )}
 
-        {/* Event Count filter */}
+        {/* Event filter (by event count) */}
         <div style={{ marginBottom: 20 }}>
           <FieldLabel tooltip="How many times each event appears in the dataset. Move the left handle to hide rare events, move the right handle to hide very frequent ones.">
-            Event Count
+            Event filter
           </FieldLabel>
 
           {store.hasData && (store.populationBounds.max !== store.populationBounds.min) ? (
@@ -364,6 +346,25 @@ export const SettingsSidebar = observer(function SettingsSidebar({
             <div style={{ height: 20, background: C.bgSection, borderRadius: 4 }} />
           )}
         </div>
+
+        {/* Focus dimming — how strongly non-focused nodes/edges fade when a
+            node, edge, or path is focused (search included, same mechanism). */}
+        {showFocusDimming && (
+          <div style={{ marginBottom: 20 }}>
+            <FieldLabel tooltip="How much non-focused nodes and edges fade when you focus a node, edge, or path.">
+              Focus Dimming
+            </FieldLabel>
+            <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>
+              {Math.round(store.focusDimStrength * 100)}%
+            </div>
+            <SingleSlider
+              min={0}
+              max={100}
+              value={Math.round(store.focusDimStrength * 100)}
+              onChange={(v) => store.setFocusDimStrength(v / 100)}
+            />
+          </div>
+        )}
 
       </div>
 

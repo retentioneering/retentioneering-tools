@@ -229,6 +229,7 @@ def add_transition_graph(
     edge_weight: str = "proba_out",
     diff: list | None = None,
     path_col: str | None = None,
+    views: list | None = None,
     local_preprocessors: list | None = None,
 ) -> dict:
     """
@@ -256,6 +257,11 @@ def add_transition_graph(
     tab_id, events list, values matrix (and group1/group2 in diff mode).
     Use tab_id to reference this tab in the analysis text as [label:event].
 
+    views:
+        Optional named visual presets (focus/filters/viewport only — never
+        data parameters), rendered as pills and addressable from analysis
+        text as [label:view=Name].
+
     local_preprocessors:
         Optional one-off preprocessing applied on top of the base stream for
         this visualisation only. Same format as update_base_stream preprocessors.
@@ -266,20 +272,25 @@ def add_transition_graph(
         return err
     src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
     widget = src.transition_graph(
-        edge_weight=edge_weight, diff=diff, path_col=path_col or None
+        edge_weight=edge_weight,
+        diff=diff,
+        path_col=path_col or None,
+        **({"views": views} if views else {}),
     )
     if widget.error:
         return {"error": widget.error, "label": label}
     data = {
         "widget_type": "transition_graph",
+        "widget_id": widget.widget_id,
         "result": json.loads(widget.result or "{}"),
         "edge_weight": widget.edge_weight,
         "diff": json.loads(widget.diff) if widget.diff else None,
         "event_counts": json.loads(widget.event_counts or "{}"),
         "event_counts_g1": json.loads(widget.event_counts_g1 or "{}"),
         "event_counts_g2": json.loads(widget.event_counts_g2 or "{}"),
-        "node_positions": {},
+        "node_positions": widget.semantic_layout_positions(),
         "event_visibility": {},
+        "views": json.loads(widget.views or "[]"),
         "segment_levels": json.loads(widget.segment_levels or "{}"),
         "path_cols": json.loads(widget.path_cols or "[]"),
         "path_col": widget.path_col or "",

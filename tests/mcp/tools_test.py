@@ -191,6 +191,17 @@ class TestCheckAnalysis:
         assert result["status"] == "needs_fixes"
         assert result["issues"]
 
+    def test__needs_fixes_when_one_link_shares_line_with_two_numbers(self) -> None:
+        # A link near 38% must not also validate the unrelated, unlinked 999%
+        # just because both sit within the 200-char proximity window.
+        result = tools.check_analysis(
+            "Real conversion is 38% [Flow:purchase], invented value is 999%."
+        )
+
+        assert result["status"] == "needs_fixes"
+        assert any(issue["number"] == "999%" for issue in result["issues"])
+        assert all(issue["number"] != "38%" for issue in result["issues"])
+
 
 class TestAddWidgetsAndExportReport:
     def test__export_report_without_tabs_is_an_error(self) -> None:

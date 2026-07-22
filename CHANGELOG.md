@@ -74,6 +74,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   weights is normalized against the largest |Δp| on the graph instead of
   the absolute 100%, so the strongest changes render thick instead of
   uniformly thin; diff self-loops keep their red/blue color in focus mode
+- Lowered minimum supported Python version from 3.11 to 3.10
+- Reorganized license files to clarify exact Apache-2.0, Notice file with copyright created
 
 ### Fixed
 
@@ -89,6 +91,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Transition graph: the broken `graph_layout` backend compute (imported a
   module that didn't exist and silently returned nothing) is implemented;
   compute errors are now surfaced to the client instead of swallowed
+- `cluster_analysis_data()` now applies the documented `n_clusters="3-8"` default instead
+  of raising `ValueError` when it's omitted for the `kmeans` method; corrected the
+  `cluster_analysis`/`cluster_analysis_data` docstrings, which falsely claimed `features`
+  and `overview_metrics` default to per-event counts (#89)
+- `add_clusters()`'s `scaler` argument now defaults to `"minmax"` instead of `None`,
+  matching the `AddClusters` processor's own default and `cluster_analysis_data()`'s
+  documented default. Previously, omitting `scaler` silently clustered on unscaled
+  features, so `add_clusters()` could produce a different clustering than
+  `cluster_analysis_data()` for the same `features`/`n_clusters`
 
 ## [5.0.1] - 2026-07-15
 

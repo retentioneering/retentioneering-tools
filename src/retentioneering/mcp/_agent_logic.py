@@ -228,6 +228,8 @@ def _find_unlinked_numbers(analysis: str) -> list[dict]:
 
     Rules:
     - A number is OK if a [tab:ref] link appears within 200 chars on the same line.
+      Numbers and links are matched one-to-one, nearest pair first — a link already
+      claimed by a closer number can't also cover a farther, unrelated one.
     - Numbers inside backtick code spans `like 2.2×` are exempt (agent-computed).
     - Lines inside fenced code blocks are skipped.
     - Horizontal rules (---) are skipped.
@@ -292,13 +294,28 @@ def _find_unlinked_numbers(analysis: str) -> list[dict]:
                     }
                 )
 
-        # Check each percentage / multiplier individually
-        for m in re.finditer(
-            r"\d+[.,]?\d*\s*%|\d+[.,]?\d*\s*×|×\s*\d+\.?\d*", s_no_code
-        ):
-            pos = m.start()
-            nearby = any(abs(lp - pos) <= 200 for lp in link_positions)
-            if not nearby:
+        # Pair each percentage / multiplier with its nearest not-yet-claimed
+        # link (within 200 chars), nearest pair first, so one link can't
+        # validate several numbers scattered across the same line.
+        number_matches = list(
+            re.finditer(r"\d+[.,]?\d*\s*%|\d+[.,]?\d*\s*×|×\s*\d+\.?\d*", s_no_code)
+        )
+        candidate_pairs = sorted(
+            (abs(lp - m.start()), i, lp)
+            for i, m in enumerate(number_matches)
+            for lp in link_positions
+            if abs(lp - m.start()) <= 200
+        )
+        claimed_links: set[int] = set()
+        linked_numbers: set[int] = set()
+        for _, i, lp in candidate_pairs:
+            if i in linked_numbers or lp in claimed_links:
+                continue
+            linked_numbers.add(i)
+            claimed_links.add(lp)
+
+        for i, m in enumerate(number_matches):
+            if i not in linked_numbers:
                 issues.append(
                     {
                         "line": lineno,

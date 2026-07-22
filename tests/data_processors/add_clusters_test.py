@@ -42,6 +42,34 @@ def get_df():
     return df
 
 
+def get_scale_conflict_df():
+    """8 users, two groups of 4 by `length` (2 vs 6 events), with `duration`
+    (seconds) alternating so it disagrees with the length grouping unless
+    features are scaled to a comparable range first. length ranges over a
+    handful of events while duration ranges over tens of thousands of
+    seconds, so an unscaled k-means clusters by duration alone while a
+    min-max-scaled one clusters by length - making the two paths' scaler
+    default actually observable instead of coincidentally agreeing."""
+    specs = [
+        ("user_1", 2, 100),
+        ("user_2", 2, 50000),
+        ("user_3", 2, 100),
+        ("user_4", 2, 50100),
+        ("user_5", 6, 100),
+        ("user_6", 6, 50000),
+        ("user_7", 6, 120),
+        ("user_8", 6, 50050),
+    ]
+    rows = []
+    for uid, n_events, duration in specs:
+        start = pd.Timestamp("2020-01-01 00:00:00")
+        rows.append([uid, "login", start])
+        for _ in range(n_events - 2):
+            rows.append([uid, "view", start + pd.Timedelta(seconds=1)])
+        rows.append([uid, "end", start + pd.Timedelta(seconds=duration)])
+    return pd.DataFrame(rows, columns=["user_id", "event", "timestamp"])
+
+
 class TestAddClusters:
     def test_kmeans_basic(self) -> None:
         """Test basic k-means clustering"""
@@ -131,6 +159,58 @@ class TestAddClusters:
         )
 
         assert "cluster" in result.schema.segment_cols
+
+    def test_default_scaler_matches_cluster_analysis_data(self) -> None:
+        """Eventstream.add_clusters's default scaler must stay "minmax" - matching
+        both the AddClusters processor's own default and cluster_analysis_data's
+        documented default - so the two paths cluster the same features/seed into
+        the same groups. Regression test: add_clusters used to default its scaler
+        to None while forwarding it explicitly, silently overriding the
+        processor's "minmax" default and clustering on unscaled features whenever
+        the caller omitted scaler."""
+        df = get_scale_conflict_df()
+        stream = Eventstream(df)
+
+        features = [
+            {"metric": "length"},
+            {"metric": "duration"},
+        ]
+
+        def labels_from(result: Eventstream, col: str) -> pd.Series:
+            return (
+                result.df[["user_id", col]]
+                .drop_duplicates()
+                .set_index("user_id")[col]
+                .sort_index()
+            )
+
+        default_add_clusters = labels_from(
+            stream.add_clusters(name="cluster", features=features, n_clusters=2),
+            "cluster",
+        )
+        explicit_minmax = labels_from(
+            stream.add_clusters(
+                name="cluster", features=features, n_clusters=2, scaler="minmax"
+            ),
+            "cluster",
+        )
+        unscaled = labels_from(
+            stream.add_clusters(
+                name="cluster", features=features, n_clusters=2, scaler=None
+            ),
+            "cluster",
+        )
+        cluster_analysis_labels = stream.cluster_analysis_data(
+            features=features, n_clusters=2
+        )["cluster_labels"].sort_index()
+
+        # Sanity check: on this dataset, scaling actually changes the grouping -
+        # otherwise the assertions below couldn't tell a "minmax" default apart
+        # from a silently-reintroduced None default.
+        assert not default_add_clusters.equals(unscaled)
+
+        assert default_add_clusters.equals(explicit_minmax)
+        assert (default_add_clusters.values == cluster_analysis_labels.values).all()
 
     def test_kmeans_missing_n_clusters(self) -> None:
         """Test that kmeans raises error without n_clusters"""

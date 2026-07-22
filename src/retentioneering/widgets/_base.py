@@ -26,7 +26,10 @@ Factors out what's genuinely identical across ``transition_graph``,
   and headless ``*_data`` twins already use (ADR-0006, ADR-0009). This table
   is also what a platform/REST backend can introspect and call directly
   (via ``dispatch_compute``) instead of hand-rolling its own tool ->
-  Eventstream-method map.
+  Eventstream-method map. One deliberate exception: ``transition_graph``'s
+  ``route_stats`` tool has no ``Eventstream`` counterpart — it's a
+  widget-only helper (the route badge's data) backed directly by
+  ``utils/route_stats.py``, not exposed as public API.
 """
 
 from __future__ import annotations

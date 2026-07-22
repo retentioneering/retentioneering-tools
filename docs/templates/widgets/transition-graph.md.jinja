@@ -95,14 +95,7 @@ share of all paths), **traversals** (total occurrences; a path may traverse
 a route several times), **avg per path**, **median** / **p95 route time**
 (from the route's first to last event within one traversal), and
 **P(route)** — the product of the route's `P(next | source)` transition
-probabilities. The default metric follows the current edge weight. The same
-numbers are available headlessly via
-[`route_stats`](/docs/eventstream#route_stats):
-
-```python
-stream.route_stats(["catalog", "product_view", "cart"])
-# {'n_paths': 600, 'unique_paths': 43, 'unique_paths_share': 0.072, ...}
-```
+probabilities. The default metric follows the current edge weight.
 
 ### Ego view
 
@@ -173,6 +166,6 @@ values and the diff between them.
         },
     ],
     view="Cart"
-)`} path="/docs-demos/widgets/transition-graph/ego_view.html" height={560}/>
+)`} path="/docs-demos/widgets/transition-graph/ego_view.html" height={560} sidebarOpen={false}/>
 
 {% endblock %}

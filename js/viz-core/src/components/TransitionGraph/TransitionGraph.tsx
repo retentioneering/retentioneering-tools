@@ -1657,13 +1657,19 @@ export const TransitionGraph = observer(function TransitionGraph({
           events: "no",
         } as any,
       },
-      // Dimmed nodes/edges
+      // Dimmed nodes/edges. Opacity here is only a fallback for the instant
+      // between `addClass("dimmed")` and applyFocusState's own bypass
+      // `.style("opacity", ...)` call a few lines later — every actual
+      // dim level is driven by the Focus Dimming slider (store.focusDimStrength),
+      // never by this stylesheet rule. No transition here: the fade is
+      // already animated in JS (the focus-progress rAF loop in
+      // applyFocusState, and the slider's own live-reflect effect), and a
+      // second CSS-level transition on the same property would fight the
+      // rapid per-frame bypass updates during that ramp.
       {
         selector: ".dimmed",
         style: {
-          opacity: 0.1,
-          "transition-property": "opacity",
-          "transition-duration": "0.2s",
+          opacity: 1 - store.focusDimStrength,
         } as any,
       },
       // Highlighted elements
@@ -1671,8 +1677,6 @@ export const TransitionGraph = observer(function TransitionGraph({
         selector: ".highlighted",
         style: {
           opacity: 1,
-          "transition-property": "opacity",
-          "transition-duration": "0.2s",
         } as any,
       },
       // AI overlay highlighted edges (from highlight pills)

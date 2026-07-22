@@ -18,7 +18,7 @@ while `v5-migration` is not yet merged to protected `master`.
   `uv publish` via OIDC trusted publishing (no stored token) → GitHub
   Release with notes extracted from the matching `CHANGELOG.md` section.
 - Merging to `master` does not release. `master` is protected: PRs only,
-  required checks (`lint`, `test 3.11/3.12/3.13`), no force-push.
+  required checks (`lint`, `test 3.10/3.11/3.12/3.13`), no force-push.
 - Safety-valve flows in the Makefile: `make test-release` publishes to
   TestPyPI from any branch; `make rc-release` publishes real `rcN`
   pre-releases from any branch (rc suffix enforced); `make release` refuses

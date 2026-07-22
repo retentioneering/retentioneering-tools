@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## [Unreleased]
 
 ### Changed
+- Lowered minimum supported Python version from 3.11 to 3.10
 - Reorganized license files to clarify exact Apache-2.0, Notice file with copyright created
 
 ### Fixed

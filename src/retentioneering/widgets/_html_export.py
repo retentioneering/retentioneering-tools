@@ -8,6 +8,7 @@ import re
 import html as _html_mod
 
 _BUNDLE_PATH = pathlib.Path(__file__).parent.parent / "static" / "widget-static.js"
+_CSS_PATH = pathlib.Path(__file__).parent.parent / "static" / "widget.css"
 
 
 def _json_for_script(obj: object) -> str:
@@ -62,6 +63,7 @@ def write_report_html(
             "Run `npm run build` in js/widget/ to generate it."
         )
     bundle_js = _BUNDLE_PATH.read_text(encoding="utf-8")
+    widget_css = _CSS_PATH.read_text(encoding="utf-8")
     # Build enriched map: label → {tab_id, widget_type, segment_col}
     # segment_col is used by render_analysis to format segment_overview links
     label_map = {
@@ -80,6 +82,7 @@ def write_report_html(
         _HTML_TEMPLATE_REPORT.replace("{{TITLE}}", _html_mod.escape(title))
         .replace("{{WIDGETS_JSON}}", widgets_json)
         .replace("{{BUNDLE_JS}}", bundle_js)
+        .replace("{{WIDGET_CSS}}", widget_css)
         .replace("{{ANALYSIS_HTML}}", analysis_html)
     )
     pathlib.Path(path).write_text(html, encoding="utf-8")
@@ -288,10 +291,12 @@ def _write_bare(path: str, title: str, data: dict) -> None:
             "Run `npm run build` in js/widget/ to generate it."
         )
     bundle_js = _BUNDLE_PATH.read_text(encoding="utf-8")
+    widget_css = _CSS_PATH.read_text(encoding="utf-8")
     html = (
         _HTML_TEMPLATE_BARE.replace("{{TITLE}}", _html_mod.escape(title))
         .replace("{{DATA_JSON}}", _json_for_script(data))
         .replace("{{BUNDLE_JS}}", bundle_js)
+        .replace("{{WIDGET_CSS}}", widget_css)
     )
     pathlib.Path(path).write_text(html, encoding="utf-8")
 
@@ -308,6 +313,7 @@ _HTML_TEMPLATE_BARE = """<!DOCTYPE html>
            justify-content: center; min-height: 100vh; }
     #retentioneering-root { width: 100%; max-width: 1400px; margin: 24px; }
   </style>
+  <style>{{WIDGET_CSS}}</style>
 </head>
 <body>
   <div id="retentioneering-root"></div>
@@ -395,6 +401,7 @@ _HTML_TEMPLATE_REPORT = """<!DOCTYPE html>
                   border-bottom: 1px solid #bfdbfe; cursor: pointer; }
     a.node-link:hover { color: #1d4ed8; border-bottom-color: #1d4ed8; }
   </style>
+  <style>{{WIDGET_CSS}}</style>
 </head>
 <body>
   <div id="layout">

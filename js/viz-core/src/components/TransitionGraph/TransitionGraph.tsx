@@ -3207,8 +3207,10 @@ export const TransitionGraph = observer(function TransitionGraph({
         />
       )}
 
-      {/* One-time hint explaining the default Auto edge filter */}
-      {!edgeFilterHintDismissed && edgeFilter.mode === "topk" && (
+      {/* One-time hint explaining the default Auto edge filter. Suppressed
+          in static exports (host === null) -- there's no real "one-time"
+          there since every viewer starts with fresh localStorage. */}
+      {!edgeFilterHintDismissed && edgeFilter.mode === "topk" && host !== null && (
         <div
           style={{
             position: "absolute",
@@ -3426,9 +3428,11 @@ export const TransitionGraph = observer(function TransitionGraph({
         </div>
       </div>
 
-      {/* One-time hint explaining node-focus gestures */}
+      {/* One-time hint explaining node-focus gestures. Suppressed in static
+          exports (host === null), same reasoning as the edge filter hint. */}
       {!focusHintDismissed &&
         !isDifferential &&
+        host !== null &&
         (focusedNodes.length > 0 || focusedPath) && (
           <div
             style={{

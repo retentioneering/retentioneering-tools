@@ -331,7 +331,37 @@ class GraphLayout:
 
         skip = skip_events or set()
         all_indices = [i for i, e in idx_to_event.items() if e not in skip]
-        # Centered on the origin (cytoscape preset coordinates)
-        place_points(all_indices, -500, -500, 1000, 1000)
+
+        # Centered on the origin (cytoscape preset coordinates). Partition by
+        # the caller-requested initial_clusters first — one grid cell per
+        # top-level cluster — then recurse independently inside each cell.
+        # Without this split, n_clusters would be ignored: place_points would
+        # instead recluster all_indices as a single box on its own terms.
+        top_cluster_ids = sorted({int(initial_clusters[i]) for i in all_indices})
+        if len(top_cluster_ids) <= 1:
+            place_points(all_indices, -500, -500, 1000, 1000)
+            return layout
+
+        rows = int(np.ceil(np.sqrt(len(top_cluster_ids))))
+        cols = int(np.ceil(len(top_cluster_ids) / rows))
+        cell_w = 1000 / cols
+        cell_h = 1000 / rows
+        margin = 0.1
+
+        for i, cluster_id in enumerate(top_cluster_ids):
+            cluster_indices = [
+                index for index in all_indices if initial_clusters[index] == cluster_id
+            ]
+            row = i // cols
+            col = i % cols
+            cell_x = -500 + col * cell_w
+            cell_y = -500 + row * cell_h
+            place_points(
+                cluster_indices,
+                cell_x + cell_w * margin,
+                cell_y + cell_h * margin,
+                cell_w * (1 - 2 * margin),
+                cell_h * (1 - 2 * margin),
+            )
 
         return layout

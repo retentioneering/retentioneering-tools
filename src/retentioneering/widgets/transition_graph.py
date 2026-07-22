@@ -127,7 +127,10 @@ class TransitionGraphWidget(RetentioneeringWidget):
         except Exception:
             _event_counts = {}
         self.event_counts = json.dumps(_event_counts)
-        _available_events = set(_event_counts.keys())
+        # The graph always renders path_start/path_end boundary nodes even
+        # though they are synthetic and not counted by get_event_counts() —
+        # views/view referencing them must validate, not just real events.
+        _available_events = set(_event_counts.keys()) | {"path_start", "path_end"}
 
         self.edge_weight = edge_weight if edge_weight is not _UNSET else "proba_out"
         _diff_val = diff if diff is not _UNSET else None
@@ -153,6 +156,7 @@ class TransitionGraphWidget(RetentioneeringWidget):
         self.node_positions = "{}"
 
         _views_val = views if views is not _UNSET else None
+        _views_list: list[dict] = []
         if _views_val is None:
             self.views = "[]"
         else:
@@ -173,7 +177,15 @@ class TransitionGraphWidget(RetentioneeringWidget):
         if _view_val is None:
             self.view = ""
         elif isinstance(_view_val, str):
-            self.view = _view_val  # a name referencing an entry in `views`
+            # A name referencing an entry in `views` — the JS side just looks
+            # it up and no-ops if it's missing, so a typo must fail here
+            # instead of silently degrading to the default graph.
+            _view_names = {
+                _v["name"] for _v in _views_list if isinstance(_v.get("name"), str)
+            }
+            if _view_val not in _view_names:
+                raise InvalidParameterError("view", _view_val, sorted(_view_names))
+            self.view = _view_val
         elif isinstance(_view_val, dict):
             _validate_view_events(_view_val, "view", _available_events)
             self.view = json.dumps(_view_val)

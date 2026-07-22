@@ -91,3 +91,19 @@ class TestGraphLayout:
     def test__invalid_path_col(self):
         with pytest.raises(InvalidParameterError):
             GraphLayout(Eventstream(_linear_df())).fit(path_col="no_such_col")
+
+    def test__n_clusters_affects_layout(self):
+        # Regression test: n_clusters used to be computed into `clusters` and
+        # then silently ignored by _generate_layout, so it had zero effect on
+        # the output regardless of value.
+        df = pd.DataFrame(
+            {
+                "user_id": [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4],
+                "event": ["A", "B", "C", "D"] * 4,
+                "timestamp": pd.date_range("2024-01-01", periods=16, freq="1min"),
+            }
+        )
+        layout_one_cluster = GraphLayout(Eventstream(df)).fit(n_clusters=1)
+        layout_many_clusters = GraphLayout(Eventstream(df)).fit(n_clusters=4)
+
+        assert layout_one_cluster != layout_many_clusters

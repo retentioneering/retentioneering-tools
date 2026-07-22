@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 from retentioneering.eventstream.eventstream import Eventstream
+from retentioneering.exceptions import InvalidParameterError
 from retentioneering.widgets import _html_export
 
 
@@ -59,6 +60,26 @@ class TestGraphViewPlumbing:
     def test_non_dict_view_raises(self):
         with pytest.raises(TypeError, match="view dict"):
             _stream().transition_graph(view=42)
+
+    def test_misspelled_named_view_raises(self):
+        # A typo must fail at construction time — the JS side just looks the
+        # name up and no-ops on a miss, silently falling back to the default
+        # graph with no indication anything was wrong.
+        with pytest.raises(InvalidParameterError):
+            _stream().transition_graph(views=VIEWS, view="Chekout")
+
+    def test_named_view_without_views_raises(self):
+        with pytest.raises(InvalidParameterError):
+            _stream().transition_graph(view="Checkout")
+
+    def test_boundary_node_view_is_valid(self):
+        # path_start/path_end are synthetic but always rendered on the graph,
+        # so views/view referencing them must validate, not be rejected as
+        # unknown events.
+        views = [{"name": "Start", "focus": {"type": "node", "event": "path_start"}}]
+        widget = _stream().transition_graph(views=views, view="Start")
+
+        assert widget.view == "Start"
 
     def test_widget_id_stable_per_data(self):
         # Node positions are namespaced by widget_id in the browser; a

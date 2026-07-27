@@ -52,16 +52,19 @@ Use [data processors](/docs/data-processors) to clean and shape the eventstream 
 
 ```python
 stream = (
-    rete.Eventstream(df)
-    .filter_events(drop={"event": ["bot_ping"]})
-    .rename_events({"btn_click": "button_click"})
+    rete.datasets.load_ecom()
+    .filter_events(drop={"event": ["checkout_bug"]})
+    .rename_events({"wishlist_add": "add_to_wishlist"})
 )
 
 stream.step_sankey()
 ```
 
+Every processor returns a new eventstream, so they chain into a pipeline and never modify what they were called on. Note that they also validate event names against your data: dropping or renaming an event that isn't there raises an error instead of silently doing nothing.
+
 ## Next steps
 
+- [Path Analysis](/docs/path-analysis) — the one page that explains what all of these widgets actually compute. Read this before the rest.
 - [Eventstream](/docs/eventstream) — schema configuration and data format
 - [Widgets](/docs/widgets) — all available visualizations and how they work
 - [Data Processors](/docs/data-processors) — full list of transformations

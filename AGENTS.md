@@ -146,12 +146,17 @@ in the same change.
 Reference pages are rendered from `Eventstream` docstrings (`docs/scripts/render_pages.py` +
 `docs/templates/*.jinja`); hand-written guides live in `docs/guide/`; widget demos are generated
 by executing the `<DemoWidget>` tags against the bundled ecom dataset. Docstrings are the single
-source of truth — change the docstring, re-render, done.
+source of truth for *what a method does and what its parameters mean* — change the docstring,
+re-render, done. Conceptual depth (mental model, toy before/after examples, figures, pitfalls)
+belongs in the template's `{% block how_it_works %}`, not in the docstring, which has to stay
+short for `help()` and MCP. Figures are hand-written SVG in `docs/img/`, copied to
+`docs/build/demos/img/` and referenced as `/docs-demos/img/*.svg`; style them with plain CSS
+classes plus a `prefers-color-scheme` block, never CSS custom properties (ADR-0013).
 
 ### CI/CD (ADR-0011)
 
 - `.github/workflows/ci.yml` — on push/PR: `lint` job (pre-commit --all-files) + `test` job
-  (matrix over Python 3.11-3.13, builds JS, runs pytest).
+  (matrix over Python 3.10-3.13, builds JS, runs pytest).
 - `.github/workflows/release.yml` — on `v*` tag push (including PEP 440 `rc` tags, e.g.
   `v5.0.0rc1`): build JS, test, `uv build`, verify `widget.js` actually landed in the wheel,
   `uv publish` to real PyPI via OIDC trusted publishing (`environment: pypi`, no stored token),

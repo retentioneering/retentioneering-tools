@@ -21,7 +21,7 @@ Path metrics are scalar values computed per path (see [Key concepts](/docs/event
 | `has_any_event` | 1 if **any** of the given events occurred at least once (OR semantics), 0 otherwise. | `events`: list[str] (required, non-empty) |
 | `time_between` | Time in seconds between the first occurrences of two events. Returns null if either event is missing. Use `path_start` or `path_end` as anchors. | `start_event`: str, `end_event`: str |
 | `first_event_time` | Unix timestamp of the first event in the path. | — |
-| `matches_pattern` | 1 if the path matches a sequence pattern, 0 otherwise. Events are separated by `->` and matched as whole tokens (not substrings); `.*` matches any sequence of whole events. Example: `login->.*->purchase`. | `pattern`: str |
+| `matches_pattern` | 1 if the path matches a sequence pattern, 0 otherwise. Events are separated by `->` and matched as whole tokens (not substrings); `.*` matches any sequence of whole events. Example: `home->.*->purchase`. | `pattern`: str |
 | `in_segment` | Checks whether path events belong to a segment value. Mode `any`: at least one event has the value. `all`: all events have the value. `event_share`: at least a threshold share of events have the value. If multiple segment values are selected, a separate metric is created for each value. | `segment_name`: str, `segment_value`: str or list[str], `mode`: `"any"` \| `"all"` \| `"event_share"`, `threshold`: float (for `event_share`) |
 
 `event_count`/`has_event` are strict single-event metrics — one number per path,
@@ -58,7 +58,7 @@ metrics=[
     {"metric": "event_count", "metric_args": {"event": "purchase"}, "agg": "mean"},
     {"metric": "event_count_bulk", "metric_args": {"events": ["add_to_cart", "purchase"]}, "agg": "mean"},
     {"metric": "time_between", "metric_args": {"start_event": "path_start", "end_event": "purchase"}, "agg": "median"},
-    {"metric": "matches_pattern", "metric_args": {"pattern": "login->.*->purchase"}, "agg": "mean"},
+    {"metric": "matches_pattern", "metric_args": {"pattern": "home->.*->purchase"}, "agg": "mean"},
 ]
 ```
 

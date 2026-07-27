@@ -1,8 +1,60 @@
 {% extends "_data_processor_base.md.jinja" %}
 
+{% block how_it_works %}
+## How it works
+
+Every path is scored by the [path metrics](/docs/path-metrics) named in the
+condition, and then kept or dropped **as a whole** — unlike
+[Filter Events](/docs/data-processors/filter-events), this never leaves a path
+with some of its events missing.
+
+Before — three paths of different lengths, one of which converts:
+
+- u1: `home → cart → purchase`
+- u2: `home → cart`
+- u3: `home`
+
+```python
+stream.filter_paths({"op": ">", "metric": "length", "value": 2})
+```
+
+After — only u1 has more than two events, so u2 and u3 are gone, all of their
+events with them:
+
+- u1: `home → cart → purchase`
+
+```python
+stream.filter_paths({"op": "=", "metric": "has_event", "value": True,
+                     "metric_args": {"event": "purchase"}})
+```
+
+After — the same single path survives, this time because it is the only one
+containing a `purchase` anywhere:
+
+- u1: `home → cart → purchase`
+
+Conditions combine into a tree, and a plain list is shorthand for AND:
+
+```python
+# longer than 2 events AND reached purchase
+stream.filter_paths([
+    {"op": ">", "metric": "length", "value": 2},
+    {"op": "=", "metric": "has_event", "value": True,
+     "metric_args": {"event": "purchase"}},
+])
+```
+
+If nothing matches, the call raises `EmptyEventstreamError` rather than
+returning an empty eventstream.
+
+{% endblock %}
 {% block extra %}
-### Leaf node keys
+### Condition node keys
 
 {{ bullets(doc.parameters, "condition") }}
+
+Supported comparison operators: `=` (or `==`), `!=`, `>`, `<`, `>=`, `<=`. See
+[Path Metrics](/docs/path-metrics#filter-paths-condition-format) for the full
+condition grammar and the list of metrics you can compare.
 
 {% endblock %}

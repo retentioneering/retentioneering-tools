@@ -1,5 +1,41 @@
 {% extends "_widget_base.md.jinja" %}
 
+{% block how_it_works %}
+## How it works
+
+Take every adjacent pair of events in every path and count the pairs
+([Path Analysis](/docs/path-analysis) puts this next to the other summaries).
+Each distinct event becomes one node, no matter where in the path it occurred,
+and each pair becomes a weighted edge.
+
+![Five paths on the left; on the right their adjacent event pairs counted into a transition graph with weighted edges and self-loops](/docs-demos/img/event-aggregation.svg "Building a transition graph from paths. Edge weight is the number of transitions.")
+
+What this buys you, and what it costs:
+
+- **Loops become visible.** An event repeating back to back turns into a
+  self-loop, and a cycle between screens becomes an actual cycle on the graph.
+  No step-based view shows this, and going in circles is one of the most common
+  things real users do.
+- **The picture stays finite.** One node per distinct event, however long the
+  paths — so the graph works as a map of the product.
+- **Position is gone.** A `cart → purchase` edge says the transition happened,
+  not whether it happened on step 3 or step 30. When timing within the path is
+  the question, use [Step Matrix](/docs/widgets/step-matrix) or
+  [Step Sankey](/docs/widgets/step-sankey) instead.
+
+The default edge weight, `proba_out`, is a conditional probability: of everything
+that happens *after* the source event, what share goes to the target. Edges out
+of a node therefore sum to 1, and the graph reads as a Markov-style map. Switch
+to `unique_paths` or `count` when you care about volume rather than likelihood,
+or to `time_median` to find the slow transitions — see
+[Edge weights](#edge-weights) below.
+
+Edges are filtered before drawing (by default, each node's few strongest
+outgoing edges), otherwise a real eventstream renders as a hairball. That filter
+is a *display* choice — the underlying matrix always has every transition, and
+`transition_graph_data()` returns it in full.
+
+{% endblock %}
 {% block extra %}
 ### Edge weights
 

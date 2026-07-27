@@ -1,5 +1,39 @@
 {% extends "_widget_base.md.jinja" %}
 
+{% block how_it_works %}
+## How it works
+
+Step Sankey draws the same numbers as the
+[Step Matrix](/docs/widgets/step-matrix): all paths stacked up, sliced by step,
+counted per event (see [Path Analysis](/docs/path-analysis)). Both widgets share
+one headless method — the difference is only in the rendering.
+A column of the matrix becomes a column of stacked blocks whose heights are those
+shares, and the ribbons between two columns show how volume moves from one step
+to the next.
+
+![The step matrix of five example paths: one row per event, one column per step](/docs-demos/img/step-matrix.svg "The numbers behind both widgets, on five example paths: the share of paths on each event at each step. Step Sankey draws each column as stacked blocks and the moves between columns as ribbons.")
+
+Reading it:
+
+- **Block height is a share of paths** at that step; every column sums to 1 (to 0
+  in diff mode).
+- **A ribbon is a transition between two adjacent steps** — how many paths that
+  were on event A at step *k* are on event B at step *k+1*.
+- **Ribbons do not chain.** Following three ribbons in a row does *not* give the
+  share of users who took that three-event route: at every column, paths arriving
+  by different routes merge into the same block. For an exact sequence use
+  `path_pattern`, the `matches_pattern` [path metric](/docs/path-metrics), or the
+  Transition Graph's route statistics badge.
+
+Use the Sankey when the question is about volume flowing forward, and the matrix
+when you want to read one event across many steps or catch rare events that a
+thin ribbon would hide.
+
+`path_pattern` re-anchors the diagram on an event, so that column 0 is always
+that event and negative columns are what led up to it — see
+[anchoring](/docs/widgets/step-matrix#anchoring-on-an-event) for the full picture.
+
+{% endblock %}
 {% block demo_examples %}
 ## Examples
 
@@ -8,7 +42,8 @@
 
 ### Path pattern - central event
 A single event as `path_pattern` re-centers the diagram on that event instead of
-`path_start`: column 0 is always `purchase`, negative columns are the steps leading up
+`path_start`: column 0 is always `purchase`, negative columns are the steps
+leading up to it, positive columns are what follows.
 
 <DemoWidget cmd={`stream.step_sankey(path_pattern="purchase")`} path="/docs-demos/widgets/step-sankey/path_pattern_central.html" height={660} />
 

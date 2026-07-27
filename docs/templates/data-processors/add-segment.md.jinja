@@ -1,5 +1,104 @@
 {% extends "_data_processor_base.md.jinja" %}
 
+{% block how_it_works %}
+## How it works
+
+A segment column stores one label **per event row**, which is what lets a
+segment be either static (the same label along a whole path) or dynamic
+(changing as the path goes on). See [Segments](/docs/segments) for what that
+distinction buys you.
+
+### rules — CASE-WHEN over existing columns
+
+Conditions are tried in order; the last entry is the fallback label.
+
+Before — a `country` column that came along with the source data:
+
+| user_id | event | country |
+|---|---|---|
+| u1 | home | US |
+| u1 | cart | US |
+| u2 | home | DE |
+| u2 | cart | DE |
+
+```python
+stream.add_segment("region", rules=[
+    ["country", "=", "US", "domestic"],
+    ["international"],
+])
+```
+
+After:
+
+| user_id | event | country | region |
+|---|---|---|---|
+| u1 | home | US | domestic |
+| u1 | cart | US | domestic |
+| u2 | home | DE | international |
+| u2 | cart | DE | international |
+
+Write string values **unquoted** — `"US"`, not `"'US'"` — since they get quoted
+for you. The one exception is `op="in"`, whose value is passed through to SQL
+as-is and so must be a complete tuple:
+`["country", "in", "('GB', 'DE', 'FR')", "europe"]`.
+
+### funnel_events — how deep did this path get
+
+Labels each path with the deepest funnel step it completed **in order**. This is
+the mode that turns a funnel drop-off into a comparable group.
+
+Before — four paths against an `add_to_cart → checkout → purchase` funnel:
+
+- u1: `home → add_to_cart → checkout → purchase`
+- u2: `home → add_to_cart → checkout`
+- u3: `home → checkout → purchase` (skipped `add_to_cart`)
+- u4: `home`
+
+```python
+stream.add_segment("funnel", funnel_events=["add_to_cart", "checkout", "purchase"])
+```
+
+After — one label per path, written onto every one of its events:
+
+| path | funnel |
+|---|---|
+| u1 | `purchase` |
+| u2 | `checkout` |
+| u3 | `out_of_funnel` |
+| u4 | `out_of_funnel` |
+
+Note u3: it reached both `checkout` and `purchase`, but never completed
+`add_to_cart` first, so the strictly ordered funnel gives it no credit at all.
+Paths that never complete even the first step are labelled `out_of_funnel`.
+
+### time_range — inside vs outside a window
+
+```python
+stream.add_segment("incident", time_range=("2024-03-10", "2024-03-17"))
+```
+
+Every event is labelled `inside` or `outside` by its own timestamp, so a user
+active both during and after an incident contributes to both groups. That is
+what makes this the right tool for "how did behaviour change during X?" — see
+[Segments](/docs/segments#inside-vs-outside-an-anomalous-period).
+
+### func and sql — anything else
+
+`func` receives the raw DataFrame and returns one label per row, in row order;
+`sql` is a DuckDB `SELECT` over the `eventstream` alias returning a single
+column, also one value per row in order.
+
+### Promoting an existing column
+
+If the column is already in the eventstream — it rode along from the source data
+as a custom column — call `add_segment` with just the name and no mode argument.
+Its values are kept as they are and the column becomes a segment.
+
+```python
+stream.add_segment("returned")
+```
+
+{% endblock %}
 {% block extra %}
 ### Values rules
 

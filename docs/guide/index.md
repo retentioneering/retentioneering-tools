@@ -53,4 +53,8 @@ More recipes like these live on the [Recipes](/docs/recipes) page.
 
 ## Where to start
 
-Go from `pip install` to your first interactive transition graph in five minutes with the [Quick Start](/docs/quick-start) — a bundled e-commerce dataset is included, so you can explore before touching your own data. Then dive into [Eventstream](/docs/eventstream) to connect your logs, and [Widgets](/docs/widgets) for the full tour of visualizations.
+Go from `pip install` to your first interactive transition graph in five minutes with the [Quick Start](/docs/quick-start) — a bundled e-commerce dataset is included, so you can explore before touching your own data.
+
+Then read [Path Analysis](/docs/path-analysis). It is the shortest path to using the library well: every visualization here is a different aggregated representation of the same trajectories, and knowing which detail each one drops is what tells you when to trust it. After that, [Eventstream](/docs/eventstream) covers connecting your own logs and [Widgets](/docs/widgets) gives the full tour.
+
+Coming from retentioneering 3.x? Version 5.0 is a ground-up rewrite and most 3.x code will not run unchanged — [Migrating from 3.x](/docs/migration-from-3x) maps the old API onto the new one.

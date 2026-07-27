@@ -16,6 +16,30 @@ and LLM agents (the MCP server serves method docstrings verbatim via
   `docs/scripts/render_pages.py` through per-page Jinja templates
   (`docs/templates/`); a page's shape lives in its template, its content in
   the docstring.
+- **Docstrings say what a method does; templates say how it works.** A
+  docstring stays short enough to be useful in `help()` and in an MCP tool
+  listing: summary, parameters, a runnable example. Everything a newcomer
+  needs *around* that — the mental model, a toy before/after, figures,
+  pitfalls — lives in the page's `{% block how_it_works %}` (rendered right
+  after the summary) or `{% block extra %}` (after the parameter table), so
+  page depth never costs docstring brevity.
+- **Figures are hand-written SVG in `docs/img/`**, copied by
+  `render_pages.py` into `docs/build/demos/img/` and referenced as
+  `/docs-demos/img/<name>.svg`. They land under `demos/` because that is the
+  only directory retentioneering-web exposes publicly (as
+  `public/docs-demos`), so no change on the web side is needed to ship one.
+  Each file carries its own `@media (prefers-color-scheme: dark)` block and
+  uses plain CSS classes with literal colors — *not* CSS custom properties,
+  which several SVG renderers outside browsers ignore, painting the whole
+  figure black instead of falling back to the light theme.
+- **Figure captions are the markdown image title**, not markup:
+  `![alt](/docs-demos/img/x.svg "Caption text")`. retentioneering-web renders
+  every markdown image as a centered `<figure>` and the title as its
+  `<figcaption>` (`app/docs/_mdx.tsx` + the `typography` block in
+  `tailwind.config.ts`), so a docs page never carries styling of its own — no
+  inline `style`, no raw `<figure>` markup. Panel labels belong in the caption
+  rather than inside the SVG when they only name the panels; labels a reader
+  needs *while* reading the diagram stay in the SVG.
 - Widget pages split parameters into Data / Display groups mechanically, by
   diffing the widget signature against its headless twin (ADR-0006) —
   the split cannot drift.

@@ -13,11 +13,29 @@
 
 Every widget and most data processors accept a `path_col` override, so the same eventstream can be analysed at user grain and at session grain without rebuilding it — **but `path_col` must be one of the columns declared in `path_cols`** (see [schema](#schema) below); passing any other column raises an error.
 
-`path_cols` must be listed **coarsest grain first**: every value of `path_cols[i+1]` must belong to exactly one value of `path_cols[i]` (e.g. every `session_id` belongs to exactly one `user_id`, so `path_cols=["user_id", "session_id"]` is correct). This nesting is validated against your data when the `Eventstream` is created — a schema declared the wrong way round (or a `session_id` that isn't actually unique per user) raises `SchemaConfigError` immediately, rather than producing silently-wrong analysis. See [ADR-0004](https://github.com/retentioneering/retentioneering-tools/blob/main/docs/adr/0004-schema-and-grain-neutral-paths.md) for why.
+`path_cols` must be listed **coarsest grain first**: every value of `path_cols[i+1]` must belong to exactly one value of `path_cols[i]` (e.g. every `session_id` belongs to exactly one `user_id`, so `path_cols=["user_id", "session_id"]` is correct). This nesting is validated against your data when the `Eventstream` is created — a schema declared the wrong way round (or a `session_id` that isn't actually unique per user) raises `SchemaConfigError` immediately, rather than producing silently-wrong analysis. See [ADR-0004](https://github.com/retentioneering/retentioneering-tools/blob/master/docs/adr/0004-schema-and-grain-neutral-paths.md) for why.
 
 Need to group by something that *isn't* a nested grain of your path — a device type, a campaign, an arbitrary cohort? That's not a `path_col`; use a segment column instead (see below).
 
+**Step** is a position within a path — its 1st event, its 2nd, and so on. Steps are what [Step Matrix and Step Sankey](/docs/path-analysis) count over, and they are always relative to an anchor: the start of the path by default, or any event you choose.
+
 **Segment** is a way to split paths into meaningful groups. A split is defined by a *segment column* that maps each event to a group: for example, a `country` column assigns one of the segment levels `US`, `DE`, `FR` to every event of a path. Segments can be static (acquisition channel, user age group, etc.) or dynamic — changing along the path, like weekend/weekday or an evolving user state (new/returning/loyal). Segment columns are declared in the [schema](#schema) (`segment_cols`) or created with the [Add Segment](/docs/data-processors/add-segment) data processor, and drive all segment-aware tools. See the [Segments](/docs/segments) page for the full story.
+
+### Coming from Amplitude, Mixpanel or GA4
+
+Most of the vocabulary translates, with one structural difference worth knowing up front: those tools are built around *users*, while retentioneering is built around *paths* — and a path is whatever grain you declare, so the same eventstream can be analysed per user and per session without reloading it.
+
+| There | Here | Note |
+|---|---|---|
+| User / user timeline | **Path** with `path_col="user_id"` | The default. `path_col="session_id"` switches the whole analysis to session grain. |
+| User property, cohort, A/B arm | **Segment column** | One segment column describes a whole *split* (`US`/`DE`/`FR`), not a single group. Values live per event, so a segment can also change along a path. |
+| Event property | **Custom column** | Any extra column rides along; promote it to a segment with [`add_segment`](/docs/data-processors/add-segment) when you want to compare by it. |
+| Pathfinder / Journeys / Path exploration | [Transition Graph](/docs/widgets/transition-graph) | Plus [Step Sankey](/docs/widgets/step-sankey) for the step-by-step view. |
+| Funnel | [Funnel](/docs/widgets/funnel) | Ordered and unique-path-counted; see its page for the exact conventions. |
+| Segment comparison | [Diff mode](/docs/widgets#diff-mode) | Every core widget renders group1 − group2 directly. |
+| Session (defined server-side) | [`split_sessions`](/docs/data-processors/split-sessions) | You choose the timeout or the boundary events, and can change your mind later. |
+
+There is no dashboard state to configure and no sampling: everything is a method call on an object you hold, computed over the full log on your machine.
 
 ## Creating an Eventstream
 
@@ -125,3 +143,49 @@ Returns a dict:
 | `event_frequency` | `DataFrame` of `event`/`count`/`share`, sorted descending, limited to `top_events` rows (default 20; pass `top_events=None` for the full, unranked list). `.attrs["truncated"]` and `.attrs["n_total_events"]` say whether/how much this was cut down |
 | `path_stats` | dict keyed by each entry of `path_cols`, each a `DataFrame` (`DataFrame.describe()` shape: count/mean/std/min/percentiles/max) with `length`/`duration` columns |
 | `segments` | `DataFrame` of `segment_col`/`value`/`count`/`share`, one row per segment value across all segment columns |
+
+## Other Eventstream methods
+
+Beyond the [data processors](/docs/data-processors) and [widgets](/docs/widgets), the object exposes a handful of methods that don't fit either category.
+
+### Getting your data back out
+
+```python
+df = stream.to_dataframe()                      # plain pandas copy
+df = stream.to_dataframe(exclude_start_end=False)  # keep path_start / path_end rows
+```
+
+Processors never mutate an eventstream, so a `to_dataframe()` result is a snapshot you can hand to any other library. `stream.get_event_counts()` returns a `{event: count}` dict, and `stream.get_segment_levels()` returns `{segment_col: [levels]}` — handy before writing a `diff=` or a rename mapping.
+
+### Per-path metrics as a feature table
+
+`get_metrics()` runs the same [path metrics](/docs/path-metrics) registry that powers Segment Overview and clustering, and returns one row per path — a ready-to-join feature table for churn or LTV models.
+
+```python
+features = stream.get_metrics([
+    {"metric": "length"},
+    {"metric": "duration"},
+    {"metric": "active_days"},
+    {"metric": "event_count_bulk"},
+    {"metric": "matches_pattern", "metric_args": {"pattern": "home->.*->purchase"}},
+])
+```
+
+Metric configs here take no `agg` field — these are raw per-path values, not aggregates. `event_count_bulk` / `has_event_bulk` expand into one column per event.
+
+`get_metric_distribution()` is the related one-off: it returns the distribution of a single metric for one segment value against another (or against everything else, with `complement=True`), which is what the Segment Overview widget draws when you click a cell.
+
+### Reproducing an eventstream
+
+Every processor call is recorded, so a derived eventstream can describe how it was built:
+
+```python
+prepared = stream.filter_events(drop={"event": ["checkout_bug"]}).truncate_paths(
+    start_event="path_start", end_event="purchase"
+)
+prepared.recipe()
+# [{"type": "filter_events", "drop": {...}},
+#  {"type": "truncate_paths", "start_event": "path_start", "end_event": "purchase"}]
+```
+
+`Eventstream.from_recipe(df, recipe)` replays that list onto a base DataFrame, rebuilding an identical eventstream — useful for moving a prepared pipeline between notebooks, storing it next to a report, or handing it to the [MCP server](/docs/mcp), whose preprocessor steps use exactly this format. `stream.fingerprint` (a property) is a content hash for checking two eventstreams really are the same, and `stream.equals(other)` compares them directly.

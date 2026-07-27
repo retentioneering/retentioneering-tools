@@ -1,1 +1,41 @@
 {% extends "_data_processor_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+`path_start` and `path_end` are the boundary markers that make "where do paths
+begin?" and "where do users leave?" answerable as ordinary event questions — a
+[Step Matrix](/docs/widgets/step-matrix) anchored at `path_end`, or a
+`cart → path_end` edge on the [Transition Graph](/docs/widgets/transition-graph)
+that reads as "abandoned here".
+
+Before:
+
+- u1: `home → cart`
+- u2: `home`
+
+```python
+stream.add_start_end_events()
+```
+
+After — each marker copies the timestamp of the event it brackets, so a
+single-event path gets both at the same moment:
+
+| user_id | event | timestamp |
+|---|---|---|
+| u1 | `path_start` | 10:00 |
+| u1 | home | 10:00 |
+| u1 | cart | 10:01 |
+| u1 | `path_end` | 10:01 |
+| u2 | `path_start` | 10:00 |
+| u2 | home | 10:00 |
+| u2 | `path_end` | 10:00 |
+
+You rarely need to call this yourself: `transition_graph`, `step_matrix` and
+`step_sankey` add the markers on the fly, each using its own `path_col`. Calling
+it upfront freezes one definition of a path into the data, which then quietly
+mislabels the boundaries if a widget is later given a different `path_col` — for
+example after [`split_sessions`](/docs/data-processors/split-sessions), where
+per-user markers would sit in the middle of most sessions.
+
+{% endblock %}

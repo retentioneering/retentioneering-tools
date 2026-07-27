@@ -31,6 +31,7 @@ from docstring_utils import bullets, get_doc, render_param_table, split_by_headl
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 TEMPLATES_DIR = REPO_ROOT / "docs" / "templates"
 GUIDE_DIR = REPO_ROOT / "docs" / "guide"
+IMG_DIR = REPO_ROOT / "docs" / "img"
 BUILD_DIR = REPO_ROOT / "docs" / "build"
 
 TITLE_OVERRIDES = {"urls_to_events": "URLs to Events"}
@@ -138,12 +139,36 @@ def copy_guide_pages() -> None:
         print(f"wrote {dest.relative_to(REPO_ROOT)}")
 
 
+def copy_figures() -> None:
+    """Copy hand-drawn SVG figures into the demos tree so the site can serve them.
+
+    retentioneering-web exposes docs/build/demos/ (and only that directory) as
+    public/docs-demos, so anything a docs page needs to load over HTTP has to
+    live under it — hence figures land in demos/img/ rather than a sibling of
+    it, and pages reference them as `/docs-demos/img/<name>.svg`.
+
+    The figures themselves are hand-written SVG under docs/img/, theme-aware
+    through a `prefers-color-scheme` block inside each file (they are loaded
+    via <img>, which isolates them from the page's CSS but still honours their
+    own media queries).
+    """
+    if not IMG_DIR.exists():
+        return
+    out_dir = BUILD_DIR / "demos" / "img"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for src in sorted(IMG_DIR.glob("*.svg")):
+        dest = out_dir / src.name
+        shutil.copy2(src, dest)
+        print(f"wrote {dest.relative_to(REPO_ROOT)}")
+
+
 def main() -> None:
     (BUILD_DIR / "widgets").mkdir(parents=True, exist_ok=True)
     (BUILD_DIR / "data-processors").mkdir(parents=True, exist_ok=True)
     env = build_env()
 
     copy_guide_pages()
+    copy_figures()
 
     for template_rel, method_name, headless_name in WIDGETS:
         rendered = render_widget(env, template_rel, method_name, headless_name)

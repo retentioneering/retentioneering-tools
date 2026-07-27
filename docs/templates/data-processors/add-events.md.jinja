@@ -1,5 +1,75 @@
 {% extends "_data_processor_base.md.jinja" %}
 
+{% block how_it_works %}
+## How it works
+
+New events are marked `synthetic` and inserted at the same timestamp as the row
+that produced them, ordered immediately after it. Nothing is removed.
+
+### source_events
+
+One synthetic event per **occurrence** of any listed source event — not one per
+path. This is the usual way to give several equivalent events a single name you
+can anchor on later.
+
+Before:
+
+- u1: `login → browse → login → app_open`
+- u2: `browse → app_open`
+
+```python
+stream.add_events("session_start", source_events=["login", "app_open"])
+```
+
+After — u1 gets three `session_start` events, because it has three matching
+source events:
+
+- u1: `login → session_start → browse → login → session_start → app_open → session_start`
+- u2: `browse → app_open → session_start`
+
+### churn
+
+Marks the point where a path goes quiet: a synthetic event is inserted after
+the last activity that is followed by a gap of at least `inactivity_days`.
+Reaching the end of the observation window counts as such a gap, so paths that
+simply stop also get the event.
+
+Before — u1 stops after 2 January, while u2 comes back after two months:
+
+| user_id | event | timestamp |
+|---|---|---|
+| u1 | purchase | 2024-01-01 |
+| u1 | browse | 2024-01-02 |
+| u2 | browse | 2024-01-01 |
+| u2 | browse | 2024-03-01 |
+
+```python
+stream.add_events("churned", churn={"inactivity_days": 30})
+```
+
+After — u1 churns at the end of its own activity, u2 churns *mid-path*, at the
+event that preceded the long gap:
+
+| user_id | event | timestamp |
+|---|---|---|
+| u1 | purchase | 2024-01-01 |
+| u1 | browse | 2024-01-02 |
+| u1 | **churned** | 2024-01-02 |
+| u2 | browse | 2024-01-01 |
+| u2 | **churned** | 2024-01-01 |
+| u2 | browse | 2024-03-01 |
+
+Pass `active_events` to count only meaningful actions as activity — with
+`churn={"inactivity_days": 30, "active_events": ["purchase"]}` a user who keeps
+browsing but stops buying still churns.
+
+### sql
+
+For anything the two modes above don't cover, `sql` takes a DuckDB `SELECT`
+over the `eventstream` table alias returning rows in the eventstream schema;
+each returned row becomes one synthetic event.
+
+{% endblock %}
 {% block extra %}
 ### Churn keys
 

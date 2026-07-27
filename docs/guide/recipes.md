@@ -4,7 +4,7 @@ Short recipes that map common product questions to retentioneering tools. Each o
 
 ## Find a root cause in an anomalous period
 
-A KPI metric dipped last week and you need to find the root cause? Create a dynamic [segment](/docs/segments) that separates the anomalous window from normal operation, then [diff](/docs/widgets/diff) the two groups on any widget:
+A KPI metric dipped last week and you need to find the root cause? Create a dynamic [segment](/docs/segments) that separates the anomalous window from normal operation, then [diff](/docs/widgets#diff-mode) the two groups on any widget:
 
 ```python
 stream = stream.add_segment("incident", time_range=("2024-03-10", "2024-03-17"))
@@ -15,26 +15,26 @@ The graph highlights exactly which transitions degraded during the window. [Segm
 
 ## Open up the funnel
 
-A [Funnel](/docs/widgets/funnel) `add_to_cart` → `checkout_start` → `purchase` tells you 40% of paths drop between `checkout_start` and `purchase` — but not what those users did instead. Two moves recover the lost context.
+A [Funnel](/docs/widgets/funnel) `add_to_cart` → `shipping_details` → `purchase` tells you 40% of paths drop between `shipping_details` and `purchase` — but not what those users did instead. Two moves recover the lost context.
 
 First, look *between* the levels: trim each path to the window between two funnel steps and map what actually happens there:
 
 ```python
-stream.truncate_paths(start_event="checkout_start", end_event="purchase").transition_graph()
+stream.truncate_paths(start_event="shipping_details", end_event="purchase").transition_graph()
 ```
 
 Second, follow the users who never made it. The `funnel_events` mode of [Add Segment](/docs/data-processors/add-segment) labels each path with the deepest funnel step it completed *in order* — reaching a step out of sequence, or skipping an earlier one, doesn't count — so drop-offs at each level become comparable groups:
 
 ```python
-labelled = stream.add_segment("funnel", funnel_events=["add_to_cart", "checkout_start", "purchase"])
-labelled.transition_graph(diff=("funnel", "checkout_start", "purchase"))
+labelled = stream.add_segment("funnel", funnel_events=["add_to_cart", "shipping_details", "purchase"])
+labelled.transition_graph(diff=("funnel", "shipping_details", "purchase"))
 ```
 
 Also, you can use [Step Matrix](/docs/widgets/step-matrix) or [Step Sankey](/docs/widgets/step-sankey) along with the `path_pattern` parameter to explore paths around the funnel steps:
 
 ```python
-stream.step_matrix(path_pattern="add_to_cart->.*->checkout_start->.*->purchase")
-stream.step_sankey(path_pattern="add_to_cart->.*->checkout_start->.*->purchase")
+stream.step_matrix(path_pattern="add_to_cart->.*->shipping_details->.*->purchase")
+stream.step_sankey(path_pattern="add_to_cart->.*->shipping_details->.*->purchase")
 ```
 
 ## See which paths lead to conversion
@@ -46,6 +46,47 @@ stream.truncate_paths(start_event="path_start", end_event="purchase").step_sanke
 ```
 
 [Step Sankey](/docs/widgets/step-sankey) unfolds the converging routes step by step; the [Transition Graph](/docs/widgets/transition-graph) shows the same data as a map.
+
+## Find what leads to churn
+
+Conversion has a mirror image: which early behavior separates the users who came back from the ones who never did? Mark the outcome, label every path with it, then look only at the window you could have acted in.
+
+```python
+labelled = (
+    stream
+    # a synthetic event after 14 days of silence marks the moment a path went cold
+    .add_events("churned", churn={"inactivity_days": 14})
+    # ... which makes every path either churned or retained
+    .add_segment(
+        "outcome",
+        sql="""
+            SELECT CASE
+                WHEN COUNT(*) FILTER (WHERE event = 'churned') OVER (PARTITION BY user_id) > 0
+                THEN 'churned' ELSE 'retained'
+            END
+            FROM eventstream
+        """,
+    )
+)
+
+early = (
+    labelled
+    # keep each path's first 7 days — the onboarding window you can still influence
+    .filter_events(
+        sql="""
+            SELECT * FROM eventstream
+            QUALIFY timestamp < MIN(timestamp) OVER (PARTITION BY user_id) + INTERVAL 7 DAY
+        """
+    )
+    # drop the marker itself: compare behavior, not the label you just derived
+    .filter_events(drop={"event": ["churned"]})
+)
+
+early.step_matrix(diff=("outcome", "churned", "retained"))
+early.transition_graph(diff=("outcome", "churned", "retained"))
+```
+
+The order matters: the label comes from the *whole* path, the comparison from its *first days*. That gap is the point — whatever the diff highlights happened before the outcome was decided, so it is a candidate cause rather than a symptom. Widen or narrow the window to find when the two groups start to diverge.
 
 ## Read an A/B test beyond the headline metric
 
@@ -88,6 +129,32 @@ stream.segment_overview(
 )
 ```
 
+## Compare newcomers with experienced users
+
+A user is not the same person in their first session and in their fiftieth. Session number is a ready-made state: [Split Sessions](/docs/data-processors/split-sessions) numbers each path's sessions, and a rule over that number turns the number into named stages.
+
+The `split_sessions` call below assumes sessions aren't marked yet — drop it if your log already carries a session column (the bundled [e-commerce dataset](/docs/eventstream#sample-dataset) does, and also ships a ready-made `user_lifecycle` segment along the same lines).
+
+```python
+labelled = (
+    stream
+    .split_sessions(timeout="30m")
+    .add_segment(
+        "experience",
+        rules=[
+            ["session_index", "=", 1, "first session"],
+            ["session_index", "<=", 5, "getting familiar"],
+            ["experienced"],
+        ],
+    )
+)
+
+labelled.transition_graph(diff=("experience", "first session", "experienced"))
+labelled.segment_overview(segment_col="experience", metrics=[{"metric": "length"}])
+```
+
+Because the segment is dynamic, the *same* user contributes to several stages — you are comparing behavior at different points of a lifetime, not one cohort of people against another. Experienced users skipping the steps newcomers grind through is the usual finding, and the steps they skip are the ones worth shortening. [Segments](/docs/segments#user-state) covers other state definitions, including the lifecycle labels from [To Daily States](/docs/data-processors/to-daily-states).
+
 ## Discover your behavior types
 
 How many kinds of users does the product actually have? [Cluster Analysis](/docs/widgets/cluster-analysis) clusters paths by behavioral [path metrics](/docs/path-metrics) and profiles each cluster interactively:
@@ -106,19 +173,40 @@ stream = stream.add_clusters(
         {"metric": "active_days"},
         {"metric": "has_event", "metric_args": {"event": "purchase"}},
     ],
+    n_clusters=4,
 )
 ```
+
+Note the difference in `n_clusters`: the widget searches a range (`"3-8"` by default) and picks the best split by silhouette score, while `add_clusters` materializes one specific clustering and therefore needs an exact number. You don't have to copy it by hand — the widget's "Save Clusters" button writes the matching `add_clusters(...)` call for you, and the headless twin returns the same thing under `best_params`:
+
+```python
+features = [{"metric": "length"}, {"metric": "active_days"}]
+
+result = stream.cluster_analysis_data(features=features)
+result["best_params"]                     # e.g. {"n_clusters": 3} — the winning split
+
+stream = stream.add_clusters("behavior", features=features, **result["best_params"])
+```
+
+`best_params` carries only the searched-over parameters, so pass the same `features` alongside it.
 
 ## Measure time to activation
 
 How long does it take a new user to reach the key action? The `time_between` [path metric](/docs/path-metrics) computes it per path in one call:
 
 ```python
-time_to_purchase = stream.get_metrics([
+import pandas as pd
+
+metrics = stream.get_metrics([
     {"metric": "time_between", "metric_args": {"start_event": "path_start", "end_event": "purchase"}},
 ])
-pd.to_timedelta(time_to_purchase, unit='s').mean()
+
+# get_metrics() returns a DataFrame — one row per path, one column per metric
+time_to_purchase = metrics["time_from_path_start_to_purchase"]
+pd.to_timedelta(time_to_purchase, unit="s").median()
 ```
+
+Paths that never reached `purchase` come back as `NaN`, so the median is over converting paths only — `time_to_purchase.notna().mean()` is the conversion rate that goes with it.
 
 ## Path as a sequence of sessions
 
@@ -170,6 +258,6 @@ features = stream.get_metrics([
     {"metric": "duration"},
     {"metric": "active_days"},
     {"metric": "event_count_bulk"},
-    {"metric": "matches_pattern", "metric_args": {"pattern": "login->.*->purchase"}},
+    {"metric": "matches_pattern", "metric_args": {"pattern": "home->.*->purchase"}},
 ])
 ```

@@ -32,7 +32,18 @@ SEGMENT_COL = "__cluster__"
 SILHOUETTE_SAMPLE_SIZE = 2_000
 
 T_ClusteringMethod = Literal["kmeans", "hdbscan"]
-T_Scaler = Literal["minmax", "standard"] | None
+T_Scaler = Literal["minmax", "std"] | None
+
+# The widget sidebar has always sent "std" for standard scaling, while the
+# Python side only accepted "standard" — picking "Standard" in the UI raised
+# `Unknown scaler`. "std" is now the canonical spelling on both sides;
+# "standard" stays accepted so code written against <=5.1.0 keeps working.
+SCALER_ALIASES = {"standard": "std"}
+
+
+def normalize_scaler(scaler):
+    """Map a scaler argument onto its canonical spelling (see SCALER_ALIASES)."""
+    return SCALER_ALIASES.get(scaler, scaler)
 
 
 def parse_n_clusters(value):
@@ -212,11 +223,12 @@ class ClusterAnalysis:
     # ------------------------------------------------------------------
 
     def _scale_features(self, features: np.ndarray, scaler: T_Scaler) -> np.ndarray:
+        scaler = normalize_scaler(scaler)
         if scaler is None:
             return features
         elif scaler == "minmax":
             return MinMaxScaler().fit_transform(features)
-        elif scaler == "standard":
+        elif scaler == "std":
             return StandardScaler().fit_transform(features)
         else:
             raise ValueError(f"Unknown scaler: {scaler}")

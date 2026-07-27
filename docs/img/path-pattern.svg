@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="14 0 536 160" width="536" height="160" role="img" aria-labelledby="pp-title pp-desc">
+  <title id="pp-title">Steps counted from an anchor event instead of from the path start</title>
+  <desc id="pp-desc">The five example paths shifted so that each path's "cart" event sits in column zero, which is highlighted. Steps before the anchor get negative column numbers, so paths that reach "cart" later stick out to the left, and paths that end at the anchor show path_end in column plus one. The fifth path never reaches "cart" and is greyed out, dropped from the view.</desc>
+
+  <style>
+    .ev   { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #1f2328; }
+    .dim  { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #6b7280; }
+    .col  { font: 600 10px ui-sans-serif, -apple-system, "Segoe UI", Helvetica, sans-serif; fill: #6b7280; }
+    .band { fill: #eef0f3; }
+    .node { fill: #f5f6f8; stroke: #d7dbe1; stroke-width: 1; }
+    .mark { fill: none; stroke: #a8791a; stroke-width: 1.5; stroke-dasharray: 3 2.5; }
+    @media (prefers-color-scheme: dark) {
+      .dim, .col { fill: #99a1ac; }
+      .ev { fill: #e6e8eb; }
+      .band { fill: #1c1f24; }
+      .node { fill: #22262c; stroke: #3b414a; }
+      .mark { stroke: #f5c328; }
+    }
+  </style>
+
+  <!-- the anchor column -->
+  <rect class="band" x="336" y="18" width="98" height="106" rx="6"/>
+
+  <g class="col">
+    <text x="85" y="12" text-anchor="middle">−3</text>
+    <text x="185" y="12" text-anchor="middle">−2</text>
+    <text x="285" y="12" text-anchor="middle">−1</text>
+    <text x="385" y="12" text-anchor="middle">0</text>
+    <text x="485" y="12" text-anchor="middle">+1</text>
+  </g>
+
+  <!-- u1 -->
+  <text class="dim" x="32" y="36" text-anchor="end">u1</text>
+  <rect class="node" x="142" y="22" width="86" height="20" rx="4"/><text class="ev" x="185" y="36" text-anchor="middle">home</text>
+  <rect class="node" x="242" y="22" width="86" height="20" rx="4"/><text class="ev" x="285" y="36" text-anchor="middle">catalog</text>
+  <rect class="node" x="342" y="22" width="86" height="20" rx="4"/><rect class="mark" x="342" y="22" width="86" height="20" rx="4"/><text class="ev" x="385" y="36" text-anchor="middle">cart</text>
+  <rect class="node" x="442" y="22" width="86" height="20" rx="4"/><text class="ev" x="485" y="36" text-anchor="middle">purchase</text>
+
+  <!-- u2 -->
+  <text class="dim" x="32" y="62" text-anchor="end">u2</text>
+  <rect class="node" x="142" y="48" width="86" height="20" rx="4"/><text class="ev" x="185" y="62" text-anchor="middle">home</text>
+  <rect class="node" x="242" y="48" width="86" height="20" rx="4"/><text class="ev" x="285" y="62" text-anchor="middle">catalog</text>
+  <rect class="node" x="342" y="48" width="86" height="20" rx="4"/><rect class="mark" x="342" y="48" width="86" height="20" rx="4"/><text class="ev" x="385" y="62" text-anchor="middle">cart</text>
+  <rect class="node" x="442" y="48" width="86" height="20" rx="4"/><text class="ev" x="485" y="62" text-anchor="middle">purchase</text>
+
+  <!-- u3 — reaches the anchor one step later, so it sticks out to the left -->
+  <text class="dim" x="32" y="88" text-anchor="end">u3</text>
+  <rect class="node" x="42" y="74" width="86" height="20" rx="4"/><text class="ev" x="85" y="88" text-anchor="middle">home</text>
+  <rect class="node" x="142" y="74" width="86" height="20" rx="4"/><text class="ev" x="185" y="88" text-anchor="middle">catalog</text>
+  <rect class="node" x="242" y="74" width="86" height="20" rx="4"/><text class="ev" x="285" y="88" text-anchor="middle">catalog</text>
+  <rect class="node" x="342" y="74" width="86" height="20" rx="4"/><rect class="mark" x="342" y="74" width="86" height="20" rx="4"/><text class="ev" x="385" y="88" text-anchor="middle">cart</text>
+  <rect class="node" x="442" y="74" width="86" height="20" rx="4"/><text class="dim" x="485" y="88" text-anchor="middle">path_end</text>
+
+  <!-- u4 -->
+  <text class="dim" x="32" y="114" text-anchor="end">u4</text>
+  <rect class="node" x="142" y="100" width="86" height="20" rx="4"/><text class="ev" x="185" y="114" text-anchor="middle">home</text>
+  <rect class="node" x="242" y="100" width="86" height="20" rx="4"/><text class="ev" x="285" y="114" text-anchor="middle">search</text>
+  <rect class="node" x="342" y="100" width="86" height="20" rx="4"/><rect class="mark" x="342" y="100" width="86" height="20" rx="4"/><text class="ev" x="385" y="114" text-anchor="middle">cart</text>
+  <rect class="node" x="442" y="100" width="86" height="20" rx="4"/><text class="dim" x="485" y="114" text-anchor="middle">path_end</text>
+
+  <!-- u5 never reaches the anchor, so it leaves the view entirely -->
+  <g opacity="0.45">
+    <text class="dim" x="32" y="148" text-anchor="end">u5</text>
+    <rect class="node" x="42" y="134" width="86" height="20" rx="4"/><text class="ev" x="85" y="148" text-anchor="middle">home</text>
+    <rect class="node" x="142" y="134" width="86" height="20" rx="4"/><text class="ev" x="185" y="148" text-anchor="middle">search</text>
+    <rect class="node" x="242" y="134" width="86" height="20" rx="4"/><text class="ev" x="285" y="148" text-anchor="middle">search</text>
+  </g>
+  <text class="dim" x="348" y="148">no cart — dropped from this view</text>
+</svg>

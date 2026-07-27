@@ -42,7 +42,7 @@ Passing arguments and configuring the widget in the sidebar are equivalent. For 
 
 ```python
 # Configure via arguments
-stream.funnel(steps=["page_view", "add_to_cart", "purchase"])
+stream.funnel(steps=["catalog", "add_to_cart", "purchase"])
 
 # Configure interactively — open the widget, add the same steps in the sidebar
 stream.funnel()
@@ -62,15 +62,15 @@ Pass a 3-element tuple or list `(segment_col, value1, value2)` to compare two va
 
 ```python
 stream.funnel(
-    steps=["page_view", "add_to_cart", "purchase"],
-    diff=("plan", "pro", "free"),
+    steps=["catalog", "add_to_cart", "purchase"],
+    diff=("user_lifecycle", "loyal", "new"),
 )
 ```
 
 Use the reserved value `<REST>` as `value2` to compare a segment against everyone else:
 
 ```python
-stream.transition_graph(diff=("country", "US", "<REST>"))
+stream.transition_graph(diff=("acquisition_channel", "paid_search", "<REST>"))
 ```
 
 This form is also available interactively in the widget sidebar: pick a segment column and two of its values from the dropdowns.
@@ -80,18 +80,10 @@ This form is also available interactively in the widget sidebar: pick a segment 
 Pass a 2-element tuple or list `(path_ids1, path_ids2)` — each side any iterable of path IDs (list, tuple, set, ...) — to compare two explicit, arbitrary groups of paths, without going through a segment column:
 
 ```python
-stream.step_matrix(diff=(["user_1", "user_2"], ["user_3", "user_4", "user_5"]))
+stream.step_matrix(diff=(["user_0000", "user_0001"], ["user_0002", "user_0003", "user_0004"]))
 ```
 
 This form is programmatic only — there is no sidebar UI for picking path-id groups. Tooltips and captions show generic "Group 1" / "Group 2" labels instead of segment names or raw IDs.
-
-### Headless data in diff mode
-
-Diff mode changes what each widget's headless `*_data()` twin returns (see [Headless mode](#headless-mode)):
-
-- `transition_graph_data()` returns `(diff, group1, group2)` instead of a single matrix — three DataFrames, where `diff = group1 - group2`.
-- `step_sankey_data()` / `step_matrix_data()` return `(combined, group1, group2)` instead of a single DataFrame — three DataFrames, where `combined = group1 - group2`. With `path_pattern` (multiple anchor blocks), each of the three is instead a tuple with one DataFrame per block, and `combined_blocks[i] = group1_blocks[i] - group2_blocks[i]`.
-- `funnel_data()` keeps the same `{"steps": [...]}` shape, but each step dict gets `funnel1_unique_paths`, `funnel1_conversion_rate`, `funnel1_step_conversion_rate`, `funnel2_unique_paths`, `funnel2_conversion_rate`, `funnel2_step_conversion_rate`, `delta_unique_paths`, `delta_conversion_rate`, and `delta_step_conversion_rate` instead of the plain `unique_paths`/`conversion_rate`/`step_conversion_rate` keys (`delta_* = funnel1_* - funnel2_*`).
 
 ## Headless mode
 
@@ -113,10 +105,18 @@ Headless methods follow the naming pattern `<widget>_data()`:
 tm = stream.transition_graph_data(edge_weight="proba_out")
 
 # Get funnel results as a dict
-result = stream.funnel_data(steps=["page_view", "add_to_cart", "purchase"])
+result = stream.funnel_data(steps=["catalog", "add_to_cart", "purchase"])
 ```
 
 Headless methods accept the same parameters as their widget counterparts, excluding those that are needed for visualization only, like `height`.
+
+### Headless data in diff mode
+
+Diff mode changes what each widget's headless `*_data()` twin returns (see [Headless mode](#headless-mode)):
+
+- `transition_graph_data()` returns `(diff, group1, group2)` instead of a single matrix — three DataFrames, where `diff = group1 - group2`.
+- `step_sankey_data()` / `step_matrix_data()` return `(combined, group1, group2)` instead of a single DataFrame — three DataFrames, where `combined = group1 - group2`. With `path_pattern` (multiple anchor blocks), each of the three is instead a tuple with one DataFrame per block, and `combined_blocks[i] = group1_blocks[i] - group2_blocks[i]`.
+- `funnel_data()` keeps the same `{"steps": [...]}` shape, but each step dict gets `funnel1_unique_paths`, `funnel1_conversion_rate`, `funnel1_step_conversion_rate`, `funnel2_unique_paths`, `funnel2_conversion_rate`, `funnel2_step_conversion_rate`, `delta_unique_paths`, `delta_conversion_rate`, and `delta_step_conversion_rate` instead of the plain `unique_paths`/`conversion_rate`/`step_conversion_rate` keys (`delta_* = funnel1_* - funnel2_*`).
 
 ## Exporting to HTML
 
@@ -139,7 +139,7 @@ widget.export_html("transition_graph.html")
 The export captures the widget's full state at the time `export_html()` is called — computed results, current parameters, and display preferences like node layout or sort order — so the file reproduces exactly what you saw in the notebook. Because there's no kernel behind the exported file, controls that would require recomputation (e.g. changing `edge_weight`) are disabled; layout, zoom, and other purely visual interactions still work.
 
 ```python
-stream.funnel(steps=["page_view", "add_to_cart", "purchase"]).export_html(
+stream.funnel(steps=["catalog", "add_to_cart", "purchase"]).export_html(
     "funnel.html",
     title="Checkout funnel",
     analysis="Drop-off at [add_to_cart]: most users leave before reaching checkout.",

@@ -1,1 +1,44 @@
 {% extends "_data_processor_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+`add_clusters` is the non-interactive half of
+[Cluster Analysis](/docs/widgets/cluster-analysis): same features, same scaler,
+same algorithms, no UI. It computes the `features` metrics per path, scales
+them, clusters the result, and writes the label back onto every row of the
+corresponding path as a new [segment](/docs/segments) column — after which the
+clusters behave like any other segment, in diff mode, Segment Overview, or the
+`in_segment` metric.
+
+Two things are worth knowing before you call it.
+
+**`n_clusters` is required for k-means, and that is not an oversight.** The
+widget searches a range and picks a winner by silhouette score, because it can
+show you the result and let you disagree. A processor writing a column into your
+data has no such conversation, so it asks for the exact number rather than
+guessing one. The intended flow is to settle the question in the widget first —
+"Save Clusters" emits the matching call, and headlessly
+`cluster_analysis_data()["best_params"]` carries the same value:
+
+```python
+features = [{"metric": "length"}, {"metric": "active_days"}]
+
+result = stream.cluster_analysis_data(features=features)
+stream = stream.add_clusters("behavior", features=features, **result["best_params"])
+```
+
+**Clustering is not deterministic across feature sets.** Labels are positional
+(`cluster_0`, `cluster_1`, …) and carry no meaning of their own — adding a
+feature or changing the scaler can renumber every group. Rename them to
+something you can read once the split is settled, with
+[`rename_segment_levels`](/docs/data-processors/rename-segment-levels):
+
+```python
+stream = stream.rename_segment_levels("behavior", {"cluster_0": "browsers", "cluster_1": "buyers"})
+```
+
+See [Path Metrics](/docs/path-metrics) for what you can cluster on, and
+[Cluster Analysis](/docs/widgets/cluster-analysis#how-it-works) for why the
+choice of `features` *is* the analysis.
+{% endblock %}

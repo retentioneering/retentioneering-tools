@@ -1,1 +1,51 @@
 {% extends "_data_processor_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+This processor changes what a "step" in a path means. Normally the next event in
+a path is the next thing the user did, whenever that was. After
+`to_daily_states`, every path has exactly one event per calendar day — the
+user's engagement state on that day — so consecutive steps are consecutive days
+and the gaps become visible as events in their own right.
+
+Before — one user, active on two days:
+
+| user_id | event | timestamp |
+|---|---|---|
+| u1 | login | 2024-01-01 |
+| u1 | login | 2024-01-03 |
+
+```python
+stream.to_daily_states()
+```
+
+After — one row per day, labelled with that day's state:
+
+| user_id | event | timestamp |
+|---|---|---|
+| u1 | `new` | 2024-01-01 |
+| u1 | `at_risk_wau` | 2024-01-02 |
+| u1 | `current` | 2024-01-03 |
+
+The first-ever active day is `new`; 2 January has no activity but the user was
+active within the last 7 days, so it is `at_risk_wau`; on 3 January the user is
+active again and recently seen, so `current`.
+
+Rows keep being generated for `max_dormant_days` after the path's last event, so
+you can see a path decay through `at_risk_wau` → `at_risk_mau` → `dormant`
+without it silently disappearing from the data. That tail is capped at the last
+day present in the dataset, so paths active near the end of your observation
+window get fewer trailing rows than older ones — worth remembering before
+comparing state distributions across cohorts.
+
+Pass `active_events` to decide what counts as activity: with
+`active_events=["purchase"]`, a user who browses daily but never buys still
+decays to `dormant`.
+
+Because the output is an ordinary eventstream whose events are states, every
+tool works on it unchanged — a [Transition Graph](/docs/widgets/transition-graph)
+becomes a state-transition diagram, and a
+[Step Sankey](/docs/widgets/step-sankey) becomes a retention flow.
+
+{% endblock %}

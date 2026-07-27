@@ -1,1 +1,22 @@
 {% extends "_data_processor_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+Before: `btn_clk → debug → purchase`
+
+```python
+stream.edit_events(rename={"btn_clk": "button_click"}, delete=["debug"])
+```
+
+After — renaming and deleting happen in the same pass, so you only walk the
+unique event list once:
+
+`button_click → purchase`
+
+Renaming an event to a name that already exists merges the two. Events absent
+from `rename` are left alone; use [`drop_events`](/docs/data-processors/drop-events)
+or [`rename_events`](/docs/data-processors/rename-events) when you only need one
+of the two operations.
+
+{% endblock %}

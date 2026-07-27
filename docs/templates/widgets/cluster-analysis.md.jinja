@@ -1,5 +1,53 @@
 {% extends "_widget_base.md.jinja" %}
 
+{% block how_it_works %}
+## How it works
+
+Every representation in [Path Analysis](/docs/path-analysis) summarizes paths by
+their *shape* — which events, in which order. Clustering goes the other way: it
+describes each path by a handful of numbers, then groups paths whose numbers
+look alike. Two users who never visited the same screen can still land in the
+same cluster if they were equally brief, equally repetitive, or equally unlikely
+to buy.
+
+The pipeline is three steps, and each maps to one argument:
+
+1. **Describe.** `features` turns every path into a row of numbers, using the
+   shared [path metrics](/docs/path-metrics) registry — `length`, `duration`,
+   `active_days`, a per-event count, whether a pattern matched. This choice
+   *is* the analysis: clusters can only differ along dimensions you measured.
+2. **Scale.** `scaler` puts those numbers on a comparable footing. Without it a
+   `duration` in seconds (six digits) drowns out a `length` in events (two
+   digits), and the clustering silently becomes "group by duration". Hence the
+   `"minmax"` default.
+3. **Split.** `n_clusters` fixes the number of groups, or names a range to
+   search. Given a range, the widget clusters at every size in it and keeps the
+   one with the best **silhouette score** — a measure of how much tighter paths
+   sit within their own cluster than to the nearest other one. It is a hint
+   about structure, not a verdict: a mediocre score across the whole range
+   usually means the paths form a continuum rather than distinct groups.
+
+An optional fourth knob, [NMF](#nmf), sits between steps 2 and 3.
+
+What comes back is not the clusters themselves but a way to read them: the
+overview heatmap puts `overview_metrics` in rows and clusters in columns,
+exactly like [Segment Overview](/docs/widgets/segment-overview), so you can see
+what actually distinguishes cluster 2 from cluster 3 and give it a name. Note
+that `features` and `overview_metrics` are independent on purpose — profiling
+clusters on metrics you did *not* cluster by is how you find out whether the
+split means anything beyond its own inputs.
+
+Clusters are not a special kind of object. Once a split looks right, "Save
+Clusters" (or [`add_clusters`](/docs/data-processors/add-clusters)) writes the
+labels into the eventstream as an ordinary [segment](/docs/segments) column, and
+from there every segment-aware tool — diff mode, Segment Overview, the
+`in_segment` metric — works on it unchanged.
+
+**Choosing a cluster count is a judgment call, not a computation.** Prefer the
+smallest number of clusters you can still describe in words; a split you cannot
+name is a split you cannot act on.
+{% endblock %}
+
 {% block demo_examples %}
 ## Examples
 
@@ -10,4 +58,75 @@
     ],
     n_clusters=3,
 )`} path="/docs-demos/widgets/cluster-analysis/basic.html" height={580} />
+{% endblock %}
+
+{% block data_params_note %}
+Data parameters change the computed result. They are the arguments of the
+widget's headless twin `stream.{{ headless_name }}()` — see
+[headless mode](#headless-mode) below — with three exceptions, all of which the
+twin accepts and this constructor does not:
+
+- `nmf_components` — see [NMF](#nmf) below. It is *not* missing from the widget:
+  the sidebar has an NMF toggle and a component-count field, and the result
+  arrives as the H-matrix / W Cluster Means tabs. It is only unavailable as a
+  constructor argument, so set it in the sidebar or use the headless twin.
+- `min_cluster_size`, `cluster_selection_epsilon` — tuning knobs for
+  `method="hdbscan"`. The method itself can be passed to the widget, but there
+  is no sidebar control to switch it and no way to tune these two from the
+  widget at all. Use the headless twin for hdbscan work.
+{% endblock %}
+
+{% block extra %}
+### NMF
+
+Turning on **NMF** in the sidebar (or passing `nmf_components` to the headless
+twin) inserts a dimensionality-reduction step between scaling and clustering:
+the feature matrix is factorized into the requested number of non-negative
+components, and paths are clustered on those components instead of on the raw
+metrics. It is independent of the clustering algorithm — the usual pairing is
+NMF with k-means.
+
+Reach for it when `features` is wide and correlated — a wildcard
+`event_count_bulk` over a few dozen events is the standard case. Twenty
+near-duplicate count columns let the loudest events dominate the distance
+calculation; a handful of components spreads the signal out. Like `n_clusters`,
+`nmf_components` accepts a single number or a range to grid-search.
+
+The payoff is interpretability, and it arrives as two extra tabs:
+
+- **H-matrix** — how each component is built out of your features. This is what
+  names a component: one loading heavily on `search` and `filter_results` is
+  "browsing intensity", whatever the algorithm called it.
+- **W Cluster Means** — how strongly each cluster expresses each component. Read
+  it together with the H-matrix and each cluster gets a description in terms of
+  behavior rather than a number.
+
+The cost is that clusters no longer sit in the space of your original metrics,
+so `overview_metrics` (which always report raw per-path values) stays the honest
+check on whether the split means anything.
+
+### From the widget to a segment column
+
+The widget explores; [`add_clusters`](/docs/data-processors/add-clusters)
+persists. The two differ in one place: `cluster_analysis` searches a range of
+cluster counts (`"3-8"` by default) and picks a winner, while `add_clusters`
+materializes one specific clustering and therefore needs an exact
+`n_clusters`.
+
+You don't have to transcribe it. "Save Clusters" in the sidebar writes the
+matching `add_clusters(...)` call — optionally with your renamed cluster labels —
+and headlessly the same value comes back as `best_params`:
+
+```python
+features = [{"metric": "length"}, {"metric": "active_days"}]
+
+result = stream.cluster_analysis_data(features=features)
+result["best_params"]        # e.g. {"n_clusters": 3}
+
+stream = stream.add_clusters("behavior", features=features, **result["best_params"])
+```
+
+`best_params` holds only the parameters that were searched over, so pass the
+same `features` alongside it.
+
 {% endblock %}

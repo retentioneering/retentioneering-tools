@@ -6,14 +6,26 @@ Processors can be chained:
 
 ```python
 stream = (
-    Eventstream(df)
+    rete.datasets.load_ecom()
     .add_start_end_events()
-    .filter_events(drop={"event": ["bot_visit"]})
-    .rename_events({"btn_clk": "button_click"})
+    .filter_events(drop={"event": ["checkout_bug"]})
+    .rename_events({"wishlist_add": "add_to_wishlist"})
 )
 ```
 
 Each processor returns a new `Eventstream`, so the original is never modified.
+
+## Event names are validated
+
+Processors check every event name you pass against the events actually present in the eventstream, and raise a `PreprocessingConfigError` listing the available names when one doesn't match:
+
+```python
+stream.filter_events(drop={"event": ["bot_ping"]})
+# PreprocessingConfigError: [filter_events] Value(s) ['bot_ping'] not found in
+# column 'event'. Available values: ['account_page', 'add_to_cart', 'cart', ...]
+```
+
+This is deliberate. A typo in an event name would otherwise turn into a filter that quietly keeps everything, or a rename that quietly does nothing — and you would find out several steps later, from a chart that looks plausible and is wrong. Use `stream.get_event_counts()` (or [`describe()`](/docs/eventstream#inspecting-your-data)) to get the exact spelling of every event before writing a pipeline.
 
 ## Overview
 

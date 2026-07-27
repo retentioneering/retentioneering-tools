@@ -1,5 +1,53 @@
 {% extends "_widget_base.md.jinja" %}
 
+{% block how_it_works %}
+## How it works
+
+[Diff mode](/docs/widgets#diff-mode) compares two groups in depth. Segment
+Overview does the opposite: it compares *every* level of a segment at once, on
+several metrics, shallowly — so you know which pair is worth diffing before you
+spend a widget on it. Six acquisition channels across five metrics is one
+heatmap here and fifteen diffed graphs otherwise.
+
+The computation is two steps. Each path gets a value for each of your
+[path metrics](/docs/path-metrics) — `length`, `duration`, conversion via
+`has_event`, time to purchase via `time_between`. Then, for every level of
+`segment_col`, those per-path values are collapsed into one number by the
+metric's `agg`. Metrics become rows, segment levels become columns, and the
+colour is the metric's value read across the row.
+
+Which is why **`agg` is required here and nowhere else**. A distribution has no
+single summary: `mean` follows the tail, `median` follows the bulk, and for
+skewed quantities like session duration the two can point in opposite
+directions. Adding the same metric twice under different aggregations is a
+normal thing to do — `q95` next to `median` says whether a segment is slower
+overall or just has a heavier tail.
+
+Two rows are always present without being asked for: `segment_size` and
+`segment_share`. Read them first. A level holding 0.4% of the paths will
+happily post the most extreme value in every row, and it means nothing.
+
+**`complement_distance`** is the odd one out among the aggregations. Instead of
+summarizing a level's values, it measures the
+[Wasserstein distance](https://en.wikipedia.org/wiki/Wasserstein_metric) between
+that level's whole distribution and the pooled distribution of every other
+level — "how unlike the rest is this group?" as a single number. It catches
+differences the mean hides, such as one level splitting into fast and slow
+sub-populations whose average lands exactly on everyone else's.
+
+Clicking a cell opens the underlying distribution rather than the number;
+shift-clicking a second cell in the same row overlays two of them, which is
+usually enough to tell a real shift from a couple of outliers.
+
+**Dynamic segments split paths, not just group them.** Metrics are computed per
+(path, segment level) pair, so a user active both inside and outside an incident
+window contributes a fragment to each column — you are comparing *behavior
+during* the window against *behavior outside* it, not one set of users against
+another. For a static segment (channel, A/B arm, cluster label) each path
+belongs to exactly one level and this collapses back to the obvious reading. See
+[Static and dynamic segments](/docs/segments#static-and-dynamic-segments).
+{% endblock %}
+
 {% block demo_examples %}
 ## Examples
 

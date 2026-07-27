@@ -1,5 +1,52 @@
 {% extends "_widget_base.md.jinja" %}
 
+{% block how_it_works %}
+## How it works
+
+Stack every path up, slice the stack by step, and count: what share of paths is
+sitting on each event at step 1, at step 2, and so on? That table is the Step
+Matrix — one of the three aggregated representations of trajectories described in
+[Path Analysis](/docs/path-analysis).
+
+![Five paths merged into a trajectory tree, each node carrying the number of paths passing through it](/docs-demos/img/trajectory-tree.svg "Five example paths stacked into a trajectory tree: identical beginnings share a branch, and each node carries the number of paths passing through it.")
+
+![The step matrix of those five paths: one row per event, one column per step](/docs-demos/img/step-matrix.svg "The same tree counted by step. The two cart nodes at step 3 — one reached via catalog, one via search — merge into a single cell: 2 + 1 = 3 of 5 paths.")
+
+Reading it:
+
+- **A cell is a share of paths, not of events.** Row `cart`, column 3 = 0.6 means
+  60% of all paths had `cart` as their third event.
+- **Every column sums to 1** (in diff mode, to 0), because every path is
+  somewhere at every step. Paths that have ended sit in `path_end`, which is why
+  that row fills up towards the right.
+- **Branches merge.** Two groups of users reaching `cart` at step 3 by different
+  routes land in the same cell. The matrix tells you *what* happens at each step,
+  not which route got there.
+
+Step Matrix and [Step Sankey](/docs/widgets/step-sankey) are two renderings of
+exactly the same numbers — they share one headless method. The matrix is easier
+for reading a single event across steps and for spotting rare events; the Sankey
+is easier for following volume.
+
+### Anchoring on an event
+
+By default step 1 is each path's own first event. `path_pattern` re-anchors the
+matrix on an event instead: every path is shifted until that event sits in
+column 0, and the steps before it get negative numbers.
+
+![Five paths shifted so that each path's cart event sits in column zero, with negative column numbers before it](/docs-demos/img/path-pattern.svg 'Five example paths under path_pattern="cart": every path shifted until its cart event sits in column 0. Paths that reach the anchor later stick out to the left; paths that never reach it drop out of the view.')
+
+Column −1 then answers "what leads into this event?" and column +1 "what follows
+it?" — questions the start-anchored view smears across many columns whenever the
+event happens at different steps for different users.
+
+A pattern with several anchors (`"add_to_cart->.*->purchase"`, where `.*` matches
+any run of events) draws one block of columns per anchor, side by side, so you
+can walk a funnel and still see each step's neighbourhood. When a block's edge
+isn't a real path boundary the widget draws it serrated, signalling that paths
+continue beyond the visible range.
+
+{% endblock %}
 {% block demo_examples %}
 ## Examples
 

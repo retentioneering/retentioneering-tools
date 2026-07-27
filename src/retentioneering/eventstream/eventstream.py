@@ -269,6 +269,15 @@ class Eventstream:
         return apply_ops(base, recipe)
 
     def to_dataframe(self, exclude_start_end: bool = True) -> pd.DataFrame:
+        """Return the eventstream's rows as a plain pandas DataFrame (a copy).
+
+        Parameters
+        ----------
+        exclude_start_end : bool, default True
+            Drop the synthetic `path_start` / `path_end` boundary rows. Pass
+            `False` to keep them, e.g. when checking what a widget actually
+            counts.
+        """
         df = self._df.copy()
         if exclude_start_end:
             exclude = [EventTypes().PATH_START.type, EventTypes().PATH_END.type]
@@ -490,12 +499,13 @@ class Eventstream:
             `"has_event"`, `"event_count_bulk"`, `"has_event_bulk"`,
             `"has_all_events"`, `"has_any_event"`, `"time_between"`,
             `"first_event_time"`, `"active_days"`, `"matches_pattern"`,
-            `"in_segment"`. See the Path Metrics documentation page for the full
+            `"in_segment"`. See the [Path Metrics](/docs/path-metrics) documentation page for the full
             metric reference.
-        method : str, default `"kmeans"`
+        method : str, default "kmeans"
             Clustering algorithm. One of `"kmeans"` or `"hdbscan"`.
-        scaler : str or None, default `"minmax"`
-            Feature scaler applied before clustering. One of `"minmax"`, `"standard"`, or `None`.
+        scaler : str or None, default "minmax"
+            Feature scaler applied before clustering. One of `"minmax"`, `"std"`, or `None`.
+            (`"standard"` is accepted as a legacy alias of `"std"`.)
         n_clusters : int, optional
             Number of clusters (required for `"kmeans"`).
         min_cluster_size : int, optional
@@ -559,8 +569,8 @@ class Eventstream:
 
         Each URL is matched against the `nodes` tree. A node with
         `aggregate_children` set becomes an aggregation point: the node's own URL
-        keeps its path as the event name, while deeper pages are collapsed into a
-        `<path>/<slug>` label. The original URL column is replaced in-place.
+        keeps its path as the event name, while every deeper page collapses to the
+        single label `<path>/<slug>`. The original URL column is replaced in-place.
 
         Parameters
         ----------
@@ -569,18 +579,23 @@ class Eventstream:
         nodes : list of dict
             URL path tree. Each node dict must have a `"path"` key (str) and may
             include:
-              - `"aggregate_children"` (bool) — collapse pages deeper than this node
-                into a `<path>/<slug>` label.
+              - `"aggregate_children"` (bool) — collapse every page below this node
+                into one `<path>/<slug>` event. The slug is a fixed placeholder, not
+                the URL's own segment: all of `/catalog/phones` and
+                `/catalog/laptops/mac` become `catalog/sub-page`.
               - `"exclude"` (bool) — drop rows whose URL falls under this node.
-              - `"name"` (str) — custom label for this node (also used as the slug
-                when a parent node aggregates it).
-        strip_host : bool, default `True`
+              - `"name"` (str) — the slug used for pages collapsed into this node;
+                it does not rename the node's own URL, which always keeps its path.
+                Declaring a child node with a `"name"` gives that branch its own slug
+                (`catalog/phones`); declaring a child with `aggregate_children`
+                instead makes it a nested aggregation point of its own.
+        strip_host : bool, default True
             Remove the scheme and hostname, keeping only the pathname.
-        strip_query : bool, default `True`
+        strip_query : bool, default True
             Remove the query string and URL fragment.
-        strip_locale : bool, default `True`
+        strip_locale : bool, default True
             Remove a leading 2-letter BCP-47 locale segment (e.g. `"en"`, `"fr-ca"`).
-        keep_full_paths : bool, default `False`
+        keep_full_paths : bool, default False
             When `True`, `aggregate_children` nodes are ignored and every URL keeps
             its normalized path.
         host_col : str, optional
@@ -638,21 +653,21 @@ class Eventstream:
         Parameters
         ----------
         condition : dict or list
-            Condition tree. Leaf nodes have the keys:
-              - `op` — comparison operator: `>`, `>=`, `<`, `<=`, `=` (or `==`), `!=`.
-              - `metric` — metric name (see the Path Metrics documentation page for
+            Condition tree of leaf (comparison) and branch (`and`/`or`/`not`) nodes;
+            a plain list is shorthand for AND. Metrics used in a leaf must produce
+            exactly one value per path, which rules out `has_event_bulk` and
+            `event_count_bulk`.
+              - `op` — for a leaf, a comparison operator: `>`, `>=`, `<`, `<=`,
+                `=` (or `==`), `!=`. For a branch, one of `and`, `or`, `not`.
+              - `args` (branch nodes only) — list of child nodes.
+                `[cond1, cond2]` ≡ `{"op": "and", "args": [cond1, cond2]}`.
+              - `metric` — metric name (see the [Path Metrics](/docs/path-metrics) documentation page for
                 the full list).
               - `value` — threshold value.
               - `metric_args` (optional) — dict of extra arguments for the metric.
-            Branch nodes have `op` set to `and`, `or`, or `not` and an `args` list of
-            child nodes.
-            A plain list of nodes is shorthand for AND:
-            `[cond1, cond2]` ≡ `{"op": "and", "args": [cond1, cond2]}`.
-            `has_event`/`event_count` take a single `event` (string) — for a
-            multi-event AND/OR condition use `has_all_events`/`has_any_event` with
-            an `events` list instead. `has_event_bulk`/`event_count_bulk` (which
-            expand into one column per event, for `segment_overview`/`add_clusters`)
-            cannot be used here since a condition needs exactly one value per path.
+                `has_event`/`event_count` take a single `event` string; for a
+                multi-event AND/OR condition use `has_all_events`/`has_any_event`
+                with an `events` list.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         event_col : str, optional
@@ -706,16 +721,30 @@ class Eventstream:
     @_tracked("get_metrics")
     def get_metrics(self, metrics: list, path_col: str | None = None) -> pd.DataFrame:
         """
-        Compute per-path metric values.
+        Compute per-path metric values as a feature table.
 
-        Args:
-            metrics: List of metric configuration dicts with 'metric' and optional
-                'metric_args' fields. See the Path Metrics documentation page for
-                the full metric reference.
-            path_col: Path ID column (if None, taken from schema)
+        Parameters
+        ----------
+        metrics : list of dict
+            Metric configs, each with a `metric` name and optional `metric_args`.
+            No `agg` field here — these are per-path values, not aggregates. See
+            the [Path Metrics](/docs/path-metrics) documentation page for the full metric reference.
+        path_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
 
-        Returns:
-            DataFrame with path IDs as index and metrics as columns
+        Returns
+        -------
+        pd.DataFrame
+            One row per path (path ID as the index), one column per metric.
+            `event_count_bulk`/`has_event_bulk` expand into one column per event.
+
+        Examples
+        --------
+            features = stream.get_metrics([
+                {"metric": "length"},
+                {"metric": "duration"},
+                {"metric": "event_count", "metric_args": {"event": "purchase"}},
+            ])
         """
         from retentioneering.metrics.metric_builder import MetricBuilder
 
@@ -729,8 +758,6 @@ class Eventstream:
     ) -> "Eventstream":
         """
         Insert synthetic events derived from existing events or a SQL query.
-        In `source_events` mode, the new event is inserted at the timestamp of the
-        **first** occurrence of a source event in each path.
 
         Exactly one of `source_events`, `sql`, or `churn` must be provided.
         The new event rows are appended to the eventstream; original rows are kept.
@@ -740,19 +767,19 @@ class Eventstream:
         name : str
             Name of the synthetic event to create.
         source_events : list of str, optional
-            List of existing event names. For each path, one synthetic event is
-            inserted at the timestamp of the first matching source event.
+            List of existing event names. Every occurrence of any of them gets a
+            synthetic event at the same timestamp, ordered right after the source
+            row — a path with three matching events gets three synthetic events.
         sql : str, optional
             DuckDB SQL SELECT statement that reads from the `eventstream` table alias
             and returns rows in the eventstream schema. Each returned row is added as a
             new synthetic event.
         churn : dict, optional
-            Creates a churn event after a period of inactivity. Required key:
-              - `inactivity_days` (int or float) — gap in days after which a churn event
-                is inserted.
-            Optional key:
-              - `active_events` (list of str) — only these events count as activity;
-                defaults to all events.
+            Creates a churn event after a period of inactivity.
+              - `inactivity_days` (int or float, required) — gap in days after which
+                a churn event is inserted.
+              - `active_events` (list of str, optional) — only these events count as
+                activity; defaults to all events.
 
         Examples
         --------
@@ -794,7 +821,10 @@ class Eventstream:
         rules : list, optional
             CASE-WHEN rules. A list of conditions plus a final else entry:
               - Each condition entry is `[column, op, value, label]` — translates to
-                `WHEN <column> <op> <value> THEN <label>` in SQL.
+                `WHEN <column> <op> <value> THEN <label>` in SQL. A string `value`
+                is quoted for you, so write `"US"`, not `"'US'"` — the exception is
+                `op="in"`, whose value is inserted raw and must therefore be a
+                complete SQL tuple: `"('GB', 'DE', 'FR')"`.
               - The last entry is `[else_label]` — the ELSE branch label.
             Example: `[["country", "=", "US", "domestic"], ["international"]]`.
         func : callable, optional
@@ -827,41 +857,23 @@ class Eventstream:
 
         Examples
         --------
-            # rules mode — CASE WHEN rules
-            stream.add_segment(
-                "region",
-                rules=[
-                    ["country", "=", "US", "domestic"],
-                    ["country", "in", "('GB', 'DE', 'FR')", "europe"],
-                    ["other"],
-                ],
-            )
+            # ordered CASE-WHEN rules over an existing column
+            stream.add_segment("region", rules=[
+                ["country", "=", "US", "domestic"],
+                ["country", "in", "('GB', 'DE', 'FR')", "europe"],
+                ["other"],
+            ])
 
-            # funnel_events mode — assign the deepest funnel step reached in order
-            stream.add_segment(
-                "funnel",
-                funnel_events=["add_to_cart", "checkout_start", "purchase"],
-            )
-            # Resulting segment values: out_of_funnel | add_to_cart | checkout_start | purchase
-            # A path with only "checkout_start" (no "add_to_cart") is out_of_funnel — the
-            # funnel is strictly ordered, so skipping or reordering an earlier step keeps
-            # a path from being credited for a later one it did reach.
+            # the deepest funnel step each path completed in order
+            stream.add_segment("funnel", funnel_events=["add_to_cart", "shipping_details", "purchase"])
 
-            # sql mode — one computed column, same row order as the eventstream
-            stream.add_segment(
-                "device",
-                sql="SELECT CASE WHEN platform = 'mobile' THEN 'mobile' ELSE 'web' END FROM eventstream",
-            )
+            # "inside" / "outside" a time window
+            stream.add_segment("incident", time_range=("2024-03-10", "2024-03-17"))
 
-            # time_range mode — binary "inside" vs "outside" a time interval
-            stream.add_segment(
-                "incident",
-                time_range=("2024-03-10", "2024-03-17"),
-            )
+            # a DuckDB SELECT returning one label per row
+            stream.add_segment("device", sql="SELECT CASE WHEN platform = 'mobile' THEN 'mobile' ELSE 'web' END FROM eventstream")
 
-            # promoting an existing custom column — "returned" already rode along in
-            # the source DataFrame and landed in schema.custom_cols; no mode argument
-            # needed, the column's values are kept as-is
+            # promote a column that is already in the eventstream, keeping its values
             stream.add_segment("returned")
         """
         from retentioneering.data_processors.add_segment import AddSegment
@@ -938,7 +950,7 @@ class Eventstream:
             stream.collapse_events(consecutive=True)
 
             # Collapse only repeated page_view events
-            stream.collapse_events(consecutive=["page_view"])
+            stream.collapse_events(consecutive=["product_view"])
 
             # Merge checkout steps into a single "checkout" event
             stream.collapse_events(event_groups=[{"events": ["checkout_start", "checkout_step", "checkout_confirm"], "name": "checkout"}])
@@ -990,7 +1002,9 @@ class Eventstream:
         active_events : list of str, optional
             Events that count as "activity". If omitted, any event counts.
         max_dormant_days : int, default 30
-            Days after last event to continue generating state rows.
+            Days after a path's last event to continue generating state rows.
+            Capped at the last day present in the dataset, so paths active near
+            the end of the observation window get fewer trailing rows.
         agg : dict, optional
             Per-column aggregation overrides (e.g. `{"revenue": "sum"}`).
         path_col : str, optional
@@ -1002,10 +1016,6 @@ class Eventstream:
         --------
             stream.to_daily_states()
             stream.to_daily_states(active_events=["purchase", "add_to_cart"], max_dormant_days=60)
-
-        As a preprocessor in MCP update_base_stream / local_preprocessors:
-            {"type": "to_daily_states"}
-            {"type": "to_daily_states", "active_events": ["purchase"], "max_dormant_days": 60}
         """
         from retentioneering.data_processors.to_daily_states import ToDailyStates
 
@@ -1207,10 +1217,10 @@ class Eventstream:
 
         Parameters
         ----------
-        session_col : str, default `"session_id"`
+        session_col : str, default "session_id"
             Name of the new column that holds the unique session identifier.
-        session_index_col : str, default `"session_index"`
-            Name of the new column that holds the 0-based session index within each path.
+        session_index_col : str, default "session_index"
+            Name of the new column that holds the 1-based session index within each path.
         separator : str or list of str, optional
             Event name(s) that mark a session boundary. The separator event starts a new
             session; the separator row itself is dropped from the output.
@@ -1513,7 +1523,7 @@ class Eventstream:
         Examples
         --------
             df = stream.step_sankey_data(max_steps=10)
-            combined, g1, g2 = stream.step_sankey_data(diff=("plan", "pro", "free"))
+            combined, g1, g2 = stream.step_sankey_data(diff=("user_lifecycle", "loyal", "new"))
             blocks = stream.step_sankey_data(path_pattern="add_to_cart->.*->purchase")
         """
         from retentioneering.tools.step_matrix import StepMatrix
@@ -1598,15 +1608,13 @@ class Eventstream:
         state_file=None,
     ):
         """
-        Displays a step-by-step Sankey diagram showing which events users experience
-        at each ordinal position in their path. The horizontal axis represents step
-        number, making it easy to see how paths diverge over time.
+        Flow diagram of what users are doing at each step of their path: block
+        height is the share of paths on that event at that step (columns sum to 1,
+        or to 0 in diff mode), and ribbons show how volume moves between two
+        adjacent steps. Ribbons do not chain — paths arriving by different routes
+        merge at every column.
 
-        Each column sums to 1 in standard mode, while in diff mode columns sum to 0.
-
-        Step Sankey and [Step Matrix](/docs/widgets/step-matrix) visualise the same
-        underlying data in different forms: Step Sankey as a flow diagram, Step Matrix
-        as a heatmap table. Use whichever makes the pattern you are looking for easier to spot.
+        Same numbers as [Step Matrix](/docs/widgets/step-matrix), drawn as flows.
 
         Parameters
         ----------
@@ -1633,7 +1641,7 @@ class Eventstream:
         Examples
         --------
             stream.step_sankey(max_steps=15, path_pattern="add_to_cart->.*->purchase")
-            stream.step_sankey(diff=("country", "US", "<REST>"))
+            stream.step_sankey(diff=("acquisition_channel", "paid_search", "<REST>"))
         """
         from retentioneering.widgets.step_sankey import StepSankeyWidget, _UNSET
 
@@ -1662,16 +1670,13 @@ class Eventstream:
         state_file=None,
     ):
         """
-        Displays a heatmap table of step-by-step transition probabilities. Each cell
-        shows the share of paths that pass through a given event at a given step
-        relative to an anchor. The horizontal axis represents step offset from the anchor
-        (negative steps are before it, positive are after), and the vertical axis lists the events.
+        Heatmap of what users are doing at each step of their path: cell
+        `[event, step]` is the share of paths on that event at that step, so every
+        column sums to 1 (to 0 in diff mode). Rows are events, columns are steps
+        from the anchor — `path_start` by default, or a `path_pattern` event, in
+        which case the columns to its left are negative.
 
-        Each column sums to 1 in standard mode, while in diff mode columns sum to 0.
-
-        Step Matrix and [Step Sankey](/docs/widgets/step-sankey) visualise the same underlying
-        data in different forms: Step Matrix as a heatmap table, Step Sankey as a flow diagram.
-        Use whichever makes the pattern you are looking for easier to spot.
+        Same numbers as [Step Sankey](/docs/widgets/step-sankey), drawn as a table.
 
         Parameters
         ----------
@@ -1706,7 +1711,7 @@ class Eventstream:
         --------
             stream.step_matrix(path_pattern="purchase")
             stream.step_matrix(path_pattern="add_to_cart->.*->purchase")
-            stream.step_matrix(diff=("is_new_user", False, True))
+            stream.step_matrix(diff=("user_lifecycle", "new", "loyal"))
         """
         from retentioneering.widgets.step_matrix import StepMatrixWidget, _UNSET
 
@@ -1773,7 +1778,7 @@ class Eventstream:
         Examples
         --------
             stream.transition_graph()
-            stream.transition_graph(edge_weight="count", diff=("plan", "pro", "free"))
+            stream.transition_graph(edge_weight="count", diff=("user_lifecycle", "loyal", "new"))
             stream.transition_graph(state_file="checkout_graph.json")
             stream.transition_graph(
                 views=[{"name": "Checkout", "focus": {"type": "node", "event": "cart"}}],
@@ -1835,8 +1840,8 @@ class Eventstream:
 
         Examples
         --------
-            stream.funnel(steps=["page_view", "add_to_cart", "purchase"])
-            stream.funnel(steps=["add_to_cart", "purchase"], diff=("plan", "pro", "free"))
+            stream.funnel(steps=["catalog", "add_to_cart", "purchase"])
+            stream.funnel(steps=["add_to_cart", "purchase"], diff=("user_lifecycle", "loyal", "new"))
         """
         from retentioneering.widgets.funnel import FunnelWidget, _UNSET
 
@@ -1923,8 +1928,9 @@ class Eventstream:
             Metric configurations, each with a `"metric"` key, optional
             `"metric_args"`, and an `"agg"` key (`"mean"`, `"median"`, `"q5"`,
             `"q25"`, `"q75"`, `"q95"`, or `"complement_distance"`) controlling how
-            per-path values roll up across a segment. See the Path Metrics
-            documentation page for the metric reference.
+            per-path values roll up across a segment. See the
+            [Path Metrics](/docs/path-metrics) documentation page for the
+            metric reference.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         height : int, default 480
@@ -1979,8 +1985,9 @@ class Eventstream:
             Metric configurations, each with a `"metric"` key, optional
             `"metric_args"`, and an `"agg"` key (`"mean"`, `"median"`, `"q5"`,
             `"q25"`, `"q75"`, `"q95"`, or `"complement_distance"`) controlling how
-            per-path values roll up across a segment. See the Path Metrics
-            documentation page for the metric reference.
+            per-path values roll up across a segment. See the
+            [Path Metrics](/docs/path-metrics) documentation page for the
+            metric reference.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         event_col : str, optional
@@ -2033,7 +2040,7 @@ class Eventstream:
             triggers clustering.
         method : {"kmeans", "hdbscan"}, default "kmeans"
             Clustering algorithm.
-        scaler : {"minmax", "standard"}, optional
+        scaler : {"minmax", "std"}, optional
             Feature scaler applied before clustering; default `"minmax"`.
         n_clusters : int, list of int, or str, optional
             Number of clusters. A single int fixes the cluster count; a list of
@@ -2121,7 +2128,7 @@ class Eventstream:
             widget.
         method : {"kmeans", "hdbscan"}, default "kmeans"
             Clustering algorithm.
-        scaler : {"minmax", "standard"}, optional
+        scaler : {"minmax", "std"}, optional
             Feature scaler applied before clustering; default `"minmax"`.
         n_clusters : int, list of int, or str, optional
             Number of clusters. A single int fixes the cluster count; a list of
@@ -2144,7 +2151,7 @@ class Eventstream:
             Metrics shown in the overview heatmap after clustering (independent
             of `features`); if omitted, `overview_df` only has segment_size and
             segment_share rows. Both `features` and `overview_metrics` accept
-            metric configs from the same Path Metrics registry.
+            metric configs from the same [Path Metrics](/docs/path-metrics) registry.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         event_col : str, optional

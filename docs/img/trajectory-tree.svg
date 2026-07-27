@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 12 562 172" width="562" height="172" role="img" aria-labelledby="tt-title tt-desc">
+  <title id="tt-title">Five paths merged into a trajectory tree</title>
+  <desc id="tt-desc">The five example paths stacked up so that identical beginnings share a branch. The tree is rooted at "home", which all five paths pass through, and splits into "catalog" (3 paths) and "search" (2 paths). Each node carries the number of paths passing through it, and the branch thickness grows with that number. Two nodes carry the event "cart" at depth three, reached by different routes; both are outlined. Two branches end at depth four, marked path_end.</desc>
+
+  <style>
+    .ev   { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #1f2328; }
+    .dim  { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #6b7280; }
+    .node { fill: #f5f6f8; stroke: #d7dbe1; stroke-width: 1; }
+    .mark { fill: none; stroke: #a8791a; stroke-width: 1.6; stroke-dasharray: 3 2.5; }
+    .edge { fill: none; stroke: #c3c8d0; stroke-linecap: round; }
+    @media (prefers-color-scheme: dark) {
+      .dim  { fill: #99a1ac; }
+      .ev   { fill: #e6e8eb; }
+      .node { fill: #22262c; stroke: #3b414a; }
+      .mark { stroke: #f5c328; }
+      .edge { stroke: #4d545d; }
+    }
+  </style>
+
+  <!-- branches; stroke width grows with the number of paths on the branch -->
+  <g class="edge">
+    <path d="M102 97 C131 97, 131 52, 160 52" stroke-width="3"/>
+    <path d="M102 97 C131 97, 131 142, 160 142" stroke-width="2.4"/>
+
+    <path d="M252 52 C281 52, 281 30, 310 30" stroke-width="2.4"/>
+    <path d="M252 52 C281 52, 281 75, 310 75" stroke-width="1.6"/>
+    <path d="M252 142 C281 142, 281 120, 310 120" stroke-width="1.6"/>
+    <path d="M252 142 C281 142, 281 165, 310 165" stroke-width="1.6"/>
+
+    <path d="M402 30 L460 30" stroke-width="2.4"/>
+    <path d="M402 75 L460 75" stroke-width="1.6"/>
+    <path d="M402 120 L460 120" stroke-width="1.6"/>
+    <path d="M402 165 L460 165" stroke-width="1.6"/>
+  </g>
+
+  <!-- depth 1 -->
+  <rect class="node" x="10" y="86" width="92" height="22" rx="5"/>
+  <text class="ev" x="18" y="101">home</text><text class="dim" x="94" y="101" text-anchor="end">5</text>
+
+  <!-- depth 2 -->
+  <rect class="node" x="160" y="41" width="92" height="22" rx="5"/>
+  <text class="ev" x="168" y="56">catalog</text><text class="dim" x="244" y="56" text-anchor="end">3</text>
+  <rect class="node" x="160" y="131" width="92" height="22" rx="5"/>
+  <text class="ev" x="168" y="146">search</text><text class="dim" x="244" y="146" text-anchor="end">2</text>
+
+  <!-- depth 3 — two different routes arrive at the same event -->
+  <rect class="node" x="310" y="19" width="92" height="22" rx="5"/>
+  <rect class="mark" x="310" y="19" width="92" height="22" rx="5"/>
+  <text class="ev" x="318" y="34">cart</text><text class="dim" x="394" y="34" text-anchor="end">2</text>
+  <rect class="node" x="310" y="64" width="92" height="22" rx="5"/>
+  <text class="ev" x="318" y="79">catalog</text><text class="dim" x="394" y="79" text-anchor="end">1</text>
+  <rect class="node" x="310" y="109" width="92" height="22" rx="5"/>
+  <rect class="mark" x="310" y="109" width="92" height="22" rx="5"/>
+  <text class="ev" x="318" y="124">cart</text><text class="dim" x="394" y="124" text-anchor="end">1</text>
+  <rect class="node" x="310" y="154" width="92" height="22" rx="5"/>
+  <text class="ev" x="318" y="169">search</text><text class="dim" x="394" y="169" text-anchor="end">1</text>
+
+  <!-- depth 4 — two branches carry on, two paths are already over -->
+  <rect class="node" x="460" y="19" width="92" height="22" rx="5"/>
+  <text class="ev" x="468" y="34">purchase</text><text class="dim" x="544" y="34" text-anchor="end">2</text>
+  <rect class="node" x="460" y="64" width="92" height="22" rx="5"/>
+  <text class="ev" x="468" y="79">cart</text><text class="dim" x="544" y="79" text-anchor="end">1</text>
+  <rect class="node" x="460" y="109" width="92" height="22" rx="5"/>
+  <text class="dim" x="468" y="124">path_end</text><text class="dim" x="544" y="124" text-anchor="end">1</text>
+  <rect class="node" x="460" y="154" width="92" height="22" rx="5"/>
+  <text class="dim" x="468" y="169">path_end</text><text class="dim" x="544" y="169" text-anchor="end">1</text>
+</svg>

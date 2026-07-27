@@ -375,10 +375,25 @@ class TestAddClusters:
             features=features,
             method="kmeans",
             n_clusters=2,
-            scaler="standard",
+            scaler="std",
         )
 
         assert "cluster" in result.schema.segment_cols
+
+    def test_scaler_standard_is_alias_of_std(self) -> None:
+        """ "standard" is the pre-5.2 spelling and must keep working, producing
+        the same clustering as "std" — the widget sidebar only ever sends "std"."""
+        df = get_df()
+        stream = Eventstream(df)
+
+        features = [{"metric": "length"}, {"metric": "duration"}]
+        kwargs = dict(features=features, method="kmeans", n_clusters=2)
+
+        legacy = stream.add_clusters(name="cluster", scaler="standard", **kwargs)
+        canonical = stream.add_clusters(name="cluster", scaler="std", **kwargs)
+
+        assert "cluster" in legacy.schema.segment_cols
+        assert legacy.df["cluster"].tolist() == canonical.df["cluster"].tolist()
 
     def test_nmf_kmeans(self) -> None:
         """Test NMF dimensionality reduction before k-means clustering"""

@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 22 720 138" width="720" height="138" role="img" aria-labelledby="pa-title pa-desc">
+  <title id="pa-title">From an event log to paths</title>
+  <desc id="pa-desc">Two panels. On the left, a raw event log with one row per event: user id, event name and timestamp. On the right, the same rows grouped by user and sorted by time into five ordered paths of boxed event names.</desc>
+
+  <style>
+    .mono { font: 10.5px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #1f2328; }
+    .dim  { font: 10.5px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #6b7280; }
+    .ev   { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #1f2328; }
+    .node { fill: #f5f6f8; stroke: #d7dbe1; stroke-width: 1; }
+    .rule { stroke: #d7dbe1; stroke-width: 1; }
+    @media (prefers-color-scheme: dark) {
+      .dim { fill: #99a1ac; }
+      .mono, .ev { fill: #e6e8eb; }
+      .node { fill: #22262c; stroke: #3b414a; }
+      .rule { stroke: #3b414a; }
+    }
+  </style>
+
+  <!-- ============ left: event log ============ -->
+  <g>
+    <text class="dim" x="2" y="34">user_id</text>
+    <text class="dim" x="60" y="34">event</text>
+    <text class="dim" x="140" y="34">time</text>
+    <line x1="0" y1="41" x2="196" y2="41" class="rule"/>
+
+    <text class="mono" x="2" y="58">u1</text><text class="mono" x="60" y="58">home</text><text class="dim" x="140" y="58">10:00</text>
+    <text class="mono" x="2" y="76">u1</text><text class="mono" x="60" y="76">catalog</text><text class="dim" x="140" y="76">10:01</text>
+    <text class="mono" x="2" y="94">u1</text><text class="mono" x="60" y="94">cart</text><text class="dim" x="140" y="94">10:02</text>
+    <text class="mono" x="2" y="112">u1</text><text class="mono" x="60" y="112">purchase</text><text class="dim" x="140" y="112">10:03</text>
+    <text class="mono" x="2" y="130">u2</text><text class="mono" x="60" y="130">home</text><text class="dim" x="140" y="130">10:00</text>
+    <text class="dim" x="2" y="148">…</text><text class="dim" x="60" y="148">…</text><text class="dim" x="140" y="148">…</text>
+  </g>
+
+  <!-- ============ right: paths ============ -->
+  <g>
+    <!-- connectors: neutral gray so they read on both light and dark backgrounds -->
+    <g fill="#99a0aa" stroke="#99a0aa">
+      <g stroke-width="1">
+        <line x1="380" y1="42" x2="388" y2="42"/><line x1="460" y1="42" x2="468" y2="42"/><line x1="540" y1="42" x2="548" y2="42"/>
+        <line x1="380" y1="68" x2="388" y2="68"/><line x1="460" y1="68" x2="468" y2="68"/><line x1="540" y1="68" x2="548" y2="68"/>
+        <line x1="380" y1="94" x2="388" y2="94"/><line x1="460" y1="94" x2="468" y2="94"/><line x1="540" y1="94" x2="548" y2="94"/>
+        <line x1="380" y1="120" x2="388" y2="120"/><line x1="460" y1="120" x2="468" y2="120"/>
+        <line x1="380" y1="146" x2="388" y2="146"/><line x1="460" y1="146" x2="468" y2="146"/>
+      </g>
+      <g stroke="none">
+        <path d="M388 38.5 L392 42 L388 45.5 z"/><path d="M468 38.5 L472 42 L468 45.5 z"/><path d="M548 38.5 L552 42 L548 45.5 z"/>
+        <path d="M388 64.5 L392 68 L388 71.5 z"/><path d="M468 64.5 L472 68 L468 71.5 z"/><path d="M548 64.5 L552 68 L548 71.5 z"/>
+        <path d="M388 90.5 L392 94 L388 97.5 z"/><path d="M468 90.5 L472 94 L468 97.5 z"/><path d="M548 90.5 L552 94 L548 97.5 z"/>
+        <path d="M388 116.5 L392 120 L388 123.5 z"/><path d="M468 116.5 L472 120 L468 123.5 z"/>
+        <path d="M388 142.5 L392 146 L388 149.5 z"/><path d="M468 142.5 L472 146 L468 149.5 z"/>
+      </g>
+    </g>
+
+    <!-- u1 -->
+    <text class="dim" x="288" y="46">u1</text>
+    <rect class="node" x="312" y="32" width="68" height="20" rx="4"/><text class="ev" x="346" y="46" text-anchor="middle">home</text>
+    <rect class="node" x="392" y="32" width="68" height="20" rx="4"/><text class="ev" x="426" y="46" text-anchor="middle">catalog</text>
+    <rect class="node" x="472" y="32" width="68" height="20" rx="4"/><text class="ev" x="506" y="46" text-anchor="middle">cart</text>
+    <rect class="node" x="552" y="32" width="68" height="20" rx="4"/><text class="ev" x="586" y="46" text-anchor="middle">purchase</text>
+    <!-- u2 -->
+    <text class="dim" x="288" y="72">u2</text>
+    <rect class="node" x="312" y="58" width="68" height="20" rx="4"/><text class="ev" x="346" y="72" text-anchor="middle">home</text>
+    <rect class="node" x="392" y="58" width="68" height="20" rx="4"/><text class="ev" x="426" y="72" text-anchor="middle">catalog</text>
+    <rect class="node" x="472" y="58" width="68" height="20" rx="4"/><text class="ev" x="506" y="72" text-anchor="middle">cart</text>
+    <rect class="node" x="552" y="58" width="68" height="20" rx="4"/><text class="ev" x="586" y="72" text-anchor="middle">purchase</text>
+    <!-- u3 -->
+    <text class="dim" x="288" y="98">u3</text>
+    <rect class="node" x="312" y="84" width="68" height="20" rx="4"/><text class="ev" x="346" y="98" text-anchor="middle">home</text>
+    <rect class="node" x="392" y="84" width="68" height="20" rx="4"/><text class="ev" x="426" y="98" text-anchor="middle">catalog</text>
+    <rect class="node" x="472" y="84" width="68" height="20" rx="4"/><text class="ev" x="506" y="98" text-anchor="middle">catalog</text>
+    <rect class="node" x="552" y="84" width="68" height="20" rx="4"/><text class="ev" x="586" y="98" text-anchor="middle">cart</text>
+    <!-- u4 -->
+    <text class="dim" x="288" y="124">u4</text>
+    <rect class="node" x="312" y="110" width="68" height="20" rx="4"/><text class="ev" x="346" y="124" text-anchor="middle">home</text>
+    <rect class="node" x="392" y="110" width="68" height="20" rx="4"/><text class="ev" x="426" y="124" text-anchor="middle">search</text>
+    <rect class="node" x="472" y="110" width="68" height="20" rx="4"/><text class="ev" x="506" y="124" text-anchor="middle">cart</text>
+    <!-- u5 -->
+    <text class="dim" x="288" y="150">u5</text>
+    <rect class="node" x="312" y="136" width="68" height="20" rx="4"/><text class="ev" x="346" y="150" text-anchor="middle">home</text>
+    <rect class="node" x="392" y="136" width="68" height="20" rx="4"/><text class="ev" x="426" y="150" text-anchor="middle">search</text>
+    <rect class="node" x="472" y="136" width="68" height="20" rx="4"/><text class="ev" x="506" y="150" text-anchor="middle">search</text>
+  </g>
+</svg>

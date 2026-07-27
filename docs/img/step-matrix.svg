@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="6 0 614 206" width="614" height="206" role="img" aria-labelledby="sm-title sm-desc">
+  <title id="sm-title">The step matrix of the five example paths</title>
+  <desc id="sm-desc">A table with one row per event and one column per step. Cell shading grows with the value. Step 1: home 1.0. Step 2: catalog 0.6, search 0.4. Step 3: cart 0.6 (outlined, the two cart nodes of the trajectory tree merged into one cell), catalog 0.2, search 0.2. Step 4: cart 0.2, purchase 0.4, path_end 0.4. Every column sums to 1.</desc>
+
+  <style>
+    .step { font: 600 10px ui-sans-serif, -apple-system, "Segoe UI", Helvetica, sans-serif; fill: #6b7280; letter-spacing: .04em; }
+    .ev   { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #1f2328; }
+    .dim  { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #6b7280; }
+    .num  { font: 10.5px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #1f2328; }
+    .num-on-heat { font: 10.5px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #1f2328; }
+    .band { fill: #eef0f3; }
+    .mark { fill: none; stroke: #a8791a; stroke-width: 1.6; stroke-dasharray: 3 2.5; }
+    .cellbg { fill: #f5f6f8; stroke: #d7dbe1; stroke-width: 1; }
+    .heat   { fill: #f5c328; stroke: none; }
+    @media (prefers-color-scheme: dark) {
+      .step, .dim { fill: #99a1ac; }
+      .ev, .num { fill: #e6e8eb; }
+      /* .num-on-heat deliberately stays dark: its cells are bright in both themes */
+      .band { fill: #1c1f24; }
+      .cellbg { fill: #22262c; stroke: #3b414a; }
+      .mark { stroke: #f5c328; }
+    }
+  </style>
+
+  <!-- alternating step bands, so a sparse row still reads column by column -->
+  <g class="band">
+    <rect x="64" y="0" width="108" height="205" rx="6"/>
+    <rect x="364" y="0" width="108" height="205" rx="6"/>
+  </g>
+
+  <g class="step">
+    <text x="118" y="14" text-anchor="middle">STEP 1</text>
+    <text x="268" y="14" text-anchor="middle">STEP 2</text>
+    <text x="418" y="14" text-anchor="middle">STEP 3</text>
+    <text x="568" y="14" text-anchor="middle">STEP 4</text>
+  </g>
+
+  <!-- row: home -->
+  <text class="ev" x="60" y="40" text-anchor="end">home</text>
+  <rect class="cellbg" x="72" y="25" width="92" height="22" rx="4"/>
+  <rect class="heat"  x="72" y="25" width="92" height="22" rx="4" fill-opacity="0.70"/>
+  <text class="num-on-heat" x="118" y="40" text-anchor="middle">1.0</text>
+
+  <!-- row: catalog -->
+  <text class="ev" x="60" y="70" text-anchor="end">catalog</text>
+  <rect class="cellbg" x="222" y="55" width="92" height="22" rx="4"/>
+  <rect class="heat"  x="222" y="55" width="92" height="22" rx="4" fill-opacity="0.48"/>
+  <text class="num-on-heat" x="268" y="70" text-anchor="middle">0.6</text>
+  <rect class="cellbg" x="372" y="55" width="92" height="22" rx="4"/>
+  <rect class="heat"  x="372" y="55" width="92" height="22" rx="4" fill-opacity="0.26"/>
+  <text class="num" x="418" y="70" text-anchor="middle">0.2</text>
+
+  <!-- row: search -->
+  <text class="ev" x="60" y="100" text-anchor="end">search</text>
+  <rect class="cellbg" x="222" y="85" width="92" height="22" rx="4"/>
+  <rect class="heat"  x="222" y="85" width="92" height="22" rx="4" fill-opacity="0.37"/>
+  <text class="num" x="268" y="100" text-anchor="middle">0.4</text>
+  <rect class="cellbg" x="372" y="85" width="92" height="22" rx="4"/>
+  <rect class="heat"  x="372" y="85" width="92" height="22" rx="4" fill-opacity="0.26"/>
+  <text class="num" x="418" y="100" text-anchor="middle">0.2</text>
+
+  <!-- row: cart — the two branches of the tree merged into one cell -->
+  <text class="ev" x="60" y="130" text-anchor="end">cart</text>
+  <rect class="cellbg" x="372" y="115" width="92" height="22" rx="4"/>
+  <rect class="heat"  x="372" y="115" width="92" height="22" rx="4" fill-opacity="0.48"/>
+  <rect class="mark"  x="372" y="115" width="92" height="22" rx="4"/>
+  <text class="num-on-heat" x="418" y="130" text-anchor="middle">0.6</text>
+  <rect class="cellbg" x="522" y="115" width="92" height="22" rx="4"/>
+  <rect class="heat"  x="522" y="115" width="92" height="22" rx="4" fill-opacity="0.26"/>
+  <text class="num" x="568" y="130" text-anchor="middle">0.2</text>
+
+  <!-- row: purchase -->
+  <text class="ev" x="60" y="160" text-anchor="end">purchase</text>
+  <rect class="cellbg" x="522" y="145" width="92" height="22" rx="4"/>
+  <rect class="heat"  x="522" y="145" width="92" height="22" rx="4" fill-opacity="0.37"/>
+  <text class="num" x="568" y="160" text-anchor="middle">0.4</text>
+
+  <!-- row: path_end -->
+  <text class="dim" x="60" y="190" text-anchor="end">path_end</text>
+  <rect class="cellbg" x="522" y="175" width="92" height="22" rx="4"/>
+  <rect class="heat"  x="522" y="175" width="92" height="22" rx="4" fill-opacity="0.37"/>
+  <text class="num" x="568" y="190" text-anchor="middle">0.4</text>
+</svg>

@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 12 718 242" width="718" height="242" role="img" aria-labelledby="ea-title ea-desc">
+  <title id="ea-title">How the Transition Graph summarizes paths by transition</title>
+  <desc id="ea-desc">On the left, five paths. On the right, the transition graph built from them: every adjacent pair of events in every path is counted, so each distinct event becomes one node and each pair becomes an edge weighted by how many such transitions there are. The two events that repeat back to back become self-loops.</desc>
+
+  <style>
+    .ev   { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #1f2328; }
+    .dim  { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #6b7280; }
+    .w    { font: 9.5px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #6b7280; }
+    .node { fill: #f5f6f8; stroke: #d7dbe1; stroke-width: 1; }
+    .edge { fill: none; stroke: #c3c8d0; stroke-linecap: round; }
+    @media (prefers-color-scheme: dark) {
+      .w, .dim { fill: #99a1ac; }
+      .ev { fill: #e6e8eb; }
+      .node { fill: #22262c; stroke: #3b414a; }
+      .edge { stroke: #4d545d; }
+    }
+  </style>
+
+  <defs>
+    <!-- neutral gray reads on both light and dark page backgrounds; custom
+         properties are not relied on inside markers -->
+    <marker id="ea-arrow" viewBox="0 0 8 8" refX="7" refY="4"
+            markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M0 1 L7 4 L0 7 z" fill="#99a0aa"/>
+    </marker>
+    <marker id="ea-tick" viewBox="0 0 6 6" refX="5" refY="3"
+            markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+      <path d="M0 0.5 L5 3 L0 5.5 z" fill="#99a0aa"/>
+    </marker>
+  </defs>
+
+  <!-- ============ left: the paths ============ -->
+  <!-- u1 -->
+  <text class="dim" x="0" y="64">u1</text>
+  <rect class="node" x="22" y="49" width="54" height="22" rx="5"/><text class="ev" x="49" y="64" text-anchor="middle">home</text>
+  <rect class="node" x="86" y="49" width="54" height="22" rx="5"/><text class="ev" x="113" y="64" text-anchor="middle">catalog</text>
+  <rect class="node" x="150" y="49" width="54" height="22" rx="5"/><text class="ev" x="177" y="64" text-anchor="middle">cart</text>
+  <rect class="node" x="214" y="49" width="54" height="22" rx="5"/><text class="ev" x="241" y="64" text-anchor="middle">purchase</text>
+  <!-- u2 -->
+  <text class="dim" x="0" y="92">u2</text>
+  <rect class="node" x="22" y="77" width="54" height="22" rx="5"/><text class="ev" x="49" y="92" text-anchor="middle">home</text>
+  <rect class="node" x="86" y="77" width="54" height="22" rx="5"/><text class="ev" x="113" y="92" text-anchor="middle">catalog</text>
+  <rect class="node" x="150" y="77" width="54" height="22" rx="5"/><text class="ev" x="177" y="92" text-anchor="middle">cart</text>
+  <rect class="node" x="214" y="77" width="54" height="22" rx="5"/><text class="ev" x="241" y="92" text-anchor="middle">purchase</text>
+  <!-- u3 -->
+  <text class="dim" x="0" y="120">u3</text>
+  <rect class="node" x="22" y="105" width="54" height="22" rx="5"/><text class="ev" x="49" y="120" text-anchor="middle">home</text>
+  <rect class="node" x="86" y="105" width="54" height="22" rx="5"/><text class="ev" x="113" y="120" text-anchor="middle">catalog</text>
+  <rect class="node" x="150" y="105" width="54" height="22" rx="5"/><text class="ev" x="177" y="120" text-anchor="middle">catalog</text>
+  <rect class="node" x="214" y="105" width="54" height="22" rx="5"/><text class="ev" x="241" y="120" text-anchor="middle">cart</text>
+  <!-- u4 -->
+  <text class="dim" x="0" y="148">u4</text>
+  <rect class="node" x="22" y="133" width="54" height="22" rx="5"/><text class="ev" x="49" y="148" text-anchor="middle">home</text>
+  <rect class="node" x="86" y="133" width="54" height="22" rx="5"/><text class="ev" x="113" y="148" text-anchor="middle">search</text>
+  <rect class="node" x="150" y="133" width="54" height="22" rx="5"/><text class="ev" x="177" y="148" text-anchor="middle">cart</text>
+  <!-- u5 -->
+  <text class="dim" x="0" y="176">u5</text>
+  <rect class="node" x="22" y="161" width="54" height="22" rx="5"/><text class="ev" x="49" y="176" text-anchor="middle">home</text>
+  <rect class="node" x="86" y="161" width="54" height="22" rx="5"/><text class="ev" x="113" y="176" text-anchor="middle">search</text>
+  <rect class="node" x="150" y="161" width="54" height="22" rx="5"/><text class="ev" x="177" y="176" text-anchor="middle">search</text>
+
+  <!-- step connectors -->
+  <g stroke="#99a0aa" stroke-width="1" marker-end="url(#ea-tick)">
+    <line x1="76" y1="60" x2="84" y2="60"/><line x1="140" y1="60" x2="148" y2="60"/><line x1="204" y1="60" x2="212" y2="60"/>
+    <line x1="76" y1="88" x2="84" y2="88"/><line x1="140" y1="88" x2="148" y2="88"/><line x1="204" y1="88" x2="212" y2="88"/>
+    <line x1="76" y1="116" x2="84" y2="116"/><line x1="140" y1="116" x2="148" y2="116"/><line x1="204" y1="116" x2="212" y2="116"/>
+    <line x1="76" y1="144" x2="84" y2="144"/><line x1="140" y1="144" x2="148" y2="144"/>
+    <line x1="76" y1="172" x2="84" y2="172"/><line x1="140" y1="172" x2="148" y2="172"/>
+  </g>
+
+  <!-- collapse arrow -->
+  <path d="M300 118 L360 118" stroke="#99a0aa" stroke-width="1.4" fill="none" marker-end="url(#ea-arrow)"/>
+
+  <!-- ============ right: the graph ============ -->
+  <g class="edge" marker-end="url(#ea-arrow)" stroke-width="1.6">
+    <path d="M489 124 L529 78"/>
+    <path d="M489 136 L529 182"/>
+    <path d="M599 78 L639 124"/>
+    <path d="M599 182 L639 138"/>
+    <path d="M675 141 L675 222"/>
+  </g>
+  <!-- self-loops: an event repeating back to back -->
+  <g class="edge" marker-end="url(#ea-arrow)" stroke-width="1.6">
+    <path d="M552 59 C543 33, 587 33, 578 57"/>
+    <path d="M552 201 C543 227, 587 227, 578 203"/>
+  </g>
+
+  <g class="w">
+    <text x="503" y="97">3</text>
+    <text x="503" y="168">2</text>
+    <text x="622" y="97">3</text>
+    <text x="622" y="168">1</text>
+    <text x="682" y="185">2</text>
+    <text x="565" y="27" text-anchor="middle">1</text>
+    <text x="565" y="240" text-anchor="middle">1</text>
+  </g>
+
+  <rect class="node" x="421" y="119" width="68" height="22" rx="11"/>
+  <text class="ev" x="455" y="134" text-anchor="middle">home</text>
+  <rect class="node" x="531" y="59" width="68" height="22" rx="11"/>
+  <text class="ev" x="565" y="74" text-anchor="middle">catalog</text>
+  <rect class="node" x="531" y="179" width="68" height="22" rx="11"/>
+  <text class="ev" x="565" y="194" text-anchor="middle">search</text>
+  <rect class="node" x="641" y="119" width="68" height="22" rx="11"/>
+  <text class="ev" x="675" y="134" text-anchor="middle">cart</text>
+  <rect class="node" x="641" y="224" width="68" height="22" rx="11"/>
+  <text class="ev" x="675" y="239" text-anchor="middle">purchase</text>
+</svg>

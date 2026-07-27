@@ -17,11 +17,12 @@ from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import PreprocessingConfigError
 from retentioneering.metrics.metric_builder import MetricBuilder
+from retentioneering.tools.cluster_analysis import normalize_scaler
 
 PROCESSOR_NAME = "add_clusters"
 
 T_ClusteringMethod = Literal["kmeans", "hdbscan"]
-T_Scaler = Literal["minmax", "standard"] | None
+T_Scaler = Literal["minmax", "std"] | None
 
 
 class AddClusters(DataProcessor):
@@ -34,7 +35,7 @@ class AddClusters(DataProcessor):
         name: Name of the new segment column
         features: List of metric configurations (MetricBuilder format)
         method: Clustering method ("kmeans" or "hdbscan")
-        scaler: Feature scaler method ("minmax", "standard", or None)
+        scaler: Feature scaler method ("minmax", "std", or None)
         method_params: Parameters for the clustering algorithm
         eventstream: Eventstream instance (needed for MetricBuilder)
         path_col: Path ID column name (optional)
@@ -79,8 +80,8 @@ class AddClusters(DataProcessor):
                          {"metric": "event_count", "metric_args": {"event": "purchase"}}
                      ]
             method: Clustering method - "kmeans" or "hdbscan"
-            scaler: Feature scaler - "minmax", "standard", or None.
-                    Default is "minmax".
+            scaler: Feature scaler - "minmax", "std", or None. Default is "minmax".
+                     "standard" is accepted as a legacy alias of "std".
             n_clusters: Number of clusters for k-means (required for kmeans)
             min_cluster_size: Minimum cluster size for HDBSCAN
             cluster_selection_epsilon: Cluster selection epsilon for HDBSCAN
@@ -208,12 +209,13 @@ class AddClusters(DataProcessor):
         Returns:
             Scaled feature matrix
         """
-        if self.scaler is None:
+        method = normalize_scaler(self.scaler)
+        if method is None:
             return features
-        elif self.scaler == "minmax":
+        elif method == "minmax":
             scaler = MinMaxScaler()
             return scaler.fit_transform(features)
-        elif self.scaler == "standard":
+        elif method == "std":
             scaler = StandardScaler()
             return scaler.fit_transform(features)
         else:

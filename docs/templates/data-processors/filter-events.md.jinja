@@ -1,1 +1,52 @@
 {% extends "_data_processor_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+`filter_events` works on **rows**, not on paths: a path whose every event is
+filtered out disappears, but a path can also be left with only some of its
+events. To keep or drop whole paths instead, use
+[Filter Paths](/docs/data-processors/filter-paths).
+
+The `keep` and `drop` forms are not mirror images once you list more than one
+column, and that catches people out. Starting from this toy eventstream:
+
+| user_id | event | platform |
+|---|---|---|
+| u1 | home | ios |
+| u1 | cart | ios |
+| u1 | purchase | ios |
+| u2 | home | web |
+| u2 | bot_ping | web |
+| u2 | cart | web |
+
+```python
+stream.filter_events(keep={"event": ["home", "cart"], "platform": ["ios"]})
+```
+
+`keep` combines columns with **AND** — a row survives only if it matches every
+entry. Here that means "iOS rows that are also `home` or `cart`":
+
+| user_id | event | platform |
+|---|---|---|
+| u1 | home | ios |
+| u1 | cart | ios |
+
+```python
+stream.filter_events(drop={"event": ["bot_ping"], "platform": ["web"]})
+```
+
+`drop` combines columns with **OR** — a row is removed if it matches any entry.
+Here that drops `bot_ping` *and* everything on web, which takes u2 out entirely:
+
+| user_id | event | platform |
+|---|---|---|
+| u1 | home | ios |
+| u1 | cart | ios |
+| u1 | purchase | ios |
+
+For anything the two dict forms can't express, `func` takes a pandas predicate
+over the raw DataFrame and `sql` takes a DuckDB `SELECT` reading from the
+`eventstream` table alias.
+
+{% endblock %}

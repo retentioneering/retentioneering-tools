@@ -1,1 +1,85 @@
 {% extends "_data_processor_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+Web logs usually carry a URL per pageview, and raw URLs make terrible event
+names: every product page is its own event, so no two paths look alike and
+every [representation of them](/docs/path-analysis) comes out shredded. `urls_to_events` turns URLs into a handful of readable event names by
+declaring which parts of the site matter.
+
+Each URL is first normalized — host, query string and locale prefix are stripped
+by default — and then matched against the `nodes` tree.
+
+Before, a raw `page` column:
+
+| page |
+|---|
+| `https://shop.com/en/catalog` |
+| `https://shop.com/en/catalog/phones?sort=price` |
+| `https://shop.com/catalog/phones/iphone-15` |
+| `https://shop.com/checkout/payment` |
+| `https://shop.com/admin/logs` |
+
+```python
+stream.urls_to_events(
+    column="page",
+    nodes=[
+        {"path": "/catalog", "aggregate_children": True},
+        {"path": "/checkout"},
+        {"path": "/admin", "exclude": True},
+    ],
+)
+```
+
+After:
+
+| page |
+|---|
+| `catalog` |
+| `catalog/sub-page` |
+| `catalog/sub-page` |
+| `checkout/payment` |
+| *(row dropped)* |
+
+Three things happened:
+
+- `/catalog` itself, being the aggregation node's own URL, keeps its path.
+- Everything **below** `/catalog` collapsed into the single event
+  `catalog/sub-page`. The slug is a fixed placeholder — it is *not* the URL's own
+  segment, so `/catalog/phones` and `/catalog/laptops/mac` land in the same
+  event. That is the whole point: one event for "some page inside the catalog".
+- `/admin` was excluded, so that row is gone from the eventstream.
+- `/checkout` has no `aggregate_children`, so its pages keep their full paths.
+
+### Naming the collapsed pages
+
+`name` sets the slug used for the pages collapsed into a node — it does not
+rename the node's own URL:
+
+```python
+nodes=[{"path": "/catalog", "aggregate_children": True, "name": "product"}]
+# /catalog            -> catalog
+# /catalog/phones     -> catalog/product
+```
+
+To pull one branch back out of the aggregation, declare it as its own node.
+Giving it a `name` gives that branch its own slug; giving it
+`aggregate_children` makes it a nested aggregation point:
+
+```python
+nodes=[
+    {"path": "/catalog", "aggregate_children": True},
+    {"path": "/catalog/phones", "name": "phones"},
+]
+# /catalog/phones/iphone-15 -> catalog/phones
+# /catalog/laptops/mac      -> catalog/sub-page
+```
+
+Set `keep_full_paths=True` to ignore every `aggregate_children` and keep the
+normalized path of each URL — useful for a first look at what is actually in the
+column before deciding where to cut. The `host_col`, `query_col`, `locale_col`
+and `slug_col` parameters save the stripped-off parts into columns of their own
+instead of discarding them.
+
+{% endblock %}

@@ -1,1 +1,39 @@
 {% extends "_data_processor_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+For each path, `truncate_paths` finds the first `start_event` and the first
+`end_event` **after** it, and keeps only the window between them, both anchors
+included. A path missing either anchor — or containing them in the wrong order
+— is dropped entirely, so the output holds only paths that actually made the
+journey you asked about.
+
+Before — three paths, only one of which registers and then buys:
+
+- u1: `home → registration → browse → purchase → logout`
+- u2: `home → browse → purchase` (never registered)
+- u3: `home → registration → browse` (never purchased)
+
+```python
+stream.truncate_paths(start_event="registration", end_event="purchase")
+```
+
+After — u1 is trimmed to the window; u2 and u3 are gone:
+
+- u1: `registration → browse → purchase`
+
+That "dropped entirely" behaviour is the point: the result is a clean
+population of converting paths, ready for a
+[Transition Graph](/docs/widgets/transition-graph) or
+[Step Sankey](/docs/widgets/step-sankey) that answers "how do users who *did*
+convert get there?"
+
+Use `path_start` / `path_end` to anchor on the real ends of a path — for
+example, everything a user did before their first purchase:
+
+```python
+stream.truncate_paths(start_event="path_start", end_event="purchase")
+```
+
+{% endblock %}

@@ -5,6 +5,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Fixed
+
+- Cluster Analysis widget: selecting **Standard** feature scaling in the sidebar raised `ValueError: Unknown scaler: std` — the sidebar sends `"std"` while the Python side only accepted `"standard"`. `"std"` is now the canonical spelling on both sides; `"standard"` is still accepted as a legacy alias, so code written against 5.1.0 and earlier keeps working
+
 ## [5.1.0] - 2026-07-23
 
 ### Added

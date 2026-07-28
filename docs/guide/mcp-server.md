@@ -4,6 +4,8 @@ retentioneering ships a built-in [Model Context Protocol](https://modelcontextpr
 
 The MCP server runs **locally** in the Jupyter kernel, so it requires a local Python environment. It will not work in cloud notebooks such as Google Colab.
 
+There is a second, unrelated MCP server that serves *this documentation* rather than your data, needs no installation, and is described at the bottom of this page: [Documentation MCP server](#documentation-mcp-server).
+
 ## Starting the server
 
 You can either start the server with no context so the agent will have to upload the eventstream itself to analyse it:
@@ -79,3 +81,35 @@ See also [Agent Skills](/docs/agent-skills) — instruction packages for coding 
 | `add_segment_overview(label, ...)` | Compute a segment overview and register it as a report tab. |
 | `check_analysis(analysis)` | Validate analysis text before export. |
 | `export_report(title, analysis, path)` | Generate a self-contained HTML report. |
+
+## Documentation MCP server
+
+Everything above describes the server that runs **on your machine, over your
+data**. There is a second one that runs **on our side, over this
+documentation**:
+
+```
+https://retentioneering.com/docs/mcp
+```
+
+It needs no installation, no kernel and no data — connect it to any MCP client
+and the agent can search and read these pages while it writes retentioneering
+code.
+
+Connecting is the same procedure as [above](#connecting-an-agent), with the
+URL instead of `localhost` — for example, in Claude Code:
+
+```bash
+claude mcp add --scope user --transport http retentioneering-docs https://retentioneering.com/docs/mcp
+```
+
+Three tools are available: `search_docs(query, limit)` returns the most relevant
+documentation sections with deep links, `get_doc_page(path)` returns one page in
+full, and `list_doc_pages()` returns the table of contents.
+
+If you would rather not connect a server at all, the same content is published
+as plain text following the [llms.txt convention](https://llmstxt.org):
+[`/llms.txt`](https://retentioneering.com/llms.txt) is the annotated table of
+contents, and [`/llms-full.txt`](https://retentioneering.com/llms-full.txt) is
+the entire documentation as one file (~200 KB, roughly 50k tokens — small
+enough to hand to an agent wholesale).

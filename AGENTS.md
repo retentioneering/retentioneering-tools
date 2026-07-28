@@ -141,7 +141,7 @@ per-session state in `mcp/_report_session.py`'s `ReportSession`, and the system 
 API rename must be propagated to `_apply_preprocessors`, the tool docstrings, and the playbook
 in the same change.
 
-### Docs pipeline (ADR-0013)
+### Docs pipeline (ADR-0013, ADR-0014)
 
 Reference pages are rendered from `Eventstream` docstrings (`docs/scripts/render_pages.py` +
 `docs/templates/*.jinja`); hand-written guides live in `docs/guide/`; widget demos are generated
@@ -152,6 +152,13 @@ belongs in the template's `{% block how_it_works %}`, not in the docstring, whic
 short for `help()` and MCP. Figures are hand-written SVG in `docs/img/`, copied to
 `docs/build/demos/img/` and referenced as `/docs-demos/img/*.svg`; style them with plain CSS
 classes plus a `prefers-color-scheme` block, never CSS custom properties (ADR-0013).
+
+The same pass also writes `docs/build/llms.txt` and `docs/build/llms-full.txt` (ADR-0014) — the
+agent-facing copy of the docs, served at the site root and consumed by the documentation MCP
+server at `retentioneering.com/docs/mcp` (which lives in retentioneering-web, not here). A new
+page under `docs/guide/` must be added to the `GUIDES` list in `render_pages.py` or the build
+fails; note that `/docs/mcp` is that endpoint, while the *guide about* the library's own MCP
+server is `/docs/mcp-server`.
 
 ### CI/CD (ADR-0011)
 

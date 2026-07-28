@@ -6,7 +6,7 @@ If you are new to the library, you can skip this page entirely — start with th
 
 ## What changed, in one paragraph
 
-The pandas-based engine was replaced with a DuckDB-backed one, so the same analyses run at production-log scale on a laptop. The old iframe + CDN-loaded widgets were replaced with [anywidget](https://anywidget.dev)-based ones whose JavaScript is open source, lives in this repository, and ships inside the wheel — nothing is downloaded at runtime, and widgets now work in VS Code and Cursor as well as Jupyter. The `data_processor` / `preprocessor` / `params_model` machinery is gone: data processors are now plain methods with plain keyword arguments. And two things are new with no 3.x counterpart — an [MCP server](/docs/mcp) that lets an LLM agent drive the analysis, and the [Segment Overview](/docs/widgets/segment-overview) widget.
+The pandas-based engine was replaced with a DuckDB-backed one, so the same analyses run at production-log scale on a laptop. The old iframe + CDN-loaded widgets were replaced with [anywidget](https://anywidget.dev)-based ones whose JavaScript is open source, lives in this repository, and ships inside the wheel — nothing is downloaded at runtime, and widgets now work in VS Code and Cursor as well as Jupyter. The `data_processor` / `preprocessor` / `params_model` machinery is gone: data processors are now plain methods with plain keyword arguments. And two things are new with no 3.x counterpart — an [MCP server](/docs/mcp-server) that lets an LLM agent drive the analysis, and the [Segment Overview](/docs/widgets/segment-overview) widget.
 
 `CHANGELOG.md` in the repository holds the exhaustive, itemized delta under `[5.0.0]`.
 
@@ -72,7 +72,7 @@ No equivalent in 5.x today. These were cut deliberately to get the rewrite shipp
 
 | Gone | Closest thing available now |
 |---|---|
-| **Preprocessing Graph** (visual no-code pipeline builder) | Chained data processors in code; for agents, the [MCP server](/docs/mcp)'s preprocessor lists. |
+| **Preprocessing Graph** (visual no-code pipeline builder) | Chained data processors in code; for agents, the [MCP server](/docs/mcp-server)'s preprocessor lists. |
 | **Cohorts** | [`add_segment`](/docs/data-processors/add-segment) over a signup-period column plus [Segment Overview](/docs/widgets/segment-overview); [`to_daily_states`](/docs/data-processors/to-daily-states) for lifecycle-state retention. |
 | **StatTests** | Nothing built in — pull per-path values with [`get_metrics()`](/docs/eventstream#per-path-metrics-as-a-feature-table) and run your own test in `scipy`. |
 | **Sequences** | The `matches_pattern` [path metric](/docs/path-metrics) and `path_pattern` on [Step Matrix](/docs/widgets/step-matrix) / [Step Sankey](/docs/widgets/step-sankey) answer pattern questions, but there is no n-gram frequency table. |

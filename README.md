@@ -122,7 +122,7 @@ funnel = stream.funnel_data(steps=["catalog", "add_to_cart", "purchase"])  # dic
 - **[Path metrics](https://retentioneering.com/docs/path-metrics)** — one
   registry of per-path metrics that feeds behavioral clustering, segment
   comparison, path filtering, and your own ML feature pipelines.
-- **[MCP server](https://retentioneering.com/docs/mcp)** — exposes the eventstream to Claude or
+- **[MCP server](https://retentioneering.com/docs/mcp-server)** — exposes the eventstream to Claude or
   any MCP client: agents explore the data, build report tabs, and export a
   validated interactive HTML report where every number links to its source.
 

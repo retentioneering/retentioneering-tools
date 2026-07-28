@@ -25,6 +25,7 @@ here; load individual ADRs when a task touches the corresponding area.
 | [0011](0011-versioning-and-release.md) | Literal versioning, tag-driven release | pyproject version is the source of truth; only `v*` tags publish |
 | [0012](0012-features-dropped-from-3x.md) | Features deliberately dropped from 3.x | Preprocessing Graph, Cohorts, StatTests, Sequences — cut, may return |
 | [0013](0013-docstring-driven-docs.md) | Docstring-driven documentation | reference docs are rendered from docstrings; docstrings are the source of truth |
+| [0014](0014-agent-facing-docs-surface.md) | Agent-facing docs surface | llms.txt / llms-full.txt are build output; a hosted docs MCP server reads the same corpus |
 
 ## Adding a new ADR
 

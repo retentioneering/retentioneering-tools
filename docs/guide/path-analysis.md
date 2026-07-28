@@ -162,7 +162,7 @@ Also, treating sessions as paths might help: [Path as a sequence of sessions](/d
 
 ## Asking an agent instead
 
-The same techniques introduced on this page could be used by an LLM agent with the help of the built-in [MCP server](/docs/mcp) or [skills](/docs/agent-skills).
+The same techniques introduced on this page could be used by an LLM agent with the help of the built-in [MCP server](/docs/mcp-server) or [skills](/docs/agent-skills).
 
 ## Next steps
 
@@ -170,4 +170,4 @@ The same techniques introduced on this page could be used by an LLM agent with t
 - [Segments](/docs/segments) — how to define the groups you compare.
 - [Recipes](/docs/recipes) — these ideas applied to concrete product questions.
 - [Data processors](/docs/data-processors) — how to prepare the data for analysis.
-- [MCP server](/docs/mcp) — connecting an agent, the full tool list, and what it can and cannot do.
+- [MCP server](/docs/mcp-server) — connecting an agent, the full tool list, and what it can and cannot do.

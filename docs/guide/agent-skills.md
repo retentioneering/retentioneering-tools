@@ -2,7 +2,7 @@
 
 retentioneering ships two Agent Skills — task-oriented instruction packages that coding agents (Claude Code, Codex, Cursor, and other compatible tools) load automatically when a task matches, so the agent follows a tested workflow instead of improvising one from scratch each time.
 
-This is different from the [MCP server](/docs/mcp): the MCP server runs inside a local Jupyter kernel, so using it means keeping a kernel process alive for the agent to connect to. Agent Skills carry no such requirement — they teach an agent to write and run retentioneering code directly, e.g. against your own files in its normal working environment, with no server to keep running.
+This is different from the [MCP server](/docs/mcp-server): the MCP server runs inside a local Jupyter kernel, so using it means keeping a kernel process alive for the agent to connect to. Agent Skills carry no such requirement — they teach an agent to write and run retentioneering code directly, e.g. against your own files in its normal working environment, with no server to keep running.
 
 ## Available skills
 

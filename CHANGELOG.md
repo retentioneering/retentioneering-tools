@@ -5,6 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added
+
+- Docs: `render_pages.py` now also writes `llms.txt` (annotated table of contents, per the [llms.txt convention](https://llmstxt.org)) and `llms-full.txt` (the whole documentation as one ~200 KB file), served at `retentioneering.com/llms.txt` and `/llms-full.txt`. Descriptions are each page's own opening sentence; a guide page missing from the new `GUIDES` order list fails the build (ADR-0014)
+- Docs: a documentation MCP server at `https://retentioneering.com/docs/mcp` — hosted, stateless, no installation, with `search_docs` / `get_doc_page` / `list_doc_pages`. Distinct from the library's own `rete.mcp.serve()`, which is local and works on your data; the [MCP Server](https://retentioneering.com/docs/mcp-server) guide explains the split. Implementation lives in retentioneering-web (ADR-0014)
+
+### Changed
+
+- Docs: the MCP server guide moved from `/docs/mcp` to `/docs/mcp-server` (`docs/guide/mcp.md` → `docs/guide/mcp-server.md`), reserving `/docs/mcp` for a future documentation MCP endpoint. All in-repo links were updated; the old URL is not redirected — it 404s until the endpoint lands there
+- `docs/scripts/render_pages.py`: `copy_guide_pages()` now wipes `docs/build/guide/` before copying, so a renamed or deleted guide page no longer lingers in the build output
+
 ### Fixed
 
 - Cluster Analysis widget: selecting **Standard** feature scaling in the sidebar raised `ValueError: Unknown scaler: std` — the sidebar sends `"std"` while the Python side only accepted `"standard"`. `"std"` is now the canonical spelling on both sides; `"standard"` is still accepted as a legacy alias, so code written against 5.1.0 and earlier keeps working

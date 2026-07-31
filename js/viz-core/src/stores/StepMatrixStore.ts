@@ -648,7 +648,6 @@ export class StepMatrixStore {
     matrixIndex: number = this.activeMatrixIndex,
   ): { top: Event[]; rest: Event[] } => {
     const eventsWithValues = this.visibleEvents
-      .filter((e) => !this.isImmutable(e.id)) // path_start/path_end only as fixed anchors
       .map((event) => {
         const value = this.getMatrixValue(event.id, stepIndex, matrixIndex);
         return { event, value };

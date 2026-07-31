@@ -837,11 +837,13 @@ class Eventstream:
             Example: `"SELECT CASE WHEN platform = 'mobile' THEN 'mobile' ELSE 'web' END FROM eventstream"`.
         funnel_events : list of str, optional
             Ordered list of at least 2 event names defining a strict, ordered
-            ("closed") funnel. A path is assigned `funnel_events[k]` only if it
-            contains every event `funnel_events[0]` through `funnel_events[k]`
-            *and* their last occurrences appear in that same order — reaching a
-            later step without having completed the earlier ones in order does
-            not count towards it. A path is assigned the highest such `k`; if it
+            ("closed") funnel. A path is assigned `funnel_events[k]` if there
+            exists an increasing sequence of event occurrences matching
+            `funnel_events[0]`, `funnel_events[1]`, ..., `funnel_events[k]` in
+            that order (later steps may be reached via any qualifying
+            occurrence, not necessarily the first or last one — earlier
+            events occurring again after a later step was reached don't
+            un-complete it). A path is assigned the highest such `k`; if it
             never completes even `funnel_events[0]`, it is labeled
             `out_of_funnel`.
             Segment values (in ascending funnel order): `out_of_funnel`, then each

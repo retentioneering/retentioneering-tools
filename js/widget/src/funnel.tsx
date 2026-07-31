@@ -686,22 +686,23 @@ export function render({ host, el, isStatic = false }: RenderContext) {
       <div style={{ display: "flex", flexDirection: "row", height: computedHeight, background: "#ffffff", borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0", fontFamily: "system-ui,-apple-system,sans-serif" }}>
         <div style={{ flex: 1, position: "relative", overflow: "hidden", minWidth: 0, display: "flex", flexDirection: "column" }}>
           <SidebarToggle onClick={handleToggle} />
-          <div style={{ width: "100%", height: "100%" }}>
-            <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-              {funnelSteps.length === 0 && !isLoading && (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#9ca3af", fontSize: 13 }}>
-                  Add steps in the settings panel to build the funnel
+          {/* flex:1 + minHeight:0 makes this the scroll container: without a
+              definite height overflowY:auto never engages and the chart+table
+              simply get clipped by the parent's overflow:hidden. */}
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 16 }}>
+            {funnelSteps.length === 0 && !isLoading && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#9ca3af", fontSize: 13 }}>
+                Add steps in the settings panel to build the funnel
+              </div>
+            )}
+            {funnelSteps.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <FunnelChart steps={funnelSteps} hasDiff={hasDiff} label1={label1} label2={label2} chartH={CHART_H} />
+                <div style={{ width: "100%" }}>
+                  <FunnelTable steps={funnelSteps} hasDiff={hasDiff} label1={label1} label2={label2} result={result} />
                 </div>
-              )}
-              {funnelSteps.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                  <FunnelChart steps={funnelSteps} hasDiff={hasDiff} label1={label1} label2={label2} chartH={CHART_H} />
-                  <div style={{ width: "100%" }}>
-                    <FunnelTable steps={funnelSteps} hasDiff={hasDiff} label1={label1} label2={label2} result={result} />
-                  </div>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
           {isLoading && <ComputingSpinner />}
         </div>

@@ -296,6 +296,33 @@ class TestFunnel:
         assert result["steps"][0]["unique_paths"] == 1
         assert result["steps"][1]["unique_paths"] == 1
 
+    def test_funnel_full_completion_then_revisit_earlier_steps(self) -> None:
+        # Regression (mirrors a real add_segment(funnel_events=...) bug):
+        # a path that completes a 3-step funnel in full, then afterwards
+        # revisits the first two steps again (e.g. browsing more products
+        # post-purchase), must still count towards all 3 steps. The old
+        # MAX-index logic would drop the deepest step once a later revisit
+        # of an earlier event pushed that event's *last* occurrence past
+        # the deeper step's last occurrence.
+        df = pd.DataFrame(
+            [
+                ["user_1", "PLP", "2021-01-21 10:20:01"],
+                ["user_1", "PDP", "2021-01-21 10:20:35"],
+                ["user_1", "basket", "2021-01-21 10:21:31"],
+                ["user_1", "purchase", "2021-01-21 10:25:52"],
+                ["user_1", "PLP", "2021-01-21 10:26:22"],
+                ["user_1", "PDP", "2021-01-21 10:26:35"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+
+        stream = Eventstream(df, {"event_cols": ["event"]})
+        result = stream.funnel_data(steps=["PLP", "PDP", "basket"])
+
+        assert result["steps"][0]["unique_paths"] == 1
+        assert result["steps"][1]["unique_paths"] == 1
+        assert result["steps"][2]["unique_paths"] == 1
+
     def test_funnel_duplicate_step_names(self) -> None:
         # Regression: duplicate step names made the old order conditions
         # contradictory (MAX(c) < MAX(p) AND MAX(p) < MAX(c)), so the funnel

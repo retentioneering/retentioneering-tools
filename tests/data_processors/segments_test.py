@@ -237,6 +237,25 @@ class TestFilterEvents:
         assert seg_by_path["P2"] == "out_of_funnel"
         assert seg_by_path["P3"] == "basket"
 
+    def test__add_segment_funnel_events_credits_revisits_after_completion(self) -> None:
+        # Regression: a path that completes basket->shipping in order, then
+        # revisits basket again afterwards, must still be credited for
+        # "shipping" — the old MAX(last-occurrence) logic broke this because
+        # the *last* basket ended up after the *last* shipping.
+        df = pd.DataFrame(
+            [
+                ["P1", "basket", "2024-01-01 10:00:00"],
+                ["P1", "shipping", "2024-01-01 10:01:00"],
+                ["P1", "basket", "2024-01-01 10:02:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df, {"path_cols": ["user_id"]})
+        res = stream.add_segment(name="seg", funnel_events=["basket", "shipping"])
+
+        seg_by_path = res.df.groupby("user_id", observed=True)["seg"].first()
+        assert seg_by_path["P1"] == "shipping"
+
     def test__add_segment_funnel_events_rejects_undeclared_path_col(self) -> None:
         df = pd.DataFrame(
             [

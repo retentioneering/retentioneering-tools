@@ -71,8 +71,15 @@ def _build_funnel_segment_query(
     result_col: str,
 ) -> str:
     """
-    Per-row DuckDB query using PARTITION BY window functions — single pass,
-    no JOIN needed.  Mirrors funnel.py: MAX(index) enforces sequential order.
+    Per-row DuckDB query, chained-CTE approach identical in spirit to
+    tools/funnel.py: a path reaches step k iff there exist event indices
+    i_0 < i_1 < ... < i_k with event(i_j) = funnel_events[j] — i.e. an
+    increasing subsequence of positions, not a comparison of *last*
+    occurrences. step_k holds, per path, the earliest occurrence of
+    funnel_events[k - 1] that comes strictly after the path's step_{k - 1}
+    match. This correctly handles paths that revisit an earlier funnel
+    event after completing a later one (see funnel.py's
+    test_funnel_repeated_event_after_step for the equivalent regression).
 
     path_cols is validated (coarsest-first, strictly nested) at Eventstream
     construction time, and the caller restricts path_col to schema.path_cols,
@@ -90,47 +97,87 @@ def _build_funnel_segment_query(
     Example output for funnel_events=['add_to_cart', 'purchase'], path_id='session',
     event='event', index='__index__':
 
-        SELECT __retentioneering_row_idx__,
-            CASE
-                WHEN SUM(CASE WHEN event = 'purchase' THEN 1 ELSE 0 END) OVER (PARTITION BY session) > 0
-                     AND SUM(CASE WHEN event = 'add_to_cart' THEN 1 ELSE 0 END) OVER (PARTITION BY session) > 0
-                     AND MAX(CASE WHEN event = 'add_to_cart' THEN __index__ ELSE 0 END) OVER (PARTITION BY session)
-                       < MAX(CASE WHEN event = 'purchase'    THEN __index__ ELSE 0 END) OVER (PARTITION BY session)
-                THEN 'purchase'
-                WHEN SUM(CASE WHEN event = 'add_to_cart' THEN 1 ELSE 0 END) OVER (PARTITION BY session) > 0
-                THEN 'add_to_cart'
-                ELSE 'out_of_funnel'
-            END AS funnel
+        WITH step_1 AS (
+                SELECT "session" AS path_id, MIN("__index__") AS idx
+                FROM eventstream WHERE "event" = 'add_to_cart' GROUP BY "session"
+             ),
+             step_2 AS (
+                SELECT eventstream."session" AS path_id, MIN(eventstream."__index__") AS idx
+                FROM eventstream JOIN step_1 ON eventstream."session" = step_1.path_id
+                WHERE eventstream."event" = 'purchase' AND eventstream."__index__" > step_1.idx
+                GROUP BY eventstream."session"
+             ),
+             paths AS (SELECT DISTINCT "session" AS path_id FROM eventstream),
+             levels AS (
+                SELECT paths.path_id,
+                    CASE
+                        WHEN step_2.idx IS NOT NULL THEN 'purchase'
+                        WHEN step_1.idx IS NOT NULL THEN 'add_to_cart'
+                        ELSE 'out_of_funnel'
+                    END AS funnel
+                FROM paths
+                LEFT JOIN step_1 ON step_1.path_id = paths.path_id
+                LEFT JOIN step_2 ON step_2.path_id = paths.path_id
+             )
+        SELECT eventstream.__retentioneering_row_idx__, levels.funnel
         FROM eventstream
+        JOIN levels ON eventstream."session" = levels.path_id
     """
     path_col_q = engine.quote_ident(path_col)
     event_col_q = engine.quote_ident(event_col)
     index_col_q = engine.quote_ident(index_col)
-    w = f"PARTITION BY {path_col_q}"
+    n = len(funnel_events)
 
-    def _sum(ev: str) -> str:
-        return f"SUM(CASE WHEN {event_col_q} = {quote_literal(ev)} THEN 1 ELSE 0 END) OVER ({w})"
+    ctes = []
+    for step_num, step_event in enumerate(funnel_events, start=1):
+        ev = quote_literal(step_event)
+        if step_num == 1:
+            ctes.append(
+                f"step_1 AS ("
+                f"SELECT {path_col_q} AS path_id, MIN({index_col_q}) AS idx "
+                f"FROM eventstream "
+                f"WHERE {event_col_q} = {ev} "
+                f"GROUP BY {path_col_q}"
+                f")"
+            )
+        else:
+            prev = f"step_{step_num - 1}"
+            ctes.append(
+                f"step_{step_num} AS ("
+                f"SELECT eventstream.{path_col_q} AS path_id, MIN(eventstream.{index_col_q}) AS idx "
+                f"FROM eventstream "
+                f"JOIN {prev} ON eventstream.{path_col_q} = {prev}.path_id "
+                f"WHERE eventstream.{event_col_q} = {ev} AND eventstream.{index_col_q} > {prev}.idx "
+                f"GROUP BY eventstream.{path_col_q}"
+                f")"
+            )
 
-    def _max(ev: str) -> str:
-        return f"MAX(CASE WHEN {event_col_q} = {quote_literal(ev)} THEN {index_col_q} ELSE 0 END) OVER ({w})"
+    ctes.append(f"paths AS (SELECT DISTINCT {path_col_q} AS path_id FROM eventstream)")
 
-    def _reached_k(k: int) -> str:
-        has = " AND ".join(f"{_sum(funnel_events[i])} > 0" for i in range(k + 1))
-        order = " AND ".join(
-            f"{_max(funnel_events[i])} < {_max(funnel_events[i + 1])}" for i in range(k)
-        )
-        return f"{has} AND {order}" if order else has
-
-    whens = "\n        ".join(
-        f"WHEN {_reached_k(k)} THEN {quote_literal(funnel_events[k])}"
-        for k in range(len(funnel_events) - 1, -1, -1)
+    joins = " ".join(
+        f"LEFT JOIN step_{k} ON step_{k}.path_id = paths.path_id"
+        for k in range(1, n + 1)
     )
-    return (
-        f"SELECT {_ROW_IDX_COL},\n"
-        f"    CASE {whens}\n"
-        f"         ELSE 'out_of_funnel'\n"
+    whens = "\n        ".join(
+        f"WHEN step_{k}.idx IS NOT NULL THEN {quote_literal(funnel_events[k - 1])}"
+        for k in range(n, 0, -1)
+    )
+    ctes.append(
+        f"levels AS ("
+        f"SELECT paths.path_id,\n"
+        f"    CASE\n"
+        f"        {whens}\n"
+        f"        ELSE 'out_of_funnel'\n"
         f"    END AS {result_col}\n"
-        f"FROM eventstream"
+        f"FROM paths {joins}"
+        f")"
+    )
+
+    return (
+        f"WITH {', '.join(ctes)}\n"
+        f"SELECT eventstream.{_ROW_IDX_COL}, levels.{result_col}\n"
+        f"FROM eventstream\n"
+        f"JOIN levels ON eventstream.{path_col_q} = levels.path_id"
     )
 
 

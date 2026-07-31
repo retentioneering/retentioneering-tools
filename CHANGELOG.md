@@ -17,6 +17,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Funnel widget: with more steps than the default `height=420` could fit, the chart and the bottom rows of the table were clipped with no way to reach them. The scroll container declared `flex: 1` inside a non-flex wrapper, so it never got a definite height and `overflow-y: auto` stayed inert; it is now a direct flex child with `min-height: 0` and the funnel content scrolls vertically inside the widget frame
 - Cluster Analysis widget: selecting **Standard** feature scaling in the sidebar raised `ValueError: Unknown scaler: std` — the sidebar sends `"std"` while the Python side only accepted `"standard"`. `"std"` is now the canonical spelling on both sides; `"standard"` is still accepted as a legacy alias, so code written against 5.1.0 and earlier keeps working
 
 ## [5.1.0] - 2026-07-23

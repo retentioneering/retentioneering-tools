@@ -5,7 +5,6 @@ import traitlets
 from retentioneering.exceptions import InvalidParameterError, RetentioneeringError
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
 from retentioneering.widgets._utils import parse_diff as _parse_diff
-from retentioneering.widgets._html_export import write_html
 
 
 def _validate_view_events(view: dict, prefix: str, available: set) -> None:
@@ -360,40 +359,18 @@ class TransitionGraphWidget(RetentioneeringWidget):
             # of swallowing it so client code can at least log it.
             return {"result": {}, "error": str(exc)}
 
-    # ── HTML export ───────────────────────────────────────────────────────────
+    # ── HTML export (export_html/render_static: see RetentioneeringWidget) ────
 
-    def export_html(
-        self,
-        path: str,
-        title: str = "Transition Graph",
-        analysis: str | None = None,
-        sidebar_open: bool | None = None,
-    ) -> None:
-        """
-        Export the current graph as a standalone interactive HTML file.
+    _export_label = "Transition Graph"
 
-        Parameters
-        ----------
-        path:
-            Destination file path.
-        title:
-            Title shown in the browser tab.
-        analysis:
-            Optional analysis text. Wrap event names in square brackets to make
-            them clickable, e.g. `"Drop-off at [basket]: 78% of users leave here."`.
-            Supports basic markdown (bold, italic, bullet lists, tables, headings).
-        sidebar_open:
-            Whether the settings sidebar starts open in the exported file.
-            Defaults to the widget's current ``sidebar_open`` value.
-        """
-        self._raise_if_error()
+    def _export_data(self, sidebar_open: bool | None = None) -> dict:
         # A static export cannot call the graph_layout compute (no kernel), so
         # when the user hasn't arranged nodes by hand, bake the semantic
         # layout positions in at export time.
         node_positions = json.loads(self.node_positions or "{}")
         if not node_positions:
             node_positions = self.semantic_layout_positions()
-        data = {
+        return {
             "widget_type": "transition_graph",
             "widget_id": self.widget_id,
             "result": json.loads(self.result or "{}"),
@@ -419,7 +396,6 @@ class TransitionGraphWidget(RetentioneeringWidget):
             "views": json.loads(self.views or "[]"),
             "view": self.view,
         }
-        write_html(path, title, "Transition Graph", data, analysis)
 
 
 # ── helpers ────────────────────────────────────────────────────────────────────

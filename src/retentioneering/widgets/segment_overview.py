@@ -4,7 +4,6 @@ import traitlets
 
 from retentioneering.exceptions import RetentioneeringError
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
-from retentioneering.widgets._html_export import write_html
 
 
 class SegmentOverviewWidget(RetentioneeringWidget):
@@ -179,17 +178,12 @@ class SegmentOverviewWidget(RetentioneeringWidget):
             "values": [[_safe(v) for v in df.loc[m].tolist()] for m in df.index],
         }
 
-    # ── HTML export ───────────────────────────────────────────────────────────
+    # ── HTML export (export_html/render_static: see RetentioneeringWidget) ────
 
-    def export_html(
-        self,
-        path: str,
-        title: str = "Segment Overview",
-        analysis: str | None = None,
-        sidebar_open: bool | None = None,
-    ) -> None:
-        self._raise_if_error()
-        data = {
+    _export_label = "Segment Overview"
+
+    def _export_data(self, sidebar_open: bool | None = None) -> dict:
+        return {
             "widget_type": "segment_overview",
             "result": json.loads(self.result or "{}"),
             "segment_col": self.segment_col or "",
@@ -204,7 +198,6 @@ class SegmentOverviewWidget(RetentioneeringWidget):
             if sidebar_open is not None
             else self.sidebar_open,
         }
-        write_html(path, title, "Segment Overview", data, analysis)
 
     def _compute_distribution(self, req: dict):
         self.is_loading = True

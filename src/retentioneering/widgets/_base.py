@@ -44,6 +44,7 @@ import traitlets
 
 from retentioneering.exceptions import WidgetExportError
 from retentioneering.widgets._esm import _get_esm
+from retentioneering.widgets._html_export import render_static_display, write_html
 from retentioneering.widgets._state_file import StateFileMixin
 
 _STATIC = pathlib.Path(__file__).parent.parent / "static"
@@ -98,6 +99,11 @@ class RetentioneeringWidget(StateFileMixin, anywidget.AnyWidget):
     #: than an AttributeError).
     compute_tools: dict[str, Callable[["RetentioneeringWidget", dict], Any]] = {}
 
+    #: Display name used as the browser-tab/tab-label default for
+    #: ``export_html()``/``render_static()`` (e.g. ``"Transition Graph"``).
+    #: Every subclass overrides this.
+    _export_label: str = ""
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.observe(self._on_compute_request, names=["compute_request"])
@@ -116,6 +122,98 @@ class RetentioneeringWidget(StateFileMixin, anywidget.AnyWidget):
             raise WidgetExportError(
                 f"Cannot export: the widget's last computation failed: {self.error}"
             )
+
+    def _export_data(self, sidebar_open: bool | None = None) -> dict[str, Any]:
+        """Data payload for ``export_html()``/``render_static()``.
+
+        Every subclass overrides this with its own traitlet -> dict mapping;
+        this base implementation only exists so a subclass that forgets to
+        override it fails with a clear ``NotImplementedError`` here rather
+        than an ``AttributeError`` inside ``export_html``.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} must implement _export_data()"
+        )
+
+    def export_html(
+        self,
+        path: str,
+        title: str | None = None,
+        analysis: str | None = None,
+        sidebar_open: bool | None = None,
+    ) -> None:
+        """
+        Export this widget as a standalone interactive HTML file.
+
+        Parameters
+        ----------
+        path:
+            Destination file path.
+        title:
+            Title shown in the browser tab. Defaults to the widget's name,
+            e.g. ``"Transition Graph"``.
+        analysis:
+            Optional analysis text. Wrap event names in square brackets to
+            make them clickable, e.g.
+            ``"Drop-off at [basket]: 78% of users leave here."``. Supports
+            basic markdown (bold, italic, bullet lists, tables, headings).
+        sidebar_open:
+            Whether the settings sidebar starts open in the exported file.
+            Defaults to the widget's current ``sidebar_open`` value.
+        """
+        self._raise_if_error()
+        data = self._export_data(sidebar_open)
+        write_html(
+            path, title or self._export_label, self._export_label, data, analysis
+        )
+
+    def render_static(
+        self,
+        title: str | None = None,
+        height: int | str | None = None,
+        sidebar_open: bool | None = None,
+    ):
+        """
+        Render this widget for embedding in a notebook's own HTML export.
+
+        Unlike just leaving the widget as a cell's output, this doesn't need
+        a live kernel to render: it bakes the same self-contained page
+        ``export_html()`` writes to disk into the cell's output (as an
+        ``<iframe srcdoc>``), so it keeps showing correctly after
+        ``jupyter nbconvert`` / "Save and Export as HTML" — those replay
+        stored cell outputs without a kernel, and a live widget needs one.
+        Use it in place of the widget in any cell you plan to keep visible
+        after exporting the notebook.
+
+        It reads whatever is currently in this widget's own traitlets — it
+        has no way to see manual, in-browser interactions (e.g. dragged node
+        positions) made on a *different* call/instance, even one that looks
+        identical (same data, same params). If you want the export to
+        reflect a layout you arranged by hand, construct the widget with
+        ``state_file=`` first: manual changes then auto-save to that file as
+        you make them, and any later widget instance built with the same
+        ``state_file`` — including one you're about to call ``render_static()``
+        on — loads it back synchronously, before anything else runs. Without
+        ``state_file``, a fresh call always starts from the widget's default
+        (or algorithmic, e.g. semantic graph layout) state, regardless of
+        what you previously did to another instance in the notebook.
+
+        Parameters
+        ----------
+        title:
+            Title shown in the browser tab if the iframe is opened on its
+            own. Defaults to the widget's name, e.g. ``"Transition Graph"``.
+        height:
+            iframe height in pixels, or any CSS length (e.g. ``"80vh"``).
+            Defaults to the widget's current ``height``.
+        sidebar_open:
+            Whether the settings sidebar starts open.
+            Defaults to the widget's current ``sidebar_open`` value.
+        """
+        self._raise_if_error()
+        data = self._export_data(sidebar_open)
+        resolved_height = height if height is not None else data["height"]
+        return render_static_display(title or self._export_label, data, resolved_height)
 
     # ── compute RPC plumbing ────────────────────────────────────────────────
 

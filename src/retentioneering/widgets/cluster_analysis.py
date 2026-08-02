@@ -10,7 +10,6 @@ if TYPE_CHECKING:
 from retentioneering.exceptions import RetentioneeringError
 from retentioneering.tools.cluster_analysis import parse_n_clusters as _parse_n_clusters
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
-from retentioneering.widgets._html_export import write_html
 
 
 class ClusterAnalysisWidget(RetentioneeringWidget):
@@ -452,32 +451,12 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         except Exception:
             pass
 
-    # ── HTML export ───────────────────────────────────────────────────────────
+    # ── HTML export (export_html/render_static: see RetentioneeringWidget) ────
 
-    def export_html(
-        self,
-        path: str,
-        title: str = "Cluster Analysis",
-        analysis: str | None = None,
-        sidebar_open: bool | None = None,
-    ) -> None:
-        """
-        Export the cluster analysis as a standalone interactive HTML file.
+    _export_label = "Cluster Analysis"
 
-        Parameters
-        ----------
-        path:
-            Destination file path.
-        title:
-            Title shown in the browser tab.
-        analysis:
-            Optional analysis text. Supports basic markdown and [event] links.
-        sidebar_open:
-            Whether the settings sidebar starts open in the exported file.
-            Defaults to the widget's current ``sidebar_open`` value.
-        """
-        self._raise_if_error()
-        data = {
+    def _export_data(self, sidebar_open: bool | None = None) -> dict:
+        return {
             "widget_type": "cluster_analysis",
             "result": json.loads(self.result or "{}"),
             "features": json.loads(self.features or "[]"),
@@ -500,7 +479,6 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
             "active_tab": self.active_tab or "",
             "cluster_renames": json.loads(self.cluster_renames or "{}"),
         }
-        write_html(path, title, "Cluster Analysis", data, analysis)
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────

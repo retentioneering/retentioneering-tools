@@ -6,7 +6,6 @@ from retentioneering.exceptions import RetentioneeringError
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
 from retentioneering.widgets._utils import parse_diff as _parse_diff
 from retentioneering.widgets._utils import step_matrix_blocks as _step_matrix_blocks
-from retentioneering.widgets._html_export import write_html
 
 
 class StepMatrixWidget(RetentioneeringWidget):
@@ -264,32 +263,12 @@ class StepMatrixWidget(RetentioneeringWidget):
             "event_counts_g2": event_counts_g2,
         }
 
-    # ── HTML export ───────────────────────────────────────────────────────────
+    # ── HTML export (export_html/render_static: see RetentioneeringWidget) ────
 
-    def export_html(
-        self,
-        path: str,
-        title: str = "Step Matrix",
-        analysis: str | None = None,
-        sidebar_open: bool | None = None,
-    ) -> None:
-        """
-        Export the step matrix as a standalone interactive HTML file.
+    _export_label = "Step Matrix"
 
-        Parameters
-        ----------
-        path:
-            Destination file path.
-        title:
-            Title shown in the browser tab.
-        analysis:
-            Optional analysis text. Supports basic markdown and [event] links.
-        sidebar_open:
-            Whether the settings sidebar starts open in the exported file.
-            Defaults to the widget's current ``sidebar_open`` value.
-        """
-        self._raise_if_error()
-        data = {
+    def _export_data(self, sidebar_open: bool | None = None) -> dict:
+        return {
             "widget_type": "step_matrix",
             "result": json.loads(self.result or "{}"),
             "max_steps": self.max_steps,
@@ -314,7 +293,6 @@ class StepMatrixWidget(RetentioneeringWidget):
             "sort_state": json.loads(self.sort_state) if self.sort_state else None,
             "scroll_x": self.scroll_x,
         }
-        write_html(path, title, "Step Matrix", data, analysis)
 
 
 def _df_to_matrix(df) -> dict:

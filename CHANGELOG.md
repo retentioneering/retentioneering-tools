@@ -7,6 +7,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 
+- Every widget now has `render_static()`, an `export_html()` sibling that returns an `IPython.display.HTML` object instead of writing a file — use it in place of a live widget in any cell you want to survive `jupyter nbconvert` / "Save and Export as HTML", which replay stored outputs without a kernel. Without `state_file`, it only reflects the widget object's own state, not a live in-browser arrangement (e.g. dragged graph nodes) made on a different object
 - Docs: `render_pages.py` now also writes `llms.txt` (annotated table of contents, per the [llms.txt convention](https://llmstxt.org)) and `llms-full.txt` (the whole documentation as one ~200 KB file), served at `retentioneering.com/llms.txt` and `/llms-full.txt`. Descriptions are each page's own opening sentence; a guide page missing from the new `GUIDES` order list fails the build (ADR-0014)
 - Docs: a documentation MCP server at `https://retentioneering.com/docs/mcp` — hosted, stateless, no installation, with `search_docs` / `get_doc_page` / `list_doc_pages`. Distinct from the library's own `rete.mcp.serve()`, which is local and works on your data; the [MCP Server](https://retentioneering.com/docs/mcp-server) guide explains the split. Implementation lives in retentioneering-web (ADR-0014)
 

@@ -156,3 +156,54 @@ and display parameters plus extras like node layout, filters, sorting, scroll
 position, and zoom (results are recomputed, not saved) — so re-running the
 cell restores the widget exactly as you left it. Explicitly passed arguments
 override the loaded state.
+
+## Rendering for a notebook's own HTML export
+
+A widget displayed normally in Jupyter is a live `anywidget` — it needs a
+running Python kernel behind it. `jupyter nbconvert` and "Save and Export as
+HTML" don't run a kernel; they just replay each cell's already-stored output.
+A live widget's output has nothing useful stored for that replay, so it shows
+up blank (or stuck) in the exported file.
+
+`render_static()` solves this the same way [`export_html()`](/docs/widgets#exporting-to-html) does — it bakes
+the widget's current state into a self-contained page with no kernel
+dependency — but instead of writing a file, it returns an
+`IPython.display.HTML` object you use in place of the widget as a cell's
+output, so it survives the notebook's own export:
+
+```python
+stream.transition_graph(edge_weight="proba_out").render_static()
+```
+
+### Reproducing interactive state
+
+`render_static()` only ever sees this specific widget object's own state.
+**Without `state_file`, it may not match what you see on screen.**
+It has no way to know about manual, in-browser arrangements (e.g. transition
+graph nodes you dragged) made on a different widget object, even one built
+from identical data and parameters — dragging updates that object's own
+traitlets and the browser's local cache, neither of which a later,
+independently-constructed widget can see. So this does **not** work:
+
+```python
+stream.transition_graph()                     # drag some nodes here...
+stream.transition_graph().render_static()     # ...doesn't see them: fresh object, no state_file
+```
+
+To make an interactively-arranged layout reproducible for `render_static()`
+or `export_html()`, construct the widget with `state_file=` from the start:
+
+```python
+stream.transition_graph(state_file="my_graph.json")                  # drag some nodes here...
+stream.transition_graph(state_file="my_graph.json").render_static()  # ... sees the drag
+```
+
+### Rendering parameters
+
+`render_static()` takes:
+
+| Parameter | Type | Description |
+|---|---|---|
+| `title` | `str \| None` | Title shown in the browser tab if the embedded page is opened on its own. Defaults to the widget's name, e.g. `"Transition Graph"`. |
+| `height` | `int \| str \| None` | Height in pixels, or any CSS length (e.g. `"80vh"`). Defaults to the widget's current `height`. |
+| `sidebar_open` | `bool \| None` | Whether the settings sidebar starts open. Defaults to the widget's current `sidebar_open` value. |

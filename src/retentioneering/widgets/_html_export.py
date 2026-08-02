@@ -10,6 +10,14 @@ import html as _html_mod
 _BUNDLE_PATH = pathlib.Path(__file__).parent.parent / "static" / "widget-static.js"
 _CSS_PATH = pathlib.Path(__file__).parent.parent / "static" / "widget.css"
 
+#: `#retentioneering-root`'s margin in `_HTML_TEMPLATE_BARE` (all four sides).
+#: `render_static_html()` adds `2 * _ROOT_MARGIN_PX` to a pixel `height` up
+#: front, so the iframe's *starting* size already matches what the page's own
+#: `ResizeObserver` would report — without this, every render_static() call
+#: opens 2 * _ROOT_MARGIN_PX short and shows a (briefly, or if the resize
+#: message never arrives, permanently) scrolling iframe.
+_ROOT_MARGIN_PX = 24
+
 
 def _json_for_script(obj: object) -> str:
     """Serialize ``obj`` to JSON safe for embedding inside a ``<script>`` block.
@@ -283,8 +291,13 @@ def render_analysis(text: str, label_map: dict | None = None) -> str:
 # ── Templates ──────────────────────────────────────────────────────────────────
 
 
-def _write_bare(path: str, title: str, data: dict) -> None:
-    """Single widget, no analysis panel."""
+def render_bare_html(title: str, data: dict) -> str:
+    """Single-widget standalone page (no analysis panel), as a string.
+
+    Shared by ``_write_bare`` (writes it to a file, for ``export_html``) and
+    ``render_static_html`` (embeds it in an ``<iframe srcdoc>``, for
+    ``render_static``) — same self-contained page either way.
+    """
     if not _BUNDLE_PATH.exists():
         raise FileNotFoundError(
             f"Static bundle not found at {_BUNDLE_PATH}. "
@@ -292,13 +305,90 @@ def _write_bare(path: str, title: str, data: dict) -> None:
         )
     bundle_js = _BUNDLE_PATH.read_text(encoding="utf-8")
     widget_css = _CSS_PATH.read_text(encoding="utf-8")
-    html = (
+    return (
         _HTML_TEMPLATE_BARE.replace("{{TITLE}}", _html_mod.escape(title))
         .replace("{{DATA_JSON}}", _json_for_script(data))
         .replace("{{BUNDLE_JS}}", bundle_js)
         .replace("{{WIDGET_CSS}}", widget_css)
+        .replace("{{ROOT_MARGIN}}", str(_ROOT_MARGIN_PX))
     )
-    pathlib.Path(path).write_text(html, encoding="utf-8")
+
+
+def _write_bare(path: str, title: str, data: dict) -> None:
+    """Single widget, no analysis panel."""
+    pathlib.Path(path).write_text(render_bare_html(title, data), encoding="utf-8")
+
+
+def render_static_html(title: str, data: dict, height: int | str) -> str:
+    """Wrap a single-widget export page in a self-contained ``<iframe srcdoc>``.
+
+    For embedding a widget's *current* state directly into a notebook cell's
+    output (via ``render_static()``) so it survives ``jupyter nbconvert`` /
+    "Save and Export as HTML" — those only capture a notebook's stored cell
+    outputs, they don't run a kernel, so a live anywidget can't render there.
+    The iframe carries the exact same self-contained page ``export_html()``
+    writes to disk (own ``<head>``, inlined JS bundle, no kernel needed), just
+    inlined as a string instead of a file. ``srcdoc`` (not ``src``) means the
+    whole page travels with the notebook's HTML export as a single file, and
+    isolates each widget's globals/DOM ids from any other widget in the same
+    notebook.
+
+    ``height`` is only the *starting* height (shown until the page inside the
+    iframe reports its real size — see ``_HTML_TEMPLATE_BARE``'s
+    ``ResizeObserver``/``postMessage``); the inline script below listens for
+    that message and grows/shrinks the iframe to fit, so the export doesn't
+    end up with an inner scrollbar or clipped content. ``document
+    .currentScript.previousElementSibling`` (rather than an id) targets this
+    exact iframe so multiple widgets in one notebook don't collide.
+
+    A pixel ``height`` (as opposed to a caller-supplied CSS length like
+    ``"80vh"``) is a widget's own ``height`` trait, i.e. exactly what
+    ``#retentioneering-root``'s content measures *before* its
+    ``2 * _ROOT_MARGIN_PX`` margin — added here so the very first paint
+    already matches what the resize message would report, instead of
+    starting ``2 * _ROOT_MARGIN_PX`` short and visibly scrolling until the
+    first ``ResizeObserver`` callback lands (or forever, if it never does —
+    e.g. a notebook frontend that sandboxes/strips inline ``<script>``).
+    """
+    page = render_bare_html(title, data)
+    height_css = (
+        f"{height + 2 * _ROOT_MARGIN_PX}px" if isinstance(height, int) else height
+    )
+    escaped = _html_mod.escape(page, quote=True)
+    return (
+        f'<iframe srcdoc="{escaped}" '
+        f'style="width:100%;height:{height_css};border:0;display:block;'
+        f'transition:height .15s ease"></iframe>'
+        "<script>(function () {"
+        "var f = document.currentScript.previousElementSibling;"
+        "window.addEventListener('message', function (e) {"
+        "if (e.source === f.contentWindow && e.data "
+        "&& e.data.source === 'retentioneering-widget') {"
+        "f.style.height = e.data.height + 'px';"
+        "}"
+        "});"
+        "})();</script>"
+    )
+
+
+def render_static_display(title: str, data: dict, height: int | str):
+    """``render_static_html()``, wrapped as an ``IPython.display.HTML`` object.
+
+    ``IPython.display.HTML`` warns "Consider using IPython.display.IFrame
+    instead" for any string that looks like an ``<iframe>...</iframe>`` — a
+    heuristic aimed at plain ``src=`` iframes. ``IFrame`` has no ``srcdoc``
+    support, so that suggestion doesn't apply to us; suppressed narrowly here
+    rather than at the call sites.
+    """
+    import warnings
+
+    from IPython.display import HTML
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore", message="Consider using IPython.display.IFrame instead"
+        )
+        return HTML(render_static_html(title, data, height))
 
 
 _HTML_TEMPLATE_BARE = """<!DOCTYPE html>
@@ -311,7 +401,7 @@ _HTML_TEMPLATE_BARE = """<!DOCTYPE html>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #f8fafc; display: flex; align-items: center;
            justify-content: center; min-height: 100vh; }
-    #retentioneering-root { width: 100%; max-width: 1400px; margin: 24px; }
+    #retentioneering-root { width: 100%; max-width: 1400px; margin: {{ROOT_MARGIN}}px; }
   </style>
   <style>{{WIDGET_CSS}}</style>
 </head>
@@ -329,6 +419,38 @@ _HTML_TEMPLATE_BARE = """<!DOCTYPE html>
       if (vm) window.__HS_DATA__.view = vm[1];
     })();
     RetentioneeringWidget.renderStatic(window.__HS_DATA__, document.getElementById('retentioneering-root'));
+    // Embedded in a render_static() iframe: report our real content
+    // height to the parent page so it can size the iframe to fit (see
+    // render_static_html()'s listener) instead of leaving a fixed height
+    // that scrolls or clips. No-op when opened directly (window.parent ===
+    // window) or in browsers without ResizeObserver.
+    if (window.parent !== window && window.ResizeObserver) {
+      var __root = document.getElementById('retentioneering-root');
+      var __lastSent = -1;
+      var __pending = null;
+      var __send = function () {
+        var cs = getComputedStyle(__root);
+        var h = Math.ceil(
+          __root.getBoundingClientRect().height +
+          parseFloat(cs.marginTop) + parseFloat(cs.marginBottom)
+        );
+        if (h && h !== __lastSent) {
+          __lastSent = h;
+          window.parent.postMessage({ source: 'retentioneering-widget', height: h }, '*');
+        }
+      };
+      // Debounced: React mounts in stages (empty root -> content), so the
+      // observer's first callbacks fire against a still-growing tree. Firing
+      // postMessage on every one of those flashes the iframe down to ~0 and
+      // back up as the parent applies each intermediate size in turn.
+      // Waiting for 120ms of quiet before reporting only ever sends the
+      // settled height.
+      var __debounced = function () {
+        if (__pending) clearTimeout(__pending);
+        __pending = setTimeout(__send, 120);
+      };
+      new ResizeObserver(__debounced).observe(__root);
+    }
   </script>
 </body>
 </html>"""

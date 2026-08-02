@@ -5,7 +5,6 @@ import traitlets
 from retentioneering.exceptions import RetentioneeringError
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
 from retentioneering.widgets._utils import parse_diff as _parse_diff
-from retentioneering.widgets._html_export import write_html
 
 
 class FunnelWidget(RetentioneeringWidget):
@@ -161,32 +160,12 @@ class FunnelWidget(RetentioneeringWidget):
                 result["total_paths"] = round(up / r) if r > 0 else up
         return result
 
-    # ── HTML export ───────────────────────────────────────────────────────────
+    # ── HTML export (export_html/render_static: see RetentioneeringWidget) ────
 
-    def export_html(
-        self,
-        path: str,
-        title: str = "Funnel",
-        analysis: str | None = None,
-        sidebar_open: bool | None = None,
-    ) -> None:
-        """
-        Export the funnel as a standalone interactive HTML file.
+    _export_label = "Funnel"
 
-        Parameters
-        ----------
-        path:
-            Destination file path.
-        title:
-            Title shown in the browser tab.
-        analysis:
-            Optional analysis text. Supports basic markdown and [event] links.
-        sidebar_open:
-            Whether the settings sidebar starts open in the exported file.
-            Defaults to the widget's current ``sidebar_open`` value.
-        """
-        self._raise_if_error()
-        data = {
+    def _export_data(self, sidebar_open: bool | None = None) -> dict:
+        return {
             "widget_type": "funnel",
             "result": json.loads(self.result or "{}"),
             "steps": json.loads(self.steps or "[]"),
@@ -200,4 +179,3 @@ class FunnelWidget(RetentioneeringWidget):
             if sidebar_open is not None
             else self.sidebar_open,
         }
-        write_html(path, title, "Funnel", data, analysis)

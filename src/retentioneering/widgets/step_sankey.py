@@ -6,7 +6,6 @@ from retentioneering.exceptions import RetentioneeringError
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
 from retentioneering.widgets._utils import parse_diff as _parse_diff
 from retentioneering.widgets._utils import step_matrix_blocks as _step_matrix_blocks
-from retentioneering.widgets._html_export import write_html
 
 
 class StepSankeyWidget(RetentioneeringWidget):
@@ -218,32 +217,12 @@ class StepSankeyWidget(RetentioneeringWidget):
 
         return {"matrices": matrices, "event_counts": event_counts}
 
-    # ── HTML export ───────────────────────────────────────────────────────────
+    # ── HTML export (export_html/render_static: see RetentioneeringWidget) ────
 
-    def export_html(
-        self,
-        path: str,
-        title: str = "Step Sankey",
-        analysis: str | None = None,
-        sidebar_open: bool | None = None,
-    ) -> None:
-        """
-        Export the step sankey diagram as a standalone interactive HTML file.
+    _export_label = "Step Sankey"
 
-        Parameters
-        ----------
-        path:
-            Destination file path.
-        title:
-            Title shown in the browser tab.
-        analysis:
-            Optional analysis text. Supports basic markdown and [event] links.
-        sidebar_open:
-            Whether the settings sidebar starts open in the exported file.
-            Defaults to the widget's current ``sidebar_open`` value.
-        """
-        self._raise_if_error()
-        data = {
+    def _export_data(self, sidebar_open: bool | None = None) -> dict:
+        return {
             "widget_type": "step_sankey",
             "result": json.loads(self.result or "{}"),
             "max_steps": self.max_steps,
@@ -263,7 +242,6 @@ class StepSankeyWidget(RetentioneeringWidget):
             if sidebar_open is not None
             else self.sidebar_open,
         }
-        write_html(path, title, "Step Sankey", data, analysis)
 
 
 def _df_to_matrix(df) -> dict:

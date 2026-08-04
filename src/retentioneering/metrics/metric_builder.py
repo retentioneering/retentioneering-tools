@@ -29,15 +29,14 @@ Supports metrics:
     tokens, not substrings; ".*" matches any run of whole events)
 - in_segment - binary metric showing if a path belongs to a segment value (0/1)
   - segment_name: segment column name
-  - segment_value: segment value (string, list of strings, or None for all values)
+  - segment_level: segment value (string, list of strings, or None for all values)
   - mode:
-    - any: segment_value appears at least once
-    - all: segment_value is the only value in the segment column
-    - event_share: segment_value appears in at least N% of events
+    - any: segment_level appears at least once
+    - all: segment_level is the only value in the segment column
+    - event_share: segment_level appears in at least N% of events
       - threshold: percentage of events (e.g., 0.1 for 10%)
 """
 
-import re
 from typing import Any, Dict, List, Set
 
 import pandas as pd
@@ -46,7 +45,7 @@ from retentioneering import engine
 from retentioneering.engine import dialect
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.exceptions import InvalidMetricConfigError
-from retentioneering.utils.sequences import generate_patterns_with_optional_gaps
+from retentioneering.paths import anchors
 from retentioneering.utils.sql_quoting import quote_list, quote_literal
 
 
@@ -69,28 +68,14 @@ VALID_METRICS = {
 
 # Valid modes for the in_segment metric
 IN_SEGMENT_MODES = {
-    "any",  # segment_value appears at least once
-    "all",  # segment_value is the only value in the segment column
-    "event_share",  # segment_value appears in at least N% of events
+    "any",  # segment_level appears at least once
+    "all",  # segment_level is the only value in the segment column
+    "event_share",  # segment_level appears in at least N% of events
 }
 
 
 # Special synthetic events that don't need to exist in the eventstream
 SYNTHETIC_EVENTS = {EventTypes().PATH_START.name, EventTypes().PATH_END.name}
-
-
-def _pattern_variant_to_regex(pattern_variant: str) -> str:
-    """Converts one gap-expanded matches_pattern variant (still '->'-joined, with
-    literal '.*' tokens for enabled gaps) into a regex that matches whole tokens
-    only, not substrings. Every literal token is re.escape()'d; '.*' gap tokens
-    are left as raw regex (that part already works correctly - it's only the
-    literal tokens that need escaping/anchoring). The whole regex is wrapped in a
-    leading/trailing '->' to align with the same padding added to the built path
-    string, giving token-boundary anchoring without needing lookaround (DuckDB's
-    regexp_matches uses RE2, which doesn't support it)."""
-    tokens = pattern_variant.split("->")
-    parts = [".*" if tok == ".*" else re.escape(tok) for tok in tokens]
-    return "->" + "->".join(parts) + "->"
 
 
 def _normalize_single_event(event: Any, metric_name: str) -> str:
@@ -159,15 +144,15 @@ def _normalize_pattern(metric_args: Dict[str, Any]) -> str:
 
 def _normalize_in_segment(metric_args: Dict[str, Any]) -> Dict[str, Any]:
     """Normalizes in_segment's metric_args shape: 'segment_name'/'mode' (required,
-    valid mode) and 'segment_value' (None | scalar | non-empty list, normalized to
-    'segment_values' - a list, or None meaning "all values", resolved at build time).
+    valid mode) and 'segment_level' (None | scalar | non-empty list, normalized to
+    'segment_levels' - a list, or None meaning "all values", resolved at build time).
 
     Shared by parse (which also needs segment_name/mode to build metric_names) and
     validate (which layers real-eventstream existence/range checks on top of this
     same shape).
     """
     segment_name = metric_args.get("segment_name")
-    segment_value = metric_args.get("segment_value")
+    segment_level = metric_args.get("segment_level")
     mode = metric_args.get("mode", "any")
 
     if not segment_name:
@@ -179,25 +164,25 @@ def _normalize_in_segment(metric_args: Dict[str, Any]) -> Dict[str, Any]:
             f"'in_segment' metric has invalid mode '{mode}'. Valid modes: {sorted(IN_SEGMENT_MODES)}"
         )
 
-    if segment_value is None:
-        segment_values = None
-    elif isinstance(segment_value, list):
-        if len(segment_value) == 0:
+    if segment_level is None:
+        segment_levels = None
+    elif isinstance(segment_level, list):
+        if len(segment_level) == 0:
             raise InvalidMetricConfigError(
-                "'in_segment' metric requires non-empty 'segment_value' list"
+                "'in_segment' metric requires non-empty 'segment_level' list"
             )
-        segment_values = segment_value
-    elif isinstance(segment_value, (str, int, float, bool)):
-        segment_values = [segment_value]
+        segment_levels = segment_level
+    elif isinstance(segment_level, (str, int, float, bool)):
+        segment_levels = [segment_level]
     else:
         raise InvalidMetricConfigError(
-            f"'in_segment' metric 'segment_value' must be string, number, boolean, list, or None. "
-            f"Got: {type(segment_value).__name__}"
+            f"'in_segment' metric 'segment_level' must be string, number, boolean, list, or None. "
+            f"Got: {type(segment_level).__name__}"
         )
 
     return {
         "segment_name": segment_name,
-        "segment_values": segment_values,
+        "segment_levels": segment_levels,
         "mode": mode,
     }
 
@@ -255,13 +240,13 @@ class MetricConfig:
             Input: [{"metric": "has_event", "metric_args": {"events": ["A", "B"]}, "agg": "mean"}]
             Output: [{"metric": "has_event", "metric_args": {"events": ["A", "B"]}, "agg": "mean", "cols": ["has_event_A", "has_event_B"]}]
 
-        Note: For in_segment metric with segment_value=None, cols will be empty list
+        Note: For in_segment metric with segment_level=None, cols will be empty list
         because the actual columns are determined at build time.
         """
         enriched = []
         for parsed in self.parsed_configs:
             original = parsed["original"].copy()
-            # Handle case when metric_names is None (e.g., in_segment with segment_value=None)
+            # Handle case when metric_names is None (e.g., in_segment with segment_level=None)
             # In this case, actual columns are determined at build time
             metric_names = parsed.get("metric_names")
             original["cols"] = metric_names if metric_names is not None else []
@@ -396,21 +381,21 @@ class MetricConfig:
         elif metric == "in_segment":
             norm = _normalize_in_segment(metric_args)
             segment_name = norm["segment_name"]
-            segment_values = norm["segment_values"]  # None means all values
+            segment_levels = norm["segment_levels"]  # None means all values
             mode = norm["mode"]
 
-            # metric_names stays None until build time when segment_values is None
+            # metric_names stays None until build time when segment_levels is None
             # (every value in the segment column - not known without the eventstream).
             metric_names = (
                 None
-                if segment_values is None
-                else [f"in_segment_{segment_name}_{v}_{mode}" for v in segment_values]
+                if segment_levels is None
+                else [f"in_segment_{segment_name}_{v}_{mode}" for v in segment_levels]
             )
 
             result = {
                 "type": "in_segment",
                 "segment_name": segment_name,
-                "segment_values": segment_values,
+                "segment_levels": segment_levels,
                 "mode": mode,
                 "metric_names": metric_names,
                 "original": config_dict,
@@ -523,9 +508,9 @@ class MetricBuilder:
 
         elif metric_name == "in_segment":
             norm = _normalize_in_segment(metric_args)
-            segment_name, segment_values, mode = (
+            segment_name, segment_levels, mode = (
                 norm["segment_name"],
-                norm["segment_values"],
+                norm["segment_levels"],
                 norm["mode"],
             )
 
@@ -535,14 +520,14 @@ class MetricBuilder:
                     f"Segment '{segment_name}' not found. Available segments: {self.schema.segment_cols}"
                 )
 
-            # Validate segment_values if provided (None means "all values" - nothing to check)
-            if segment_values is not None:
-                available_segment_values = set(self.df[segment_name].unique().tolist())
-                for v in segment_values:
-                    if v not in available_segment_values:
+            # Validate segment_levels if provided (None means "all values" - nothing to check)
+            if segment_levels is not None:
+                available_segment_levels = set(self.df[segment_name].unique().tolist())
+                for v in segment_levels:
+                    if v not in available_segment_levels:
                         raise InvalidMetricConfigError(
                             f"Segment value '{v}' not found in segment '{segment_name}'. "
-                            f"Available values: {sorted(str(x) for x in available_segment_values)}"
+                            f"Available values: {sorted(str(x) for x in available_segment_levels)}"
                         )
 
             # Validate mode-specific parameters
@@ -855,12 +840,11 @@ class MetricBuilder:
     ) -> pd.DataFrame:
         """Builds pattern matching metric (0/1) for each path.
 
-        Matches whole tokens, not substrings: both the path and every literal
-        segment of the pattern are '->'-delimited token sequences, and each
-        literal token is re.escape()'d before being compiled into the regex.
-        DuckDB's regexp_matches uses RE2, which has no lookaround support, so
-        token-boundary anchoring is done by padding both the path and the regex
-        with a leading/trailing '->' delimiter (see _pattern_variant_to_regex).
+        A degenerate case of positional anchoring: `paths.anchors` locates the
+        pattern in every path, and this metric only asks whether it was located
+        at all. Before the anchors module existed this was a second, independent
+        RE2 implementation of the same matching semantics (see that module's
+        docstring for what the two had drifted on).
         """
         pattern = config["pattern"]
         metric_name = config["metric_names"][0]
@@ -871,73 +855,52 @@ class MetricBuilder:
                 path_col=path_col
             ).df
 
-        # Build path strings for each path_id, padded with a leading/trailing '->'
-        # so every event (including the first/last) is flanked by the delimiter.
-        # Rows are pre-sorted in the FROM subquery and aggregated via
-        # path_agg_ordered, since plain string_agg (path_agg) gives no ordering
-        # guarantee across DuckDB's parallel GROUP BY (see step_matrix.py for
-        # the same pattern).
-        path_col_q = engine.quote_ident(path_col)
-        event_col_q = engine.quote_ident(event_col)
-        index_col_q = engine.quote_ident(self.schema.index)
-        subindex_col_q = engine.quote_ident(self.schema.subindex)
-        query = f"""
-        SELECT {path_col_q}, '->' || {dialect.path_agg_ordered(event_col_q)} || '->' as path
-        FROM (SELECT * FROM df_with_start_end ORDER BY {path_col_q}, {index_col_q}, {subindex_col_q})
-        GROUP BY {path_col_q}
-        """
-        paths = engine.run(query, df_with_start_end=self.df_with_start_end)
-
-        # Generate patterns with optional gaps
-        patterns = generate_patterns_with_optional_gaps(pattern)
-        patterns_chunk = " OR ".join(
-            dialect.regexp_match("path", quote_literal(_pattern_variant_to_regex(p)))
-            for p in patterns
+        match = anchors.resolve_anchors(
+            self.df_with_start_end, self.schema, pattern, path_col=path_col
         )
+        matched = match.paths()
 
-        metric_name_q = engine.quote_ident(metric_name)
-        query = f"select {path_col_q}, {patterns_chunk} as {metric_name_q} from paths"
-        result = engine.run(query, paths=paths)
-        return result.set_index(path_col)
+        all_paths = pd.Index(self.df_with_start_end[path_col].unique(), name=path_col)
+        return pd.DataFrame({metric_name: all_paths.isin(matched)}, index=all_paths)
 
     def _build_in_segment(self, config: Dict[str, Any], path_col: str) -> pd.DataFrame:
         """
         Builds in_segment metric (0/1) for each path.
 
         Determines if a path belongs to a segment based on different modes:
-        - any: segment_value appears at least once
-        - all: segment_value is the only value in the segment column
-        - event_share: segment_value appears in at least N% of events
+        - any: segment_level appears at least once
+        - all: segment_level is the only value in the segment column
+        - event_share: segment_level appears in at least N% of events
 
         Can handle multiple segment values at once, generating one column per value.
-        If segment_values is None, generates metrics for all unique values in the segment.
+        If segment_levels is None, generates metrics for all unique values in the segment.
         """
         segment_name = config["segment_name"]
-        segment_values = config["segment_values"]
+        segment_levels = config["segment_levels"]
         mode = config["mode"]
 
         df = self.df
 
-        # Resolve segment_values if None (use all unique values, keep original types)
-        if segment_values is None:
+        # Resolve segment_levels if None (use all unique values, keep original types)
+        if segment_levels is None:
             unique_values = df[segment_name].unique().tolist()
             # Sort with string representation for consistent ordering
-            segment_values = sorted(unique_values, key=lambda x: str(x))
+            segment_levels = sorted(unique_values, key=lambda x: str(x))
 
         # Build metric names
-        metric_names = [f"in_segment_{segment_name}_{v}_{mode}" for v in segment_values]
+        metric_names = [f"in_segment_{segment_name}_{v}_{mode}" for v in segment_levels]
 
         # Build metrics for each segment value
         result_dfs = []
         path_col_q = engine.quote_ident(path_col)
         segment_name_q = engine.quote_ident(segment_name)
 
-        for segment_value, metric_name in zip(segment_values, metric_names):
+        for segment_level, metric_name in zip(segment_levels, metric_names):
             # Format value for SQL comparison
-            sql_value = quote_literal(segment_value)
+            sql_value = quote_literal(segment_level)
 
             if mode == "any":
-                # Path belongs if segment_value appears at least once
+                # Path belongs if segment_level appears at least once
                 query = f"""
                 SELECT
                     {path_col_q},
@@ -948,9 +911,9 @@ class MetricBuilder:
                 result = engine.run(query, df=df)
 
             elif mode == "all":
-                # Path belongs if segment_value is the only value in the segment column
+                # Path belongs if segment_level is the only value in the segment column
                 query = f"""
-                WITH path_segment_values AS (
+                WITH path_segment_levels AS (
                     SELECT
                         {path_col_q},
                         COUNT(DISTINCT {segment_name_q}) AS distinct_values,
@@ -961,12 +924,12 @@ class MetricBuilder:
                 SELECT
                     {path_col_q},
                     CASE WHEN distinct_values = 1 AND has_target = 1 THEN 1 ELSE 0 END AS belongs
-                FROM path_segment_values
+                FROM path_segment_levels
                 """
                 result = engine.run(query, df=df)
 
             elif mode == "event_share":
-                # Path belongs if segment_value appears in at least N% of events
+                # Path belongs if segment_level appears in at least N% of events
                 threshold = config["threshold"]
                 query = f"""
                 WITH path_counts AS (

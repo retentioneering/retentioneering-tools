@@ -36,7 +36,7 @@ def build_metric_names(
     """
     Builds full metric name(s) from metric type and arguments.
     Returns a list of metric names (always exactly one, except for in_segment
-    with a list segment_value).
+    with a list segment_level).
 
     Examples:
         - metric="length", metric_args=None -> ["length"]
@@ -107,17 +107,17 @@ def build_metric_names(
 
     elif metric == "in_segment":
         segment_name = metric_args.get("segment_name")
-        segment_value = metric_args.get("segment_value")
+        segment_level = metric_args.get("segment_level")
         mode = metric_args.get("mode", "any")
-        if segment_value is None:
+        if segment_level is None:
             raise PreprocessingConfigError(
                 processor_name,
-                "'in_segment' metric with segment_value=None cannot be used in condition "
+                "'in_segment' metric with segment_level=None cannot be used in condition "
                 "(column names are not known until runtime)",
             )
-        if isinstance(segment_value, list):
-            return [f"in_segment_{segment_name}_{v}_{mode}" for v in segment_value]
-        return [f"in_segment_{segment_name}_{segment_value}_{mode}"]
+        if isinstance(segment_level, list):
+            return [f"in_segment_{segment_name}_{v}_{mode}" for v in segment_level]
+        return [f"in_segment_{segment_name}_{segment_level}_{mode}"]
 
     else:
         raise PreprocessingConfigError(processor_name, f"Unknown metric type: {metric}")
@@ -262,7 +262,7 @@ def ast_to_sql(node: Dict[str, Any], processor_name: str) -> str:
 
     # Single metric case. has_event/event_count are strict single-event and
     # has_all_events/has_any_event are single-column, so metric_names always has
-    # exactly one entry for those. in_segment with a list segment_value can still
+    # exactly one entry for those. in_segment with a list segment_level can still
     # yield more than one name here; using only metric_names[0] in that case is a
     # pre-existing, unrelated quirk (out of scope for this refactor).
     metric_name = metric_names[0]

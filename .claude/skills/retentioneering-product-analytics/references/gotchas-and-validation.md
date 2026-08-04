@@ -9,7 +9,7 @@ caught them; validate against each before shipping numbers.
 
 | # | Behavior | Handle it |
 |---|---|---|
-| G1 | `truncate_paths` DROPS paths missing either anchor; there is no keep-whole option | for "truncate converters, keep the rest whole": `filter_paths` split → truncate the converter half → analyze separately (concatenating streams is manual) |
+| G1 | a bare `truncate_paths(start_event="A", end_event="B")` DROPS paths missing either anchor | pass a LIST to add a fallback: `end_event=["B", "path_end"]` cuts at B where there is one and keeps the rest whole. Comparing two groups, go further and bound BOTH by the same budget — `end_event=["B", {"pattern": "A", "offset": 10}]` — or the diff measures window length, not behaviour |
 | G2 | No order-only mode: `timestamp_col` is mandatory | for logs with click order but no clock: synthesize `base_date + order * 1s`; then durations/`time_median` are MEANINGLESS — never report them, only step counts |
 | G3 | `time_between` = first A to first B **globally**, not first-B-after-A | off-by-few on paths where B precedes A; compute strict semantics via `to_dataframe()` when it matters |
 | G4 | `funnel` is closed/ordered only | for presence-based ("did all of these happen, any order") use `has_all_events` via `get_metrics` |

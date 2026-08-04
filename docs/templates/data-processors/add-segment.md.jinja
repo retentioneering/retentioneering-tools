@@ -82,6 +82,48 @@ active both during and after an incident contributes to both groups. That is
 what makes this the right tool for "how did behaviour change during X?" — see
 [Segments](/docs/segments#inside-vs-outside-an-anomalous-period).
 
+### metric_bins — split by a per-path metric
+
+```python
+stream.add_segment("path_length", metric_bins={
+    "metric": {"metric": "length"},
+    "edges": [5, 15],
+    "segment_levels": ["short", "mid", "long"],
+})
+```
+
+Any [path metric](/docs/path-metrics) that yields one value per path can become
+a segment. `edges` are **interior** cut points: two of them always give three
+bins — `< 5`, `5-15`, `>= 15` — so every path lands somewhere. (This is
+deliberately unlike `pandas.cut`, where the list is the outer edges and anything
+outside becomes `NaN`. A segment column has no room for `NaN`: `diff` and
+`in_segment` both need every path to carry a level.)
+
+Swap `edges` for `quantiles` when you don't know the distribution in advance —
+an int asks for that many equal-sized bins, a list gives the cut quantiles:
+
+```python
+stream.add_segment("speed", metric_bins={
+    "metric": {"metric": "duration"},
+    "quantiles": 4,                       # or [0.25, 0.75]
+})
+```
+
+Quantile boundaries are computed over the eventstream *as it is at this call*,
+so `add_segment(...).filter_paths(...)` and `filter_paths(...).add_segment(...)`
+give different boundaries — put the split where you want the population defined.
+
+`segment_levels` is optional; without it the bins are named after themselves
+(`"[5, 15)"`) or `q1..qN`. With it, there is one name per bin, so its length is
+always one more than the number of cut points. A path the metric has no value
+for gets the level `"undefined"`, which is not one of the bins — rename it with
+[rename_segment_levels](/docs/data-processors/rename-segment-levels) if that
+name is in your way.
+
+Binning is what makes a continuous confounder usable as a control: comparing two
+groups *within* buckets of path length says something the pooled comparison
+can't, because path length is itself correlated with most outcomes.
+
 ### func and sql — anything else
 
 `func` receives the raw DataFrame and returns one label per row, in row order;

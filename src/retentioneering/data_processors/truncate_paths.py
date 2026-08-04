@@ -4,62 +4,98 @@ import pandas as pd
 
 from retentioneering import engine
 from retentioneering.data_processors.data_processor import DataProcessor
-from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.eventstream.schema import EventstreamSchema
-from retentioneering.exceptions import PreprocessingConfigError
+from retentioneering.exceptions import InvalidParameterError, PreprocessingConfigError
+from retentioneering.paths import anchors
 
 PROCESSOR_NAME = "truncate_paths"
-
-_PATH_START = EventTypes().PATH_START.name
-_PATH_END = EventTypes().PATH_END.name
 
 
 class TruncatePaths(DataProcessor):
     """
-    Truncate paths by keeping only events between two anchor events (inclusive).
+    Truncate paths to the window between two anchors (inclusive).
 
     Parameters
     ----------
-    start_event : str
-        The event that marks the start of the window. The truncated path will
-        start from this event. The reserved name `"path_start"` anchors the
-        window at the path's actual first event instead of a named one.
-    end_event : str
-        The event that marks the end of the window. The truncated path will end
-        at this event. The reserved name `"path_end"` anchors the window at the
-        path's actual last event instead of a named one.
+    start_event : str or dict or list
+        Where the window opens. An event name, an anchor spec, or a list of
+        either — see `Eventstream.truncate_paths` for the spec's keys and for
+        what a list means.
+    end_event : str or dict or list
+        Where the window closes, same forms as `start_event`. Searched *after*
+        the resolved start, so a path whose end anchor only occurs before its
+        start anchor is dropped rather than yielding an inverted window.
     path_col : str, optional
         Path ID column name. If None, taken from schema.
     event_col : str, optional
         Event column name. If None, taken from schema.
     """
 
-    start_event: str
-    end_event: str
-    path_col: str | None
-    event_col: str | None
-
     def __init__(
         self,
-        start_event: str,
-        end_event: str,
+        start_event,
+        end_event,
         path_col: str | None = None,
         event_col: str | None = None,
     ) -> None:
-        if not start_event:
-            raise PreprocessingConfigError(
-                PROCESSOR_NAME, "Parameter 'start_event' must be a non-empty string."
-            )
-        if not end_event:
-            raise PreprocessingConfigError(
-                PROCESSOR_NAME, "Parameter 'end_event' must be a non-empty string."
-            )
-
-        self.start_event = start_event
-        self.end_event = end_event
+        self.start_specs = self._parse(start_event, "start_event")
+        self.end_specs = self._parse(end_event, "end_event")
         self.path_col = path_col
         self.event_col = event_col
         super().__init__()
+
+    @staticmethod
+    def _parse(value, param: str) -> list[anchors.AnchorSpec]:
+        # The bare-empty-string case keeps its long-standing message; anything
+        # else surfaces as this processor's own config error rather than as the
+        # anchors module's InvalidParameterError.
+        if value == "" or value is None:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, f"Parameter '{param}' must be a non-empty string."
+            )
+        try:
+            return anchors.parse_specs(value, param=param)
+        except InvalidParameterError as exc:
+            raise PreprocessingConfigError(PROCESSOR_NAME, exc.message) from exc
+
+    def _bounds(
+        self,
+        df: pd.DataFrame,
+        schema: EventstreamSchema,
+        specs: list[anchors.AnchorSpec],
+        side: str,
+        path_col: str,
+        not_before: pd.DataFrame | None = None,
+    ) -> pd.DataFrame:
+        """
+        Resolve every spec on one side and keep the narrowest window they imply:
+        the latest of the start bounds, the earliest of the end bounds.
+
+        A spec that does not resolve for a given path simply does not constrain
+        it, which is what makes a boundary sentinel usable as a fallback
+        (``["purchase", "path_end"]`` cuts at the first purchase, or at the end
+        of the path when there is none). A path constrained by no spec at all on
+        this side is dropped.
+        """
+        resolved = [
+            anchors.resolve_bound(
+                df,
+                schema,
+                spec,
+                side=side,
+                path_col=path_col,
+                event_col=self.event_col,
+                not_before=not_before,
+            )
+            for spec in specs
+        ]
+        stacked = pd.concat(resolved, ignore_index=True)
+        if stacked.empty:
+            return stacked.assign(bound=pd.Series(dtype="int64"))
+        agg = "max" if side == "start" else "min"
+        return stacked.groupby(path_col, as_index=False, observed=True)["bound"].agg(
+            agg
+        )
 
     def apply(
         self, df: pd.DataFrame, schema: EventstreamSchema
@@ -70,82 +106,45 @@ class TruncatePaths(DataProcessor):
                 PROCESSOR_NAME,
                 f"path_col '{path_col}' must be one of schema.path_cols: {schema.path_cols}.",
             )
-        event_col = self.event_col or schema.event_col
-        timestamp_col = schema.timestamp_col
 
-        start_literal = "'" + self.start_event.replace("'", "''") + "'"
-        end_literal = "'" + self.end_event.replace("'", "''") + "'"
         path_col_q = engine.quote_ident(path_col)
-        event_col_q = engine.quote_ident(event_col)
-        timestamp_col_q = engine.quote_ident(timestamp_col)
         index_col_q = engine.quote_ident(schema.index)
+        timestamp_col_q = engine.quote_ident(schema.timestamp_col)
         subindex_col_q = engine.quote_ident(schema.subindex)
 
-        # "path_start"/"path_end" are reserved sentinels (see EventTypes): they
-        # anchor the window at the path's actual first/last event rather than
-        # searching for a named event, so no path is ever dropped on that side.
-        start_is_path_start = self.start_event == _PATH_START
-        end_is_path_end = self.end_event == _PATH_END
+        start = self._bounds(df, schema, self.start_specs, "start", path_col)
 
-        start_idx_expr = (
-            f"MIN({index_col_q})"
-            if start_is_path_start
-            else f"MIN(CASE WHEN {event_col_q} = {start_literal} THEN {index_col_q} END)"
+        # The end anchor may not land before the window opened, so a path whose
+        # only end event precedes its start event is dropped rather than
+        # yielding an inverted window. The floor is passed into the matcher
+        # instead of being applied by truncating the frame first: the end
+        # anchor's *pattern* still has the whole path to match against, so a
+        # pattern straddling the window's start (`"catalog->.*->cart"` anchored
+        # on the cart) resolves to the occurrence the window opened on, not to a
+        # later one whose lead-in happens to fall inside the window.
+        end = self._bounds(
+            df, schema, self.end_specs, "end", path_col, not_before=start
         )
 
-        if end_is_path_end:
-            end_idx_expr = f"MAX(df.{index_col_q})"
-            end_filter = "sb.start_idx IS NOT NULL"
+        if start.empty or end.empty:
+            result = df.iloc[0:0].copy()
         else:
-            end_idx_expr = f"MIN(CASE WHEN df.{event_col_q} = {end_literal} THEN df.{index_col_q} END)"
-            end_filter = (
-                f"df.{index_col_q} >= sb.start_idx"
-                if start_is_path_start
-                else f"df.{index_col_q} > sb.start_idx OR (df.{index_col_q} = sb.start_idx AND {start_literal} = {end_literal})"
+            bounds = start.merge(end, on=path_col, suffixes=("_start", "_end"))
+            # path_cols is validated (coarsest-first, strictly nested) at
+            # Eventstream construction time, and path_col is restricted to
+            # schema.path_cols above, so comparing schema.index directly is
+            # correct at any accepted grain (see ADR-0004).
+            result = engine.run(
+                f"""
+                SELECT df.*
+                FROM df
+                JOIN bounds b ON df.{path_col_q} = b.{path_col_q}
+                WHERE df.{index_col_q} BETWEEN b.bound_start AND b.bound_end
+                ORDER BY df.{path_col_q}, df.{timestamp_col_q}, df.{subindex_col_q}
+                """,
+                df=df,
+                bounds=bounds,
             )
-
-        # path_cols is validated (coarsest-first, strictly nested) at Eventstream
-        # construction time, and path_col is restricted to schema.path_cols
-        # above, so comparing schema.index directly is correct at any accepted
-        # grain (see ADR-0004).
-        #
-        # SQL query to find the first occurrence of the start and end events in
-        # each path and keep only events between them (inclusive)
-        query = f"""
-        WITH start_bounds AS (
-            SELECT
-                {path_col_q},
-                {start_idx_expr} AS start_idx
-            FROM df
-            GROUP BY {path_col_q}
-        ),
-        end_bounds AS (
-            SELECT
-                df.{path_col_q},
-                {end_idx_expr} AS end_idx
-            FROM df
-            INNER JOIN start_bounds sb ON df.{path_col_q} = sb.{path_col_q}
-            WHERE {end_filter}
-            GROUP BY df.{path_col_q}
-        ),
-        path_bounds AS (
-            SELECT
-                sb.{path_col_q},
-                sb.start_idx,
-                eb.end_idx
-            FROM start_bounds sb
-            INNER JOIN end_bounds eb ON sb.{path_col_q} = eb.{path_col_q}
-        )
-        SELECT df.*
-        FROM df
-        INNER JOIN path_bounds pb
-            ON df.{path_col_q} = pb.{path_col_q}
-        WHERE
-            df.{index_col_q} BETWEEN pb.start_idx AND pb.end_idx
-        ORDER BY df.{path_col_q}, df.{timestamp_col_q}, df.{subindex_col_q}
-        """
-
-        result = engine.run(query, df=df)
 
         # Restore categorical dtypes and remove unused categories
         for col in schema.event_cols + schema.segment_cols:

@@ -36,4 +36,171 @@ example, everything a user did before their first purchase:
 stream.truncate_paths(start_event="path_start", end_event="purchase")
 ```
 
+## Anchoring on a sequence, not just an event
+
+An anchor can be a **spec** — a dict — rather than a bare event name. Four keys
+build it up, and it is worth seeing all four at once, because each answers a
+different question that a bare name cannot:
+
+| key | question it answers |
+|---|---|
+| `pattern` | *which* occurrences count — only those that fit a `->` sequence |
+| `at` | which event **of** that sequence is the anchor point |
+| `occurrence` | which match, when the sequence happens more than once |
+| `offset` | how far off the matched event the bound actually sits |
+
+### A worked example
+
+Take one path, timestamps 10 minutes apart:
+
+```text
+ 1  home
+ 2  catalog
+ 3  add_to_cart       ← a cart that never converted
+ 4  support_chat
+ 5  catalog
+ 6  add_to_cart
+ 7  shipping_details
+ 8  purchase
+ 9  catalog           ┐
+10  add_to_cart       │ ← the last cart that DID lead to a purchase
+11  shipping_details  │
+12  purchase          │
+13  review_page       ┘  window
+14  catalog
+15  add_to_cart       ← the last cart overall — abandoned
+16  logout
+```
+
+The question: **what surrounded the last cart that actually converted?** Note
+that neither "the last cart" (15, abandoned) nor "the first cart" (3, also
+abandoned) is the one you want.
+
+```python
+CONVERTING_CART = {
+    "pattern": "catalog->.*->add_to_cart->.*->purchase",
+    "at": 1,                 # anchor on add_to_cart, the 2nd event name
+    "occurrence": "last",    # of the last such sequence in the path
+}
+
+stream.truncate_paths(
+    start_event={**CONVERTING_CART, "offset": -1},     # one event before it
+    end_event={**CONVERTING_CART, "offset": "30m"},    # half an hour after it
+)
+```
+
+Result — events 9 to 13:
+
+- u1: `catalog → add_to_cart → shipping_details → purchase → review_page`
+
+Reading the spec left to right:
+
+1. `pattern` finds sequences of catalog → … → add_to_cart → … → purchase.
+   The carts at 3 and 15 are excluded — no purchase follows them within a
+   matching sequence.
+2. `at: 1` makes the anchor the `add_to_cart` of that sequence, not the
+   `purchase` that terminates it. The event names are `["catalog",
+   "add_to_cart", "purchase"]` — `.*` is not a position, so it is not counted
+   and index `1` is the cart.
+3. `occurrence: "last"` picks the sequence at 9–12 over the one at 5–8, landing
+   the anchor on event **10**.
+4. `offset` turns that single point into a window: `-1` opens it one event
+   earlier (9), `"30m"` closes it half an hour later. Event 13 is exactly 30
+   minutes after event 10, and an exact hit is inside the window.
+
+### What each key is holding up
+
+Drop one key at a time from the same call, and the window moves somewhere else
+entirely — which is the quickest way to see what each is for:
+
+| change | window | why |
+|---|---|---|
+| *(all four, as above)* | `catalog → add_to_cart → shipping_details → purchase → review_page` | events 9–13 |
+| `pattern` → bare `"add_to_cart"` | `catalog → add_to_cart → logout` | anchors on the abandoned cart at 15 |
+| no `at` | `shipping_details → purchase → review_page → catalog → add_to_cart` | anchor moves to the `purchase` at 12, the pattern's last event name |
+| no `occurrence` | `catalog → add_to_cart → support_chat → catalog → add_to_cart` | the leftmost match pairs `catalog`@2 with the cart@3 and the purchase@8 — a valid sequence, just not the one you meant |
+| no `offset` | `add_to_cart` | both bounds collapse onto the anchor itself: a one-event window |
+
+### What `occurrence` is choosing between
+
+That fourth row is the subtle one, and it is worth being precise about what the
+alternatives even are.
+
+A pattern usually matches a path in **more than one way**. A match is any
+assignment of positions to the pattern's event names that keeps them in order.
+On the path above, `catalog->.*->add_to_cart->.*->purchase` matches these ways
+(positions of catalog / cart / purchase):
+
+```text
+2, 3, 8      2, 3, 12      2, 6, 8       2, 6, 12      2, 10, 12
+5, 6, 8      5, 6, 12      5, 10, 12     9, 10, 12
+```
+
+`occurrence` chooses between them by a simple rule:
+
+- `"first"` puts **every** event name as early as it can be across all these
+  matches — here `2, 3, 8`, the first row.
+- `"last"` puts every one as late as it can be — `9, 10, 12`, the last row.
+
+Both results are themselves valid matches, and either finds one whenever one
+exists at all. Two things follow that catch people out:
+
+**`"last"` is not "the last `add_to_cart` in the path."** The cart at 15 appears
+in no row above, because no purchase follows it — it is not a candidate. This is
+exactly why the spec finds the converting cart and a bare
+`{"pattern": "add_to_cart", "occurrence": "last"}` does not.
+
+**`"first"` is not "the earliest complete run of the sequence."** It minimises
+each event name independently, so it pairs `catalog`@2 and `add_to_cart`@3 with
+`purchase`@8 — three events that are nowhere near each other. When you mean "the
+cart that led to *this* purchase", say `"last"`, or narrow the pattern.
+
+`"first"` is also exactly the match that
+[Step Matrix](/docs/widgets/step-matrix) centres its blocks on, given the same
+sequence as `path_pattern` — the two share one implementation, so a window cut
+here lines up with the neighbourhoods you looked at there.
+
+### Offsets in detail
+
+An `int` offset counts events; a duration (`"30m"`, or a `pd.Timedelta`) counts
+time and then snaps to the nearest event **inside** the window — the first event
+at or after the mark for a start bound, the last at or before it for an end
+bound. Either kind clamps at the path's own boundary, so "10 events after the
+cart" on a path with 4 events left is those 4, not an empty window and not a
+dropped path.
+
+## Two anchors on one side
+
+A **list** of anchors keeps the narrowest window they imply — the latest start,
+the earliest end. Two quite different things fall out of that one rule.
+
+A fallback, when one group has no end event at all:
+
+```python
+stream.truncate_paths(start_event="path_start", end_event=["purchase", "path_end"])
+```
+
+Converters are cut at their purchase; everyone else keeps their whole path
+instead of being dropped. This is the counterpart to the drop behaviour above:
+use the bare form when you want a clean population of converters, the list form
+when the non-converters *are* half the question.
+
+And a budget, when you are comparing two groups:
+
+```python
+stream.truncate_paths(
+    start_event={"pattern": "catalog->.*->add_to_cart"},
+    end_event=["purchase", {"pattern": "catalog->.*->add_to_cart", "offset": 10}],
+)
+```
+
+Every path is cut at its purchase or 10 events past the cart, whichever comes
+first. This matters more than it looks. If you cut converters at their purchase
+but let non-converters run to the end of their path, the two groups end up with
+windows of very different length, and a
+[diff](/docs/widgets#diff-mode) over them partly measures *how much path each
+group has* rather than how the two behaved. Bounding both sides by the same
+budget removes that: non-converters have no purchase, so the step bound is what
+applies to them, and both windows are at most 10 events long.
+
 {% endblock %}

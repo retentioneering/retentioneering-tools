@@ -109,6 +109,53 @@ Then: `add_transition_graph(label="Funnel", diff=["funnel","add_to_cart","purcha
 Use `add_step_matrix(path_pattern="A->.*->B")` to focus on sessions that pass through
 both anchor events. The `->.*->` matches any intermediate events.
 
+`add_transition_graph(path_pattern="A->.*->B")` takes the same pattern, but only
+*selects* the paths — a graph has no step axis to centre, so nothing is cut. To cut,
+use `truncate_paths`.
+
+
+## comparable_windows
+
+**Scenario:** Why did one group convert and another not, given both got as far as B?
+
+**Trigger:** User asks what distinguishes converters from non-converters, or any
+"group X did the thing, group Y didn't" comparison.
+
+**Why this needs care:** the two groups are censored differently. Converters have
+events after the conversion; non-converters simply run to the end of their path. A
+diff over the raw paths then measures *how much path each group has*, not how they
+behaved. Cut both groups to a window that is defined the same way for each.
+
+**Steps:**
+
+1. Label the groups:
+   ```json
+   {"type": "add_segment", "name": "funnel", "funnel_events": ["A", "B", "C"]}
+   ```
+2. Keep only paths that got as far as the shared milestone, then cut every path to
+   the same window — at C, or the same number of events past B, whichever is sooner.
+   The non-converters have no C, so the step bound is what applies to them:
+   ```json
+   {"type": "filter_paths", "op": "=", "value": true,
+    "metric": "matches_pattern", "metric_args": {"pattern": "A->.*->B"}}
+   ```
+   ```json
+   {"type": "truncate_paths",
+    "start_event": {"pattern": "A->.*->B"},
+    "end_event": ["C", {"pattern": "A->.*->B", "offset": 10}]}
+   ```
+3. `add_transition_graph(diff=["funnel","C","B"])` — `C` is the segment level for
+   paths that completed the funnel, `B` for those that stopped at B.
+
+**Choosing the offset:** it should be close to how long converters actually take
+from B to C, and the conclusion should survive changing it. If flipping it between
+5 and 15 changes the story, the story is about the window, not the users.
+
+**Caveat worth stating in the analysis:** a path whose B falls near the end of the
+logged period is labelled "did not convert" without having had the chance. If the
+data ends soon after many B's, say so rather than reporting the difference as
+behavioural.
+
 
 ## noise_removal
 

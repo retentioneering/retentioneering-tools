@@ -294,7 +294,7 @@ class TestSegmentOverview:
                     "metric": "in_segment",
                     "metric_args": {
                         "segment_name": "channel",
-                        "segment_value": ["mobile", "desktop"],
+                        "segment_level": ["mobile", "desktop"],
                         "mode": "any",
                     },
                     "agg": "mean",
@@ -341,7 +341,7 @@ class TestSegmentOverview:
                     "metric": "in_segment",
                     "metric_args": {
                         "segment_name": "channel",
-                        "segment_value": "mobile",
+                        "segment_level": "mobile",
                         "mode": "all",
                     },
                     "agg": "mean",

@@ -356,33 +356,7 @@ with_session_id AS (
 
 
 def parse_timeout(value) -> float:
-    """
-    Convert a public-API timeout value into seconds.
+    """Convert a public-API `timeout` into seconds (see `utils.durations`)."""
+    from retentioneering.utils.durations import parse_duration
 
-    Accepts a pandas-parseable duration string with an explicit unit
-    (e.g. "30m", "1h", "1800s") or a pandas.Timedelta. Bare numbers are
-    rejected to avoid unit ambiguity.
-    """
-    import pandas as pd
-
-    if isinstance(value, pd.Timedelta):
-        return float(value.total_seconds())
-    if isinstance(value, str):
-        # pd.Timedelta("1800") silently means 1800 *nanoseconds* — reject
-        # unit-less strings outright instead of inheriting that footgun.
-        if not any(c.isalpha() for c in value):
-            raise ValueError(
-                f"timeout {value!r} has no unit. "
-                "Use a duration string with an explicit unit, e.g. '30m', '1h', '1800s'."
-            )
-        try:
-            return float(pd.Timedelta(value).total_seconds())
-        except ValueError as exc:
-            raise ValueError(
-                f"invalid timeout {value!r}: {exc}. "
-                "Use a duration string with an explicit unit, e.g. '30m', '1h', '1800s'."
-            ) from exc
-    raise ValueError(
-        "timeout must be a duration string with an explicit unit "
-        f"(e.g. '30m', '1h', '1800s') or a pandas.Timedelta, got {type(value).__name__}"
-    )
+    return parse_duration(value, param="timeout")

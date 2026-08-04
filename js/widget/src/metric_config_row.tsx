@@ -238,8 +238,8 @@ export function validateMetricCfg(cfg: any): string | null {
   }
   if (m === "in_segment") {
     if (!a.segment_name) return "Select segment column";
-    const sv = a.segment_value;
-    if (!sv || (Array.isArray(sv) ? sv.length === 0 : !sv)) return "Select at least one segment value";
+    const sv = a.segment_level;
+    if (!sv || (Array.isArray(sv) ? sv.length === 0 : !sv)) return "Select at least one segment level";
     if (a.mode === "event_share") {
       const t = parseFloat(a.threshold);
       if (isNaN(t) || t < 0 || t > 1) return "Threshold must be between 0 and 1";
@@ -361,20 +361,20 @@ export function MetricRow({ cfg, events, segmentCols, segmentLevels, showErrors,
         // value) isn't understood by the in_segment metric's matching, so
         // exclude it here rather than offer a value that silently no-ops.
         const segValues  = (segmentLevels[segName] ?? []).map(String).filter(v => v !== "<MISSING>");
-        const curVal     = cfg.metric_args?.segment_value;
+        const curVal     = cfg.metric_args?.segment_level;
         const selectedVals: string[] = Array.isArray(curVal) ? curVal.map(String) : (curVal ? [String(curVal)] : []);
         const mode       = cfg.metric_args?.mode ?? "any";
         return (
           <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "nowrap" }}>
-            <select value={segName} onChange={e => onChange({ ...cfg, metric_args: { ...cfg.metric_args, segment_name: e.target.value, segment_value: undefined } })} style={{ ...sel, flex: 1, minWidth: 0 }}>
+            <select value={segName} onChange={e => onChange({ ...cfg, metric_args: { ...cfg.metric_args, segment_name: e.target.value, segment_level: undefined } })} style={{ ...sel, flex: 1, minWidth: 0 }}>
               <option value="">Segment column…</option>
               {segmentCols.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
             {segValues.length > 0 ? (
-              <MultiSelect selected={selectedVals} options={segValues} onChange={vals => onChange({ ...cfg, metric_args: { ...cfg.metric_args, segment_value: vals } })} placeholder="Segment value…" />
+              <MultiSelect selected={selectedVals} options={segValues} onChange={vals => onChange({ ...cfg, metric_args: { ...cfg.metric_args, segment_level: vals } })} placeholder="Segment level…" />
             ) : (
-              <input value={selectedVals.join(", ")} onChange={e => { const vals = e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean); onChange({ ...cfg, metric_args: { ...cfg.metric_args, segment_value: vals } }); }}
-                placeholder="Segment value…"
+              <input value={selectedVals.join(", ")} onChange={e => { const vals = e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean); onChange({ ...cfg, metric_args: { ...cfg.metric_args, segment_level: vals } }); }}
+                placeholder="Segment level…"
                 style={{ flex: 1, minWidth: 0, boxSizing: "border-box", border: "1px solid #d1d5db", borderRadius: 5, padding: "4px 7px", fontSize: 11, outline: "none" }} />
             )}
             <select value={mode} onChange={e => onChange({ ...cfg, metric_args: { ...cfg.metric_args, mode: e.target.value } })} style={{ ...sel, flex: "0 0 100px" }}>

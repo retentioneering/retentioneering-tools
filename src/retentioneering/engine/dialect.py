@@ -15,7 +15,21 @@ aggregation, regex matching) as plain string-returning functions.
 
 from __future__ import annotations
 
-__all__ = ["epoch", "path_agg", "path_agg_ordered", "regexp_match"]
+__all__ = [
+    "epoch",
+    "interval_seconds",
+    "path_agg",
+    "path_agg_ordered",
+    "regexp_match",
+]
+
+
+def interval_seconds(seconds: float) -> str:
+    """
+    A DuckDB INTERVAL of `seconds` seconds, for timestamp arithmetic
+    (``ts + interval_seconds(1800)``). The inverse of :func:`epoch`.
+    """
+    return f"to_seconds({float(seconds)})"
 
 
 def epoch(expr: str) -> str:

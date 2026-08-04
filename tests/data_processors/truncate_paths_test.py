@@ -341,3 +341,357 @@ def test_truncate_paths_custom_columns():
 
     events = df["custom_event"].tolist()
     assert events == ["B", "C", "A"]
+
+
+# ── anchor specs, offsets and lists ──────────────────────────────────────────
+
+
+def _stream(paths, start="2023-01-01 10:00", step="1h"):
+    """Build an eventstream from {path_id: [events]}, one event per `step`."""
+    rows = []
+    for pid, events in paths.items():
+        base = pd.Timestamp(start)
+        for i, event in enumerate(events):
+            rows.append(
+                {
+                    "user_id": pid,
+                    "event": event,
+                    "timestamp": base + i * pd.Timedelta(step),
+                }
+            )
+    return Eventstream(pd.DataFrame(rows))
+
+
+def _events(stream, pid):
+    df = stream.df
+    return df[df["user_id"] == pid]["event"].tolist()
+
+
+class TestAnchorSpecs:
+    def test__spec_dict_is_equivalent_to_bare_event_name(self, simple_eventstream):
+        by_name = simple_eventstream.truncate_paths(start_event="B", end_event="D")
+        by_spec = simple_eventstream.truncate_paths(
+            start_event={"pattern": "B"}, end_event={"pattern": "D"}
+        )
+        pd.testing.assert_frame_equal(by_name.df, by_spec.df)
+
+    def test__pattern_anchor_uses_the_event_completing_the_pattern(self):
+        """The anchor is the B that completes 'A->.*->B', not just any B — the
+        leading B here must be left outside the window."""
+        stream = _stream({1: ["B", "A", "X", "B", "C", "D"]})
+        result = stream.truncate_paths(
+            start_event={"pattern": "A->.*->B"}, end_event="D"
+        )
+        assert _events(result, 1) == ["B", "C", "D"]
+
+    def test__at_selects_which_token_anchors(self):
+        stream = _stream({1: ["A", "X", "B", "C"]})
+        at_start = stream.truncate_paths(
+            start_event={"pattern": "A->.*->B", "at": "start"}, end_event="C"
+        )
+        at_end = stream.truncate_paths(
+            start_event={"pattern": "A->.*->B", "at": "end"}, end_event="C"
+        )
+        assert _events(at_start, 1) == ["A", "X", "B", "C"]
+        assert _events(at_end, 1) == ["B", "C"]
+
+    def test__at_accepts_integer_index_over_event_names(self):
+        """'.*' is not a position, so at=1 is the second *event name*."""
+        stream = _stream({1: ["A", "B", "X", "C", "D"]})
+        result = stream.truncate_paths(
+            start_event={"pattern": "A->B->.*->C", "at": 1}, end_event="D"
+        )
+        assert _events(result, 1) == ["B", "X", "C", "D"]
+
+    def test__occurrence_last_anchors_on_the_final_match(self):
+        stream = _stream({1: ["A", "B", "A", "B", "C"]})
+        first = stream.truncate_paths(start_event={"pattern": "A"}, end_event="C")
+        last = stream.truncate_paths(
+            start_event={"pattern": "A", "occurrence": "last"}, end_event="C"
+        )
+        assert _events(first, 1) == ["A", "B", "A", "B", "C"]
+        assert _events(last, 1) == ["A", "B", "C"]
+
+    def test__unknown_spec_key_is_rejected(self, simple_eventstream):
+        with pytest.raises(PreprocessingConfigError):
+            simple_eventstream.truncate_paths(
+                start_event={"pattern": "B", "at_event": "end"}, end_event="D"
+            )
+
+    def test__spec_without_pattern_is_rejected(self, simple_eventstream):
+        with pytest.raises(PreprocessingConfigError):
+            simple_eventstream.truncate_paths(
+                start_event={"occurrence": "last"}, end_event="D"
+            )
+
+    def test__invalid_occurrence_is_rejected(self, simple_eventstream):
+        with pytest.raises(PreprocessingConfigError):
+            simple_eventstream.truncate_paths(
+                start_event={"pattern": "B", "occurrence": "third"}, end_event="D"
+            )
+
+
+class TestAnchorOffsets:
+    def test__step_offset_moves_the_bound_forward(self):
+        stream = _stream({1: ["A", "B", "C", "D", "E"]})
+        result = stream.truncate_paths(
+            start_event="A", end_event={"pattern": "A", "offset": 2}
+        )
+        assert _events(result, 1) == ["A", "B", "C"]
+
+    def test__step_offset_clamps_at_the_path_end(self):
+        """A window wider than what is left of the path is the rest of the path,
+        not an empty window and not a dropped path."""
+        stream = _stream({1: ["A", "B", "C"]})
+        result = stream.truncate_paths(
+            start_event="A", end_event={"pattern": "A", "offset": 99}
+        )
+        assert _events(result, 1) == ["A", "B", "C"]
+
+    def test__negative_step_offset_moves_the_start_backwards(self):
+        stream = _stream({1: ["A", "B", "C", "D"]})
+        result = stream.truncate_paths(
+            start_event={"pattern": "C", "offset": -2}, end_event="D"
+        )
+        assert _events(result, 1) == ["A", "B", "C", "D"]
+
+    def test__time_offset_snaps_to_the_last_event_inside_the_window(self):
+        stream = _stream({1: ["A", "B", "C", "D"]}, step="10m")
+        result = stream.truncate_paths(
+            start_event="A", end_event={"pattern": "A", "offset": "25m"}
+        )
+        assert _events(result, 1) == ["A", "B", "C"]
+
+    def test__time_offset_includes_an_exact_timestamp_hit(self):
+        stream = _stream({1: ["A", "B", "C", "D"]}, step="10m")
+        result = stream.truncate_paths(
+            start_event="A", end_event={"pattern": "A", "offset": "20m"}
+        )
+        assert _events(result, 1) == ["A", "B", "C"]
+
+    def test__time_offset_requires_an_explicit_unit(self, simple_eventstream):
+        with pytest.raises(ValueError, match="unit"):
+            simple_eventstream.truncate_paths(
+                start_event="A", end_event={"pattern": "A", "offset": "1800"}
+            )
+
+    def test__time_offset_accepts_timedelta(self):
+        stream = _stream({1: ["A", "B", "C", "D"]}, step="10m")
+        result = stream.truncate_paths(
+            start_event="A",
+            end_event={"pattern": "A", "offset": pd.Timedelta("25m")},
+        )
+        assert _events(result, 1) == ["A", "B", "C"]
+
+
+class TestAnchorLists:
+    def test__list_keeps_the_narrowest_window(self):
+        """Both bounds resolve; the earlier end wins."""
+        stream = _stream({1: ["A", "B", "C", "D", "E"]})
+        result = stream.truncate_paths(
+            start_event="A",
+            end_event=["D", {"pattern": "A", "offset": 2}],
+        )
+        assert _events(result, 1) == ["A", "B", "C"]
+
+    def test__sentinel_in_a_list_acts_as_a_fallback(self):
+        """The converted path is cut at its purchase; the one that never
+        purchased is kept whole instead of being dropped."""
+        stream = _stream(
+            {
+                1: ["catalog", "cart", "purchase", "review"],
+                2: ["catalog", "cart", "support"],
+            }
+        )
+        result = stream.truncate_paths(
+            start_event="path_start", end_event=["purchase", "path_end"]
+        )
+        assert _events(result, 1) == ["catalog", "cart", "purchase"]
+        assert _events(result, 2) == ["catalog", "cart", "support"]
+
+    def test__without_the_sentinel_the_unmatched_path_is_dropped(self):
+        """The same call without the fallback keeps the old drop behaviour —
+        this is the asymmetry the fallback exists to fix."""
+        stream = _stream(
+            {
+                1: ["catalog", "cart", "purchase", "review"],
+                2: ["catalog", "cart", "support"],
+            }
+        )
+        result = stream.truncate_paths(start_event="path_start", end_event="purchase")
+        assert _events(result, 1) == ["catalog", "cart", "purchase"]
+        assert _events(result, 2) == []
+
+    def test__list_bounds_symmetrise_two_groups(self):
+        """The motivating case: cut converters at their purchase and everyone
+        else at the same number of steps, so the two windows are comparable."""
+        stream = _stream(
+            {
+                1: ["cart", "a", "purchase", "x", "y", "z"],
+                2: ["cart", "a", "b", "c", "d", "e"],
+            }
+        )
+        result = stream.truncate_paths(
+            start_event="cart",
+            end_event=["purchase", {"pattern": "cart", "offset": 3}],
+        )
+        assert _events(result, 1) == ["cart", "a", "purchase"]
+        assert _events(result, 2) == ["cart", "a", "b", "c"]
+
+    def test__start_list_keeps_the_latest_bound(self):
+        stream = _stream({1: ["A", "B", "C", "D"]})
+        result = stream.truncate_paths(start_event=["A", "C"], end_event="D")
+        assert _events(result, 1) == ["C", "D"]
+
+    def test__path_dropped_when_no_spec_on_a_side_resolves(self):
+        stream = _stream({1: ["A", "B"], 2: ["X", "Y"]})
+        result = stream.truncate_paths(start_event=["A", "Q"], end_event="B")
+        assert _events(result, 1) == ["A", "B"]
+        assert _events(result, 2) == []
+
+    def test__empty_list_is_rejected(self, simple_eventstream):
+        with pytest.raises(PreprocessingConfigError):
+            simple_eventstream.truncate_paths(start_event=[], end_event="D")
+
+
+class TestEndAnchorOrdering:
+    """The end anchor may not land before the window opened — but its pattern is
+    still matched against the whole path, not against what is left after the
+    start. Getting this wrong makes a pattern that straddles the window's start
+    re-match at a later occurrence whose lead-in happens to fall inside."""
+
+    def test__pattern_straddling_the_start_resolves_to_the_same_occurrence(self):
+        stream = _stream(
+            {1: ["catalog", "cart", "x", "y", "catalog", "cart", "z", "w", "v"]}
+        )
+        result = stream.truncate_paths(
+            start_event={"pattern": "catalog->.*->cart"},
+            end_event=[{"pattern": "catalog->.*->cart", "offset": 3}],
+        )
+        # The window opens at the first cart; +3 events is up to the second
+        # catalog. Matching the end pattern against the truncated remainder
+        # would instead find the *second* catalog/cart pair and run to "v".
+        assert _events(result, 1) == ["cart", "x", "y", "catalog"]
+
+    def test__end_before_start_drops_the_path(self):
+        stream = _stream({1: ["D", "C", "B", "A", "E"]})
+        result = stream.truncate_paths(start_event="B", end_event="D")
+        assert _events(result, 1) == []
+
+    def test__end_takes_the_first_occurrence_after_the_start(self):
+        stream = _stream({1: ["D", "B", "C", "D", "E"]})
+        result = stream.truncate_paths(start_event="B", end_event="D")
+        assert _events(result, 1) == ["B", "C", "D"]
+
+    def test__windows_of_two_groups_are_bounded_by_the_same_budget(self):
+        """The motivating case end to end: a converter is cut at the purchase,
+        a non-converter at the same number of steps past the shared anchor, so
+        neither window can be longer than the budget."""
+        stream = _stream(
+            {
+                1: ["catalog", "cart", "a", "purchase", "x", "y", "z"],
+                2: ["catalog", "cart", "a", "b", "c", "d", "e", "f", "g"],
+            }
+        )
+        result = stream.truncate_paths(
+            start_event={"pattern": "catalog->.*->cart"},
+            end_event=["purchase", {"pattern": "catalog->.*->cart", "offset": 3}],
+        )
+        assert _events(result, 1) == ["cart", "a", "purchase"]
+        assert _events(result, 2) == ["cart", "a", "b", "c"]
+        assert len(_events(result, 1)) <= 4 and len(_events(result, 2)) <= 4
+
+
+class TestDocumentedWorkedExample:
+    """Pins the worked example in docs/templates/data-processors/truncate-paths.md.jinja.
+
+    The doc walks through one path and shows what the window becomes when each
+    of the spec's four keys is dropped in turn. If any of those windows move,
+    the prose is wrong and this test says so.
+    """
+
+    #: The doc's path, numbered 1..16, timestamps 10 minutes apart.
+    EVENTS = [
+        "home",
+        "catalog",
+        "add_to_cart",
+        "support_chat",
+        "catalog",
+        "add_to_cart",
+        "shipping_details",
+        "purchase",
+        "catalog",
+        "add_to_cart",
+        "shipping_details",
+        "purchase",
+        "review_page",
+        "catalog",
+        "add_to_cart",
+        "logout",
+    ]
+    PATTERN = "catalog->.*->add_to_cart->.*->purchase"
+
+    @pytest.fixture()
+    def stream(self):
+        return _stream({"u1": self.EVENTS}, step="10m")
+
+    def test__all_four_keys(self, stream):
+        converting_cart = {"pattern": self.PATTERN, "at": 1, "occurrence": "last"}
+        result = stream.truncate_paths(
+            start_event={**converting_cart, "offset": -1},
+            end_event={**converting_cart, "offset": "30m"},
+        )
+        # Events 9-13: the last cart that actually led to a purchase, one event
+        # of lead-in, and the half hour that followed it.
+        assert _events(result, "u1") == [
+            "catalog",
+            "add_to_cart",
+            "shipping_details",
+            "purchase",
+            "review_page",
+        ]
+
+    def test__without_pattern_it_anchors_on_the_abandoned_cart(self, stream):
+        anchor = {"pattern": "add_to_cart", "occurrence": "last"}
+        result = stream.truncate_paths(
+            start_event={**anchor, "offset": -1},
+            end_event={**anchor, "offset": "30m"},
+        )
+        assert _events(result, "u1") == ["catalog", "add_to_cart", "logout"]
+
+    def test__without_at_it_anchors_on_the_purchase(self, stream):
+        anchor = {"pattern": self.PATTERN, "occurrence": "last"}
+        result = stream.truncate_paths(
+            start_event={**anchor, "offset": -1},
+            end_event={**anchor, "offset": "30m"},
+        )
+        assert _events(result, "u1") == [
+            "shipping_details",
+            "purchase",
+            "review_page",
+            "catalog",
+            "add_to_cart",
+        ]
+
+    def test__without_occurrence_the_leftmost_match_spans_a_different_sequence(
+        self, stream
+    ):
+        """The leftmost match pairs catalog@2 with the cart@3 and the
+        purchase@8 — a valid sequence, just not the intended one."""
+        anchor = {"pattern": self.PATTERN, "at": 1}
+        result = stream.truncate_paths(
+            start_event={**anchor, "offset": -1},
+            end_event={**anchor, "offset": "30m"},
+        )
+        assert _events(result, "u1") == [
+            "catalog",
+            "add_to_cart",
+            "support_chat",
+            "catalog",
+            "add_to_cart",
+        ]
+
+    def test__without_offset_the_window_collapses_onto_the_anchor(self, stream):
+        anchor = {"pattern": self.PATTERN, "at": 1, "occurrence": "last"}
+        result = stream.truncate_paths(start_event=anchor, end_event=anchor)
+        assert _events(result, "u1") == ["add_to_cart"]

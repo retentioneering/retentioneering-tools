@@ -5,7 +5,7 @@ import pandas as pd
 
 from retentioneering import engine
 from retentioneering.eventstream.event_type import EventTypes
-from retentioneering.exceptions import InvalidParameterError, EmptyEventstreamError
+from retentioneering.exceptions import EmptyEventstreamError, InvalidParameterError
 from .types import T_Diff, T_TransitionMatrixValues
 
 if TYPE_CHECKING:
@@ -18,16 +18,33 @@ TRANSITION_MATRIX_VALUES_OPTIONS = get_args(T_TransitionMatrixValues)
 class TransitionMatrix:
     eventstream: "Eventstream"
 
+    def _restricted(self, path_pattern: str, path_col: str) -> "TransitionMatrix":
+        """
+        Narrow to the paths matching `path_pattern`, then compute as usual.
+
+        A transition graph has no step axis, so unlike Step Matrix there is
+        nothing to centre on: the pattern selects *which paths* are drawn, not
+        which part of them. Use `truncate_paths` to cut the paths themselves.
+        """
+        return TransitionMatrix(
+            self.eventstream._restrict_to_pattern(path_pattern, path_col)
+        )
+
     def fit(
         self,
         values: T_TransitionMatrixValues,
         diff: T_Diff = None,
         path_col: str | None = None,
+        path_pattern: str | None = None,
     ) -> pd.DataFrame:
         path_col = path_col or self.eventstream.schema.path_col
         if path_col not in self.eventstream.schema.path_cols:
             raise InvalidParameterError(
                 "path_col", path_col, self.eventstream.schema.path_cols
+            )
+        if path_pattern is not None:
+            return self._restricted(path_pattern, path_col).fit(
+                values, diff, path_col=path_col
             )
         event_col = self.eventstream.schema.event_col
         timestamp_col = self.eventstream.schema.timestamp_col

@@ -507,7 +507,7 @@ class TestFilterPathsAST:
             "metric": "in_segment",
             "metric_args": {
                 "segment_name": "country",
-                "segment_value": "US",
+                "segment_level": "US",
                 "mode": "any",
             },
             "value": 1,
@@ -525,7 +525,7 @@ class TestFilterPathsAST:
             "metric": "in_segment",
             "metric_args": {
                 "segment_name": "country",
-                "segment_value": "UK",
+                "segment_level": "UK",
                 "mode": "all",
             },
             "value": 1,
@@ -543,7 +543,7 @@ class TestFilterPathsAST:
             "metric": "in_segment",
             "metric_args": {
                 "segment_name": "country",
-                "segment_value": "US",
+                "segment_level": "US",
                 "mode": "event_share",
                 "threshold": 0.5,
             },
@@ -565,7 +565,7 @@ class TestFilterPathsAST:
                     "metric": "in_segment",
                     "metric_args": {
                         "segment_name": "country",
-                        "segment_value": "US",
+                        "segment_level": "US",
                         "mode": "any",
                     },
                     "value": 1,
@@ -611,7 +611,7 @@ class TestFilterPathsAST:
             "metric": "in_segment",
             "metric_args": {
                 "segment_name": "country",
-                "segment_value": None,
+                "segment_level": None,
                 "mode": "any",
             },
             "value": 1,

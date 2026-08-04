@@ -1,5 +1,3 @@
-import re
-import warnings
 from dataclasses import dataclass
 from functools import reduce
 from typing import TYPE_CHECKING, Tuple
@@ -7,7 +5,7 @@ from typing import TYPE_CHECKING, Tuple
 import pandas as pd
 
 from retentioneering import engine
-from retentioneering.engine import dialect
+from retentioneering.paths import anchors
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.exceptions import EmptyEventstreamError, InvalidParameterError
 from .types import T_Diff
@@ -67,48 +65,19 @@ class StepMatrix:
 
     @staticmethod
     def _normalize_path_pattern(path_pattern: str) -> str:
-        """Strip a redundant leading ".*->" and/or trailing "->.*".
-
-        A pattern already matches anywhere in the path by default (a bare
-        "X" and ".*->X->.*" select the same paths), so boundary wildcards
-        add nothing -- except a trailing ".*" also throws off
-        `_find_center_position`'s anchor bookkeeping, shifting the anchor's
-        own column off of 0. Trimming both forms up front keeps every
-        pattern on the bare-literal path, which centers correctly.
-        """
-        normalized = path_pattern
-        stripped_leading = normalized.startswith(".*->")
-        if stripped_leading:
-            normalized = normalized[len(".*->") :]
-        stripped_trailing = normalized.endswith("->.*")
-        if stripped_trailing:
-            normalized = normalized[: -len("->.*")]
-
-        if (stripped_leading or stripped_trailing) and normalized:
-            warnings.warn(
-                f"path_pattern {path_pattern!r} has a redundant leading/trailing "
-                f"'.*' -- a pattern already matches anywhere in the path by "
-                f"default. Using {normalized!r} instead.",
-                UserWarning,
-                stacklevel=3,
-            )
-            return normalized
-        return path_pattern
+        """Strip a redundant leading ".*->" and/or trailing "->.*" (see `paths.anchors`)."""
+        return anchors.normalize_pattern(
+            path_pattern, stacklevel=4, param="path_pattern"
+        )
 
     @staticmethod
     def _validate_path_pattern_tokens(path_pattern: str, available_events: set) -> None:
         """Guards against typos in path_pattern: a mistyped event name would
         otherwise silently produce zero matches (surfaced only as the generic
         PatternNoMatchError, indistinguishable from a legitimately-empty result)."""
-        path_start = EventTypes().PATH_START.name
-        path_end = EventTypes().PATH_END.name
-        for tok in path_pattern.split("->"):
-            if tok in ("", ".*", path_start, path_end):
-                continue
-            if tok not in available_events:
-                raise InvalidParameterError(
-                    "path_pattern", tok, sorted(available_events)
-                )
+        anchors.validate_pattern_tokens(
+            path_pattern, available_events, param="path_pattern"
+        )
 
     @staticmethod
     def _align_matrices(sms1, sms2):
@@ -186,81 +155,17 @@ class StepMatrix:
         sm /= total_paths
         return sm
 
-    # ── pattern matrix (copied from be-app) ──────────────────────────────────
-
-    @staticmethod
-    def _find_center_position(sequence, pattern):
-        seq = sequence.split("->")
-        if ".*" not in pattern:
-            pat = pattern.split("->")
-            pat_len = len(pat)
-            for i in range(len(seq) - pat_len + 1):
-                if seq[i : i + pat_len] == pat:
-                    return i + 1
-            return None
-        else:
-            # Split by every occurrence of ".*" wildcard (including leading/trailing).
-            # e.g. ".*->path_end"           → ["", "path_end"]
-            #      "path_start->.*"          → ["path_start", ""]
-            #      ".*->basket->.*->path_end" → ["", "basket", "path_end"]
-            pattern_parts = re.split(r"(?:^|->)\.\*(?:->|$)", pattern)
-
-            def find_non_greedy_match(seq, parts):
-                idx = 0
-                matched_indices = []
-                for part in parts:
-                    sub_pat = part.split("->") if part else []
-                    found = False
-                    for i in range(idx, len(seq) - len(sub_pat) + 1):
-                        if seq[i : i + len(sub_pat)] == sub_pat:
-                            matched_indices.append(i)
-                            idx = i + len(sub_pat)
-                            found = True
-                            break
-                    if not found:
-                        return None
-                return matched_indices
-
-            result = find_non_greedy_match(seq, pattern_parts)
-            if result is not None:
-                last_index = result[-1]
-                return last_index + 1
-            return None
+    # ── pattern matrix ───────────────────────────────────────────────────────
 
     def _filter_paths_by_pattern(
         self, path_pattern: str, path_col: str
     ) -> "Eventstream":
         """Filter eventstream to paths matching the given path_pattern."""
-        path_start = EventTypes().PATH_START.name
-        path_end = EventTypes().PATH_END.name
-        event_col = self.eventstream.schema.event_col
-        index_col = self.eventstream.schema.index
-        subindex_col = self.eventstream.schema.subindex
-        df = self.eventstream.df
-        path_col_q = engine.quote_ident(path_col)
-        event_col_q = engine.quote_ident(event_col)
-        index_col_q = engine.quote_ident(index_col)
-        subindex_col_q = engine.quote_ident(subindex_col)
-
-        # Build path sequences prefixed/suffixed with path_start/path_end so
-        # that patterns including these markers match correctly. path_cols is
-        # validated (coarsest-first, strictly nested) at Eventstream
-        # construction time, and fit() restricts path_col to schema.path_cols,
-        # so ordering by index_col is correct at any accepted grain (see
-        # ADR-0004).
-        query = f"""
-            SELECT {path_col_q}, {dialect.path_agg_ordered(event_col_q)} AS path
-            FROM (SELECT * FROM df ORDER BY {index_col_q}, {subindex_col_q})
-            GROUP BY {path_col_q}
-        """
-        paths = engine.run(query, df=df).set_index(path_col)["path"]
-        paths_with_se = path_start + "->" + paths + "->" + path_end
-
-        matching_ids = paths_with_se[
-            paths_with_se.apply(
-                lambda p: self._find_center_position(p, path_pattern) is not None
-            )
-        ].index.tolist()
+        stream = self.eventstream.add_start_end_events(path_col=path_col)
+        match = anchors.resolve_anchors(
+            stream.df, stream.schema, path_pattern, path_col=path_col
+        )
+        matching_ids = match.paths().tolist()
 
         if not matching_ids:
             raise PatternNoMatchError(path_pattern)
@@ -299,7 +204,6 @@ class StepMatrix:
             sms = []
             df = stream.df
             path_col_q = engine.quote_ident(path_col)
-            event_col_q = engine.quote_ident(event_col)
             index_col_q = engine.quote_ident(index_col)
             subindex_col_q = engine.quote_ident(subindex_col)
             query = f"""
@@ -309,13 +213,6 @@ class StepMatrix:
                 FROM df
             """
             df = engine.run(query, df=df)
-
-            query = f"""
-                SELECT {path_col_q}, {dialect.path_agg_ordered(event_col_q)} AS path
-                FROM (SELECT * FROM df ORDER BY {path_col_q}, {index_col_q}, {subindex_col_q})
-                GROUP BY {path_col_q}
-            """
-            paths = engine.run(query, df=df).set_index(path_col)["path"]
 
             current_pattern = []
             for i, pattern_part in enumerate(path_pattern.split("->.*->")):
@@ -329,12 +226,20 @@ class StepMatrix:
                     groupby_col = "step"
                     df_centered = df.copy()
                 else:
+                    # The block's centre is where the final part *begins* — the
+                    # part is then laid out to the right of it (see steps_right
+                    # below), so at_part(-1), not the pattern's last token.
                     centers = (
-                        paths.map(
-                            lambda x: self._find_center_position(x, current_pattern_str)
+                        anchors.resolve_anchors(
+                            stream.df,
+                            stream.schema,
+                            current_pattern_str,
+                            path_col=path_col,
                         )
-                        .loc[lambda s: s.notnull()]
-                        .to_frame("center")
+                        .at_part(-1)
+                        .set_index(path_col)["step"]
+                        .rename("center")
+                        .to_frame()
                     )
 
                     df_centered = (

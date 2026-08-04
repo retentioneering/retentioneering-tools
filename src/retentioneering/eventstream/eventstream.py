@@ -804,13 +804,14 @@ class Eventstream:
         sql=None,
         funnel_events=None,
         time_range=None,
+        metric_bins=None,
         path_col=None,
     ) -> "Eventstream":
         """
         Add a new categorical segment column to the eventstream.
 
-        Exactly one of `rules`, `func`, `sql`, `funnel_events`, or `time_range`
-        must be provided — unless `name` is already listed in
+        Exactly one of `rules`, `func`, `sql`, `funnel_events`, `time_range`, or
+        `metric_bins` must be provided — unless `name` is already listed in
         `schema.custom_cols`, in which case passing none of them promotes that
         existing column to a segment in place, without recomputing its values.
 
@@ -853,9 +854,33 @@ class Eventstream:
             an inclusive interval over `schema.timestamp_col`. Each event is
             labeled `inside` if its timestamp falls within `[start, end]`,
             otherwise `outside`.
+        metric_bins : dict, optional
+            Split paths into bins by a per-path metric. Keys:
+
+            - `metric` (required) — a metric config, `{"metric": ..., "metric_args": ...}`,
+              as used by `filter_paths` and `add_clusters`. It must produce exactly
+              one value per path. See the [Path Metrics](/docs/path-metrics) page.
+            - `edges` — cut points in the metric's own units. **Interior** points:
+              N of them always give N+1 bins, `[5, 15]` meaning `< 5`, `5-15`, and
+              `>= 15`. (This differs from `pd.cut`, where the list is the outer
+              edges; here nothing can fall outside the split, because a segment
+              has no room for `NaN`.)
+            - `quantiles` — the same cut points expressed as quantiles: a list
+              strictly between 0 and 1, or an int asking for that many equal-sized
+              bins (`4` for quartiles). Computed over the eventstream as it is at
+              this call, so a `filter_paths` before or after this one changes them.
+            - `segment_levels` — one name per bin, so `len(segment_levels)` is
+              always the number of bins. Omit for auto names: `"[5, 15)"` for
+              `edges`, `q1`..`qN` for `quantiles`.
+
+            Exactly one of `edges` / `quantiles` is required. Paths the metric has
+            no value for (`time_between` is the one that can be undefined — for a
+            path missing either of its two events) get the level `"undefined"`,
+            which is not one of the bins and so is not counted against
+            `segment_levels`; rename it with `rename_segment_levels`.
         path_col : str, optional
-            Path ID column override for `funnel_events` mode; defaults to
-            `schema.path_col`.
+            Path ID column override for `funnel_events` and `metric_bins` modes;
+            defaults to `schema.path_col`.
 
         Examples
         --------
@@ -872,6 +897,19 @@ class Eventstream:
             # "inside" / "outside" a time window
             stream.add_segment("incident", time_range=("2024-03-10", "2024-03-17"))
 
+            # bin paths by a metric — named bins with explicit cut points ...
+            stream.add_segment("path_length", metric_bins={
+                "metric": {"metric": "length"},
+                "edges": [5, 15],
+                "segment_levels": ["short", "mid", "long"],
+            })
+
+            # ... or quartiles, with q1..q4 named for you
+            stream.add_segment("speed", metric_bins={
+                "metric": {"metric": "duration"},
+                "quantiles": 4,
+            })
+
             # a DuckDB SELECT returning one label per row
             stream.add_segment("device", sql="SELECT CASE WHEN platform = 'mobile' THEN 'mobile' ELSE 'web' END FROM eventstream")
 
@@ -887,7 +925,9 @@ class Eventstream:
             sql=sql,
             funnel_events=funnel_events,
             time_range=time_range,
+            metric_bins=metric_bins,
             path_col=path_col,
+            eventstream=self,
         ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
@@ -1266,25 +1306,56 @@ class Eventstream:
     @_tracked("dp_truncate_paths")
     @_op
     def truncate_paths(
-        self, start_event: str, end_event: str, path_col=None, event_col=None
+        self, start_event, end_event, path_col=None, event_col=None
     ) -> "Eventstream":
         """
-        Trim each path to the window between two anchor events (inclusive).
+        Trim each path to the window between two anchors (inclusive).
 
-        For each path, the first occurrence of `start_event` and the first occurrence
-        of `end_event` that comes after it are found. Events outside this window are
-        dropped. Paths that do not contain both anchors in the correct order are
-        removed entirely.
+        Each anchor is an event name, an anchor spec, or a list of either. Events
+        outside the resulting window are dropped, and a path with no resolvable
+        anchor on either side is dropped entirely.
 
-        Use `start_event="path_start"` / `end_event="path_end"` to refer to the actual
-        first and last events of the path.
+        The end anchor is searched for *after* the resolved start, so a path whose
+        end event only occurs before its start event is dropped rather than
+        producing an inverted window.
+
+        An anchor spec is a dict:
+
+        - `pattern` (required) — an event name, or a `"->"`-separated pattern
+          where `.*` matches any run of events, e.g. `"add_to_cart->.*->purchase"`.
+          The reserved names `"path_start"` / `"path_end"` refer to a path's own
+          first / last event.
+        - `at` — which of the pattern's event names is the anchor point:
+          `"start"`, `"end"` (default), or an integer index over the pattern's
+          event names (`.*` is not a position, so it is not counted). For
+          `"a->b->.*->c"` the names are `["a", "b", "c"]` and `at=1` is `b`.
+        - `occurrence` — which match to use when the pattern has more than one.
+          `"first"` (default) puts every event name of the pattern as early as it
+          can be in any valid match, `"last"` as late as it can be. Note that
+          `"last"` is not "the last occurrence of the anchor event": an
+          occurrence that is part of no valid match is not a candidate, so on
+          `catalog, cart, purchase, cart` the last match of
+          `"catalog->.*->cart->.*->purchase"` anchors on the *second* event, not
+          the fourth. `"first"` is the same match `step_matrix` centres on, given
+          the same `path_pattern`.
+        - `offset` — move the anchor off the matched event: an int shifts it that
+          many events, a duration string or `pd.Timedelta` (`"30m"`) shifts it in
+          time and then snaps to the nearest event *inside* the window. An offset
+          that runs past the path's own boundary clamps to it.
+
+        A **list** of anchors keeps the narrowest window they imply — the latest
+        start, the earliest end. That expresses both "whichever comes first"
+        (`["purchase", {"pattern": "add_to_cart", "offset": 10}]` cuts at the
+        purchase or 10 events after the cart, whichever is sooner) and a fallback
+        (`["purchase", "path_end"]` cuts at the purchase, or at the end of the
+        path for those who never purchased).
 
         Parameters
         ----------
-        start_event : str
-            Name of the event that marks the start of the window.
-        end_event : str
-            Name of the event that marks the end of the window.
+        start_event : str or dict or list
+            Where the window opens.
+        end_event : str or dict or list
+            Where the window closes.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         event_col : str, optional
@@ -1294,6 +1365,31 @@ class Eventstream:
         --------
             stream.truncate_paths(start_event="registration", end_event="purchase")
             stream.truncate_paths(start_event="registration", end_event="path_end")
+
+            # keep every path, cutting the converted ones at their purchase
+            stream.truncate_paths(
+                start_event="path_start", end_event=["purchase", "path_end"]
+            )
+
+            # 10 events after the cart that completed catalog -> ... -> add_to_cart,
+            # or the purchase if it comes sooner
+            stream.truncate_paths(
+                start_event={"pattern": "catalog->.*->add_to_cart"},
+                end_event=[
+                    "purchase",
+                    {"pattern": "catalog->.*->add_to_cart", "offset": 10},
+                ],
+            )
+
+            # the half hour that follows a user's last support chat
+            stream.truncate_paths(
+                start_event={"pattern": "support_chat", "occurrence": "last"},
+                end_event={
+                    "pattern": "support_chat",
+                    "occurrence": "last",
+                    "offset": "30m",
+                },
+            )
         """
         from retentioneering.data_processors.truncate_paths import TruncatePaths
 
@@ -1396,6 +1492,38 @@ class Eventstream:
             raise EmptyEventstreamError("second diff group is empty")
         return s1, s2
 
+    def _restrict_to_pattern(
+        self, path_pattern: str, path_col: str | None = None, stacklevel: int = 5
+    ) -> "Eventstream":
+        """
+        Keep only the paths matching `path_pattern` (see `paths.anchors`).
+
+        Shared by every tool that takes a `path_pattern`, so that the pattern
+        selects the same set of paths everywhere and reports the same errors:
+        `InvalidParameterError` for a token that is not an event in this
+        eventstream, `PatternNoMatchError` when nothing matches at all.
+        """
+        from retentioneering.exceptions import PatternNoMatchError
+        from retentioneering.paths import anchors
+
+        path_col = path_col or self.schema.path_col
+        path_pattern = anchors.normalize_pattern(
+            path_pattern, stacklevel=stacklevel, param="path_pattern"
+        )
+        stream = self.add_start_end_events(path_col=path_col)
+        anchors.validate_pattern_tokens(
+            path_pattern,
+            stream.df[stream.schema.event_col].unique().tolist(),
+            param="path_pattern",
+        )
+        match = anchors.resolve_anchors(
+            stream.df, stream.schema, path_pattern, path_col=path_col
+        )
+        matching_ids = match.paths().tolist()
+        if not matching_ids:
+            raise PatternNoMatchError(path_pattern)
+        return self.filter_events(keep={path_col: matching_ids})
+
     @_tracked("dp_add_start_end_events")
     @_op
     def add_start_end_events(self, path_col: str | None = None) -> "Eventstream":
@@ -1434,6 +1562,7 @@ class Eventstream:
         edge_weight: T_TransitionMatrixValues = "proba_out",
         path_col: str | None = None,
         diff: T_Diff = None,
+        path_pattern: str | None = None,
     ) -> pd.DataFrame:
         """
         Compute the transition **matrix** between events (headless): an
@@ -1462,6 +1591,13 @@ class Eventstream:
             value of `segment_col`". Either value may be `<MISSING>`, meaning paths
             with no `segment_col` value assigned (e.g. left unset by `add_segment`'s
             `func=`/`sql=` modes) — see `get_segment_levels`.
+        path_pattern : str, optional
+            Restrict the graph to paths matching a `"->"`-separated sequence of
+            events, where `.*` matches any run of events, e.g.
+            `"add_to_cart->.*->purchase"`. Unlike Step Matrix's parameter of the
+            same name this only selects *which paths* are drawn — a graph has no
+            step axis to centre. To cut the paths themselves down to the window
+            the pattern describes, use `truncate_paths`.
 
         Returns
         -------
@@ -1473,10 +1609,13 @@ class Eventstream:
         --------
             stream.transition_graph_data(edge_weight="count")
             diff, g1, g2 = stream.transition_graph_data(diff=("platform", "mobile", "desktop"))
+            stream.transition_graph_data(path_pattern="add_to_cart->.*->purchase")
         """
         from retentioneering.tools.transition_matrix import TransitionMatrix
 
-        return TransitionMatrix(self).fit(edge_weight, diff, path_col)
+        return TransitionMatrix(self).fit(
+            edge_weight, diff, path_col, path_pattern=path_pattern
+        )
 
     @_tracked("headless_step_sankey")
     def step_sankey_data(
@@ -1735,6 +1874,7 @@ class Eventstream:
         edge_weight=None,
         diff=None,
         path_col=None,
+        path_pattern=None,
         height=None,
         sidebar_open=None,
         views=None,
@@ -1757,6 +1897,15 @@ class Eventstream:
             value of `segment_col`".
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
+        path_pattern : str, optional
+            Restrict the graph to paths matching a `"->"`-separated sequence of
+            events, where `.*` matches any run of events, e.g.
+            `"add_to_cart->.*->purchase"`. Unlike Step Matrix's parameter of the
+            same name this only selects *which paths* are drawn — a graph has no
+            step axis to centre. Everything the widget shows, event counts
+            included, is computed from the restricted set. To cut the paths
+            themselves down to the window the pattern describes, use
+            `truncate_paths`.
         height : int, default 500
             Widget height in pixels.
         sidebar_open : bool, default True
@@ -1782,6 +1931,7 @@ class Eventstream:
             stream.transition_graph()
             stream.transition_graph(edge_weight="count", diff=("user_lifecycle", "loyal", "new"))
             stream.transition_graph(state_file="checkout_graph.json")
+            stream.transition_graph(path_pattern="add_to_cart->.*->purchase")
             stream.transition_graph(
                 views=[{"name": "Checkout", "focus": {"type": "node", "event": "cart"}}],
                 view="Checkout",
@@ -1792,8 +1942,17 @@ class Eventstream:
             _UNSET,
         )
 
+        # Restricting up front rather than passing the pattern down keeps every
+        # number the widget derives — event counts, diff splits, the matrix —
+        # computed from the same set of paths.
+        source = (
+            self
+            if path_pattern is None
+            else self._restrict_to_pattern(path_pattern, path_col, stacklevel=3)
+        )
+
         return TransitionGraphWidget(
-            eventstream=self,
+            eventstream=source,
             edge_weight=edge_weight if edge_weight is not None else _UNSET,
             diff=diff if diff is not None else _UNSET,
             path_col=path_col if path_col is not None else _UNSET,

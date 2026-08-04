@@ -51,13 +51,13 @@ stream.get_segment_levels()             # {segment_col: [values...]}
 |---|---|---|
 | `filter_events(keep=/drop=/func=/sql=)` | row-level filtering | exactly one mode; `sql=` is full DuckDB over alias `eventstream` (CTEs OK) |
 | `filter_paths(condition)` | keep whole paths by metric condition tree | leaves `{"op","metric","value","metric_args"}`; branches `and/or/not`; top-level list = AND; raises `EmptyEventstreamError` when nothing survives |
-| `add_segment(name, rules=/func=/sql=/funnel_events=)` | add a segment column | `funnel_events` labels each path by the furthest step reached IN ORDER (closed funnel); non-reachers get `"out_of_funnel"` |
+| `add_segment(name, rules=/func=/sql=/funnel_events=/time_range=/metric_bins=)` | add a segment column | `funnel_events` labels each path by the furthest step reached IN ORDER (closed funnel); non-reachers get `"out_of_funnel"`. `metric_bins={"metric":..., "edges"|"quantiles":..., "segment_levels":[...]}` bins paths by a per-path metric — cut points are INTERIOR, so N points give N+1 bins |
 | `add_clusters(name, features, n_clusters, ...)` | materialize clusters as a segment column | labels are strings `"cluster_0"...`; deterministic (seeded) |
 | `add_start_end_events()` | explicit `path_start`/`path_end` rows | idempotent; widgets add them implicitly |
 | `rename_events(mapping)` | collapse taxonomies (e.g. `"PLP: *"` families by explicit dict) | unknown keys raise |
 | `collapse_events(consecutive=True | [...])` | dedupe consecutive repeats | count loops BEFORE collapsing if loops are your subject |
 | `split_sessions(timeout="30m" | separator= | start_event=+end_event=)` | derive sessions | duration strings need units; column params use `session_col` naming |
-| `truncate_paths(start_event, end_event)` | window each path between two events | `path_start`/`path_end` sentinels supported; paths missing either anchor are DROPPED — see gotchas for the keep-whole pattern |
+| `truncate_paths(start_event, end_event)` | window each path between two anchors | each anchor is an event name, a spec `{pattern, at, occurrence, offset}`, or a LIST of either (narrowest window wins). A list is how you get both "whichever comes first" and a keep-whole fallback: `end_event=["purchase", "path_end"]`. A bare name still DROPS paths missing the anchor |
 | `drop_events / drop_segment / edit_events / rename_segment_levels / sample_paths / to_daily_states / urls_to_events / add_events` | as named | `sample_paths(frac=, random_state=)` for stable subsamples |
 
 ## 3. Metrics registry — one config format everywhere
@@ -98,7 +98,7 @@ data parameters. Common widget params: `diff=`, `path_col=`, `height=`, `sidebar
 | Widget | Headless returns | Key params |
 |---|---|---|
 | `transition_graph` | events×events DataFrame | `edge_weight` ∈ `proba_out, proba_in, count, unique_paths, share_of_total, avg_per_path, time_median, time_q95` |
-| `step_matrix` / `step_sankey` | no `path_pattern`: DataFrame; with `path_pattern`: tuple of per-anchor blocks; with pattern+diff: `(blocks, g1_blocks, g2_blocks)` | `max_steps`, `path_pattern=".*->X->.*"` — the anchor event sits at column **0** |
+| `step_matrix` / `step_sankey` | no `path_pattern`: DataFrame; with `path_pattern`: tuple of per-anchor blocks; with pattern+diff: `(blocks, g1_blocks, g2_blocks)` | `max_steps`, `path_pattern=".*->X->.*"` — the anchor event sits at column **0**. `transition_graph` takes `path_pattern` too, but there it only SELECTS paths (no step axis to centre, nothing is cut) |
 | `funnel` | dict; each step has `unique_paths`, `conversion_rate` (share of ALL paths) **and `step_conversion_rate`** (step-to-step) | `steps=[...]` — closed/ordered semantics: a path counts at step N only after passing all previous |
 | `segment_overview` | DataFrame metrics×segment values | `metrics=[...]` with `agg` |
 | `cluster_analysis` | dict: `overview_df`, `silhouette` (`{"params": [...], "silhouette": [...]}`), `cluster_labels`, `best_params` | `n_clusters` accepts int, list, or range string `"3-8"`; features = metric configs |

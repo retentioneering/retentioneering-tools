@@ -527,3 +527,85 @@ class TestTransitionMatrix:
         expected.columns = pd.Index(["path_start", "A", "path_end"], name="next_event")
 
         pd.testing.assert_frame_equal(res, expected)
+
+
+class TestTransitionGraphPathPattern:
+    """path_pattern selects which paths are drawn. Unlike Step Matrix's
+    parameter of the same name it does not centre or cut anything — a graph has
+    no step axis — so the result must equal computing the graph on the
+    pattern-matching subset of paths."""
+
+    @staticmethod
+    def _stream():
+        rows = []
+        paths = {
+            1: ["catalog", "cart", "purchase"],
+            2: ["catalog", "cart", "support"],
+            3: ["home", "catalog", "x", "cart", "purchase"],
+            4: ["home", "support"],
+        }
+        for pid, events in paths.items():
+            base = pd.Timestamp("2023-01-01 10:00")
+            for i, event in enumerate(events):
+                rows.append(
+                    {
+                        "user_id": pid,
+                        "event": event,
+                        "timestamp": base + i * pd.Timedelta("1h"),
+                    }
+                )
+        return Eventstream(pd.DataFrame(rows))
+
+    def test__equals_computing_on_the_matching_subset(self):
+        stream = self._stream()
+        by_pattern = stream.transition_graph_data(
+            edge_weight="count", path_pattern="cart->.*->purchase"
+        )
+        by_hand = stream.filter_events(keep={"user_id": [1, 3]}).transition_graph_data(
+            edge_weight="count"
+        )
+        pd.testing.assert_frame_equal(by_pattern, by_hand)
+
+    def test__pattern_does_not_truncate_paths(self):
+        """Events outside the pattern's window stay in the graph: 'home' precedes
+        the anchor in path 3 and must still be drawn."""
+        stream = self._stream()
+        tm = stream.transition_graph_data(
+            edge_weight="count", path_pattern="cart->.*->purchase"
+        )
+        assert "home" in tm.index
+
+    def test__adjacent_pattern_matches_fewer_paths_than_gapped(self):
+        stream = self._stream()
+        gapped = stream.transition_graph_data(
+            edge_weight="count", path_pattern="catalog->.*->cart"
+        )
+        adjacent = stream.transition_graph_data(
+            edge_weight="count", path_pattern="catalog->cart"
+        )
+        assert gapped.loc["cart", "purchase"] == 2
+        assert adjacent.loc["cart", "purchase"] == 1
+
+    def test__no_match_raises(self):
+        from retentioneering.exceptions import PatternNoMatchError
+
+        stream = self._stream()
+        with pytest.raises(PatternNoMatchError):
+            stream.transition_graph_data(path_pattern="purchase->.*->catalog")
+
+    def test__typo_raises_invalid_parameter_error(self):
+        stream = self._stream()
+        with pytest.raises(InvalidParameterError) as exc:
+            stream.transition_graph_data(path_pattern="catalog->.*->typo_event")
+        assert "typo_event" in exc.value.message
+
+    def test__works_with_diff(self):
+        stream = self._stream().add_segment(
+            "grp", rules=[["user_id", "<", 3, "low"], ["high"]]
+        )
+        diff, g1, g2 = stream.transition_graph_data(
+            edge_weight="count",
+            diff=("grp", "low", "high"),
+            path_pattern="catalog->.*->cart",
+        )
+        assert diff.shape == g1.shape == g2.shape

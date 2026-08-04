@@ -181,6 +181,117 @@ def _build_funnel_segment_query(
     )
 
 
+_BIN_KEYS = frozenset({"metric", "edges", "quantiles", "segment_levels"})
+
+#: Level given to paths whose metric has no value — `time_between` on a path
+#: missing either of its events, the only metric `build_metrics` leaves as NaN
+#: rather than filling with 0. Not a bin of the split, so it is never counted
+#: against `segment_levels`; rename it with `rename_segment_levels` if it clashes.
+UNDEFINED_LEVEL = "undefined"
+
+
+def _validate_metric_bins(metric_bins: dict) -> None:
+    if not isinstance(metric_bins, dict):
+        raise PreprocessingConfigError(PROCESSOR_NAME, "metric_bins must be a dict.")
+    unknown = sorted(set(metric_bins) - _BIN_KEYS)
+    if unknown:
+        raise PreprocessingConfigError(
+            PROCESSOR_NAME,
+            f"metric_bins has unknown key(s) {unknown}. Valid keys: {sorted(_BIN_KEYS)}.",
+        )
+    if "metric" not in metric_bins:
+        raise PreprocessingConfigError(
+            PROCESSOR_NAME, "metric_bins requires a 'metric' configuration."
+        )
+    has_edges = metric_bins.get("edges") is not None
+    has_quantiles = metric_bins.get("quantiles") is not None
+    if has_edges == has_quantiles:
+        raise PreprocessingConfigError(
+            PROCESSOR_NAME,
+            "metric_bins requires exactly one of 'edges' or 'quantiles'.",
+        )
+
+
+def _bin_edges_and_levels(
+    metric_bins: dict, values: pd.Series
+) -> tuple[list[float], list[str]]:
+    """
+    Resolve `metric_bins` to interior cut points and one level name per bin.
+
+    Cut points are *interior*: N of them always produce N + 1 bins, so no value
+    can fall outside the split. This deliberately differs from `pd.cut`, where
+    the list is the outer edges and out-of-range values become NaN — a segment
+    column has no room for NaN, since `diff` and `in_segment` both need every
+    path to carry a level.
+    """
+    if metric_bins.get("edges") is not None:
+        edges = list(metric_bins["edges"])
+        if not edges:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "metric_bins 'edges' must not be empty."
+            )
+        auto_levels = _interval_levels(edges)
+    else:
+        quantiles = metric_bins["quantiles"]
+        if isinstance(quantiles, bool) or not isinstance(quantiles, (int, list, tuple)):
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                "metric_bins 'quantiles' must be a number of bins (int) or a list "
+                "of cut quantiles between 0 and 1.",
+            )
+        if isinstance(quantiles, int):
+            if quantiles < 2:
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME,
+                    f"metric_bins 'quantiles' must ask for at least 2 bins, got {quantiles}.",
+                )
+            qs = [i / quantiles for i in range(1, quantiles)]
+        else:
+            qs = list(quantiles)
+            if not qs:
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, "metric_bins 'quantiles' must not be empty."
+                )
+            if any(not 0 < q < 1 for q in qs):
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME,
+                    f"metric_bins 'quantiles' must be strictly between 0 and 1, got {qs}.",
+                )
+        edges = [float(values.quantile(q)) for q in qs]
+        auto_levels = [f"q{i + 1}" for i in range(len(edges) + 1)]
+
+    if any(b <= a for a, b in zip(edges, edges[1:])):
+        raise PreprocessingConfigError(
+            PROCESSOR_NAME,
+            f"metric_bins cut points must be strictly increasing, got {edges}.",
+        )
+
+    levels = metric_bins.get("segment_levels")
+    if levels is None:
+        return edges, auto_levels
+    levels = list(levels)
+    if len(levels) != len(edges) + 1:
+        raise PreprocessingConfigError(
+            PROCESSOR_NAME,
+            f"metric_bins has {len(edges)} cut point(s) → {len(edges) + 1} bins, "
+            f"but 'segment_levels' has {len(levels)} entr{'y' if len(levels) == 1 else 'ies'}.",
+        )
+    if len(set(levels)) != len(levels):
+        raise PreprocessingConfigError(
+            PROCESSOR_NAME,
+            f"metric_bins 'segment_levels' must be unique, got {levels}.",
+        )
+    return edges, [str(level) for level in levels]
+
+
+def _interval_levels(edges: list[float]) -> list[str]:
+    """Readable auto-labels. Short and stable — they end up in widget legends."""
+    labels = [f"(-∞, {edges[0]})"]
+    labels += [f"[{lo}, {hi})" for lo, hi in zip(edges, edges[1:])]
+    labels.append(f"[{edges[-1]}, ∞)")
+    return labels
+
+
 class AddSegment(DataProcessor):
     name: str
     rules: Collection | None
@@ -188,6 +299,7 @@ class AddSegment(DataProcessor):
     sql: str | None
     funnel_events: list | None
     time_range: Collection | None
+    metric_bins: dict | None
     path_col: str | None
 
     def __init__(
@@ -198,7 +310,9 @@ class AddSegment(DataProcessor):
         sql: str | None = None,
         funnel_events: list | None = None,
         time_range: Collection | None = None,
+        metric_bins: dict | None = None,
         path_col: str | None = None,
+        eventstream=None,
     ) -> None:
         arg_is_not_none = [
             func is not None,
@@ -206,12 +320,13 @@ class AddSegment(DataProcessor):
             sql is not None,
             funnel_events is not None,
             time_range is not None,
+            metric_bins is not None,
         ]
         if sum(arg_is_not_none) > 1:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
                 "At most one of the arguments must be defined: "
-                "rules, func, sql, funnel_events, time_range.",
+                "rules, func, sql, funnel_events, time_range, metric_bins.",
             )
         if funnel_events is not None and len(funnel_events) < 2:
             raise PreprocessingConfigError(
@@ -221,6 +336,8 @@ class AddSegment(DataProcessor):
             raise PreprocessingConfigError(
                 PROCESSOR_NAME, "time_range must have exactly 2 elements: (start, end)."
             )
+        if metric_bins is not None:
+            _validate_metric_bins(metric_bins)
 
         self.name = name
         self.rules = rules
@@ -228,7 +345,9 @@ class AddSegment(DataProcessor):
         self.sql = sql
         self.funnel_events = funnel_events
         self.time_range = time_range
+        self.metric_bins = metric_bins
         self.path_col = path_col
+        self.eventstream = eventstream
         super().__init__()
 
     def apply(
@@ -241,6 +360,7 @@ class AddSegment(DataProcessor):
                 self.sql is not None,
                 self.funnel_events is not None,
                 self.time_range is not None,
+                self.metric_bins is not None,
             ]
         )
 
@@ -267,7 +387,7 @@ class AddSegment(DataProcessor):
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
                 "One of the arguments must be defined: rules, func, sql, "
-                "funnel_events, time_range — unless promoting an existing custom "
+                "funnel_events, time_range, metric_bins — unless promoting an existing custom "
                 f"column to a segment, in which case '{self.name}' must already be "
                 "a custom column and none of them should be set.",
             )
@@ -362,6 +482,9 @@ class AddSegment(DataProcessor):
             in_range = df[ts_col].between(start_ts, end_ts)
             values = in_range.map({True: "inside", False: "outside"}).tolist()
 
+        elif self.metric_bins is not None:
+            values = self._binned_levels(df, schema)
+
         new_df = df.copy()
         new_df[self.name] = values
         new_df[self.name] = new_df[self.name].astype("category")
@@ -369,3 +492,59 @@ class AddSegment(DataProcessor):
         new_schema.segment_cols.append(self.name)
 
         return new_df, new_schema
+
+    def _binned_levels(self, df: pd.DataFrame, schema: EventstreamSchema) -> list:
+        """
+        Bin a per-path metric into segment levels, one per row of the eventstream.
+
+        Quantile cut points are computed from the eventstream *as it is at this
+        call* — putting `add_segment` before or after a `filter_paths` in a chain
+        gives different boundaries. That is intended, but easy to miss.
+        """
+        from retentioneering.metrics.metric_builder import MetricBuilder
+
+        if self.eventstream is None:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "metric_bins mode requires an eventstream."
+            )
+        path_col = self.path_col or schema.path_col
+        if path_col not in schema.path_cols:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"path_col '{path_col}' must be one of schema.path_cols: {schema.path_cols}.",
+            )
+
+        metrics = MetricBuilder(self.eventstream).build_metrics(
+            [self.metric_bins["metric"]], path_col
+        )
+        if metrics.shape[1] != 1:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"metric_bins needs a metric that produces exactly one value per path, "
+                f"but this one produced {metrics.shape[1]} columns: "
+                f"{list(metrics.columns)}.",
+            )
+        values = metrics.iloc[:, 0]
+        defined = values.dropna()
+        if defined.empty:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                "metric_bins metric has no value for any path — nothing to bin.",
+            )
+
+        edges, levels = _bin_edges_and_levels(self.metric_bins, defined)
+        if UNDEFINED_LEVEL in levels:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"metric_bins 'segment_levels' must not contain '{UNDEFINED_LEVEL}' — "
+                "that name is reserved for paths the metric has no value for.",
+            )
+
+        binned = pd.cut(
+            values,
+            bins=[-float("inf"), *edges, float("inf")],
+            labels=levels,
+            right=False,
+        )
+        per_path = binned.astype(object).where(values.notna(), UNDEFINED_LEVEL)
+        return df[path_col].map(per_path).fillna(UNDEFINED_LEVEL).tolist()

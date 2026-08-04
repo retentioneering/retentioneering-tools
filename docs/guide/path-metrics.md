@@ -22,7 +22,7 @@ Path metrics are scalar values computed per path (see [Key concepts](/docs/event
 | `time_between` | Time in seconds between the first occurrences of two events. Returns null if either event is missing. Use `path_start` or `path_end` as anchors. | `start_event`: str, `end_event`: str |
 | `first_event_time` | Unix timestamp of the first event in the path. | — |
 | `matches_pattern` | 1 if the path matches a sequence pattern, 0 otherwise. Events are separated by `->` and matched as whole tokens (not substrings); `.*` matches any sequence of whole events. Example: `home->.*->purchase`. | `pattern`: str |
-| `in_segment` | Checks whether path events belong to a segment value. Mode `any`: at least one event has the value. `all`: all events have the value. `event_share`: at least a threshold share of events have the value. If multiple segment values are selected, a separate metric is created for each value. | `segment_name`: str, `segment_value`: str or list[str], `mode`: `"any"` \| `"all"` \| `"event_share"`, `threshold`: float (for `event_share`) |
+| `in_segment` | Checks whether path events belong to a segment level. Mode `any`: at least one event has the level. `all`: all events have the level. `event_share`: at least a threshold share of events have the level. If multiple segment levels are selected, a separate metric is created for each level. | `segment_name`: str, `segment_level`: str or list[str], `mode`: `"any"` \| `"all"` \| `"event_share"`, `threshold`: float (for `event_share`) |
 
 `event_count`/`has_event` are strict single-event metrics — one number per path,
 comparable directly in a Filter Paths condition. Passing a list of events is a

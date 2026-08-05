@@ -36,9 +36,16 @@ class AddStartEndEvents(DataProcessor):
         # per column independently (pandas skipna semantics), which fabricates
         # chimera rows mixing values from different events when nullable
         # extra/segment columns are present.
-        clean_sorted = clean.sort_values(
-            [path_col, schema.timestamp_col, schema.subindex]
-        )
+        # NB: order by index, NOT by timestamp — the result below is laid out by
+        # (path_col, index, subindex), and a boundary picked under a different
+        # order is not the boundary of the order that ships. Timestamps are not
+        # unique in real logs (analytics SDKs fire several events in the same
+        # microsecond), so a timestamp sort leaves those rows tied and picks an
+        # arbitrary one of them; the clone then inherits its `index` and lands
+        # mid-path. `index` is itself derived from the timestamp order at
+        # construction, so this is the same chronology with ties resolved the
+        # way the final layout resolves them.
+        clean_sorted = clean.sort_values([path_col, schema.index, schema.subindex])
 
         df_start = clean_sorted.drop_duplicates(subset=path_col, keep="first").copy()
         df_start[schema.event_col] = event_types.PATH_START.name

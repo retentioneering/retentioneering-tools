@@ -190,3 +190,45 @@ class TestAddStartEndEvents:
         assert (res_df["event_type"] == "path_start").sum() == 1
         assert (res_df["event_type"] == "path_end").sum() == 1
         assert list(res_df["event"]) == ["path_start", "A", "B", "C", "D", "path_end"]
+
+    def test__boundaries_survive_timestamp_ties(self) -> None:
+        """Regression test: boundary rows used to be picked by sorting on
+        (path_col, timestamp, subindex) while the result is laid out by
+        (path_col, index, subindex). Those two orders disagree whenever
+        several events share a timestamp and the frame's row order no longer
+        matches `index` -- a state processors do reach, e.g. after
+        `collapse_events(path_col=...)` at a non-default grain. The wrong
+        boundary row was then cloned, so path_end landed *before* the real
+        last event (and path_start after the real first one), giving
+        `path_end` outgoing transitions it can never have.
+
+        Both frames below encode exactly that state: `index` is supplied so
+        the row order deliberately disagrees with it, and the tied timestamp
+        makes the buggy sort key unable to tell the rows apart."""
+        # B carries the largest index, so path_end belongs after it
+        end_df = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00", 1],
+                ["user_1", "B", "2020-01-01 00:00:05", 3],
+                ["user_1", "C", "2020-01-01 00:00:05", 2],
+            ],
+            columns=["user_id", "event", "timestamp", "index"],
+        )
+        end_res = Eventstream(end_df).add_start_end_events().df
+        end_res = end_res.sort_values(["user_id", "index", "subindex"])
+
+        assert list(end_res["event"]) == ["path_start", "A", "C", "B", "path_end"]
+
+        # B carries the smallest index, so path_start belongs before it
+        start_df = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00", 2],
+                ["user_1", "B", "2020-01-01 00:00:00", 1],
+                ["user_1", "C", "2020-01-01 00:00:05", 3],
+            ],
+            columns=["user_id", "event", "timestamp", "index"],
+        )
+        start_res = Eventstream(start_df).add_start_end_events().df
+        start_res = start_res.sort_values(["user_id", "index", "subindex"])
+
+        assert list(start_res["event"]) == ["path_start", "B", "A", "C", "path_end"]

@@ -26,6 +26,10 @@ if TYPE_CHECKING:
     from retentioneering.eventstream.eventstream import Eventstream
 
 
+from retentioneering.exceptions import (
+    AmbiguousGridPointError,
+    GridPointNotFoundError,
+)
 from retentioneering.metrics.metric_builder import MetricBuilder
 
 SEGMENT_COL = "__cluster__"
@@ -98,6 +102,7 @@ class ClusterAnalysis:
         overview_metrics: List[Dict[str, Any]] | None = None,
         path_col: str | None = None,
         event_col: str | None = None,
+        select: Dict[str, Any] | None = None,
     ) -> Dict[str, Any]:
         if n_clusters is None and method == "kmeans":
             n_clusters = "3-8"
@@ -142,19 +147,27 @@ class ClusterAnalysis:
                 n_clusters,
                 min_cluster_size,
                 cluster_selection_epsilon,
+                select=select,
             )
             result: Dict[str, Any] = {
                 "silhouette": {
                     "params": search_data["params"],
                     "silhouette": search_data["silhouette"],
+                    # Which grid point maximised the score. The interpreted point
+                    # may be a different one (see `select`), so a caller showing
+                    # the grid needs both to explain the trade-off.
+                    "best_index": search_data.get("best_index"),
+                    "selected_index": search_data.get("selected_index"),
                 },
                 "nmf": None,
             }
 
-            best = search_data.get("best")
-            if best is not None:
+            # `select` names the grid point to interpret; without it the
+            # silhouette maximum is interpreted, as before.
+            chosen = search_data.get("selected") or search_data.get("best")
+            if chosen is not None:
                 overview_df, cluster_labels = self._build_overview(
-                    best["labels"],
+                    chosen["labels"],
                     metrics_df.index,
                     path_col,
                     event_col,
@@ -162,15 +175,23 @@ class ClusterAnalysis:
                 )
                 result["overview_df"] = overview_df
                 result["cluster_labels"] = cluster_labels
-                result["best_params"] = best.get("params")
-                if best.get("nmf_data") is not None:
-                    nmf_data = best["nmf_data"]
+                result["best_params"] = chosen.get("params")
+                if chosen.get("nmf_data") is not None:
+                    nmf_data = chosen["nmf_data"]
                     nmf_data["W_cluster_means"] = self._compute_w_cluster_means(
-                        best["W"], best["labels"]
+                        chosen["W"], chosen["labels"]
                     )
                     result["nmf"] = nmf_data
 
             return result
+
+        if select is not None:
+            raise ValueError(
+                "select= only applies to a grid search. Pass a list or range for "
+                "n_clusters / nmf_components / min_cluster_size / "
+                "cluster_selection_epsilon, or drop select= and pass the concrete "
+                "values directly."
+            )
 
         # 4. Normal mode — single NMF + cluster + overview
         nmf_data: Dict[str, Any] | None = None
@@ -277,6 +298,7 @@ class ClusterAnalysis:
         n_clusters: int | List[int] | None,
         min_cluster_size: int | List[int] | None,
         cluster_selection_epsilon: float | List[float] | None,
+        select: Dict[str, Any] | None = None,
     ) -> Dict[str, Any]:
         nmf_component_values = (
             nmf_components
@@ -289,10 +311,38 @@ class ClusterAnalysis:
         scores: List[float | None] = []
 
         best_score: float = -2.0
+        best_index: int | None = None
         best_labels: np.ndarray | None = None
         best_nmf_data: Dict[str, Any] | None = None
         best_W: np.ndarray | None = None
         best_params: Dict[str, Any] | None = None
+
+        # A selected grid point is kept alongside the winner rather than instead
+        # of it: the caller still wants the whole grid drawn, with the optimum
+        # marked, while interpreting a different point.
+        selected_index: int | None = None
+        selected: Dict[str, Any] | None = None
+        # Every point `select` matches, not just the first: a partial select over
+        # a multi-parameter grid can match several, and picking one silently would
+        # answer a question the caller never asked.
+        selected_matches: List[Dict[str, Any]] = []
+
+        def _record(p: Dict[str, Any], labels, nmf_data, W) -> None:
+            nonlocal selected_index, selected
+            if select is None:
+                return
+            if not all(p.get(k) == v for k, v in select.items()):
+                return
+            selected_matches.append(dict(p))
+            if selected is not None:
+                return
+            selected_index = len(params) - 1
+            selected = {
+                "labels": labels,
+                "nmf_data": nmf_data,
+                "W": W,
+                "params": dict(p),
+            }
 
         for nk in nmf_component_values:
             nmf_data: Dict[str, Any] | None = None
@@ -322,9 +372,11 @@ class ClusterAnalysis:
                         p["nmf_components"] = nk
                     params.append(p)
                     scores.append(score)
+                    _record(p, labels, nmf_data, X if nk is not None else None)
 
                     if score is not None and score > best_score:
                         best_score = score
+                        best_index = len(params) - 1
                         best_labels = labels
                         best_nmf_data = nmf_data
                         best_W = X if nk is not None else None
@@ -353,15 +405,28 @@ class ClusterAnalysis:
                             p["nmf_components"] = nk
                         params.append(p)
                         scores.append(score)
+                        _record(p, labels, nmf_data, X if nk is not None else None)
 
                         if score is not None and score > best_score:
                             best_score = score
+                            best_index = len(params) - 1
                             best_labels = labels
                             best_nmf_data = nmf_data
                             best_W = X if nk is not None else None
                             best_params = dict(p)
 
-        result: Dict[str, Any] = {"params": params, "silhouette": scores}
+        if select is not None:
+            if not selected_matches:
+                raise GridPointNotFoundError(select, params)
+            if len(selected_matches) > 1:
+                raise AmbiguousGridPointError(select, selected_matches)
+
+        result: Dict[str, Any] = {
+            "params": params,
+            "silhouette": scores,
+            "best_index": best_index,
+            "selected_index": selected_index,
+        }
         if best_labels is not None:
             result["best"] = {
                 "labels": best_labels,
@@ -369,6 +434,8 @@ class ClusterAnalysis:
                 "W": best_W,
                 "params": best_params,
             }
+        if selected is not None:
+            result["selected"] = selected
         return result
 
     @staticmethod

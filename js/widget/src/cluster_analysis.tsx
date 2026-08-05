@@ -15,39 +15,96 @@ const CLUSTER_SEGMENT_COL = "__cluster__";
 
 // ── types ──────────────────────────────────────────────────────────────────
 
-interface SilhouetteData { params: Record<string,any>[]; silhouette: (number|null)[]; }
+interface SilhouetteData {
+  params: Record<string,any>[];
+  silhouette: (number|null)[];
+  // Which grid point won on score, and which one is actually being interpreted.
+  // They differ exactly when the user picked a point by hand.
+  best_index?: number|null;
+  selected_index?: number|null;
+}
+
+// A partition within this much of the top score is a genuine alternative worth
+// reading rather than a worse one — the band exists because silhouette rarely
+// separates the near-ties by enough to decide between them on its own.
+const NEAR_BEST_RATIO = 0.95;
 interface NmfData { H_matrix: number[][]; features: string[]; W_cluster_means: Record<string,number[]>; }
 interface ClusterResult { overview?: SegmentOverviewData; silhouette?: SilhouetteData; nmf?: NmfData; }
 
 // ── silhouette chart ───────────────────────────────────────────────────────
 
-function SilhouetteChart({ data }: { data: SilhouetteData }) {
+const paramLabel = (p: Record<string,any>) =>
+  Object.entries(p).map(([k, v]) => `${k.replace("n_clusters","k").replace("min_cluster_size","mcs").replace("cluster_selection_epsilon","ε").replace("nmf_components","nmf")}=${v}`).join(", ");
+
+/** Names the partition currently being interpreted, and what it cost in score. */
+function PartitionBadge(
+  { data, onReset, onGoToSilhouette }:
+  { data?: SilhouetteData; onReset?: () => void; onGoToSilhouette?: () => void },
+) {
+  if (!data || !data.params?.length) return null;
+  const scores = data.silhouette.map(s => s ?? 0);
+  const best   = data.best_index ?? scores.indexOf(Math.max(...scores));
+  const chosen = data.selected_index ?? best;
+  const isOverride = chosen !== best;
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 16px", fontSize: 11,
+                  color: "#6b7280", borderBottom: "1px solid #f1f5f9", flexWrap: "wrap" }}>
+      <span>Partition</span>
+      <button onClick={onGoToSilhouette}
+              style={{ fontWeight: 700, color: "#111827", background: "var(--retentioneering-yellow)",
+                       border: "none", borderRadius: 4, padding: "1px 6px", cursor: "pointer", fontSize: 11 }}>
+        {paramLabel(data.params[chosen])}
+      </button>
+      <span>silhouette {scores[chosen].toFixed(3)}</span>
+      {isOverride && (
+        <>
+          <span style={{ color: "#b45309" }}>
+            · ★ top is {paramLabel(data.params[best])} at {scores[best].toFixed(3)}
+          </span>
+          {onReset && (
+            <button onClick={onReset}
+                    style={{ background: "none", border: "1px solid #e5e7eb", borderRadius: 4,
+                             padding: "1px 6px", cursor: "pointer", fontSize: 11, color: "#6b7280" }}>
+              use top
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function SilhouetteChart({ data, onSelect }: { data: SilhouetteData; onSelect?: (p: Record<string,any>|null) => void }) {
   const { params, silhouette } = data;
   const scores = silhouette.map(s => s ?? 0);
-  const best   = scores.indexOf(Math.max(...scores));
+  // best_index comes from Python, which knows that a null score is "degenerate"
+  // rather than zero; fall back to the local max only for older payloads.
+  const best   = data.best_index ?? scores.indexOf(Math.max(...scores));
+  const chosen = data.selected_index ?? best;
   const maxS   = Math.max(...scores, 0.01);
+  const nearBest = scores[best] * NEAR_BEST_RATIO;
 
-  const W = 60; const H = 180; const PAD = { l: 32, r: 8, t: 12, b: 72 };
+  const H = 180; const PAD = { l: 32, r: 8, t: 12, b: 72 };
   const plotH = H - PAD.t - PAD.b;
   const barW  = 28; const gap = 8;
   const totalW = params.length * (barW + gap) + PAD.l + PAD.r;
 
   const scrollRef = React.useRef<HTMLDivElement>(null);
 
-  // Scroll so the best bar is visible (centred) when chart mounts or data changes
+  // Scroll so the interpreted bar is visible (centred) when chart mounts or data changes
   React.useEffect(() => {
     const el = scrollRef.current;
-    if (!el || best < 0) return;
-    const bestX = PAD.l + best * (barW + gap) + barW / 2;
-    const target = bestX - el.clientWidth / 2;
-    el.scrollLeft = Math.max(0, target);
-  }, [best, totalW]);
+    if (!el || chosen < 0) return;
+    const x = PAD.l + chosen * (barW + gap) + barW / 2;
+    el.scrollLeft = Math.max(0, x - el.clientWidth / 2);
+  }, [chosen, totalW]);
 
-  const paramLabel = (p: Record<string,any>) =>
-    Object.entries(p).map(([k, v]) => `${k.replace("n_clusters","k").replace("min_cluster_size","mcs").replace("cluster_selection_epsilon","ε").replace("nmf_components","nmf")}=${v}`).join(", ");
+  const nearY = PAD.t + plotH * (1 - nearBest / maxS);
 
   return (
-    <div ref={scrollRef} style={{ overflowX: "auto", padding: "8px 0" }}>
+    <div style={{ padding: "8px 0" }}>
+      <div ref={scrollRef} style={{ overflowX: "auto" }}>
       <svg width={Math.max(totalW, 300)} height={H} style={{ display: "block" }}>
         {[0, 0.25, 0.5, 0.75, 1.0].filter(v => v <= maxS * 1.05).map(v => {
           const y = PAD.t + plotH * (1 - v / maxS);
@@ -58,16 +115,36 @@ function SilhouetteChart({ data }: { data: SilhouetteData }) {
             </g>
           );
         })}
+        {/* Band holding every partition scoring within NEAR_BEST_RATIO of the top:
+            these are the ones worth reading before settling on one. */}
+        {scores[best] > 0 && (
+          <>
+            <rect x={PAD.l} y={PAD.t} width={Math.max(0, totalW - PAD.r - PAD.l)} height={Math.max(0, nearY - PAD.t)}
+                  fill="var(--retentioneering-yellow)" opacity={0.09} />
+            <line x1={PAD.l} x2={totalW - PAD.r} y1={nearY} y2={nearY} stroke="#f59e0b" strokeWidth={1} strokeDasharray="3 3" opacity={0.7} />
+          </>
+        )}
         {params.map((p, i) => {
           const s = scores[i];
           const bH = Math.max(2, (s / maxS) * plotH);
-          const x  = PAD.l + i * (barW + gap);
-          const isB = i === best;
+          const xi = PAD.l + i * (barW + gap);
+          const isChosen = i === chosen;
+          const isBest   = i === best;
+          const y = PAD.t + plotH - bH;
           return (
-            <g key={i}>
-              <rect x={x} y={PAD.t + plotH - bH} width={barW} height={bH} fill={isB ? "var(--retentioneering-yellow)" : "#d1d5db"} rx={3} />
-              {isB && <text x={x + barW/2} y={PAD.t + plotH - bH - 3} textAnchor="middle" fontSize={8} fill="#92400e" fontWeight={700}>{s.toFixed(3)}</text>}
-              <text x={x + barW/2} y={PAD.t + plotH + 12} textAnchor="end" fontSize={8} fill="#6b7280" transform={`rotate(-35,${x + barW/2},${PAD.t + plotH + 12})`}>
+            <g key={i} onClick={() => onSelect?.(isChosen ? null : p)} style={{ cursor: onSelect ? "pointer" : "default" }}>
+              {/* full-height hit area so the thin bars are still easy to click */}
+              <rect x={xi - gap/2} y={PAD.t} width={barW + gap} height={plotH} fill="transparent" />
+              <rect x={xi} y={y} width={barW} height={bH}
+                    fill={isChosen ? "var(--retentioneering-yellow)" : "#d1d5db"}
+                    stroke={isBest && !isChosen ? "#f59e0b" : "none"} strokeWidth={1.5} strokeDasharray={isBest && !isChosen ? "3 2" : undefined}
+                    rx={3} />
+              {/* The optimum keeps a permanent mark, so picking another point
+                  never loses the reference it is being traded against. */}
+              {isBest && <text x={xi + barW/2} y={PAD.t + plotH + 24} textAnchor="middle" fontSize={9} fill="#f59e0b" fontWeight={700}>★</text>}
+              {(isChosen || isBest) && <text x={xi + barW/2} y={y - 3} textAnchor="middle" fontSize={8} fill={isChosen ? "#92400e" : "#b45309"} fontWeight={700}>{s.toFixed(3)}</text>}
+              <text x={xi + barW/2} y={PAD.t + plotH + 12} textAnchor="end" fontSize={8} fill={isChosen ? "#111827" : "#6b7280"} fontWeight={isChosen ? 700 : 400}
+                    transform={`rotate(-35,${xi + barW/2},${PAD.t + plotH + 12})`}>
                 {paramLabel(p).slice(0, 18)}
               </text>
             </g>
@@ -76,7 +153,10 @@ function SilhouetteChart({ data }: { data: SilhouetteData }) {
         <line x1={PAD.l} y1={PAD.t} x2={PAD.l} y2={PAD.t + plotH} stroke="#d1d5db" strokeWidth={1} />
         <line x1={PAD.l} y1={PAD.t + plotH} x2={totalW - PAD.r} y2={PAD.t + plotH} stroke="#d1d5db" strokeWidth={1} />
       </svg>
-      <div style={{ fontSize: 11, color: "#6b7280", paddingLeft: PAD.l }}>Silhouette score (higher = better separation)</div>
+      </div>
+      <div style={{ fontSize: 11, color: "#6b7280", paddingLeft: PAD.l }}>
+        Silhouette score (higher = better separation).{onSelect ? " Click a bar to interpret that partition; ★ marks the top score." : ""}
+      </div>
     </div>
   );
 }
@@ -868,6 +948,14 @@ export function render({ host, el, isStatic = false }: RenderContext) {
           <div style={{ width: "100%", height: "100%" }}>
             <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", overflow: "hidden" }}>
             {tabs.length > 1 && <Tabs tabs={tabs} active={tab} onChange={t => { setActiveTab(t); host.set("active_tab", t); }} />}
+            {/* Which partition the tables below describe. Shown on every tab,
+                because the choice is made on the Silhouette tab but everything
+                you interpret afterwards depends on it. */}
+            <PartitionBadge
+              data={result.silhouette}
+              onReset={isStatic ? undefined : () => host.set("selected_params", "")}
+              onGoToSilhouette={() => { setActiveTab("Silhouette"); host.set("active_tab", "Silhouette"); }}
+            />
             <div style={{ flex: 1, overflow: "auto", padding: "8px 0" }}>
               {error && !isLoading && (
                 <div style={{ margin: 16, padding: 12, background: "#fff1f2", border: "1px solid #fca5a5", borderRadius: 8, fontSize: 12, color: "#dc2626", fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
@@ -895,7 +983,14 @@ export function render({ host, el, isStatic = false }: RenderContext) {
                   valueColumnMaxWidth={100}
                 />
               )}
-              {tab === "Silhouette"      && result.silhouette  && <div style={{ padding: "0 16px" }}><SilhouetteChart data={result.silhouette} /></div>}
+              {tab === "Silhouette"      && result.silhouette  && (
+                <div style={{ padding: "0 16px" }}>
+                  <SilhouetteChart
+                    data={result.silhouette}
+                    onSelect={isStatic ? undefined : (p) => host.set("selected_params", p ? JSON.stringify(p) : "")}
+                  />
+                </div>
+              )}
               {tab === "H-matrix"        && result.nmf         && <div style={{ padding: "0 16px" }}><NmfHMatrix nmf={result.nmf} /></div>}
               {tab === "W Cluster Means" && result.nmf         && <div style={{ padding: "0 16px" }}><NmfWMatrix nmf={result.nmf} /></div>}
             </div>

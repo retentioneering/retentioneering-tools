@@ -2178,6 +2178,7 @@ class Eventstream:
         n_clusters=None,
         overview_metrics: list | None = None,
         path_col: str | None = None,
+        select: dict | None = None,
         height: int | None = None,
         sidebar_open: bool | None = None,
         state_file: str | None = None,
@@ -2186,6 +2187,11 @@ class Eventstream:
         An interactive tool for finding an optimal splitting of paths by behavioral metrics.
         Allows you to inspect clusters in a [Segment Overview](/docs/widgets/segment-overview)-style heatmap
         and offers the best possible splitting from the silhouette score perspective.
+        When a grid is searched, the Silhouette tab charts every candidate and you can
+        click any bar to interpret that partition instead of the top-scoring one —
+        useful when several candidates score alike and the winner doesn't read well.
+        Everything downstream follows the pick, including the code shown and the
+        segment saved by "Save Clusters".
         Once the splitting looks right, you can label the clusters and save them as a new segment column
         of the eventstream right from the UI by clicking "Save Clusters".
 
@@ -2217,6 +2223,11 @@ class Eventstream:
             same [Path Metrics](/docs/path-metrics) registry.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
+        select : dict, optional
+            Which grid point the widget opens on, e.g. `{"n_clusters": 5}`; by
+            default the top-scoring one. Only meaningful when `n_clusters` (or
+            another parameter) is a range, and equivalent to clicking that bar in
+            the Silhouette tab. Persisted with the rest of the widget state.
         height : int, default 520
             Widget height in pixels.
         sidebar_open : bool, default True
@@ -2250,6 +2261,7 @@ class Eventstream:
             path_col=path_col if path_col is not None else _UNSET,
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
+            select=select if select is not None else _UNSET,
             state_file=state_file,
         )
 
@@ -2266,6 +2278,7 @@ class Eventstream:
         overview_metrics: list | None = None,
         path_col: str | None = None,
         event_col: str | None = None,
+        select: dict | None = None,
     ) -> dict:
         """
         Run cluster analysis headlessly and return a dict of results.
@@ -2276,9 +2289,10 @@ class Eventstream:
         nmf_components-only searches.
 
         `best_params` holds the concrete parameter values actually used to produce
-        `overview_df` (the winning combination when searching, or just the fixed
-        values passed in otherwise) — pass it straight to `add_clusters` to
-        materialize the same clustering as a segment column.
+        `overview_df` (the winning combination when searching, the point named by
+        `select` if you named one, or just the fixed values passed in otherwise) —
+        pass it straight to `add_clusters` to materialize the same clustering as a
+        segment column.
 
         Parameters
         ----------
@@ -2317,6 +2331,23 @@ class Eventstream:
             Path ID column override; defaults to `schema.path_col`.
         event_col : str, optional
             Event name column override; defaults to `schema.event_col`.
+        select : dict, optional
+            Which grid point to interpret, given as the parameter values naming
+            it — `{"n_clusters": 5}`, or `{"n_clusters": 5, "nmf_components": 3}`
+            when more than one parameter was searched. The keys are the same ones
+            that appear in `silhouette["params"]`, so picking a point is a matter
+            of copying an entry from there.
+
+            Only valid in search mode. By default the highest-silhouette point is
+            the one turned into `overview_df` / `cluster_labels`; `select`
+            interprets a different one while keeping the whole grid in
+            `silhouette`, which is what you want when several candidates score
+            alike and the best-scoring one doesn't read well.
+
+            A subset of the keys is enough as long as it picks out exactly one
+            point — naming no point raises `GridPointNotFoundError`, and naming
+            several raises `AmbiguousGridPointError` rather than silently taking
+            one of them.
 
         Returns
         -------
@@ -2335,7 +2366,10 @@ class Eventstream:
               `cluster_selection_epsilon` (grid search mode). A dict of two
               parallel lists — `{"params": [{"n_clusters": 3}, ...],
               "silhouette": [0.87, ...]}` — one entry per candidate tried;
-              zip them to inspect individual scores. `overview_df`,
+              zip them to inspect individual scores. Also carries `best_index`
+              (the highest-scoring point) and `selected_index` (the point
+              `select` named, or `None`) — they differ exactly when `select`
+              overrode the winner. `overview_df`,
               `cluster_labels`, and `best_params` are omitted in this mode if
               every candidate was degenerate (fewer than 2 valid clusters).
         """
@@ -2352,6 +2386,7 @@ class Eventstream:
             overview_metrics=overview_metrics,
             path_col=path_col,
             event_col=event_col,
+            select=select,
         )
 
     @_tracked("get_metric_distribution")

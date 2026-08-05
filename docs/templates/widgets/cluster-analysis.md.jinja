@@ -46,6 +46,25 @@ from there every segment-aware tool — diff mode, Segment Overview, the
 **Choosing a cluster count is a judgment call, not a computation.** Prefer the
 smallest number of clusters you can still describe in words; a split you cannot
 name is a split you cannot act on.
+
+## Reading past the winner
+
+Because it is a judgment call, the top silhouette score is a starting point
+rather than an answer. Scores across a range are often close enough that the
+winner is decided by noise, while the runner-up splits into groups you can
+actually name.
+
+The **Silhouette** tab charts every candidate the search tried. Click any bar to
+interpret that partition instead: the overview heatmap, the H-matrix, the
+copy-pasteable `add_clusters(...)` code and "Save Clusters" all follow the pick,
+so what you read is what you save. The top-scoring point keeps a ★ so you never
+lose sight of what you traded away, and the shaded band holds every candidate
+within 5% of it — those are the ones worth reading before settling.
+
+To pin that choice programmatically — in a notebook you re-run, or to open the
+widget on it — pass the [`select`](#parameters) argument instead of taking
+the winner.
+
 {% endblock %}
 
 {% block demo_examples %}

@@ -52,6 +52,43 @@ class PatternNoMatchError(RetentioneeringError):
         super().__init__(msg, "PATTERN_NO_MATCH")
 
 
+class GridPointNotFoundError(RetentioneeringError):
+    """`select=` named a point the searched grid does not contain.
+
+    Its own class rather than a bare ValueError because the Cluster Analysis
+    widget has to tell it apart: a selection restored from a state file can name
+    a point of an older grid, and that is a stale preference to drop, not a
+    failure to surface.
+    """
+
+    def __init__(self, select: dict, available: list):
+        super().__init__(
+            f"select={select!r} matches no point of the searched grid. "
+            f"Available: {available!r}",
+            "GRID_POINT_NOT_FOUND",
+        )
+        self.select = select
+        self.available = available
+
+
+class AmbiguousGridPointError(RetentioneeringError):
+    """`select=` named several points of the searched grid at once.
+
+    Separate from GridPointNotFoundError because it must never be swallowed:
+    silently interpreting whichever match came first would answer a question the
+    caller did not ask, and the two candidates can differ arbitrarily.
+    """
+
+    def __init__(self, select: dict, matches: list):
+        super().__init__(
+            f"select={select!r} matches {len(matches)} points of the searched "
+            f"grid: {matches!r}. Name every searched parameter to pick one.",
+            "AMBIGUOUS_GRID_POINT",
+        )
+        self.select = select
+        self.matches = matches
+
+
 class InvalidMetricConfigError(RetentioneeringError):
     def __init__(self, message: str):
         super().__init__(message, "INVALID_METRIC_CONFIG")

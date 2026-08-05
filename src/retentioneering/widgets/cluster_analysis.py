@@ -7,7 +7,7 @@ import traitlets
 if TYPE_CHECKING:
     import pandas as pd
 
-from retentioneering.exceptions import RetentioneeringError
+from retentioneering.exceptions import GridPointNotFoundError, RetentioneeringError
 from retentioneering.tools.cluster_analysis import parse_n_clusters as _parse_n_clusters
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
 
@@ -37,7 +37,14 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
     result = traitlets.Unicode("{}").tag(sync=True)
     # Concrete params (e.g. the n_clusters that won the silhouette grid search)
     # that produced `result` — pass straight to add_clusters to reproduce it.
+    # Follows `selected_params` when the user picks a grid point by hand, so the
+    # code shown and the segment saved always match what is on screen.
     chosen_params = traitlets.Unicode("{}").tag(sync=True)
+
+    # '' = interpret the highest-silhouette grid point (the default), or a JSON
+    # object naming another one, e.g. '{"n_clusters": 5}'. Cleared whenever the
+    # grid itself changes, since a point of the old grid may not exist in the new.
+    selected_params = traitlets.Unicode("").tag(sync=True)
 
     # ── display ────────────────────────────────────────────────────────────
     widget_id = traitlets.Unicode("").tag(sync=True)
@@ -78,6 +85,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         "sidebar_open",
         "active_tab",
         "cluster_renames",
+        "selected_params",
     )
 
     def __init__(
@@ -92,12 +100,15 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         height=_UNSET,
         sidebar_open=_UNSET,
         stream_var_name=_UNSET,
+        select=_UNSET,
         state_file=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self._eventstream = eventstream
         self._initialized = False
+        # Guards _on_select while the widget itself clears a stale selection.
+        self._suppress_select = False
         self.widget_id = ""
         self.widget_type = "cluster_analysis"
         self._load_state_file(state_file)
@@ -152,6 +163,8 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         self.path_col = path_col if path_col is not _UNSET else ""
         self.height = height if height is not _UNSET else 520
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
+        if select is not _UNSET:
+            self.selected_params = json.dumps(select) if select else ""
 
         self._apply_saved_state(
             exclude={
@@ -172,6 +185,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
 
         self._initialized = True
         self.observe(self._on_apply, names=["apply_trigger"])
+        self.observe(self._on_select, names=["selected_params"])
         self.observe(self._on_save, names=["save_trigger"])
         self.observe(self._on_dist_request, names=["dist_request"])
         self._start_state_autosave()
@@ -183,10 +197,39 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
 
     # ── observers ──────────────────────────────────────────────────────────
 
+    def _clear_selection(self) -> None:
+        """Drop the hand-picked grid point without triggering another recompute."""
+        self._suppress_select = True
+        try:
+            self.selected_params = ""
+        finally:
+            self._suppress_select = False
+
     def _on_apply(self, _change):
         if not self._initialized:
             return
+        # Apply can change the grid itself (cluster range, method, features), and
+        # a point of the old grid need not exist in the new one — so a hand-picked
+        # selection is dropped rather than carried over into a grid it may not fit.
+        self._clear_selection()
         self._recompute()
+
+    def _on_select(self, _change):
+        """Interpreting a different grid point needs the overview rebuilt for it."""
+        if not self._initialized or self._suppress_select:
+            return
+        self._recompute()
+
+    def _select(self) -> dict | None:
+        """`selected_params` as a dict, or None to interpret the silhouette best."""
+        raw = (self.selected_params or "").strip()
+        if not raw:
+            return None
+        try:
+            value = json.loads(raw)
+        except Exception:
+            return None
+        return value if isinstance(value, dict) and value else None
 
     def _on_save(self, _change):
         if not self._initialized:
@@ -265,16 +308,33 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
                 else None
             )
 
-            computed = self._compute_raw(
-                features=features,
-                method=self.method,
-                scaler=self.scaler or None,
-                n_clusters=n_clusters,
-                nmf_components=nmf_components,
-                overview_metrics=metrics,
-                aggregation=self.aggregation or "mean",
-                path_col=self.path_col or None,
-            )
+            try:
+                computed = self._compute_raw(
+                    features=features,
+                    method=self.method,
+                    scaler=self.scaler or None,
+                    n_clusters=n_clusters,
+                    nmf_components=nmf_components,
+                    overview_metrics=metrics,
+                    aggregation=self.aggregation or "mean",
+                    path_col=self.path_col or None,
+                    select=self._select(),
+                )
+            except GridPointNotFoundError:
+                # A selection restored from a state file can name a point the
+                # current grid no longer has. That is a stale preference to drop,
+                # not a failure to surface — fall back to the silhouette best.
+                self._clear_selection()
+                computed = self._compute_raw(
+                    features=features,
+                    method=self.method,
+                    scaler=self.scaler or None,
+                    n_clusters=n_clusters,
+                    nmf_components=nmf_components,
+                    overview_metrics=metrics,
+                    aggregation=self.aggregation or "mean",
+                    path_col=self.path_col or None,
+                )
 
             self.result = json.dumps(computed["result"])
             self.chosen_params = json.dumps(computed["best_params"])
@@ -299,6 +359,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         overview_metrics,
         aggregation="mean",
         path_col=None,
+        select=None,
     ) -> dict:
         # Apply global aggregation to metrics that don't have their own agg.
         metrics = [{**m, "agg": m.get("agg") or aggregation} for m in overview_metrics]
@@ -311,6 +372,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
             nmf_components=nmf_components,
             overview_metrics=metrics,
             path_col=path_col,
+            select=select,
         )
 
         result: dict = {}
@@ -326,6 +388,8 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
             result["silhouette"] = {
                 "params": sil["params"],
                 "silhouette": [_safe(s) for s in sil["silhouette"]],
+                "best_index": sil.get("best_index"),
+                "selected_index": sil.get("selected_index"),
             }
         if "nmf" in raw and raw["nmf"] is not None:
             result["nmf"] = raw["nmf"]

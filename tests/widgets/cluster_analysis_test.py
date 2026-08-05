@@ -159,3 +159,96 @@ class TestClusterAnalysisStreamVarName:
         )
 
         assert widget.stream_var_name == "stream"
+
+
+def _grid_stream() -> Eventstream:
+    """12 users with varying path lengths — enough distinct paths for a grid."""
+    rows = []
+    for i in range(12):
+        uid = f"user_{i}"
+        rows.append([uid, "login", "2020-01-01 00:00:00"])
+        for j in range(i % 4):
+            rows.append([uid, "view", f"2020-01-01 00:0{j + 1}:00"])
+        if i % 3 == 0:
+            rows.append([uid, "purchase", "2020-01-01 00:09:00"])
+    return Eventstream(pd.DataFrame(rows, columns=["user_id", "event", "timestamp"]))
+
+
+FEATURES = [
+    {"metric": "length"},
+    {"metric": "event_count", "metric_args": {"event": "view"}},
+]
+
+
+def _widget(**kwargs):
+    return ClusterAnalysisWidget(
+        _grid_stream(), features=FEATURES, n_clusters="2-4", **kwargs
+    )
+
+
+class TestClusterAnalysisWidgetGridSelection:
+    def test__defaults_to_the_silhouette_winner(self) -> None:
+        widget = _widget()
+        sil = json.loads(widget.result)["silhouette"]
+        assert widget.selected_params == ""
+        assert sil["selected_index"] is None
+        assert json.loads(widget.chosen_params) == sil["params"][sil["best_index"]]
+
+    def test__selecting_a_point_rebuilds_the_overview_for_it(self) -> None:
+        widget = _widget()
+        widget.selected_params = json.dumps({"n_clusters": 4})
+
+        result = json.loads(widget.result)
+        assert len(result["overview"]["segments"]) == 4
+        assert result["silhouette"]["selected_index"] == 2
+        assert widget.error == ""
+
+    def test__chosen_params_follows_the_selection(self) -> None:
+        """The copy-pasteable code and the saved segment must describe the
+        partition on screen, not the one that happened to win on score."""
+        widget = _widget()
+        widget.selected_params = json.dumps({"n_clusters": 4})
+        assert json.loads(widget.chosen_params) == {"n_clusters": 4}
+
+    def test__saving_materialises_the_selected_partition(self) -> None:
+        widget = _widget()
+        widget.selected_params = json.dumps({"n_clusters": 4})
+        widget.save_segment_name = "picked"
+        widget.save_trigger = "go"
+
+        assert json.loads(widget.save_result).get("ok") is True
+        assert len(widget._cluster_labels.unique()) == 4
+
+    def test__the_winner_stays_reported_alongside_the_selection(self) -> None:
+        widget = _widget()
+        before = json.loads(widget.result)["silhouette"]["best_index"]
+        widget.selected_params = json.dumps({"n_clusters": 4})
+        after = json.loads(widget.result)["silhouette"]
+
+        assert after["best_index"] == before
+        assert after["selected_index"] != after["best_index"] or before == 2
+
+    def test__stale_selection_falls_back_instead_of_erroring(self) -> None:
+        """A selection restored from a state file can name a point of an older
+        grid. That is a preference to drop, not a failure to show the user."""
+        widget = _widget()
+        widget.selected_params = json.dumps({"n_clusters": 99})
+
+        assert widget.error == ""
+        assert widget.selected_params == ""
+        assert json.loads(widget.result)["overview"]["segments"]
+
+    def test__apply_clears_a_selection_from_the_previous_grid(self) -> None:
+        widget = _widget()
+        widget.selected_params = json.dumps({"n_clusters": 4})
+        widget.n_clusters = "2-3"
+        widget.apply_trigger = "go"
+
+        assert widget.selected_params == ""
+        sil = json.loads(widget.result)["silhouette"]
+        assert [p["n_clusters"] for p in sil["params"]] == [2, 3]
+
+    def test__selection_is_persisted_in_widget_state(self) -> None:
+        widget = _widget()
+        widget.selected_params = json.dumps({"n_clusters": 4})
+        assert "selected_params" in widget._persist_names

@@ -101,7 +101,7 @@ data parameters. Common widget params: `diff=`, `path_col=`, `height=`, `sidebar
 | `step_matrix` / `step_sankey` | no `path_pattern`: DataFrame; with `path_pattern`: tuple of per-anchor blocks; with pattern+diff: `(blocks, g1_blocks, g2_blocks)` | `max_steps`, `path_pattern=".*->X->.*"` — the anchor event sits at column **0**. `transition_graph` takes `path_pattern` too, but there it only SELECTS paths (no step axis to centre, nothing is cut) |
 | `funnel` | dict; each step has `unique_paths`, `conversion_rate` (share of ALL paths) **and `step_conversion_rate`** (step-to-step) | `steps=[...]` — closed/ordered semantics: a path counts at step N only after passing all previous |
 | `segment_overview` | DataFrame metrics×segment values | `metrics=[...]` with `agg` |
-| `cluster_analysis` | dict: `overview_df`, `silhouette` (`{"params": [...], "silhouette": [...]}`), `cluster_labels`, `best_params` | `n_clusters` accepts int, list, or range string `"3-8"`; features = metric configs |
+| `cluster_analysis` | dict: `overview_df`, `silhouette` (`{"params": [...], "silhouette": [...], "best_index", "selected_index"}`), `cluster_labels`, `best_params` | `n_clusters` accepts int, list, or range string `"3-8"`; features = metric configs. `select={"n_clusters": 5}` interprets that grid point instead of the top score, keeping the whole grid — the top silhouette is a hint, not a verdict, and near-ties are common. `best_params` always describes the interpreted point, so it stays safe to pass to `add_clusters` |
 
 **diff semantics:** `diff=(segment_col, v1, v2)` (also `(path_ids1, path_ids2)`; `v2` may be
 `"<REST>"`). Returned diff block = **value1 − value2**. Segment values must match exactly

@@ -190,6 +190,21 @@ stream = stream.add_clusters("behavior", features=features, **result["best_param
 
 `best_params` carries only the searched-over parameters, so pass the same `features` alongside it.
 
+The winner is a hint, not a verdict — scores across a range are often close enough that it is decided by noise, while the runner-up splits into groups you can actually name. In the widget, click any bar in the **Silhouette** tab to interpret that partition instead; everything downstream follows the pick, "Save Clusters" included. Headlessly, `select` does the same while keeping the whole grid:
+
+```python
+result = stream.cluster_analysis_data(features=features, n_clusters="3-8")
+list(zip(result["silhouette"]["params"], result["silhouette"]["silhouette"]))
+# [({'n_clusters': 3}, 0.41), ({'n_clusters': 4}, 0.40), ({'n_clusters': 5}, 0.37), ...]
+
+picked = stream.cluster_analysis_data(
+    features=features, n_clusters="3-8", select={"n_clusters": 4},
+)
+picked["best_params"]                     # {"n_clusters": 4} — safe to save as before
+```
+
+`select` takes an entry of `silhouette["params"]`, so choosing a point is copying one across.
+
 ## Measure time to activation
 
 How long does it take a new user to reach the key action? The `time_between` [path metric](/docs/path-metrics) computes it per path in one call:

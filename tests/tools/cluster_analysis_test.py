@@ -412,3 +412,112 @@ class TestClusterAnalysis:
                 n_clusters=2,
                 scaler="minmax",
             )
+
+
+class TestGridSelection:
+    """`select=` interprets a chosen grid point instead of the silhouette
+    winner, while keeping the whole grid — the point being that a near-tie on
+    score is not a tie on interpretability, and picking the runner-up should not
+    cost you the chart that shows what the trade was."""
+
+    FEATURES = [
+        {"metric": "length"},
+        {"metric": "event_count", "metric_args": {"event": "view"}},
+    ]
+
+    @pytest.fixture()
+    def stream(self):
+        return Eventstream(get_large_df())
+
+    def test__default_interprets_the_silhouette_winner(self, stream):
+        res = stream.cluster_analysis_data(features=self.FEATURES, n_clusters=[2, 3, 4])
+        sil = res["silhouette"]
+        assert sil["selected_index"] is None
+        assert res["best_params"] == sil["params"][sil["best_index"]]
+
+    def test__select_interprets_the_named_point(self, stream):
+        res = stream.cluster_analysis_data(
+            features=self.FEATURES, n_clusters=[2, 3, 4], select={"n_clusters": 4}
+        )
+        assert res["best_params"] == {"n_clusters": 4}
+        assert res["cluster_labels"].nunique() == 4
+
+    def test__select_keeps_the_whole_grid_and_marks_the_winner(self, stream):
+        plain = stream.cluster_analysis_data(
+            features=self.FEATURES, n_clusters=[2, 3, 4]
+        )
+        picked = stream.cluster_analysis_data(
+            features=self.FEATURES, n_clusters=[2, 3, 4], select={"n_clusters": 4}
+        )
+        assert picked["silhouette"]["params"] == plain["silhouette"]["params"]
+        assert picked["silhouette"]["silhouette"] == plain["silhouette"]["silhouette"]
+        # The winner is still reported, so the UI can show what was traded away.
+        assert picked["silhouette"]["best_index"] == plain["silhouette"]["best_index"]
+        assert picked["silhouette"]["selected_index"] == 2
+
+    def test__selecting_the_winner_is_the_same_as_not_selecting(self, stream):
+        plain = stream.cluster_analysis_data(
+            features=self.FEATURES, n_clusters=[2, 3, 4]
+        )
+        winner = plain["silhouette"]["params"][plain["silhouette"]["best_index"]]
+        picked = stream.cluster_analysis_data(
+            features=self.FEATURES, n_clusters=[2, 3, 4], select=winner
+        )
+        assert picked["best_params"] == plain["best_params"]
+        pd.testing.assert_series_equal(
+            picked["cluster_labels"], plain["cluster_labels"]
+        )
+
+    def test__best_params_reproduces_the_selection_via_add_clusters(self, stream):
+        """best_params is documented as 'pass straight to add_clusters' — with a
+        selection in play that has to mean the selected point, or you would save
+        a different clustering than the one you read."""
+        res = stream.cluster_analysis_data(
+            features=self.FEATURES, n_clusters=[2, 3, 4], select={"n_clusters": 4}
+        )
+        saved = stream.add_clusters(
+            name="c", features=self.FEATURES, **res["best_params"]
+        )
+        assert len(saved.get_segment_levels()["c"]) == 4
+
+    def test__unknown_grid_point_raises_and_lists_the_grid(self, stream):
+        from retentioneering.exceptions import GridPointNotFoundError
+
+        with pytest.raises(GridPointNotFoundError) as exc:
+            stream.cluster_analysis_data(
+                features=self.FEATURES, n_clusters=[2, 3, 4], select={"n_clusters": 9}
+            )
+        assert "n_clusters" in exc.value.message and "9" in exc.value.message
+
+    def test__select_without_a_grid_is_rejected(self, stream):
+        with pytest.raises(ValueError, match="only applies to a grid search"):
+            stream.cluster_analysis_data(
+                features=self.FEATURES, n_clusters=3, select={"n_clusters": 3}
+            )
+
+    def test__partial_select_is_fine_when_it_picks_out_one_point(self, stream):
+        """A grid over two parameters is still addressable by the one you care
+        about, as long as only one point matches."""
+        res = stream.cluster_analysis_data(
+            features=self.FEATURES,
+            n_clusters=[2, 3],
+            nmf_components=[2],
+            select={"n_clusters": 3},
+        )
+        assert res["best_params"]["n_clusters"] == 3
+
+    def test__partial_select_matching_several_points_is_rejected(self, stream):
+        """Silently interpreting whichever match came first would answer a
+        question the caller never asked — the two candidates can differ
+        arbitrarily, since they were fitted on different NMF projections."""
+        from retentioneering.exceptions import AmbiguousGridPointError
+
+        with pytest.raises(AmbiguousGridPointError) as exc:
+            stream.cluster_analysis_data(
+                features=self.FEATURES,
+                n_clusters=[2, 3],
+                nmf_components=[2, 3],
+                select={"n_clusters": 3},
+            )
+        assert len(exc.value.matches) == 2
+        assert "nmf_components" in exc.value.message

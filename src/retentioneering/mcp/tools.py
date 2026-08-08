@@ -330,7 +330,10 @@ def add_step_matrix(
     diff:
         Optional diff: [segment_col, value1, value2].
     path_pattern:
-        Filter paths, e.g. "add_to_cart->.*->purchase".
+        Filter paths, e.g. "add_to_cart->.*->purchase". One position may be a
+        class of events: "[a|b]" any of, "[^a]" anything but, "." any event.
+        A run between two anchors may be restricted: "a->[^x]*->b" is "reached
+        b from a without passing through x".
     path_col:
         Override the path ID column.
 

@@ -24,7 +24,7 @@ const METRIC_TIPS: Record<string, string> = {
   has_event:            "1 if the selected event occurred at least once, 0 otherwise.",
   has_event_bulk: "1 if each selected event occurred at least once, one column per event.\nLeave events empty to check every event.",
   length:         "Total number of events in the path.",
-  matches_pattern:        "1 if the path matches the pattern, 0 otherwise.\nEvents separated by ->, .* matches any sequence.\nExample: login->.*->purchase",
+  matches_pattern:        "1 if the path matches the pattern, 0 otherwise.\nEvents separated by ->, .* matches any sequence.\nOne position can be a class: [a|b] any of, [^a] anything but, . any event.\nA run can be restricted: a->[^x]*->b is b reached from a without any x.\nExample: login->[^error]*->purchase",
   time_between:   "Time (seconds) between the first occurrences of two events.\nNull if either event is missing.",
 };
 

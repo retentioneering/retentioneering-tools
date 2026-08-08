@@ -56,6 +56,7 @@ GUIDES = [
     ("data-processors", "Data Processors"),
     ("segments", "Segments"),
     ("path-metrics", "Path Metrics"),
+    ("path-patterns", "Path Patterns"),
     ("mcp-server", "MCP Server"),
     ("agent-skills", "Agent Skills"),
     ("recipes", "Recipes"),

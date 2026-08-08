@@ -68,6 +68,13 @@ def _playbook_index() -> dict:
     }
 
 
+# Eventstream methods documented through describe_tool that are NOT
+# preprocessors — they compute an answer instead of returning a new stream, so
+# they are called as their own MCP tool rather than as a step in a
+# preprocessors list, and the index has to say so.
+_ANALYSIS_METHODS = frozenset({"get_conversion_rate"})
+
+
 def _tool_docs_index() -> dict:
     preprocessors = sorted(
         m
@@ -97,6 +104,7 @@ def _tool_docs_index() -> dict:
     return {
         "usage": "Call describe_tool(topic) with one of the keys below.",
         "preprocessors": preprocessors,
+        "analysis_tools": sorted(_ANALYSIS_METHODS),
         "reference_topics": sorted(_STATIC_TOOL_DOCS.keys()),
     }
 
@@ -141,6 +149,9 @@ def _static_instructions(tail: str = "") -> str:
         "   The full interactive visualisation is always embedded in the report.",
         "   PARALLELISM: add_* calls are independent — if your client supports parallel",
         "   tool calls, issue them simultaneously to save time.",
+        "   For a question about ONE pair of events ('after Y, how often X?'), call",
+        "   get_conversion_rate(start_event, end_event, within=...) instead of eyeballing",
+        "   a graph. It adds no tab, so quote its numbers in backticks: `30.0%`.",
         "4. Write your analysis text (see ## Analysis text below).",
         "   Numbers you computed yourself (not read from a tab) → wrap in backticks: `2.2×`.",
         "5. Call check_analysis(analysis) — MANDATORY before export_report.",
@@ -219,6 +230,22 @@ def _static_instructions(tail: str = "") -> str:
         "### Funnel / path analysis (conversion from event A to event B)",
         "Use add_step_matrix with path_pattern='A->.*->B' to focus on paths",
         "that pass through both anchor events.",
+        "",
+        "### Does one event lead to another? (likelihood, exit rate, repeat)",
+        "Trigger: 'do users who hit X come back?', 'how many go from A to B?',",
+        "  'what share leave right after X?', 'is landing on this page good or bad?'.",
+        "Call get_conversion_rate(start_event='A', end_event='B') — one call, no",
+        "  preprocessing. within=10 (events) or within='30m' (time) for a window;",
+        "  end_event=['B','C','path_end'] asks about several outcomes at once.",
+        "Report THREE numbers, never the rate alone: paths_with_start (how many paths",
+        "  it is about), conversion_rate, and lift. LIFT BELOW 1 MEANS A MAKES B LESS",
+        "  LIKELY — usually the finding worth reporting.",
+        "Idioms: end_event='path_end', within=1 → exit rate after A;",
+        "  start_event={'pattern': 'path_start->A', 'at': -1} → only paths that STARTED on A;",
+        "  start_event=end_event → how often the event repeats.",
+        "path_col='session_id' (if describe() lists it) when the question is about a",
+        "  visit rather than a person — per-user rates are diluted by everything else",
+        "  that user ever did. See playbook('conversion_rate').",
         "",
         "### Conversion drop-off analysis (why is conversion from A to B dropping?)",
         "Use add_segment with funnel_events to create an N+1 level funnel segment.",

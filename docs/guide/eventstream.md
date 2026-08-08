@@ -175,6 +175,52 @@ Metric configs here take no `agg` field — these are raw per-path values, not a
 
 `get_metric_distribution()` is the related one-off: it returns the distribution of a single metric for one segment value against another (or against everything else, with `complement=True`), which is what the Segment Overview widget draws when you click a cell.
 
+### Conversion from one event to another
+
+`get_conversion_rate()` answers "given that Y happened, how often does X follow — and is that different from the baseline?".
+
+```python
+stream.get_conversion_rate("add_to_cart", "purchase")
+```
+
+| start_event | end_event | paths_with_start | converted | conversion_rate | base_rate | lift |
+|---|---|---|---|---|---|---|
+| add_to_cart | purchase | 522 | 297 | 0.569 | 0.547 | 1.041 |
+
+Five columns instead of one number, because the number alone is not a finding:
+
+- **`paths_with_start`** is the denominator. 0.5 out of two paths and 0.5 out of five thousand are different claims, and nothing in a rate distinguishes them.
+- **`base_rate`** is the share of *all* paths where the target happens at all, and **`lift`** is the rate divided by it. In the run above, 57% of users who add to cart go on to purchase — but 55% of *all* users purchase anyway, so adding to cart tells you almost nothing at user grain (`lift` 1.04). A lift below 1 means the start event makes the outcome **less** likely, which reads far more directly than a paragraph about confounders.
+
+`lift` is the only column you cannot derive from the others, since it needs a frequency measured over the whole eventstream rather than over the paths that reached the start.
+
+**A window.** `within` measures from the start anchor and includes its far edge — an int counts events, a duration string counts time:
+
+```python
+stream.get_conversion_rate("product_view", "add_to_cart", within=10)   # within 10 events
+stream.get_conversion_rate("support_chat", "purchase", within="30m")   # within half an hour
+```
+
+**Several targets.** A list on either side fans out into separate questions, one row per combination — a start against a set of independent outcomes, or several starts against the same one. (This is *not* `truncate_paths`' list, where several anchors describe one window bound.)
+
+```python
+stream.get_conversion_rate("add_to_cart", ["purchase", "cart", "support_chat"], within=5)
+```
+
+**Anchors, not just event names.** Both sides take the same [anchor specs](/docs/data-processors/truncate-paths) as `truncate_paths` — a `pattern`, which of its events to anchor on (`at`), which occurrence (`occurrence`), an `offset` — and `path_start` / `path_end` are ordinary names. That covers questions a pair of event names cannot ask:
+
+```python
+# exit rate: the path ended right after the error
+stream.get_conversion_rate("payment_error", "path_end", within=1)
+
+# the sessions that *landed* on the catalog, not every session that visited it
+stream.get_conversion_rate(
+    {"pattern": "path_start->catalog", "at": -1}, "purchase", path_col="session_id"
+)
+```
+
+**The unit is the path, not the occurrence.** A path where the start event happened three times counts once in the denominator, so "of 23,000 visits to this page, how many were entrances" is a different question this method does not answer — the per-visit figure can differ from the per-path one by several points. `path_col="session_id"` is usually the right lever: at session grain "added to cart" and "purchased" describe the same visit rather than the same person, and the lift stops being washed out by everything a user ever did.
+
 ### Reproducing an eventstream
 
 Every processor call is recorded, so a derived eventstream can describe how it was built:

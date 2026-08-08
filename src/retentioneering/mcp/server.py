@@ -260,6 +260,9 @@ def _build_server(
           to_daily_states  add_segment    drop_segment    add_clusters
           urls_to_events   sample_paths   split_sessions
 
+        Analysis tools (called directly, not as a preprocessor step):
+          get_conversion_rate
+
         Reference topics:
           report_links   (anchor link syntax for analysis text)
         """
@@ -443,6 +446,64 @@ def _build_server(
         """
         result = tools.add_segment_overview(
             session, label, segment_col, metrics, path_col, local_preprocessors
+        )
+        return json.dumps(result, ensure_ascii=False)
+
+    @_tool()
+    def get_conversion_rate(
+        start_event: str | dict | list,
+        end_event: str | dict | list,
+        within: int | str | None = None,
+        path_col: str | None = None,
+        local_preprocessors: list | None = None,
+    ) -> str:
+        """
+        Measure how often one event is followed by another, against its baseline.
+
+        Answers "given that Y happened, how often does X follow — and is that
+        different from usual?".
+
+        Returns numbers only — this registers NO tab in the report, unlike the
+        add_* tools. Every figure you quote from it is therefore a number you
+        computed: wrap it in backticks in the analysis text (`30.0%`, `2.3x`),
+        which check_analysis exempts from the anchor-link requirement.
+
+        Prefer this over reading a pair off a transition graph: a graph edge is
+        a share of transitions between adjacent events, this is a share of
+        paths where one event was followed by another at any distance.
+
+        Parameters
+        ----------
+        start_event:
+            The condition. An event name, or an anchor spec
+            {"pattern", "at", "occurrence", "offset"} — the same specs
+            truncate_paths takes. A LIST means several separate questions, one
+            row each, NOT one anchor assembled from several parts.
+        end_event:
+            The target(s) looked for after it, same forms. "path_start" /
+            "path_end" are ordinary names: end_event="path_end" with within=1
+            is an exit rate.
+        within:
+            Window measured from the start anchor, far edge included. An int
+            counts events, a string counts time ("30m"). Omit for "any time
+            later in the path".
+        path_col:
+            Override the path ID column. Pass "session_id" (if describe()
+            lists it) when the question is about a visit, not a person.
+        local_preprocessors:
+            One-off preprocessing for this measurement only. Same format as
+            update_base_stream.
+
+        Returns
+        -------
+        JSON with path_col, within, and rows — one per (start, end) pair:
+        paths_with_start (the denominator), converted, conversion_rate,
+        base_rate (share of ALL paths containing the target) and lift.
+        ALWAYS report the denominator and the lift next to the rate; lift below
+        1 means the start event makes the target LESS likely.
+        """
+        result = tools.get_conversion_rate(
+            session, start_event, end_event, within, path_col, local_preprocessors
         )
         return json.dumps(result, ensure_ascii=False)
 

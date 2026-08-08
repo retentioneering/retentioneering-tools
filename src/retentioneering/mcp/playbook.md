@@ -114,6 +114,49 @@ both anchor events. The `->.*->` matches any intermediate events.
 use `truncate_paths`.
 
 
+## conversion_rate
+
+**Scenario:** Does one event actually lead to another?
+
+**Trigger:** User asks how likely something is after something else — "do people who
+hit the error come back?", "how many go from cart to purchase?", "what share leave
+right after X?", "is landing on this page good or bad?".
+
+**Steps:**
+
+1. `get_conversion_rate(start_event="Y", end_event="X")` — one call, no preprocessing.
+   Add `within=10` (events) or `within="30m"` (time) when the question has a window;
+   pass `end_event=["X1", "X2", "path_end"]` to ask about several outcomes at once.
+2. Read three numbers, not one:
+   - `paths_with_start` — how many paths the rate is even about;
+   - `conversion_rate` — the answer;
+   - `lift` — the answer against the baseline. **Below 1 means Y makes X LESS
+     likely**, which is usually the finding worth reporting.
+3. Quote the figures in backticks (`` `30.0%` ``) — this tool adds no tab, so its
+   numbers are agent-computed and exempt from the anchor-link rule.
+
+**Choose the unit deliberately.** Per user (`path_col` default) a conversion is diluted
+by everything that person ever did; per visit (`path_col="session_id"`, if `describe()`
+lists it) it describes the session at hand. The same pair can look neutral per user and
+strongly negative per session.
+
+**Idioms:**
+```
+end_event="path_end", within=1                             — exit rate after Y
+start_event={"pattern": "path_start->Y", "at": -1}         — only paths that STARTED on Y
+start_event="Y", end_event="Y"                             — how often Y repeats
+```
+
+**Do not read this off a transition graph.** A graph edge is a share of *transitions*
+between adjacent events; this is a share of *paths* where one event was followed by
+another at any distance. Both are correct and they answer different questions.
+
+**Not answerable this way:** anything per-occurrence ("of 23,000 visits to this page,
+how many were entrances"). The unit here is the path — a path where Y happened three
+times counts once. For a per-visit figure, carve out the subpopulation with
+`filter_paths` and read a transition matrix instead.
+
+
 ## comparable_windows
 
 **Scenario:** Why did one group convert and another not, given both got as far as B?

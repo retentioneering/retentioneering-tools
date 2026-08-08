@@ -109,6 +109,20 @@ data parameters. Common widget params: `diff=`, `path_col=`, `height=`, `sidebar
 | `segment_overview` | DataFrame metrics×segment values | `metrics=[...]` with `agg` |
 | `cluster_analysis` | dict: `overview_df`, `silhouette` (`{"params": [...], "silhouette": [...], "best_index", "selected_index"}`), `cluster_labels`, `best_params` | `n_clusters` accepts int, list, or range string `"3-8"`; features = metric configs. `select={"n_clusters": 5}` interprets that grid point instead of the top score, keeping the whole grid — the top silhouette is a hint, not a verdict, and near-ties are common. `best_params` always describes the interpreted point, so it stays safe to pass to `add_clusters` |
 
+**Headless-only, no widget:** `get_conversion_rate(start_event, end_event, within=None, path_col=None)`
+→ DataFrame, one row per (start, end) pair: `paths_with_start` (the denominator), `converted`,
+`conversion_rate`, `base_rate` (share of ALL paths where the target occurs at all) and `lift`
+(= rate / base_rate; **< 1 means the start event makes the outcome LESS likely**). Report the
+denominator and the lift, never the rate alone. Both sides take event names or `truncate_paths`
+anchor specs (`path_start` / `path_end` are ordinary names — `end_event="path_end", within=1`
+is an exit rate); a LIST on either side FANS OUT into separate questions, one row per
+combination, unlike `truncate_paths` where a list describes one bound. `within` is an int
+(events) or a duration string (`"30m"`), measured from the start anchor, far edge inclusive;
+`None` = to the end of the path. The unit of observation is the PATH, not the occurrence — a
+path where the start happened three times counts once, so per-visit questions ("of N visits,
+how many were entrances") need a different tool. Prefer `path_col="session_id"` when the
+question is about a visit rather than a person.
+
 **diff semantics:** `diff=(segment_col, v1, v2)` (also `(path_ids1, path_ids2)`; `v2` may be
 `"<REST>"`). Returned diff block = **value1 − value2**. Segment values must match exactly
 (check `get_segment_levels()`).
@@ -146,6 +160,12 @@ import retentioneering.mcp as mcp
 mcp.serve()                    # data-agnostic: agent loads an eventstream on demand
 mcp.serve(stream, port=8765)   # or pre-loaded; raises OSError if port is taken
 ```
+
+Report-building tools (`add_transition_graph` / `add_step_matrix` /
+`add_segment_overview`) each register a tab; `get_conversion_rate` is the exception —
+it answers a pair question in numbers and registers nothing, so the agent must quote its
+figures in backticks (`check_analysis` requires an anchor link for every number that
+came from a tab). `playbook("conversion_rate")` carries the procedure.
 
 ## 8. Environment notes
 

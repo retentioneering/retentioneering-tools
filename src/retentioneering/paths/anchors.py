@@ -19,11 +19,16 @@ boolean "did it match at all" is a degenerate case.
 Matching semantics (unchanged from ``_find_center_position``, which this module
 is tested for equivalence against):
 
-* a pattern is a ``->``-separated sequence of event names, where ``.*`` stands
-  for any run of events, *including an empty one* — ``"A->.*->B"`` matches both
+* a pattern is a ``->``-separated sequence of tokens, where ``.*`` stands for
+  any run of events, *including an empty one* — ``"A->.*->B"`` matches both
   ``A->X->B`` and ``A->B``;
 * tokens not separated by ``.*`` must be strictly adjacent in the path;
 * a pattern matches anywhere in the path — no implicit anchoring at either end.
+
+A token is an event name or an *event class* — ``[A|B]``, ``[^A]``, ``.`` — as
+parsed by :mod:`retentioneering.paths.tokens`. A class occupies exactly one
+position and one ordinal, so everything below about parts, ordinals and
+occurrences is written in terms of tokens and holds unchanged either way.
 
 A pattern usually has *several* valid matches in a path: a match is any
 assignment of positions to its gap-separated parts that keeps them in order and
@@ -66,7 +71,8 @@ import pandas as pd
 from retentioneering import engine
 from retentioneering.engine import dialect
 from retentioneering.eventstream.event_type import EventTypes
-from retentioneering.exceptions import InvalidParameterError
+from retentioneering.exceptions import InvalidParameterError, PatternSyntaxError
+from retentioneering.paths import tokens as tokens_mod
 from retentioneering.utils.durations import parse_duration
 from retentioneering.utils.sequences import PATH_DELIMITER
 from retentioneering.utils.sql_quoting import quote_literal
@@ -89,9 +95,9 @@ __all__ = [
     "validate_pattern_tokens",
 ]
 
-PATH_START = EventTypes().PATH_START.name
-PATH_END = EventTypes().PATH_END.name
-GAP = ".*"
+PATH_START = tokens_mod.PATH_START
+PATH_END = tokens_mod.PATH_END
+GAP = tokens_mod.GAP
 
 OCCURRENCES = ("first", "last")
 
@@ -168,10 +174,44 @@ def normalize_pattern(
             [f"a pattern with no empty tokens (check for a stray '{PATH_DELIMITER}')"],
         )
 
+    # Syntax first: a class whose brackets span '->' has to be diagnosed on the
+    # token list, before the halves are looked at one by one (see
+    # `tokens.check_class_spans`), and a token that cannot be read at all should
+    # not reach the gap bookkeeping below.
+    tokens_mod.check_class_spans(tokens)
+    for token in tokens:
+        if token != GAP:
+            tokens_mod.parse_token(token)
+
+    # A restricted gap says what may lie *between* two anchors, so it needs one
+    # on each side. At either end of a pattern its outer side is unpinned, and
+    # since a gap also matches the empty run it would simply be true — silently
+    # doing nothing. Refuse it and name the fix.
+    for token, side, fix in (
+        (tokens[0], "start", f"{PATH_START}{PATH_DELIMITER}{pattern}"),
+        (tokens[-1], "end", f"{pattern}{PATH_DELIMITER}{PATH_END}"),
+    ):
+        parsed = tokens_mod.parse_token(token)
+        if isinstance(parsed, tokens_mod.Gap) and parsed.constraint is not None:
+            raise PatternSyntaxError(
+                f"{token!r} at the {side} of {pattern!r} has nothing on its outer "
+                f"side to bound it, so it would match the empty run and mean "
+                f"nothing. Anchor it — e.g. {fix!r}."
+            )
+
     collapsed: list[str] = []
     for token in tokens:
-        if token == GAP and collapsed and collapsed[-1] == GAP:
+        if not tokens_mod.is_gap(token):
+            collapsed.append(token)
             continue
+        if collapsed and tokens_mod.is_gap(collapsed[-1]):
+            if token == GAP and collapsed[-1] == GAP:
+                continue  # two plain gaps in a row say nothing extra
+            raise PatternSyntaxError(
+                f"Two gaps in a row in {pattern!r} ({collapsed[-1]!r} then "
+                f"{token!r}). A gap already spans any number of events; to say "
+                f"what may lie in it, use a single restricted gap."
+            )
         collapsed.append(token)
 
     trimmed = list(collapsed)
@@ -197,47 +237,162 @@ def normalize_pattern(
     return normalized
 
 
-def split_parts(pattern: str) -> list[list[str]]:
-    """Split a normalized pattern into runs of strictly adjacent tokens, separated by gaps."""
+def split_pattern(pattern: str) -> tuple[list[list[str]], list[str | None]]:
+    """
+    Split a normalized pattern into parts and the gaps between them.
+
+    A *part* is a run of strictly adjacent tokens; a *gap* is what separates two
+    parts. Returns them aligned: ``gaps[i]`` is the gap immediately before
+    ``parts[i]``, and ``gaps[0]`` is always None because a normalized pattern
+    never begins with one.
+
+    Callers must split on this rather than on the literal string ``"->.*->"``:
+    a gap may now be restricted (``"->[^X]*->"``), and a naive string split
+    would read ``A->[^X]*->B`` as three strictly adjacent tokens.
+    """
     parts: list[list[str]] = []
+    gaps: list[str | None] = []
     current: list[str] = []
+    pending: str | None = None
     for token in pattern.split(PATH_DELIMITER):
-        if token == GAP:
+        if tokens_mod.is_gap(token):
             if current:
                 parts.append(current)
+                gaps.append(pending)
                 current = []
+            pending = token
         else:
             current.append(token)
     if current:
         parts.append(current)
-    return parts
+        gaps.append(pending)
+    return parts, gaps
+
+
+def join_pattern(parts: Sequence[Sequence[str]], gaps: Sequence[str | None]) -> str:
+    """Rebuild a pattern string from :func:`split_pattern`'s output."""
+    pieces: list[str] = []
+    for part, gap in zip(parts, gaps):
+        if gap is not None:
+            pieces.append(gap)
+        pieces.extend(part)
+    return PATH_DELIMITER.join(pieces)
+
+
+def split_parts(pattern: str) -> list[list[str]]:
+    """Split a normalized pattern into runs of strictly adjacent tokens, separated by gaps."""
+    return split_pattern(pattern)[0]
 
 
 def literal_tokens(pattern: str) -> list[str]:
     """The pattern's event-name tokens, in order, with gaps removed.
 
-    These are the positions an anchor's ``at`` indexes into — ``.*`` is not a
-    position, so it is not counted.
+    These are the positions an anchor's ``at`` indexes into — a gap (``.*`` or
+    a restricted ``[^X]*``) is not a position, so it is not counted.
     """
-    return [t for t in pattern.split(PATH_DELIMITER) if t != GAP]
+    return [t for t in pattern.split(PATH_DELIMITER) if not tokens_mod.is_gap(t)]
+
+
+def _validate_class(
+    token: "tokens_mod.EventClass",
+    available: set,
+    *,
+    param: str,
+    check_literals: bool,
+) -> None:
+    """Check one event class's member names, and that it is a class at all."""
+    raw = token.raw
+    # An event named exactly like a class shadows it. Too rare to be worth an
+    # escape syntax, too damaging to reinterpret silently.
+    if raw in available:
+        raise PatternSyntaxError(
+            f"{raw!r} reads as a class of events, but this eventstream also "
+            f"has an event named {raw!r}. Rename the event (see "
+            f"`rename_events`) to use it in a pattern."
+        )
+    inner = tokens_mod.class_inner(token)
+    if len(token.members) > 1 and inner in available:
+        raise PatternSyntaxError(
+            f"{raw!r} was read as {len(token.members)} alternatives, but "
+            f"{inner!r} is itself an event in this eventstream. Rename the "
+            f"event (see `rename_events`) to use it in a pattern."
+        )
+    # An absent name narrows a positive class (one fewer alternative) and
+    # widens a negated one (one fewer exclusion). Callers that tolerate names
+    # resolving nowhere are tolerating the first, never the second.
+    if not check_literals and not token.negated:
+        return
+    for member in token.members:
+        if member in (PATH_START, PATH_END) or member in available:
+            continue
+        raise InvalidParameterError(param, member, sorted(available))
 
 
 def validate_pattern_tokens(
-    pattern: str, available_events: Iterable[str], *, param: str = "pattern"
+    pattern: str,
+    available_events: Iterable[str],
+    *,
+    param: str = "pattern",
+    warn: bool = True,
+    stacklevel: int = 3,
+    check_literals: bool = True,
 ) -> None:
     """
     Guard against typos: a mistyped event name would otherwise silently match
     nothing, indistinguishable from a legitimately empty result.
 
+    Names inside a *negated* class are checked for a sharper reason: a typo in
+    ``[^Purchse]`` does not produce an empty result but an always-true
+    position, which corrupts the output while looking perfectly healthy. That
+    asymmetry is what `check_literals=False` turns on — ``truncate_paths``
+    accepts a *list* of anchors of which some are expected not to resolve
+    (``["purchase", "path_end"]``), so there a name that names nothing is
+    legitimate wherever its absence *narrows* the pattern (a bare token, a
+    member of a positive class) and never where its absence widens it.
+
     `param` names the caller's user-facing parameter, so the error points at
     ``path_pattern`` / ``start_event`` rather than at this module's internals.
     """
     available = set(available_events)
-    for token in literal_tokens(pattern):
-        if token in (PATH_START, PATH_END):
+    raw_tokens = pattern.split(PATH_DELIMITER)
+
+    for raw in raw_tokens:
+        token = tokens_mod.parse_token(raw)
+
+        # A gap carries no position, but its constraint carries event names,
+        # and a typo there is the same always-true hazard one level out: an
+        # unknown name in `[^Purchse]*` stops excluding anything, so the gap
+        # quietly admits the very events it was written to rule out.
+        if isinstance(token, tokens_mod.Gap):
+            if token.constraint is not None:
+                _validate_class(
+                    token.constraint,
+                    available,
+                    param=param,
+                    check_literals=check_literals,
+                )
             continue
-        if token not in available:
-            raise InvalidParameterError(param, token, sorted(available))
+
+        if isinstance(token, str):
+            if token in (PATH_START, PATH_END) or token in available:
+                continue
+            hint = tokens_mod.describe_unknown_token(token)
+            if hint is not None:
+                raise PatternSyntaxError(hint)
+            if check_literals:
+                raise InvalidParameterError(param, token, sorted(available))
+            continue
+
+        _validate_class(token, available, param=param, check_literals=check_literals)
+
+    if warn and raw_tokens and not tokens_mod.has_anchor(raw_tokens):
+        warnings.warn(
+            f"{param} {pattern!r} names no events to look for — every position is "
+            f"negated or a wildcard, so it matches almost any path. Add at "
+            f"least one event name or a positive class to anchor it.",
+            UserWarning,
+            stacklevel=stacklevel,
+        )
 
 
 def _has_boundary_rows(df: pd.DataFrame, schema: "EventstreamSchema") -> bool:
@@ -250,10 +405,13 @@ def _has_boundary_rows(df: pd.DataFrame, schema: "EventstreamSchema") -> bool:
 
 def _part_condition(tokens: Sequence[str], alias: str) -> str:
     """SQL predicate: a match of `tokens` *starts* at this row."""
-    clauses = [f"{alias}.{_EVENT} = {quote_literal(tokens[0])}"]
-    for lead, token in enumerate(tokens[1:], start=1):
-        clauses.append(f"{alias}.__rete_e{lead} = {quote_literal(token)}")
-    return " AND ".join(clauses)
+    columns = [f"{alias}.{_EVENT}"] + [
+        f"{alias}.__rete_e{lead}" for lead in range(1, len(tokens))
+    ]
+    return " AND ".join(
+        tokens_mod.token_sql(tokens_mod.parse_token(token), column)
+        for token, column in zip(tokens, columns)
+    )
 
 
 def resolve_anchors(
@@ -318,7 +476,7 @@ def resolve_anchors(
         raise InvalidParameterError("occurrence", occurrence, list(OCCURRENCES))
 
     path_col = path_col or schema.path_col
-    parts = split_parts(pattern)
+    parts, gaps = split_pattern(pattern)
     if not parts:
         raise InvalidParameterError(
             "pattern", pattern, ["a pattern with at least one event name"]
@@ -381,54 +539,143 @@ def resolve_anchors(
         )""",
     ]
 
-    # One CTE per pattern part, chained so that each part is matched relative to
-    # the neighbour already pinned down. For "first" that means left to right,
-    # taking the earliest position at or after the previous part's end; "last" is
-    # the exact mirror, right to left.
-    order = range(len(parts)) if occurrence == "first" else reversed(range(len(parts)))
     floor_join = ""
     floor_cond = ""
     if not_before is not None:
         floor_join = f"JOIN not_before nb ON l.{_PATH} = nb.{path_q}"
         floor_cond = f" AND l.{_IDX} >= nb.bound"
 
-    previous: int | None = None
-    for i in order:
-        tokens = parts[i]
-        cond = _part_condition(tokens, "l")
-        # The floor constrains only the anchor's own part and whatever follows
-        # it; earlier parts are free to sit before the window opened.
+    # Every position where each part could start, before any cross-part
+    # constraint is applied. The floor constrains only the anchor's own part and
+    # whatever follows it; earlier parts are free to sit before the window
+    # opened.
+    for i, part in enumerate(parts):
         join = floor_join if i >= not_before_part else ""
         extra = floor_cond if i >= not_before_part else ""
-        if previous is None:
-            agg = "MIN" if occurrence == "first" else "MAX"
+        ctes.append(
+            f"""cand{i} AS (
+                SELECT l.{_PATH}, l.{_STEP} AS s
+                FROM leads l {join} WHERE {_part_condition(part, "l")}{extra}
+            )"""
+        )
+
+    # A restricted gap is enforced by proving that no event it disallows lies
+    # between the two parts it separates — one marker relation per such gap,
+    # never a walk over the run itself.
+    violations: dict[int, bool] = {}
+    for i in range(1, len(parts)):
+        gap = tokens_mod.parse_token(gaps[i])
+        violation = tokens_mod.gap_violation_sql(gap, _EVENT)
+        if violation is not None:
+            violations[i] = True
             ctes.append(
-                f"""m{i} AS (
-                    SELECT l.{_PATH}, {agg}(l.{_STEP}) AS s
-                    FROM leads l {join} WHERE {cond}{extra} GROUP BY l.{_PATH}
-                )"""
+                f"bad{i} AS (SELECT {_PATH}, {_STEP} FROM stepped WHERE {violation})"
             )
-        elif occurrence == "first":
-            prev_end = f"m{previous}.s + {len(parts[previous]) - 1}"
-            ctes.append(
-                f"""m{i} AS (
-                    SELECT l.{_PATH}, MIN(l.{_STEP}) AS s
-                    FROM leads l JOIN m{previous} ON l.{_PATH} = m{previous}.{_PATH} {join}
-                    WHERE {cond} AND l.{_STEP} > {prev_end}{extra}
-                    GROUP BY l.{_PATH}
-                )"""
+
+    # Forward pass: fwd{i} keeps the starts of part i that have a valid *prefix*
+    # — some placement of parts 0..i-1 before them honouring every gap.
+    #
+    # It has to be a set, not the single earliest start the previous
+    # implementation carried. With a plain gap, an earlier neighbour is always
+    # the least constraining choice, so one extreme sufficed. A restricted gap
+    # inverts that: the earlier the neighbour, the longer the run that must stay
+    # clean, so the earliest is the *most* constraining. On `A, X, A, D` the
+    # pattern `A->[^X]*->D` matches only from the second A, which a chain
+    # pinning A at its earliest would miss entirely and report as no match.
+    #
+    # Carrying the whole set costs nothing extra: for each candidate start,
+    # `max_e` is the latest feasible end of the previous part below it, and
+    # `max_b` the latest disallowed event below it. A previous end at or after
+    # that disallowed event means the run between them is clean, so
+    # `max_e >= max_b` is exactly the gap condition — and for an unrestricted
+    # gap `max_b` is absent and the test degenerates to "some previous end
+    # exists". `kind` breaks ties so that markers sharing a step with the
+    # candidate stay outside its frame, keeping both comparisons strict.
+    ctes.append(f"fwd0 AS (SELECT {_PATH}, s FROM cand0)")
+    for i in range(1, len(parts)):
+        prev_end = f"s + {len(parts[i - 1]) - 1}"
+        marks = [
+            f"SELECT {_PATH}, s AS {_STEP}, 0 AS kind, "
+            f"CAST(NULL AS BIGINT) AS e, CAST(NULL AS BIGINT) AS b FROM cand{i}",
+            f"SELECT {_PATH}, {prev_end} AS {_STEP}, 1, {prev_end}, "
+            f"CAST(NULL AS BIGINT) FROM fwd{i - 1}",
+        ]
+        if i in violations:
+            marks.append(
+                f"SELECT {_PATH}, {_STEP}, 1, CAST(NULL AS BIGINT), {_STEP} FROM bad{i}"
             )
-        else:
-            this_end = f"l.{_STEP} + {len(tokens) - 1}"
-            ctes.append(
-                f"""m{i} AS (
-                    SELECT l.{_PATH}, MAX(l.{_STEP}) AS s
-                    FROM leads l JOIN m{previous} ON l.{_PATH} = m{previous}.{_PATH} {join}
-                    WHERE {cond} AND {this_end} < m{previous}.s{extra}
-                    GROUP BY l.{_PATH}
-                )"""
+        ctes.append(
+            f"""fscan{i} AS (
+                SELECT {_PATH}, {_STEP}, kind,
+                       MAX(e) OVER w AS max_e,
+                       MAX(b) OVER w AS max_b
+                FROM ({" UNION ALL ".join(marks)})
+                WINDOW w AS (
+                    PARTITION BY {_PATH} ORDER BY {_STEP}, kind
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+                )
+            )"""
+        )
+        ctes.append(
+            f"""fwd{i} AS (
+                SELECT {_PATH}, {_STEP} AS s FROM fscan{i}
+                WHERE kind = 0 AND max_e IS NOT NULL AND max_e >= COALESCE(max_b, -1)
+            )"""
+        )
+
+    # Backward pass: the exact mirror, keeping the starts that have a valid
+    # *suffix*. Both are needed whatever `occurrence` is — a start with a prefix
+    # but no suffix takes part in no complete match, so it is not a candidate for
+    # either extreme.
+    last = len(parts) - 1
+    ctes.append(f"bwd{last} AS (SELECT {_PATH}, s FROM cand{last})")
+    for i in reversed(range(last)):
+        own_end = f"s + {len(parts[i]) - 1}"
+        marks = [
+            f"SELECT {_PATH}, {own_end} AS {_STEP}, 1 AS kind, s AS start, "
+            f"CAST(NULL AS BIGINT) AS f, CAST(NULL AS BIGINT) AS b FROM cand{i}",
+            f"SELECT {_PATH}, s AS {_STEP}, 0, CAST(NULL AS BIGINT), s, "
+            f"CAST(NULL AS BIGINT) FROM bwd{i + 1}",
+        ]
+        if i + 1 in violations:
+            marks.append(
+                f"SELECT {_PATH}, {_STEP}, 0, CAST(NULL AS BIGINT), "
+                f"CAST(NULL AS BIGINT), {_STEP} FROM bad{i + 1}"
             )
-        previous = i
+        ctes.append(
+            f"""bscan{i} AS (
+                SELECT {_PATH}, {_STEP}, kind, start,
+                       MIN(f) OVER w AS min_f,
+                       MIN(b) OVER w AS min_b
+                FROM ({" UNION ALL ".join(marks)})
+                WINDOW w AS (
+                    PARTITION BY {_PATH} ORDER BY {_STEP}, kind
+                    ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING
+                )
+            )"""
+        )
+        ctes.append(
+            f"""bwd{i} AS (
+                SELECT {_PATH}, start AS s FROM bscan{i}
+                WHERE kind = 1 AND min_f IS NOT NULL
+                  AND min_f <= COALESCE(min_b, 9223372036854775807)
+            )"""
+        )
+
+    # A start with both a prefix and a suffix takes part in some complete match,
+    # so the componentwise extremum over these is exactly what `occurrence`
+    # names. (That the extremum is itself a valid match still holds with
+    # restricted gaps: pushing either end of a run inwards only shortens what
+    # has to stay clean.)
+    agg = "MIN" if occurrence == "first" else "MAX"
+    for i in range(len(parts)):
+        ctes.append(
+            f"""m{i} AS (
+                SELECT f.{_PATH}, {agg}(f.s) AS s
+                FROM fwd{i} f JOIN bwd{i} b ON f.{_PATH} = b.{_PATH} AND f.s = b.s
+                GROUP BY f.{_PATH}
+            )"""
+        )
 
     joins = " ".join(
         f"JOIN m{i} ON m0.{_PATH} = m{i}.{_PATH}" for i in range(1, len(parts))

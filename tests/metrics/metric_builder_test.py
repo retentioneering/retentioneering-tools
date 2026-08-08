@@ -329,3 +329,201 @@ class TestMatchesPatternTokenMatching:
             ]
         )
         assert result is not None
+
+
+class TestMatchesPatternEventClasses:
+    """`matches_pattern` is the degenerate case of anchoring — "did it match at
+    all" — so an event class has to behave here exactly as it does for
+    positions, including having its member names checked."""
+
+    def test__alternation_matches_either_member(self) -> None:
+        stream = build_stream()
+        result = stream.get_metrics(
+            [
+                {
+                    "metric": "matches_pattern",
+                    "metric_args": {"pattern": "promo_view->[logout|cancellation]"},
+                }
+            ]
+        )
+        col = "matches_pattern_promo_view->[logout|cancellation]"
+        # user_1 ends promo_view->purchase->logout, so the pair is not adjacent
+        assert result.loc["user_1", col] == 0
+        assert result.loc["user_2", col] == 0
+        assert result.loc["user_3", col] == 0
+
+    def test__alternation_after_a_gap_matches_either_member(self) -> None:
+        stream = build_stream()
+        result = stream.get_metrics(
+            [
+                {
+                    "metric": "matches_pattern",
+                    "metric_args": {"pattern": "promo_view->.*->[logout|cancellation]"},
+                }
+            ]
+        )
+        col = "matches_pattern_promo_view->.*->[logout|cancellation]"
+        assert result.loc["user_1", col] == 1
+        assert result.loc["user_2", col] == 0
+        assert result.loc["user_3", col] == 1
+
+    def test__negation_matches_anything_else(self) -> None:
+        stream = build_stream()
+        result = stream.get_metrics(
+            [
+                {
+                    "metric": "matches_pattern",
+                    "metric_args": {"pattern": "purchase->[^purchase]"},
+                }
+            ]
+        )
+        col = "matches_pattern_purchase->[^purchase]"
+        assert result.loc["user_1", col] == 1  # purchase -> logout
+        assert result.loc["user_2", col] == 0  # purchase -> purchase, then ends
+        assert result.loc["user_3", col] == 1  # purchase -> cancellation
+
+    def test__negation_does_not_match_the_end_of_a_path(self) -> None:
+        """user_1's last event is `logout`; the synthetic path_end row sitting
+        after it must not satisfy `[^purchase]` and turn the pattern true."""
+        stream = build_stream()
+        result = stream.get_metrics(
+            [
+                {
+                    "metric": "matches_pattern",
+                    "metric_args": {"pattern": "logout->[^purchase]"},
+                }
+            ]
+        )
+        assert result["matches_pattern_logout->[^purchase]"].tolist() == [0, 0, 0]
+
+    def test__equals_renaming_the_members_together(self) -> None:
+        stream = build_stream()
+        merged = stream.rename_events({"logout": "END", "cancellation": "END"})
+
+        by_class = stream.get_metrics(
+            [
+                {
+                    "metric": "matches_pattern",
+                    "metric_args": {"pattern": "promo_view->.*->[logout|cancellation]"},
+                }
+            ]
+        )
+        by_rename = merged.get_metrics(
+            [
+                {
+                    "metric": "matches_pattern",
+                    "metric_args": {"pattern": "promo_view->.*->END"},
+                }
+            ]
+        )
+        assert (
+            by_class["matches_pattern_promo_view->.*->[logout|cancellation]"].tolist()
+            == by_rename["matches_pattern_promo_view->.*->END"].tolist()
+        )
+
+    def test__typo_inside_a_class_raises(self) -> None:
+        """The dangerous typo: it would widen the position to always-true
+        rather than emptying the result."""
+        stream = build_stream()
+        with pytest.raises(InvalidMetricConfigError, match="purchse"):
+            stream.get_metrics(
+                [
+                    {
+                        "metric": "matches_pattern",
+                        "metric_args": {"pattern": "promo_view->[^purchse]"},
+                    }
+                ]
+            )
+
+    def test__valid_class_is_not_mistaken_for_a_missing_event(self) -> None:
+        stream = build_stream()
+        result = stream.get_metrics(
+            [
+                {
+                    "metric": "matches_pattern",
+                    "metric_args": {"pattern": "[promo_view|purchase]"},
+                }
+            ]
+        )
+        assert result["matches_pattern_[promo_view|purchase]"].tolist() == [1, 1, 1]
+
+    def test__unsupported_syntax_is_reported_as_a_config_error(self) -> None:
+        stream = build_stream()
+        with pytest.raises(InvalidMetricConfigError, match="not a sequence"):
+            stream.get_metrics(
+                [
+                    {
+                        "metric": "matches_pattern",
+                        "metric_args": {"pattern": "[^promo_view->purchase]"},
+                    }
+                ]
+            )
+
+
+class TestMatchesPatternRestrictedGaps:
+    """`A->[^X]*->B` — "reached B from A without passing through X" — is the
+    analytically valuable form: "bought without contacting support"."""
+
+    def test__excludes_paths_that_passed_through_the_event(self) -> None:
+        stream = build_stream()
+        result = stream.get_metrics(
+            [
+                {
+                    "metric": "matches_pattern",
+                    "metric_args": {"pattern": "promo_view->[^purchase]*->logout"},
+                }
+            ]
+        )
+        col = "matches_pattern_promo_view->[^purchase]*->logout"
+        # user_1 is promo_view -> purchase -> logout, so the run is not clean.
+        assert result.loc["user_1", col] == 0
+
+    def test__admits_a_clean_run(self) -> None:
+        stream = build_stream()
+        result = stream.get_metrics(
+            [
+                {
+                    "metric": "matches_pattern",
+                    "metric_args": {"pattern": "promo_view->[^logout]*->purchase"},
+                }
+            ]
+        )
+        col = "matches_pattern_promo_view->[^logout]*->purchase"
+        assert result[col].tolist() == [1, 1, 1]
+
+    def test__positive_gap_admits_only_the_listed_events(self) -> None:
+        stream = build_stream()
+        result = stream.get_metrics(
+            [
+                {
+                    "metric": "matches_pattern",
+                    "metric_args": {"pattern": "promo_view->[purchase]*->logout"},
+                }
+            ]
+        )
+        col = "matches_pattern_promo_view->[purchase]*->logout"
+        assert result.loc["user_1", col] == 1  # only a purchase lies between
+
+    def test__typo_inside_a_gap_raises(self) -> None:
+        stream = build_stream()
+        with pytest.raises(InvalidMetricConfigError, match="purchse"):
+            stream.get_metrics(
+                [
+                    {
+                        "metric": "matches_pattern",
+                        "metric_args": {"pattern": "promo_view->[^purchse]*->logout"},
+                    }
+                ]
+            )
+
+    def test__unbounded_gap_is_rejected(self) -> None:
+        stream = build_stream()
+        with pytest.raises(InvalidMetricConfigError, match="nothing on its outer side"):
+            stream.get_metrics(
+                [
+                    {
+                        "metric": "matches_pattern",
+                        "metric_args": {"pattern": "[^purchase]*->logout"},
+                    }
+                ]
+            )

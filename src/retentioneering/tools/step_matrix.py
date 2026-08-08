@@ -192,13 +192,14 @@ class StepMatrix:
             raise PatternNoMatchError(path_pattern)
 
         original_pattern = path_pattern
-        pattern_tokens = path_pattern.split("->")
-        skip_first_matrix = pattern_tokens[0] != path_start
+        # Split on the pattern's own structure rather than on the literal string
+        # "->.*->": a gap may be restricted ("->[^X]*->"), and a string split
+        # would read `A->[^X]*->B` as three strictly adjacent tokens.
+        parts, gaps = anchors.split_pattern(path_pattern)
+        skip_first_matrix = parts[0][0] != path_start
         if skip_first_matrix:
-            if pattern_tokens[0] == ".*":
-                path_pattern = f"{path_start}->{path_pattern}"
-            else:
-                path_pattern = f"{path_start}->.*->{path_pattern}"
+            parts = [[path_start]] + parts
+            gaps = [None, anchors.GAP] + list(gaps[1:])
 
         if diff is None:
             sms = []
@@ -214,13 +215,11 @@ class StepMatrix:
             """
             df = engine.run(query, df=df)
 
-            current_pattern = []
-            for i, pattern_part in enumerate(path_pattern.split("->.*->")):
-                current_pattern.append(pattern_part)
-                current_pattern_str = "->.*->".join(current_pattern)
-
-                first_token = pattern_part.split("->")[0] if pattern_part else ""
-                is_start_anchored = (i == 0) and (first_token == path_start)
+            for i, pattern_part in enumerate(parts):
+                current_pattern_str = anchors.join_pattern(
+                    parts[: i + 1], gaps[: i + 1]
+                )
+                is_start_anchored = (i == 0) and (pattern_part[0] == path_start)
 
                 if is_start_anchored:
                     groupby_col = "step"
@@ -257,7 +256,7 @@ class StepMatrix:
                 )
 
                 if is_start_anchored:
-                    steps = len(pattern_part.split("->")) + max_steps
+                    steps = len(pattern_part) + max_steps
                     sm = sm[[col for col in sm.columns if col <= steps]]
                     sm.columns = pd.Index(range(len(sm.columns)), name="step")
                     if len(sm.columns) < max_steps + 1:
@@ -266,8 +265,8 @@ class StepMatrix:
                     steps_left = max_steps
                     steps_right = (
                         0
-                        if pattern_part.endswith(path_end)
-                        else len(pattern_part.split("->")) + max_steps - 1
+                        if pattern_part[-1] == path_end
+                        else len(pattern_part) + max_steps - 1
                     )
                     sm = sm.reindex(columns=range(-steps_left, steps_right + 1)).fillna(
                         0

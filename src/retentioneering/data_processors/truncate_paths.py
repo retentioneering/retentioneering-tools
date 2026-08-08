@@ -5,7 +5,11 @@ import pandas as pd
 from retentioneering import engine
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
-from retentioneering.exceptions import InvalidParameterError, PreprocessingConfigError
+from retentioneering.exceptions import (
+    InvalidParameterError,
+    PatternSyntaxError,
+    PreprocessingConfigError,
+)
 from retentioneering.paths import anchors
 
 PROCESSOR_NAME = "truncate_paths"
@@ -55,8 +59,34 @@ class TruncatePaths(DataProcessor):
             )
         try:
             return anchors.parse_specs(value, param=param)
-        except InvalidParameterError as exc:
+        except (InvalidParameterError, PatternSyntaxError) as exc:
             raise PreprocessingConfigError(PROCESSOR_NAME, exc.message) from exc
+
+    def _validate_tokens(self, df: pd.DataFrame, schema: EventstreamSchema) -> None:
+        """Reject anchor patterns naming events this eventstream does not have.
+
+        Deferred to `apply` because the vocabulary is only known once there is a
+        frame, and narrowed by `check_literals=False` to the names whose absence
+        would *widen* a pattern. A name that resolves nowhere is legitimate here
+        — a list of anchors is a fallback chain, and `["purchase", "path_end"]`
+        relies on the first spec not resolving for paths that never purchased —
+        but that argument only covers names whose absence removes a way to
+        match. Inside `[^...]` an unknown name removes an *exclusion*, so the
+        window silently opens in the wrong place instead of not opening.
+        """
+        event_col = self.event_col or schema.event_col
+        available = df[event_col].unique().tolist()
+        for param, specs in (
+            ("start_event", self.start_specs),
+            ("end_event", self.end_specs),
+        ):
+            for spec in specs:
+                try:
+                    anchors.validate_pattern_tokens(
+                        spec.pattern, available, param=param, check_literals=False
+                    )
+                except (InvalidParameterError, PatternSyntaxError) as exc:
+                    raise PreprocessingConfigError(PROCESSOR_NAME, exc.message) from exc
 
     def _bounds(
         self,
@@ -106,6 +136,8 @@ class TruncatePaths(DataProcessor):
                 PROCESSOR_NAME,
                 f"path_col '{path_col}' must be one of schema.path_cols: {schema.path_cols}.",
             )
+
+        self._validate_tokens(df, schema)
 
         path_col_q = engine.quote_ident(path_col)
         index_col_q = engine.quote_ident(schema.index)

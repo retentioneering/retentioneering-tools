@@ -330,7 +330,9 @@ def add_step_matrix(
     diff:
         Optional diff: [segment_col, value1, value2].
     path_pattern:
-        Filter paths, e.g. "add_to_cart->.*->purchase".
+        Filter paths by an event sequence: "add_to_cart->.*->purchase", or
+        "add_to_cart->[^support_chat]*->purchase" for the same without support
+        in between. Full syntax: the Path Patterns docs page.
     path_col:
         Override the path ID column.
 

@@ -77,6 +77,7 @@ Two more anchors worth having:
 
 - `path_pattern="path_end"` — [centers on where paths stop](/docs/widgets/step-matrix#path-pattern---drop-off-points), so the columns to its left are the last things users did before leaving.
 - `path_pattern="catalog->.*->purchase"` — [several anchors in sequence](/docs/widgets/step-matrix#path-pattern---funnel-patterns), where `.*` matches any run of events. This allows you to explore steps surrounding events in a funnel pattern.
+- `path_pattern="[payment_error|checkout_bug]"` — one position can also be a *class* of events: any of several, or anything but a few (`[^home]`), or any event at all (`.`). See [Path Patterns](/docs/path-patterns) for the whole syntax.
 
 ## Representation 2: by transition
 

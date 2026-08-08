@@ -44,7 +44,11 @@ import pandas as pd
 from retentioneering import engine
 from retentioneering.engine import dialect
 from retentioneering.eventstream.event_type import EventTypes
-from retentioneering.exceptions import InvalidMetricConfigError
+from retentioneering.exceptions import (
+    InvalidMetricConfigError,
+    InvalidParameterError,
+    PatternSyntaxError,
+)
 from retentioneering.paths import anchors
 from retentioneering.utils.sql_quoting import quote_list, quote_literal
 
@@ -496,15 +500,21 @@ class MetricBuilder:
                 )
 
         elif metric_name == "matches_pattern":
+            # Delegated rather than open-coded: a token is no longer necessarily
+            # an event name, and a hand-rolled `tok not in available_events`
+            # would reject a valid `[cart|purchase]` as a missing event while
+            # letting a typo inside it through as an always-true position.
             pattern = _normalize_pattern(metric_args)
-            for tok in pattern.split("->"):
-                if tok == ".*" or tok in SYNTHETIC_EVENTS:
-                    continue
-                if tok not in available_events:
-                    raise InvalidMetricConfigError(
-                        f"Event '{tok}' in pattern '{pattern}' not found. "
-                        f"Available events: {sorted(available_events)}"
-                    )
+            try:
+                anchors.validate_pattern_tokens(
+                    anchors.normalize_pattern(pattern, warn=False, param="pattern"),
+                    available_events,
+                    param="pattern",
+                )
+            except (InvalidParameterError, PatternSyntaxError) as exc:
+                raise InvalidMetricConfigError(
+                    f"In pattern '{pattern}': {exc.message}"
+                ) from exc
 
         elif metric_name == "in_segment":
             norm = _normalize_in_segment(metric_args)
@@ -854,6 +864,11 @@ class MetricBuilder:
             self.df_with_start_end = self.eventstream.add_start_end_events(
                 path_col=path_col
             ).df
+
+        # Token existence is checked by `validate_metric_config`, which every
+        # build goes through; normalizing here only settles the redundant
+        # leading/trailing gaps the matcher assumes are already gone.
+        pattern = anchors.normalize_pattern(pattern, warn=False, param="pattern")
 
         match = anchors.resolve_anchors(
             self.df_with_start_end, self.schema, pattern, path_col=path_col

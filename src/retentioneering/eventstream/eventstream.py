@@ -1322,9 +1322,10 @@ class Eventstream:
         An anchor spec is a dict:
 
         - `pattern` (required) — an event name, or a `"->"`-separated pattern
-          where `.*` matches any run of events, e.g. `"add_to_cart->.*->purchase"`.
-          The reserved names `"path_start"` / `"path_end"` refer to a path's own
-          first / last event.
+          such as `"add_to_cart->.*->purchase"`; see
+          [Path Patterns](/docs/path-patterns) for the full syntax. The reserved
+          names `"path_start"` / `"path_end"` refer to a path's own first / last
+          event.
         - `at` — which of the pattern's event names is the anchor point:
           `"start"`, `"end"` (default), or an integer index over the pattern's
           event names (`.*` is not a position, so it is not counted). For
@@ -1592,12 +1593,15 @@ class Eventstream:
             with no `segment_col` value assigned (e.g. left unset by `add_segment`'s
             `func=`/`sql=` modes) — see `get_segment_levels`.
         path_pattern : str, optional
-            Restrict the graph to paths matching a `"->"`-separated sequence of
-            events, where `.*` matches any run of events, e.g.
-            `"add_to_cart->.*->purchase"`. Unlike Step Matrix's parameter of the
-            same name this only selects *which paths* are drawn — a graph has no
-            step axis to centre. To cut the paths themselves down to the window
-            the pattern describes, use `truncate_paths`.
+            Restrict the graph to paths matching a `"->"`-separated event sequence:
+            `"add_to_cart->.*->purchase"` is those two in that order with
+            anything in between, `"add_to_cart->[^support_chat]*->purchase"`
+            the same without support in between. Full syntax:
+            [Path Patterns](/docs/path-patterns). Unlike Step Matrix's
+            parameter of the same name this only selects *which paths* are
+            drawn — a graph has no step axis to centre. To cut the paths
+            themselves down to the window the pattern describes, use
+            `truncate_paths`.
 
         Returns
         -------
@@ -1644,9 +1648,11 @@ class Eventstream:
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         path_pattern : str, optional
-            Restrict/split paths using a `"->"`-separated sequence of anchor
-            events, where `.*` matches any run of events, e.g.
-            `"add_to_cart->.*->purchase"`. Without a pattern, computes over
+            Restrict and split paths on a `"->"`-separated event sequence:
+            `"add_to_cart->.*->purchase"` is those two in that order with
+            anything in between, `"add_to_cart->[^support_chat]*->purchase"`
+            the same without support in between. Full syntax:
+            [Path Patterns](/docs/path-patterns). Without a pattern, computes over
             the whole path from `path_start` to `path_end`. Each anchor event in
             the pattern produces its own matrix block. To see the
             neighborhood around a single event: `path_pattern="add_to_cart"`.
@@ -1708,9 +1714,11 @@ class Eventstream:
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         path_pattern : str, optional
-            Restrict/split paths using a `"->"`-separated sequence of anchor
-            events, where `.*` matches any run of events, e.g.
-            `"add_to_cart->.*->purchase"`. Without a pattern, computes over
+            Restrict and split paths on a `"->"`-separated event sequence:
+            `"add_to_cart->.*->purchase"` is those two in that order with
+            anything in between, `"add_to_cart->[^support_chat]*->purchase"`
+            the same without support in between. Full syntax:
+            [Path Patterns](/docs/path-patterns). Without a pattern, computes over
             the whole path from `path_start` to `path_end`. Each anchor event in
             the pattern produces its own matrix block. To see the
             neighborhood around a single event: `path_pattern="add_to_cart"`.
@@ -1830,9 +1838,11 @@ class Eventstream:
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         path_pattern : str, optional
-            Restrict/split paths using a `"->"`-separated sequence of anchor
-            events, where `.*` matches any run of events, e.g.
-            `"add_to_cart->.*->purchase"`. Without a pattern, shows the
+            Restrict and split paths on a `"->"`-separated event sequence:
+            `"add_to_cart->.*->purchase"` is those two in that order with
+            anything in between, `"add_to_cart->[^support_chat]*->purchase"`
+            the same without support in between. Full syntax:
+            [Path Patterns](/docs/path-patterns). Without a pattern, shows the
             whole path from `path_start` to `path_end`. Multiple anchors render
             one matrix block per anchor, side by side. A pattern that doesn't
             start at `path_start` or end at `path_end` shows a serrated edge,
@@ -1898,11 +1908,13 @@ class Eventstream:
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         path_pattern : str, optional
-            Restrict the graph to paths matching a `"->"`-separated sequence of
-            events, where `.*` matches any run of events, e.g.
-            `"add_to_cart->.*->purchase"`. Unlike Step Matrix's parameter of the
-            same name this only selects *which paths* are drawn — a graph has no
-            step axis to centre. Everything the widget shows, event counts
+            Restrict the graph to paths matching a `"->"`-separated event sequence:
+            `"add_to_cart->.*->purchase"` is those two in that order with
+            anything in between, `"add_to_cart->[^support_chat]*->purchase"`
+            the same without support in between. Full syntax:
+            [Path Patterns](/docs/path-patterns). Unlike Step Matrix's
+            parameter of the same name this only selects *which paths* are
+            drawn — a graph has no step axis to centre. Everything the widget shows, event counts
             included, is computed from the restricted set. To cut the paths
             themselves down to the window the pattern describes, use
             `truncate_paths`.

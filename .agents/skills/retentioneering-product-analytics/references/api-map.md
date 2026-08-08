@@ -86,6 +86,12 @@ naming the requirement.
 
 Other metrics: `active_days`, `first_event_time`, `in_segment` (modes `any/all/event_share`).
 `matches_pattern` is token-wise (no substring false-positives) and order-deterministic.
+One position may be a class of events — `[a|b]` any of, `[^a]` anything but, `.` any
+event — which replaces merging events with `rename_events` just to ask one question.
+`[^a]` and `.` never match `path_start`/`path_end`; a sentinel takes part only when named.
+Quantified with `*` a class becomes a restricted gap: `a->[^x]*->b` is "reached b from a
+without passing through x". A restricted gap needs an anchor on both sides — name
+`path_start`/`path_end` if that is what you mean.
 `time_between` measures first occurrence of A to first occurrence of B **globally in the
 path** (not "first B after A") — verify fit for your question.
 

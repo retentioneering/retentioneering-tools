@@ -18,6 +18,20 @@ class DiffConfigError(RetentioneeringError):
         super().__init__(message, "DIFF_CONFIG_ERROR")
 
 
+class PatternSyntaxError(RetentioneeringError):
+    """A path pattern that cannot be parsed at all.
+
+    Distinct from `InvalidParameterError`, which reports a *known* parameter
+    holding an unknown *value* and renders the vocabulary of allowed values —
+    the right shape for "this event does not exist", the wrong one for "these
+    brackets do not balance", where the useful message is free-form prose
+    naming the construct that is supported instead.
+    """
+
+    def __init__(self, message: str):
+        super().__init__(message, "PATTERN_SYNTAX")
+
+
 class InvalidParameterError(RetentioneeringError):
     def __init__(self, param_name: str, value: str, allowed_values: list | None = None):
         message = f"Invalid value '{value}' for parameter '{param_name}'"

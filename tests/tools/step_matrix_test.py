@@ -677,3 +677,161 @@ class TestStepMatrixDataAlias:
         via_sankey = stream.step_sankey_data(max_steps=3)
         via_matrix = stream.step_matrix_data(max_steps=3)
         pd.testing.assert_frame_equal(via_sankey, via_matrix)
+
+
+class TestStepMatrixEventClasses:
+    """A class token occupies one position, so centring — which works off the
+    anchor's *step number*, never off its event name — must behave exactly as it
+    does for a plain event. The reference answer is the same matrix built after
+    merging the class's members with `rename_events`, which is the workaround
+    this syntax replaces."""
+
+    @staticmethod
+    def _stream():
+        from retentioneering.datasets import load_ecom
+
+        return load_ecom()
+
+    def test__centring_on_a_class_equals_centring_on_the_merged_event(self):
+        members = ["payment_error", "checkout_bug"]
+        stream = self._stream()
+        merged = stream.rename_events({name: "MERGED" for name in members})
+
+        by_class = stream.step_matrix_data(
+            path_pattern=f"[{'|'.join(members)}]", max_steps=3
+        )[0]
+        by_rename = merged.step_matrix_data(path_pattern="MERGED", max_steps=3)[0]
+
+        assert list(by_class.columns) == list(by_rename.columns)
+        # Every row not involved in the merge must be identical: the same paths
+        # were selected and laid out around the same centres.
+        untouched = [e for e in by_rename.index if e not in {"MERGED"}]
+        pd.testing.assert_frame_equal(by_class.loc[untouched], by_rename.loc[untouched])
+
+    def test__the_centre_column_splits_across_the_class_members(self):
+        """The one visible difference from a literal anchor: column 0 holds a
+        distribution over the class instead of a single event at 1.0."""
+        members = ["payment_error", "checkout_bug"]
+        stream = self._stream()
+        merged = stream.rename_events({name: "MERGED" for name in members})
+
+        by_class = stream.step_matrix_data(
+            path_pattern=f"[{'|'.join(members)}]", max_steps=3
+        )[0]
+        by_rename = merged.step_matrix_data(path_pattern="MERGED", max_steps=3)[0]
+
+        centre = by_class.loc[members, 0]
+        assert (centre > 0).all()
+        assert centre.sum() == pytest.approx(by_rename.loc["MERGED", 0])
+        assert by_rename.loc["MERGED", 0] == pytest.approx(1.0)
+
+    def test__negated_token_is_accepted_as_a_path_pattern(self):
+        stream = self._stream()
+        res = stream.step_matrix_data(path_pattern="path_start->[^home]", max_steps=3)[
+            0
+        ]
+        assert res.loc["home", 1] == 0.0
+        assert res.loc["path_start", 0] == pytest.approx(1.0)
+
+    def test__typo_inside_a_class_is_rejected(self):
+        stream = self._stream()
+        with pytest.raises(InvalidParameterError, match="Purchse"):
+            stream.step_matrix_data(path_pattern="[^Purchse]->cart", max_steps=3)
+
+    def test__pattern_with_no_match_still_reports_no_match(self):
+        stream = self._stream()
+        with pytest.raises(PatternNoMatchError):
+            stream.step_matrix_data(
+                path_pattern="[cart|catalog]->path_start", max_steps=3
+            )
+
+
+class TestStepMatrixRestrictedGaps:
+    """A restricted gap separates blocks exactly as `.*` does. The trap it
+    closes: splitting the pattern on the literal string "->.*->" reads
+    `A->[^X]*->B` as three strictly adjacent tokens and lays out one block
+    instead of two."""
+
+    @staticmethod
+    def _stream(paths):
+        rows = []
+        ts = pd.Timestamp("2024-01-01")
+        for pid, events in paths.items():
+            for i, event in enumerate(events):
+                rows.append(
+                    {
+                        "user_id": pid,
+                        "event": event,
+                        "timestamp": ts + pd.Timedelta(minutes=i),
+                    }
+                )
+        return Eventstream(pd.DataFrame(rows))
+
+    PATHS = {
+        "clean": ["A", "p", "B", "q"],
+        "dirty": ["A", "X", "B", "q"],
+        "adjacent": ["A", "B"],
+    }
+
+    def test__a_restricted_gap_separates_blocks_like_a_plain_one(self):
+        stream = self._stream(self.PATHS)
+        restricted = stream.step_matrix_data(path_pattern="A->[^X]*->B", max_steps=2)
+        plain = stream.step_matrix_data(path_pattern="A->.*->B", max_steps=2)
+        assert len(restricted) == len(plain) == 2
+
+    def test__each_block_is_centred_on_its_own_part(self):
+        stream = self._stream(self.PATHS)
+        blocks = stream.step_matrix_data(path_pattern="A->[^X]*->B", max_steps=2)
+        assert blocks[0].loc["A", 0] == pytest.approx(1.0)
+        assert blocks[1].loc["B", 0] == pytest.approx(1.0)
+
+    def test__the_gap_restricts_which_paths_are_drawn(self):
+        stream = self._stream(self.PATHS)
+        blocks = stream.step_matrix_data(path_pattern="A->[^X]*->B", max_steps=2)
+        # `dirty` is excluded, so the X it contributed is gone from the matrix.
+        assert "X" not in blocks[0].index
+        plain = stream.step_matrix_data(path_pattern="A->.*->B", max_steps=2)
+        assert "X" in plain[0].index
+
+    def test__restricted_gap_after_a_start_anchor(self):
+        """The `path_start` block is laid out from step 0 rather than centred,
+        a separate branch that must also read the pattern structurally."""
+        stream = self._stream(self.PATHS)
+        blocks = stream.step_matrix_data(
+            path_pattern="path_start->[^X]*->B", max_steps=2
+        )
+        assert len(blocks) == 2
+        assert blocks[0].loc["path_start", 0] == pytest.approx(1.0)
+
+    def test__unbounded_restricted_gap_is_rejected(self):
+        from retentioneering.exceptions import PatternSyntaxError
+
+        stream = self._stream(self.PATHS)
+        with pytest.raises(PatternSyntaxError, match="nothing on its outer side"):
+            stream.step_matrix_data(path_pattern="[^X]*->B", max_steps=2)
+
+    def test__diff_reaches_the_same_pattern_handling(self):
+        rows = []
+        ts = pd.Timestamp("2024-01-01")
+        for pid, (events, country) in {
+            "u1": (["A", "p", "B"], "US"),
+            "u2": (["A", "X", "B"], "US"),
+            "u3": (["A", "p", "B"], "UK"),
+            # Both groups must know every event the pattern names: each side of
+            # a diff is validated against its own vocabulary.
+            "u4": (["A", "X", "B"], "UK"),
+        }.items():
+            for i, event in enumerate(events):
+                rows.append(
+                    {
+                        "user_id": pid,
+                        "event": event,
+                        "timestamp": ts + pd.Timedelta(minutes=i),
+                        "country": country,
+                    }
+                )
+        stream = Eventstream(pd.DataFrame(rows), {"segment_cols": ["country"]})
+        blocks, g1, g2 = stream.step_matrix_data(
+            path_pattern="A->[^X]*->B", max_steps=2, diff=("country", "US", "UK")
+        )
+        assert len(blocks) == len(g1) == len(g2) == 2

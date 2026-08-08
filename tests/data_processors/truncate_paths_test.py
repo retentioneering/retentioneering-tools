@@ -695,3 +695,87 @@ class TestDocumentedWorkedExample:
         anchor = {"pattern": self.PATTERN, "at": 1, "occurrence": "last"}
         result = stream.truncate_paths(start_event=anchor, end_event=anchor)
         assert _events(result, "u1") == ["add_to_cart"]
+
+
+class TestEventClassAnchors:
+    """An anchor spec is a pattern, so a class works there too — and its member
+    names must be checked even though a *bare* name that resolves nowhere is
+    legitimate here (a list of anchors is a fallback chain)."""
+
+    def test__class_anchor_opens_the_window_at_either_member(self):
+        stream = _stream({1: ["A", "B", "C", "D"], 2: ["A", "X", "C", "D"]})
+        result = stream.truncate_paths(start_event="[B|X]", end_event="D")
+        assert _events(result, 1) == ["B", "C", "D"]
+        assert _events(result, 2) == ["X", "C", "D"]
+
+    def test__class_anchor_equals_renaming_the_members_together(self):
+        paths = {1: ["A", "B", "C", "D"], 2: ["A", "X", "C", "D"]}
+        by_class = _stream(paths).truncate_paths(start_event="[B|X]", end_event="D")
+        by_rename = (
+            _stream(paths)
+            .rename_events({"B": "M", "X": "M"})
+            .truncate_paths(start_event="M", end_event="D")
+        )
+        assert len(by_class.df) == len(by_rename.df)
+
+    def test__negated_anchor_opens_at_the_first_event_that_is_not_named(self):
+        stream = _stream({1: ["A", "A", "B", "C"]})
+        # A pattern of nothing but negation matches almost anything, which is
+        # legal but worth saying out loud.
+        with pytest.warns(UserWarning, match="names no events to look for"):
+            result = stream.truncate_paths(start_event="[^A]", end_event="C")
+        assert _events(result, 1) == ["B", "C"]
+
+    def test__typo_inside_a_class_is_rejected(self):
+        stream = _stream({1: ["A", "B", "C"]})
+        with pytest.raises(PreprocessingConfigError, match="Q"):
+            stream.truncate_paths(start_event="[^Q]", end_event="C")
+
+    def test__bare_name_that_resolves_nowhere_is_still_allowed(self):
+        """The fallback-list contract: `["A", "Q"]` must not become an error
+        just because Q is absent — it simply does not constrain."""
+        stream = _stream({1: ["A", "B", "C"]})
+        result = stream.truncate_paths(start_event=["A", "Q"], end_event="C")
+        assert _events(result, 1) == ["A", "B", "C"]
+
+    def test__unsupported_syntax_is_reported_as_a_config_error(self):
+        stream = _stream({1: ["A", "B", "C"]})
+        with pytest.raises(PreprocessingConfigError, match="not a sequence"):
+            stream.truncate_paths(start_event="[^A->B]", end_event="C")
+
+    def test__class_anchor_works_inside_a_spec_dict(self):
+        stream = _stream({1: ["A", "B", "C", "D", "E"]})
+        result = stream.truncate_paths(
+            start_event={"pattern": "[B|X]->.*->D", "at": 0}, end_event="E"
+        )
+        assert _events(result, 1) == ["B", "C", "D", "E"]
+
+
+class TestRestrictedGapAnchors:
+    def test__window_opens_on_a_clean_run(self):
+        stream = _stream(
+            {
+                1: ["A", "p", "B", "C"],
+                2: ["A", "X", "B", "C"],
+            }
+        )
+        result = stream.truncate_paths(start_event="A->[^X]*->B", end_event="C")
+        assert _events(result, 1) == ["B", "C"]
+        assert _events(result, 2) == []
+
+    def test__at_addresses_the_parts_around_the_gap(self):
+        stream = _stream({1: ["z", "A", "p", "B", "C"], 2: ["X"]})
+        result = stream.truncate_paths(
+            start_event={"pattern": "A->[^X]*->B", "at": 0}, end_event="C"
+        )
+        assert _events(result, 1) == ["A", "p", "B", "C"]
+
+    def test__typo_inside_a_gap_is_rejected(self):
+        stream = _stream({1: ["A", "B", "C"]})
+        with pytest.raises(PreprocessingConfigError, match="Q"):
+            stream.truncate_paths(start_event="A->[^Q]*->B", end_event="C")
+
+    def test__unbounded_gap_is_rejected(self):
+        stream = _stream({1: ["A", "B", "C"]})
+        with pytest.raises(PreprocessingConfigError, match="nothing on its outer side"):
+            stream.truncate_paths(start_event="[^A]*->B", end_event="C")

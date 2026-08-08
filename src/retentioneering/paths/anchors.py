@@ -91,6 +91,7 @@ __all__ = [
     "parse_spec",
     "resolve_anchors",
     "resolve_bound",
+    "resolve_positions",
     "split_parts",
     "validate_pattern_tokens",
 ]
@@ -449,12 +450,23 @@ def resolve_anchors(
         Event column the pattern's tokens are matched against; defaults to
         ``schema.event_col``.
     not_before : pandas.DataFrame, optional
-        Per-path floor: columns `path_col` and ``"bound"``, a ``schema.index``
-        value the match may not start before. Only parts from `not_before_part`
-        onward are constrained, so a pattern may still begin *earlier* than the
-        floor as long as the part carrying the anchor does not — which is what
-        lets an end anchor be searched for "after the window opened" while its
-        pattern is still matched against the whole path.
+        Per-path floor: `path_col` plus one of two bound columns.
+
+        ``"bound"`` is a ``schema.index`` value the match may not start before
+        (inclusive). ``"bound_step"`` is a *step* the match must start strictly
+        after. The second exists because the two spaces disagree exactly where
+        a boundary sentinel is involved: a virtual ``path_end`` row carries the
+        index of the path's last real event, so an index-space floor at that
+        event excludes the very boundary that follows it, while in step space
+        it sits one step later as it should. A caller asking "what happened
+        *after* this position" wants the step form; a caller cutting a frame
+        between two index bounds wants the index one.
+
+        Only parts from `not_before_part` onward are constrained, so a pattern
+        may still begin *earlier* than the floor as long as the part carrying
+        the anchor does not — which is what lets an end anchor be searched for
+        "after the window opened" while its pattern is still matched against
+        the whole path.
 
         Without this, a caller wanting the same guarantee would have to truncate
         the frame first, and a pattern spanning the cut could then only match a
@@ -543,7 +555,10 @@ def resolve_anchors(
     floor_cond = ""
     if not_before is not None:
         floor_join = f"JOIN not_before nb ON l.{_PATH} = nb.{path_q}"
-        floor_cond = f" AND l.{_IDX} >= nb.bound"
+        if "bound_step" in not_before.columns:
+            floor_cond = f" AND l.{_STEP} > nb.bound_step"
+        else:
+            floor_cond = f" AND l.{_IDX} >= nb.bound"
 
     # Every position where each part could start, before any cross-part
     # constraint is applied. The floor constrains only the anchor's own part and
@@ -859,6 +874,116 @@ def _offset_query(
     """
 
 
+def _anchor_part(spec: AnchorSpec) -> int:
+    """Which gap-separated part carries the spec's anchor token.
+
+    Everything from that part on is what `not_before` may constrain (see
+    :func:`resolve_anchors`).
+    """
+    ordinal = spec.ordinal()
+    tokens = literal_tokens(spec.pattern)
+    resolved_ordinal = ordinal if ordinal >= 0 else len(tokens) + ordinal
+    starts = []
+    running = 0
+    for part in split_parts(spec.pattern):
+        starts.append(running)
+        running += len(part)
+    return max(i for i, start in enumerate(starts) if start <= resolved_ordinal)
+
+
+def _step_query(schema: "EventstreamSchema", path_col: str) -> str:
+    """SQL putting an anchor's ``schema.index`` bound back in step space.
+
+    Only used after an offset has moved the bound: an offset lands on a real
+    event row, so index and step identify each other unambiguously there.
+    """
+    path_q = engine.quote_ident(path_col)
+    index_q = engine.quote_ident(schema.index)
+    subindex_q = engine.quote_ident(schema.subindex)
+    return f"""
+        WITH base AS (
+            SELECT {path_q} AS p, {index_q} AS idx,
+                   row_number() OVER (
+                       PARTITION BY {path_q} ORDER BY {index_q}, {subindex_q}
+                   ) AS step
+            FROM df
+        )
+        SELECT a.{path_q} AS {path_q}, b.step AS step, a.bound AS bound
+        FROM anchor a JOIN base b ON b.p = a.{path_q} AND b.idx = a.bound
+    """
+
+
+def resolve_positions(
+    df: pd.DataFrame,
+    schema: "EventstreamSchema",
+    spec: AnchorSpec,
+    *,
+    side: str,
+    path_col: str | None = None,
+    event_col: str | None = None,
+    not_before: pd.DataFrame | None = None,
+    not_before_part: int | None = None,
+) -> pd.DataFrame:
+    """
+    Resolve one :class:`AnchorSpec` to a per-path position, in both spaces.
+
+    Parameters
+    ----------
+    side : {"start", "end"}
+        Which end of the window this bound is. Only matters for a time offset,
+        whose mark falls between events and so has to round outward-consistently
+        (see :func:`_offset_query`).
+    not_before_part : int, optional
+        Override for which gap-separated part the floor starts constraining.
+        Defaults to the part carrying the anchor token, which lets a pattern's
+        lead-in sit before the floor; pass ``0`` to require the *whole* match to
+        respect it.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Three columns — `path_col`, ``"step"`` (1-based position within the
+        path, ``0`` / ``max_step + 1`` for the boundary sentinels) and
+        ``"bound"`` (the ``schema.index`` value). Paths whose pattern did not
+        match are absent.
+    """
+    if side not in ("start", "end"):
+        raise InvalidParameterError("side", side, ["start", "end"])
+
+    path_col = path_col or schema.path_col
+    if not_before_part is None:
+        not_before_part = _anchor_part(spec)
+
+    match = resolve_anchors(
+        df,
+        schema,
+        spec.pattern,
+        occurrence=spec.occurrence,
+        path_col=path_col,
+        event_col=event_col,
+        not_before=not_before,
+        not_before_part=not_before_part,
+    )
+    anchor = match.at(spec.ordinal())[[path_col, "step", "index"]].rename(
+        columns={"index": "bound"}
+    )
+    if spec.offset is None or anchor.empty:
+        return anchor
+
+    if isinstance(spec.offset, bool):
+        raise InvalidParameterError(
+            "offset", spec.offset, ["a step count (int) or a duration"]
+        )
+    if isinstance(spec.offset, int):
+        seconds, in_steps = spec.offset, True
+    else:
+        seconds, in_steps = parse_duration(spec.offset, param="offset"), False
+
+    query = _offset_query(schema, path_col, seconds, side, in_steps=in_steps)
+    moved = engine.run(query, df=df, anchor=anchor)
+    return engine.run(_step_query(schema, path_col), df=df, anchor=moved)
+
+
 def resolve_bound(
     df: pd.DataFrame,
     schema: "EventstreamSchema",
@@ -872,12 +997,8 @@ def resolve_bound(
     """
     Resolve one :class:`AnchorSpec` to a per-path window bound.
 
-    Parameters
-    ----------
-    side : {"start", "end"}
-        Which end of the window this bound is. Only matters for a time offset,
-        whose mark falls between events and so has to round outward-consistently
-        (see :func:`_offset_query`).
+    :func:`resolve_positions` without the step column — the index bound is all a
+    caller cutting a frame between two bounds needs.
 
     Returns
     -------
@@ -885,47 +1006,13 @@ def resolve_bound(
         Two columns — `path_col` and ``"bound"``, the ``schema.index`` value the
         window is bounded at. Paths whose pattern did not match are absent.
     """
-    if side not in ("start", "end"):
-        raise InvalidParameterError("side", side, ["start", "end"])
-
-    path_col = path_col or schema.path_col
-
-    # Which gap-separated part carries the anchor token — everything from there
-    # on is what `not_before` may constrain (see :func:`resolve_anchors`).
-    ordinal = spec.ordinal()
-    tokens = literal_tokens(spec.pattern)
-    resolved_ordinal = ordinal if ordinal >= 0 else len(tokens) + ordinal
-    starts = []
-    running = 0
-    for part in split_parts(spec.pattern):
-        starts.append(running)
-        running += len(part)
-    anchor_part = max(i for i, start in enumerate(starts) if start <= resolved_ordinal)
-
-    match = resolve_anchors(
+    positions = resolve_positions(
         df,
         schema,
-        spec.pattern,
-        occurrence=spec.occurrence,
+        spec,
+        side=side,
         path_col=path_col,
         event_col=event_col,
         not_before=not_before,
-        not_before_part=anchor_part,
     )
-    anchor = match.at(spec.ordinal())[[path_col, "step", "index"]].rename(
-        columns={"index": "bound"}
-    )
-    if spec.offset is None or anchor.empty:
-        return anchor[[path_col, "bound"]]
-
-    if isinstance(spec.offset, bool):
-        raise InvalidParameterError(
-            "offset", spec.offset, ["a step count (int) or a duration"]
-        )
-    if isinstance(spec.offset, int):
-        seconds, in_steps = spec.offset, True
-    else:
-        seconds, in_steps = parse_duration(spec.offset, param="offset"), False
-
-    query = _offset_query(schema, path_col, seconds, side, in_steps=in_steps)
-    return engine.run(query, df=df, anchor=anchor)
+    return positions[[path_col or schema.path_col, "bound"]]

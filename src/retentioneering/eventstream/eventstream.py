@@ -2072,6 +2072,92 @@ class Eventstream:
             return {"steps": []}
         return Funnel(self).fit(steps=steps, diff=diff, path_col=path_col)
 
+    @_tracked("get_conversion_rate")
+    def get_conversion_rate(
+        self,
+        start_event,
+        end_event,
+        within=None,
+        path_col: str | None = None,
+    ) -> pd.DataFrame:
+        """
+        Given that `start_event` happened, how often does `end_event` follow?
+
+        One row per (`start_event`, `end_event`) pair, counted over **paths**:
+        a path where the start anchor occurred contributes one to the
+        denominator no matter how many times it occurred, and converts if the
+        end anchor lands strictly after it (within `within`, if given).
+
+        Each anchor is an event name or an anchor spec — the same forms
+        `truncate_paths` takes, including `pattern` / `at` / `occurrence` /
+        `offset`, with `"path_start"` / `"path_end"` usable as ordinary names.
+        A **list** on either side is a fan-out into separate questions (one row
+        per combination), *not* `truncate_paths`' narrowest-window chain.
+
+        Parameters
+        ----------
+        start_event : str or dict or list
+            The condition — where the window opens. `occurrence` (default
+            `"first"`) picks which occurrence of it counts.
+        end_event : str or dict or list
+            The target(s) looked for after it. The whole pattern has to fall
+            after the start anchor, lead-in included.
+        within : int or str or pd.Timedelta, optional
+            Window size, measured from the start anchor and inclusive of its far
+            edge: an int counts events (`10` — "within 10 events"), a duration
+            counts time (`"30m"`, `pd.Timedelta`). `None` (default) looks to the
+            end of the path.
+        path_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
+
+        Returns
+        -------
+        pd.DataFrame
+            One row per pair, with columns:
+
+            - `start_event`, `end_event` — the anchors' patterns.
+            - `paths_with_start` — the denominator: paths where the start
+              anchor resolved.
+            - `converted` — of those, paths where the end anchor followed.
+            - `conversion_rate` — `converted / paths_with_start`, or `NaN` when
+              the start anchor never resolved (which is data, not an error).
+            - `base_rate` — share of *all* paths containing the end anchor
+              anywhere, the baseline the rate has to beat.
+            - `lift` — `conversion_rate / base_rate`; `NaN` if `base_rate` is 0.
+              Below 1 means the start event makes the outcome *less* likely.
+
+        Examples
+        --------
+            stream.get_conversion_rate("add_to_cart", "purchase")
+
+            # within a window, in events or in time
+            stream.get_conversion_rate("product_view", "add_to_cart", within=10)
+            stream.get_conversion_rate("support_chat", "churn", within="30m")
+
+            # several targets at once, per session rather than per user
+            stream.get_conversion_rate(
+                "add_to_cart",
+                ["purchase", "delivery_choice", "path_end"],
+                path_col="session_id",
+            )
+
+            # exit rate: the path ended right after the event
+            stream.get_conversion_rate("payment_error", "path_end", within=1)
+
+            # only the sessions that *landed* on the page, not every visit to it
+            stream.get_conversion_rate(
+                {"pattern": "path_start->catalog", "at": -1}, "purchase"
+            )
+        """
+        from retentioneering.tools.conversion import ConversionRate
+
+        return ConversionRate(self).fit(
+            start_event=start_event,
+            end_event=end_event,
+            within=within,
+            path_col=path_col,
+        )
+
     @_tracked("widget_segment_overview")
     def segment_overview(
         self,

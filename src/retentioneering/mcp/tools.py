@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import math
 from typing import Any
 
 from retentioneering.eventstream.eventstream import Eventstream
@@ -33,6 +34,7 @@ from retentioneering.mcp._agent_logic import (
     _transition_graph_summary,
 )
 from retentioneering.mcp._prompts import (
+    _ANALYSIS_METHODS,
     _PLAYBOOK,
     _STATIC_TOOL_DOCS,
     _playbook_index,
@@ -177,6 +179,9 @@ def describe_tool(tool: str = "") -> dict:
       to_daily_states  add_segment    drop_segment    add_clusters
       urls_to_events   sample_paths   split_sessions
 
+    Analysis tools (called directly, not as a preprocessor step):
+      get_conversion_rate
+
     Reference topics:
       report_links   (anchor link syntax for analysis text)
     """
@@ -188,7 +193,8 @@ def describe_tool(tool: str = "") -> dict:
     method = getattr(Eventstream, t, None)
     doc = inspect.getdoc(method) if method and callable(method) else None
     if doc:
-        return {"preprocessor": t, "docs": doc}
+        key = "method" if t in _ANALYSIS_METHODS else "preprocessor"
+        return {key: t, "docs": doc}
     return {"error": f"Unknown tool {t!r}.", **_tool_docs_index()}
 
 
@@ -472,6 +478,107 @@ def add_segment_overview(
     summary["tab_id"] = tab_id
     summary["label"] = label
     return summary
+
+
+def get_conversion_rate(
+    session: Any,
+    start_event: str | dict | list,
+    end_event: str | dict | list,
+    within: int | str | None = None,
+    path_col: str | None = None,
+    local_preprocessors: list | None = None,
+) -> dict:
+    """
+    Measure how often one event is followed by another, against its baseline.
+
+    Answers "given that Y happened, how often does X follow — and is that
+    different from usual?" for one pair of events, or a fan of them.
+
+    Returns numbers only: unlike add_transition_graph / add_step_matrix /
+    add_segment_overview this registers NO tab in the report, so every figure
+    you quote from it is a number you computed — wrap those in backticks in the
+    analysis text (`30.0%`, `2.3x`), which check_analysis exempts from the
+    anchor-link requirement.
+
+    Prefer this over reading a pair off a transition graph: a graph edge is a
+    share of *transitions* between adjacent events, this is a share of *paths*
+    where one event was followed by another at any distance. They answer
+    different questions and rarely agree.
+
+    Parameters
+    ----------
+    start_event:
+        The condition. An event name, or an anchor spec
+        {"pattern": ..., "at": ..., "occurrence": ..., "offset": ...} — the
+        same specs truncate_paths takes; call describe_tool("truncate_paths")
+        for the spec's keys. A LIST means several separate questions, one row
+        each — NOT one anchor assembled from several parts.
+    end_event:
+        The target(s) looked for after it, same forms. "path_start" /
+        "path_end" are ordinary names, so end_event="path_end" with within=1
+        is an exit rate ("the path ended right after Y").
+    within:
+        Window measured from the start anchor, far edge included. An int counts
+        events (10 = "within 10 events of Y"), a string counts time ("30m",
+        "2h"). Omit to look to the end of the path.
+    path_col:
+        Override the path ID column. Pass "session_id" (when the schema has it,
+        see describe()) if the question is about a visit rather than a person —
+        per-user conversion is often washed out by everything the user ever did.
+    local_preprocessors:
+        Optional one-off preprocessing applied on top of the base stream for
+        this measurement only. Same format as update_base_stream preprocessors.
+
+    Returns
+    -------
+    path_col, within (echoed back), and rows — one per (start, end) pair:
+      paths_with_start  the denominator: paths where the start anchor occurred
+      converted         of those, paths where the target followed it
+      conversion_rate   converted / paths_with_start (null if denominator is 0)
+      base_rate         share of ALL paths where the target occurs anywhere
+      lift              conversion_rate / base_rate (null if base_rate is 0)
+
+    ALWAYS report the denominator and the lift next to the rate. A rate alone
+    hides how many paths it is about, and whether it beats simply being a
+    common event: lift below 1 means the start event makes the target LESS
+    likely, which is usually the finding.
+    """
+    if (err := _require_stream(session)) is not None:
+        return err
+    src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    try:
+        frame = src.get_conversion_rate(
+            start_event=start_event,
+            end_event=end_event,
+            within=within,
+            path_col=path_col or None,
+        )
+    except Exception as exc:
+        return {"error": str(exc)}
+
+    def _num(value: Any) -> float | None:
+        # NaN is a real answer here (no paths reached the start, or the target
+        # never occurs at all) and has to survive as JSON null, not as the
+        # bare NaN token json.dumps would otherwise emit.
+        value = float(value)
+        return None if math.isnan(value) else round(value, 4)
+
+    return {
+        "path_col": path_col or src.schema.path_col,
+        "within": within,
+        "rows": [
+            {
+                "start_event": str(row["start_event"]),
+                "end_event": str(row["end_event"]),
+                "paths_with_start": int(row["paths_with_start"]),
+                "converted": int(row["converted"]),
+                "conversion_rate": _num(row["conversion_rate"]),
+                "base_rate": _num(row["base_rate"]),
+                "lift": _num(row["lift"]),
+            }
+            for row in frame.to_dict("records")
+        ],
+    }
 
 
 def check_analysis(analysis: str) -> dict:

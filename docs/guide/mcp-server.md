@@ -74,11 +74,12 @@ See also [Agent Skills](/docs/agent-skills) — instruction packages for coding 
 | `describe()` | Schema, event list, path counts, timestamp range. |
 | `reset_base_stream()` | Reset the active stream to the original eventstream passed to `serve()`. |
 | `playbook(scenario)` | Step-by-step recipes for common analysis patterns. |
-| `describe_tool(tool)` | Full parameter reference for any preprocessor. |
+| `describe_tool(tool)` | Full parameter reference for any preprocessor or analysis tool. |
 | `update_base_stream(preprocessors)` | Filter or transform the stream for the session. |
 | `add_transition_graph(label, ...)` | Compute a transition graph and register it as a report tab. |
 | `add_step_matrix(label, ...)` | Compute a step matrix and register it as a report tab. |
 | `add_segment_overview(label, ...)` | Compute a segment overview and register it as a report tab. |
+| `get_conversion_rate(start_event, end_event, within, ...)` | How often one event is followed by another, with the denominator and the baseline lift. Returns numbers, not a tab — the agent quotes them in backticks. |
 | `check_analysis(analysis)` | Validate analysis text before export. |
 | `export_report(title, analysis, path)` | Generate a self-contained HTML report. |
 

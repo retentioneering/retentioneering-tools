@@ -161,6 +161,12 @@ mcp.serve()                    # data-agnostic: agent loads an eventstream on de
 mcp.serve(stream, port=8765)   # or pre-loaded; raises OSError if port is taken
 ```
 
+Report-building tools (`add_transition_graph` / `add_step_matrix` /
+`add_segment_overview`) each register a tab; `get_conversion_rate` is the exception —
+it answers a pair question in numbers and registers nothing, so the agent must quote its
+figures in backticks (`check_analysis` requires an anchor link for every number that
+came from a tab). `playbook("conversion_rate")` carries the procedure.
+
 ## 8. Environment notes
 
 - Requires Python ≥ 3.11. Backend is an embedded engine (DuckDB family) — millions of rows

@@ -15,6 +15,7 @@ export const AGG_LABELS: Record<string, string> = {
 const METRIC_TIPS: Record<string, string> = {
   active_days:    "Number of unique calendar days with at least one event.",
   in_segment:     "Path membership check for a segment value.\n• any: ≥1 event has the value\n• all: all events have the value\n• event_share: ≥ threshold share of events have the value\nIf multiple segment values are selected, a separate metric is created for each value.",
+  in_segment_bulk: "Same membership check as in_segment, one column per segment level.\nLeave levels empty for every level of the selected segment column.\nLeave the segment column empty for every level of every segment column.",
   duration:       "Time (seconds) between the first and last event.",
   event_count:    "Number of times the selected event occurred.",
   event_count_bulk: "Number of times each selected event occurred, one column per event.\nLeave events empty to count every event.",
@@ -245,6 +246,14 @@ export function validateMetricCfg(cfg: any): string | null {
       if (isNaN(t) || t < 0 || t > 1) return "Threshold must be between 0 and 1";
     }
   }
+  // in_segment_bulk: both the segment column and the levels may be left empty
+  // (each meaning "all of them"), so only the threshold can be wrong here.
+  if (m === "in_segment_bulk") {
+    if (a.mode === "event_share") {
+      const t = parseFloat(a.threshold);
+      if (isNaN(t) || t < 0 || t > 1) return "Threshold must be between 0 and 1";
+    }
+  }
   return null;
 }
 
@@ -268,9 +277,10 @@ export function MetricRow({ cfg, events, segmentCols, segmentLevels, showErrors,
   const needsEventsRequired = ["has_all_events", "has_any_event"].includes(cfg.metric);
   const needsRange      = cfg.metric === "time_between";
   const needsInSegment  = cfg.metric === "in_segment";
+  const needsInSegmentBulk = cfg.metric === "in_segment_bulk";
   const needsMatches    = cfg.metric === "matches_pattern";
   const needsActiveDays = cfg.metric === "active_days";
-  const hasSecondRow    = needsSingleEvent || needsEventsBulk || needsEventsRequired || needsRange || needsInSegment || needsMatches || needsActiveDays;
+  const hasSecondRow    = needsSingleEvent || needsEventsBulk || needsEventsRequired || needsRange || needsInSegment || needsInSegmentBulk || needsMatches || needsActiveDays;
 
   const err = showErrors ? validateMetricCfg(cfg) : null;
 
@@ -385,6 +395,40 @@ export function MetricRow({ cfg, events, segmentCols, segmentLevels, showErrors,
                 onChange={e => { const v = e.target.value.replace(",", "."); if (v === "" || /^[0-9]*\.?[0-9]*$/.test(v)) onChange({ ...cfg, metric_args: { ...cfg.metric_args, threshold: v === "" ? 0 : parseFloat(v) || 0 } }); }}
                 style={{ width: 52, border: "1px solid #d1d5db", borderRadius: 5, padding: "4px 6px", fontSize: 11, outline: "none", flexShrink: 0 }} />
             )}
+          </div>
+        );
+      })()}
+
+      {needsInSegmentBulk && (() => {
+        const segName    = cfg.metric_args?.segment_name ?? "";
+        // Same "<MISSING>" exclusion as in_segment — the metric matches levels
+        // with SQL equality, which a missing value can never satisfy.
+        const segValues  = (segmentLevels[segName] ?? []).map(String).filter(v => v !== "<MISSING>");
+        const curVals    = cfg.metric_args?.segment_levels;
+        const selectedVals: string[] = Array.isArray(curVals) ? curVals.map(String) : (curVals ? [String(curVals)] : []);
+        const mode       = cfg.metric_args?.mode ?? "any";
+        return (
+          <div>
+            <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 3 }}>Segment column and levels (optional — leave empty for all)</div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "nowrap" }}>
+              {/* Clearing the segment column also clears the levels: they belong to
+                  one column, and the backend rejects levels without a column. */}
+              <select value={segName} onChange={e => onChange({ ...cfg, metric_args: { ...cfg.metric_args, segment_name: e.target.value || undefined, segment_levels: undefined } })} style={{ ...sel, flex: 1, minWidth: 0 }}>
+                <option value="">All segment columns</option>
+                {segmentCols.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <MultiSelect selected={selectedVals} options={segName ? segValues : []}
+                onChange={vals => onChange({ ...cfg, metric_args: { ...cfg.metric_args, segment_levels: vals.length ? vals : undefined } })}
+                placeholder={segName ? "All levels" : "All levels of all columns"} />
+              <select value={mode} onChange={e => onChange({ ...cfg, metric_args: { ...cfg.metric_args, mode: e.target.value } })} style={{ ...sel, flex: "0 0 100px" }}>
+                {IN_SEGMENT_MODES.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+              {mode === "event_share" && (
+                <input type="text" inputMode="decimal" value={cfg.metric_args?.threshold ?? 0.5}
+                  onChange={e => { const v = e.target.value.replace(",", "."); if (v === "" || /^[0-9]*\.?[0-9]*$/.test(v)) onChange({ ...cfg, metric_args: { ...cfg.metric_args, threshold: v === "" ? 0 : parseFloat(v) || 0 } }); }}
+                  style={{ width: 52, border: "1px solid #d1d5db", borderRadius: 5, padding: "4px 6px", fontSize: 11, outline: "none", flexShrink: 0 }} />
+              )}
+            </div>
           </div>
         );
       })()}

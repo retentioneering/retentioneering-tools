@@ -499,8 +499,8 @@ class Eventstream:
             `"has_event"`, `"event_count_bulk"`, `"has_event_bulk"`,
             `"has_all_events"`, `"has_any_event"`, `"time_between"`,
             `"first_event_time"`, `"active_days"`, `"matches_pattern"`,
-            `"in_segment"`. See the [Path Metrics](/docs/path-metrics) documentation page for the full
-            metric reference.
+            `"in_segment"`, `"in_segment_bulk"`. See the [Path Metrics](/docs/path-metrics)
+            documentation page for the full metric reference.
         method : str, default "kmeans"
             Clustering algorithm. One of `"kmeans"` or `"hdbscan"`.
         scaler : str or None, default "minmax"
@@ -655,8 +655,8 @@ class Eventstream:
         condition : dict or list
             Condition tree of leaf (comparison) and branch (`and`/`or`/`not`) nodes;
             a plain list is shorthand for AND. Metrics used in a leaf must produce
-            exactly one value per path, which rules out `has_event_bulk` and
-            `event_count_bulk`.
+            exactly one value per path, which rules out `has_event_bulk`,
+            `event_count_bulk`, and `in_segment_bulk`.
               - `op` — for a leaf, a comparison operator: `>`, `>=`, `<`, `<=`,
                 `=` (or `==`), `!=`. For a branch, one of `and`, `or`, `not`.
               - `args` (branch nodes only) — list of child nodes.
@@ -736,7 +736,8 @@ class Eventstream:
         -------
         pd.DataFrame
             One row per path (path ID as the index), one column per metric.
-            `event_count_bulk`/`has_event_bulk` expand into one column per event.
+            `event_count_bulk`/`has_event_bulk` expand into one column per event,
+            `in_segment_bulk` into one column per segment level.
 
         Examples
         --------

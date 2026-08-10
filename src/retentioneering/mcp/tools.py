@@ -415,9 +415,10 @@ def add_segment_overview(
               — number of events per path
           {"metric": "duration"}
               — duration in seconds (first to last event)
-          {"metric": "event_count", "metric_args": {"events": "purchase"}}
-              — how many times the event occurred; events can also be a list
-          {"metric": "has_event", "metric_args": {"events": "purchase"}}
+          {"metric": "event_count", "metric_args": {"event": "purchase"}}
+              — how many times the event occurred (single event only; use
+                "event_count_bulk" with "events": [...] for one column per event)
+          {"metric": "has_event", "metric_args": {"event": "purchase"}}
               — 0/1 whether the path contains the event (conversion rate)
           {"metric": "time_between",
            "metric_args": {"start_event": "add_to_cart", "end_event": "purchase"}}
@@ -425,11 +426,18 @@ def add_segment_overview(
           {"metric": "matches_pattern",
            "metric_args": {"pattern": "add_to_cart->.*->purchase"}}
               — 0/1 whether path matches the pattern
+          {"metric": "in_segment",
+           "metric_args": {"segment_name": "channel", "segment_level": "mobile"}}
+              — 0/1 whether the path belongs to that segment level;
+                "mode": "any" (default) / "all" / "event_share" (+ "threshold")
+          {"metric": "in_segment_bulk", "metric_args": {"segment_name": "channel"}}
+              — one in_segment column per level of that segment column;
+                omit "segment_name" for every level of every segment column
 
         Examples:
           Conversion rate to purchase by platform:
             metrics=[
-              {"metric": "has_event",  "metric_args": {"events": "purchase"}, "agg": "mean"},
+              {"metric": "has_event",  "metric_args": {"event": "purchase"}, "agg": "mean"},
               {"metric": "length"},
               {"metric": "duration", "agg": "median"},
             ]

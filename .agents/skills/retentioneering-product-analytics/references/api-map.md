@@ -84,7 +84,9 @@ Argument-key convention (this exact split is version-verified):
 `has_any_event` / `has_all_events`.** Wrong keys raise `InvalidMetricConfigError`
 naming the requirement.
 
-Other metrics: `active_days`, `first_event_time`, `in_segment` (modes `any/all/event_share`).
+Other metrics: `active_days`, `first_event_time`, `in_segment` (modes `any/all/event_share`),
+`in_segment_bulk` (same check, one column per segment level: omit `segment_levels` for every
+level of `segment_name`, omit both for every level of every segment column).
 `matches_pattern` is token-wise (no substring false-positives) and order-deterministic.
 One position may be a class of events — `[a|b]` any of, `[^a]` anything but, `.` any
 event — which replaces merging events with `rename_events` just to ask one question.

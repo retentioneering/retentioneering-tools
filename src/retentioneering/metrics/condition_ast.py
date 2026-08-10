@@ -17,16 +17,21 @@ from retentioneering.metrics.metric_builder import combined_metric_name
 
 # Metrics that produce multiple columns and can never appear in a single
 # comparison/IN leaf condition, regardless of operator.
-FORBIDDEN_IN_CONDITIONS = {"has_event_bulk", "event_count_bulk"}
+FORBIDDEN_IN_CONDITIONS = {"has_event_bulk", "event_count_bulk", "in_segment_bulk"}
 
 
 def check_not_forbidden_in_condition(metric: str, processor_name: str) -> None:
     if metric in FORBIDDEN_IN_CONDITIONS:
+        singular = metric.replace("_bulk", "")
+        hint = (
+            f"Use '{singular}' with an explicit 'segment_name'/'segment_level'."
+            if metric == "in_segment_bulk"
+            else f"Use the singular '{singular}', or 'has_all_events'/'has_any_event'."
+        )
         raise PreprocessingConfigError(
             processor_name,
             f"'{metric}' produces multiple columns and cannot appear in a "
-            f"condition. Use the singular '{metric.replace('_bulk', '')}', or "
-            f"'has_all_events'/'has_any_event'.",
+            f"condition. {hint}",
         )
 
 
@@ -76,6 +81,14 @@ def build_metric_names(
             f"filter_paths/collapse_events condition. Use "
             f"'{metric.replace('_bulk', '')}' for a single event, or "
             f"'has_all_events'/'has_any_event' for a multi-event condition.",
+        )
+
+    elif metric == "in_segment_bulk":
+        raise PreprocessingConfigError(
+            processor_name,
+            "'in_segment_bulk' produces one column per segment level and cannot be "
+            "used in a filter_paths/collapse_events condition. Use 'in_segment' with "
+            "an explicit 'segment_name'/'segment_level' instead.",
         )
 
     elif metric in ("has_all_events", "has_any_event"):

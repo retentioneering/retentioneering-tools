@@ -2,7 +2,10 @@ import pandas as pd
 import pytest
 
 from retentioneering.eventstream.eventstream import Eventstream
-from retentioneering.exceptions import InvalidMetricConfigError
+from retentioneering.exceptions import (
+    InvalidMetricConfigError,
+    PreprocessingConfigError,
+)
 
 
 def build_stream():
@@ -527,3 +530,237 @@ class TestMatchesPatternRestrictedGaps:
                     }
                 ]
             )
+
+
+def build_segmented_stream():
+    """Two segment columns over three paths:
+
+    - segment: user_1 -> s1 only, user_2 -> s1 then s2, user_3 -> s2 only
+    - channel: user_1 -> mobile only, user_2 -> desktop then mobile,
+      user_3 -> desktop only
+    """
+    df = pd.DataFrame(
+        [
+            ["user_1", "promo_view", "s1", "mobile", "2020-01-01 00:00:00"],
+            ["user_1", "purchase", "s1", "mobile", "2020-01-01 00:01:00"],
+            ["user_2", "promo_view", "s1", "desktop", "2020-01-01 00:00:00"],
+            ["user_2", "purchase", "s2", "mobile", "2020-01-01 00:01:00"],
+            ["user_3", "promo_view", "s2", "desktop", "2020-01-01 00:00:00"],
+        ],
+        columns=["user_id", "event", "segment", "channel", "timestamp"],
+    )
+    return Eventstream(
+        df, {"event_cols": ["event"], "segment_cols": ["segment", "channel"]}
+    )
+
+
+class TestInSegmentBulk:
+    def test__explicit_segment_and_levels(self) -> None:
+        stream = build_segmented_stream()
+        result = stream.get_metrics(
+            [
+                {
+                    "metric": "in_segment_bulk",
+                    "metric_args": {
+                        "segment_name": "channel",
+                        "segment_levels": ["mobile"],
+                    },
+                }
+            ]
+        )
+        assert set(result.columns) == {"in_segment_bulk_channel_mobile_any"}
+        assert result.loc["user_1", "in_segment_bulk_channel_mobile_any"] == 1
+        assert result.loc["user_2", "in_segment_bulk_channel_mobile_any"] == 1
+        assert result.loc["user_3", "in_segment_bulk_channel_mobile_any"] == 0
+
+    def test__omitted_levels_mean_every_level_of_the_segment(self) -> None:
+        stream = build_segmented_stream()
+        result = stream.get_metrics(
+            [
+                {
+                    "metric": "in_segment_bulk",
+                    "metric_args": {"segment_name": "channel"},
+                }
+            ]
+        )
+        assert set(result.columns) == {
+            "in_segment_bulk_channel_mobile_any",
+            "in_segment_bulk_channel_desktop_any",
+        }
+        assert result.loc["user_2", "in_segment_bulk_channel_desktop_any"] == 1
+        assert result.loc["user_1", "in_segment_bulk_channel_desktop_any"] == 0
+
+    def test__omitted_segment_means_every_level_of_every_segment(self) -> None:
+        stream = build_segmented_stream()
+        result = stream.get_metrics([{"metric": "in_segment_bulk"}])
+        assert set(result.columns) == {
+            "in_segment_bulk_segment_s1_any",
+            "in_segment_bulk_segment_s2_any",
+            "in_segment_bulk_channel_mobile_any",
+            "in_segment_bulk_channel_desktop_any",
+        }
+        assert result.loc["user_2", "in_segment_bulk_segment_s1_any"] == 1
+        assert result.loc["user_2", "in_segment_bulk_segment_s2_any"] == 1
+        assert result.loc["user_3", "in_segment_bulk_segment_s1_any"] == 0
+
+    def test__all_mode_needs_the_level_to_be_the_only_one(self) -> None:
+        stream = build_segmented_stream()
+        result = stream.get_metrics(
+            [
+                {
+                    "metric": "in_segment_bulk",
+                    "metric_args": {"segment_name": "segment", "mode": "all"},
+                }
+            ]
+        )
+        # user_2 visits both levels, so neither is "the only one" for that path
+        assert result.loc["user_1", "in_segment_bulk_segment_s1_all"] == 1
+        assert result.loc["user_2", "in_segment_bulk_segment_s1_all"] == 0
+        assert result.loc["user_2", "in_segment_bulk_segment_s2_all"] == 0
+        assert result.loc["user_3", "in_segment_bulk_segment_s2_all"] == 1
+
+    def test__event_share_mode_uses_the_threshold(self) -> None:
+        stream = build_segmented_stream()
+        result = stream.get_metrics(
+            [
+                {
+                    "metric": "in_segment_bulk",
+                    "metric_args": {
+                        "segment_name": "segment",
+                        "mode": "event_share",
+                        "threshold": 0.75,
+                    },
+                }
+            ]
+        )
+        # user_2 is 50/50 across s1/s2, below the 75% threshold on both
+        assert result.loc["user_1", "in_segment_bulk_segment_s1_event_share"] == 1
+        assert result.loc["user_2", "in_segment_bulk_segment_s1_event_share"] == 0
+        assert result.loc["user_2", "in_segment_bulk_segment_s2_event_share"] == 0
+
+    def test__event_share_mode_requires_threshold(self) -> None:
+        stream = build_segmented_stream()
+        with pytest.raises(InvalidMetricConfigError, match="threshold"):
+            stream.get_metrics(
+                [
+                    {
+                        "metric": "in_segment_bulk",
+                        "metric_args": {
+                            "segment_name": "segment",
+                            "mode": "event_share",
+                        },
+                    }
+                ]
+            )
+
+    def test__explicit_empty_levels_rejected(self) -> None:
+        """As with event_count_bulk's 'events', [] is not a spelling of the
+        wildcard - only omitting 'segment_levels' means 'all levels'."""
+        stream = build_segmented_stream()
+        with pytest.raises(InvalidMetricConfigError, match="empty list"):
+            stream.get_metrics(
+                [
+                    {
+                        "metric": "in_segment_bulk",
+                        "metric_args": {
+                            "segment_name": "segment",
+                            "segment_levels": [],
+                        },
+                    }
+                ]
+            )
+
+    def test__levels_without_segment_name_rejected(self) -> None:
+        stream = build_segmented_stream()
+        with pytest.raises(InvalidMetricConfigError, match="requires 'segment_name'"):
+            stream.get_metrics(
+                [
+                    {
+                        "metric": "in_segment_bulk",
+                        "metric_args": {"segment_levels": ["s1"]},
+                    }
+                ]
+            )
+
+    def test__singular_segment_level_key_rejected(self) -> None:
+        """Silently ignoring the in_segment spelling would widen the metric to
+        every level instead of the one asked for."""
+        stream = build_segmented_stream()
+        with pytest.raises(InvalidMetricConfigError, match="segment_levels"):
+            stream.get_metrics(
+                [
+                    {
+                        "metric": "in_segment_bulk",
+                        "metric_args": {
+                            "segment_name": "segment",
+                            "segment_level": "s1",
+                        },
+                    }
+                ]
+            )
+
+    def test__unknown_segment_raises(self) -> None:
+        stream = build_segmented_stream()
+        with pytest.raises(InvalidMetricConfigError, match="chanel"):
+            stream.get_metrics(
+                [
+                    {
+                        "metric": "in_segment_bulk",
+                        "metric_args": {"segment_name": "chanel"},
+                    }
+                ]
+            )
+
+    def test__unknown_level_raises(self) -> None:
+        stream = build_segmented_stream()
+        with pytest.raises(InvalidMetricConfigError, match="tablet"):
+            stream.get_metrics(
+                [
+                    {
+                        "metric": "in_segment_bulk",
+                        "metric_args": {
+                            "segment_name": "channel",
+                            "segment_levels": ["tablet"],
+                        },
+                    }
+                ]
+            )
+
+    def test__wildcard_segment_requires_a_segment_column(self) -> None:
+        stream = build_stream()  # no segment columns at all
+        with pytest.raises(InvalidMetricConfigError, match="at least one segment"):
+            stream.get_metrics([{"metric": "in_segment_bulk"}])
+
+    def test__cannot_be_used_in_a_filter_paths_condition(self) -> None:
+        stream = build_segmented_stream()
+        with pytest.raises(PreprocessingConfigError, match="in_segment_bulk"):
+            stream.filter_paths(
+                {
+                    "op": "=",
+                    "metric": "in_segment_bulk",
+                    "metric_args": {"segment_name": "segment"},
+                    "value": True,
+                }
+            )
+
+    def test__paths_with_no_segment_value_are_skipped_not_crashed(self) -> None:
+        """A segment column may have paths with no assigned level. NaN is not a
+        level: SQL equality can never match it, and it used to be interpolated
+        into the query as a bare `nan` identifier, crashing the whole build."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "promo_view", "s1", "2020-01-01 00:00:00"],
+                ["user_2", "promo_view", None, "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "segment", "timestamp"],
+        )
+        stream = Eventstream(df, {"event_cols": ["event"], "segment_cols": ["segment"]})
+
+        bulk = stream.get_metrics([{"metric": "in_segment_bulk"}])
+        assert bulk.columns.tolist() == ["in_segment_bulk_segment_s1_any"]
+        assert bulk.loc["user_2", "in_segment_bulk_segment_s1_any"] == 0
+
+        single = stream.get_metrics(
+            [{"metric": "in_segment", "metric_args": {"segment_name": "segment"}}]
+        )
+        assert single.columns.tolist() == ["in_segment_segment_s1_any"]

@@ -6,7 +6,7 @@ from retentioneering.exceptions import (
     InvalidComplementConfigError,
     InvalidMetricConfigError,
     InvalidParameterError,
-    SegmentValueNotFoundError,
+    SegmentLevelNotFoundError,
 )
 from retentioneering.tools.segment_overview import SegmentOverview
 from scipy.stats import wasserstein_distance
@@ -266,7 +266,7 @@ class TestSegmentOverview:
         assert result.loc["has_event_purchase_mean", "segment_2"] == 1.0
 
     def test_in_segment_metric_with_list(self) -> None:
-        """Test in_segment metric with explicit segment_value list"""
+        """Test in_segment metric with explicit segment_level list"""
         df = pd.DataFrame(
             [
                 # user_1: events in segment_1 only
@@ -857,7 +857,7 @@ class TestSegmentOverview:
         assert result.loc["time_from_path_start_to_purchase_mean", "segment_1"] == 45.0
         assert result.loc["time_from_path_start_to_purchase_mean", "segment_2"] == 90.0
 
-    def test_segment_values_with_double_underscore(self) -> None:
+    def test_segment_levels_with_double_underscore(self) -> None:
         """Regression: segment values containing '__' must stay distinct.
 
         Previously the composite path id was built as path_id + '__' + segment
@@ -928,7 +928,7 @@ class TestSegmentOverview:
         assert result.loc["length_mean", "segment_1"] == 2.0
         assert result.loc["length_mean", "segment_2"] == 1.0
 
-    def test_segment_values_with_double_underscore_empty_config(self) -> None:
+    def test_segment_levels_with_double_underscore_empty_config(self) -> None:
         """Regression: '__' segment values stay distinct with empty metrics"""
         df = pd.DataFrame(
             [
@@ -950,7 +950,7 @@ class TestSegmentOverview:
         assert result.loc["segment_size", "control__1"] == 1
         assert result.loc["segment_size", "test__1"] == 1
 
-    def test_none_segment_value_forms_own_group(self) -> None:
+    def test_none_segment_level_forms_own_group(self) -> None:
         """Regression: a missing (None/NaN) segment value — which add_segment's
         func=/sql= modes can produce — must form its own visible group instead
         of silently disappearing from the result."""
@@ -981,7 +981,7 @@ class TestSegmentOverview:
         assert result.loc["segment_share"].sum() == pytest.approx(1.0)
         assert result.loc["length_mean", None] == 2.0
 
-    def test_numeric_segment_values_preserve_dtype(self) -> None:
+    def test_numeric_segment_levels_preserve_dtype(self) -> None:
         """Regression: numeric segment values must come back as numbers, not
         as strings like '1.0' (the old astype(str) composite-key approach)."""
         df = pd.DataFrame(
@@ -1042,7 +1042,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_value="segment_1",
+            segment_level="segment_1",
             metric={"metric": "length"},
             complement=True,
         )
@@ -1094,7 +1094,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_value=["segment_1", "segment_2"],
+            segment_level=["segment_1", "segment_2"],
             metric={"metric": "has_event", "metric_args": {"event": "purchase"}},
         )
 
@@ -1139,7 +1139,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_value=["segment_1", "segment_2"],
+            segment_level=["segment_1", "segment_2"],
             metric={"metric": "length"},
         )
 
@@ -1183,7 +1183,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_value="segment_1",
+            segment_level="segment_1",
             metric={"metric": "length"},
             complement=True,
         )
@@ -1196,8 +1196,8 @@ class TestMetricDistribution:
         # Wasserstein distance should be positive
         assert result["distance"] > 0
 
-    def test_none_segment_value_with_complement(self) -> None:
-        """Regression: segment_value=None (a scalar, not a list) selects the
+    def test_none_segment_level_with_complement(self) -> None:
+        """Regression: segment_level=None (a scalar, not a list) selects the
         missing-segment group instead of crashing on `list(None)`."""
         df = pd.DataFrame(
             [
@@ -1215,7 +1215,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_value=None,
+            segment_level=None,
             metric={"metric": "length"},
             complement=True,
         )
@@ -1223,7 +1223,7 @@ class TestMetricDistribution:
         assert result["distribution_1"]["mean"] == 1.0  # the None-segment path
         assert result["distribution_2"]["mean"] == 2.0  # everyone else
 
-    def test_pair_with_none_segment_value(self) -> None:
+    def test_pair_with_none_segment_level(self) -> None:
         """Regression: [value, None] pairs the missing-segment group against
         a real one."""
         df = pd.DataFrame(
@@ -1240,7 +1240,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_value=["segment_1", None],
+            segment_level=["segment_1", None],
             metric={"metric": "length"},
         )
 
@@ -1266,11 +1266,11 @@ class TestMetricDistribution:
         ):
             SegmentOverview(stream).get_metric_distribution(
                 segment_col="invalid_segment",
-                segment_value=["segment_1", "segment_2"],
+                segment_level=["segment_1", "segment_2"],
                 metric={"metric": "length"},
             )
 
-    def test_nonexistent_segment_value(self) -> None:
+    def test_nonexistent_segment_level(self) -> None:
         """Test error when segment value doesn't exist"""
         df = pd.DataFrame(
             [
@@ -1284,11 +1284,11 @@ class TestMetricDistribution:
         stream = Eventstream(df, schema)
 
         with pytest.raises(
-            SegmentValueNotFoundError, match="Segment value 'non_existent' not found"
+            SegmentLevelNotFoundError, match="Segment level 'non_existent' not found"
         ):
             SegmentOverview(stream).get_metric_distribution(
                 segment_col="segment",
-                segment_value=["segment_1", "non_existent"],
+                segment_level=["segment_1", "non_existent"],
                 metric={"metric": "length"},
             )
 
@@ -1311,7 +1311,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_value="segment_1",
+            segment_level="segment_1",
             metric={"metric": "event_count", "metric_args": {"event": "click"}},
             complement=True,
         )
@@ -1337,7 +1337,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_value=["segment_1", "segment_2"],
+            segment_level=["segment_1", "segment_2"],
             metric={"metric": "length"},
         )
 
@@ -1360,7 +1360,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_value=["segment_1", "segment_2"],
+            segment_level=["segment_1", "segment_2"],
             metric={"metric": "length"},
         )
 
@@ -1387,7 +1387,7 @@ class TestMetricDistribution:
         ):
             SegmentOverview(stream).get_metric_distribution(
                 segment_col="segment",
-                segment_value=["segment_1", "segment_2"],
+                segment_level=["segment_1", "segment_2"],
                 metric={
                     "metric": "event_count_bulk",
                     "metric_args": {"events": ["click", "purchase"]},
@@ -1414,7 +1414,7 @@ class TestMetricDistribution:
         ):
             SegmentOverview(stream).get_metric_distribution(
                 segment_col="segment",
-                segment_value=["segment_1", "segment_2"],
+                segment_level=["segment_1", "segment_2"],
                 metric={
                     "metric": "has_event_bulk",
                     "metric_args": {"events": ["click", "purchase"]},
@@ -1439,7 +1439,7 @@ class TestMetricDistribution:
         ):
             SegmentOverview(stream).get_metric_distribution(
                 segment_col="segment",
-                segment_value="segment_1",
+                segment_level="segment_1",
                 metric={"metric": "length"},
                 complement=False,
             )
@@ -1463,7 +1463,7 @@ class TestMetricDistribution:
         ):
             SegmentOverview(stream).get_metric_distribution(
                 segment_col="segment",
-                segment_value=["segment_1", "segment_2"],
+                segment_level=["segment_1", "segment_2"],
                 metric={"metric": "length"},
                 complement=True,
             )
@@ -1487,7 +1487,7 @@ class TestMetricDistribution:
         ):
             SegmentOverview(stream).get_metric_distribution(
                 segment_col="segment",
-                segment_value=["segment_1", "segment_2"],
+                segment_level=["segment_1", "segment_2"],
                 metric={"metric": "length"},
                 path_col="invalid_col",
             )
@@ -1534,7 +1534,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_value=["segment_1", "segment_2"],
+            segment_level=["segment_1", "segment_2"],
             metric={"metric": "length"},
         )
 
@@ -1561,7 +1561,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_value=["segment_1", "segment_2"],
+            segment_level=["segment_1", "segment_2"],
             metric={"metric": "has_event", "metric_args": {"event": "purchase"}},
         )
 
@@ -1591,14 +1591,14 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_value=["segment_1", "segment_2"],
+            segment_level=["segment_1", "segment_2"],
             metric={"metric": "length"},
         )
 
         # Number of bins should not exceed MAX_BINS (50) + 1 (for edges)
         assert len(result["distribution_1"]["bins"]) <= 51
 
-    def test_segment_values_with_double_underscore(self) -> None:
+    def test_segment_levels_with_double_underscore(self) -> None:
         """Regression: metric_distribution must not silently return empty
         distributions for segment values containing '__'.
 
@@ -1624,7 +1624,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_value=["control__1", "test__1"],
+            segment_level=["control__1", "test__1"],
             metric={"metric": "length"},
         )
 
@@ -1651,7 +1651,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_value="control__1",
+            segment_level="control__1",
             metric={"metric": "length"},
             complement=True,
         )

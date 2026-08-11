@@ -45,7 +45,7 @@ Anchor link syntax for the analysis text passed to export_report().
                         via add_transition_graph(views=[...]))
   [Tab:event@step]      open tab, scroll to step-matrix cell; step_window expands automatically
   [Tab:metric@segment]  open tab, highlight segment overview cell
-  [Tab:segment_value]   open tab, highlight segment overview column
+  [Tab:segment_level]   open tab, highlight segment overview column
   [Tab:]                open tab only, no focus
   [Tab Name]            bare tab name — same as [Tab Name:]
   [event]               focus event/edge in the currently active tab

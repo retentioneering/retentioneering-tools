@@ -112,14 +112,14 @@ class MetricDistributionError(RetentioneeringError):
     pass
 
 
-class SegmentValueNotFoundError(MetricDistributionError):
+class SegmentLevelNotFoundError(MetricDistributionError):
     def __init__(
-        self, segment_value: str, segment_col: str, available_values: list | None = None
+        self, segment_level: str, segment_col: str, available_levels: list | None = None
     ):
-        message = f"Segment value '{segment_value}' not found in column '{segment_col}'"
-        if available_values:
-            message += f". Available values: {available_values}"
-        super().__init__(message, "SEGMENT_VALUE_NOT_FOUND")
+        message = f"Segment level '{segment_level}' not found in column '{segment_col}'"
+        if available_levels:
+            message += f". Available levels: {available_levels}"
+        super().__init__(message, "SEGMENT_LEVEL_NOT_FOUND")
 
 
 class PathIdNotFoundError(RetentioneeringError):

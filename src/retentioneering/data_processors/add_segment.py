@@ -402,13 +402,13 @@ class AddSegment(DataProcessor):
 
             cases = "CASE"
             for item in self.rules[:-1]:
-                column, op, value, segment_value = item
+                column, op, value, segment_level = item
                 column_q = engine.quote_ident(column)
                 if isinstance(value, str) and op.lower() != "in":
                     value = quote_literal(value)
-                cases += f"\nWHEN {column_q} {op} {value} THEN {quote_literal(str(segment_value))}"
-            else_segment_value = self.rules[-1][0]
-            cases += f"\nELSE {quote_literal(str(else_segment_value))}"
+                cases += f"\nWHEN {column_q} {op} {value} THEN {quote_literal(str(segment_level))}"
+            else_segment_level = self.rules[-1][0]
+            cases += f"\nELSE {quote_literal(str(else_segment_level))}"
             cases += f"\nEND AS {engine.quote_ident(self.name)}"
 
             sql = f"SELECT {cases} FROM df"

@@ -1,11 +1,11 @@
 """
-SegmentOverview - tool for analyzing metric distributions across segment values
+SegmentOverview - tool for analyzing metric distributions across segment levels
 
-Provides aggregated view of metrics for each segment value, with support for:
+Provides aggregated view of metrics for each segment level, with support for:
 - Basic statistics: mean, median, percentiles (q5, q25, q75, q95)
 - Distributional comparison: complement_distance (Wasserstein distance between
-  segment value distribution and its complement)
-- Special segment-level metrics: segment_size, segment_share (always included)
+  segment level distribution and its complement)
+- Special per-segment metrics: segment_size, segment_share (always included)
 - metric_distribution: detailed distribution analysis with histogram, KDE, etc.
 """
 
@@ -24,7 +24,7 @@ from retentioneering.exceptions import (
     InvalidComplementConfigError,
     InvalidMetricConfigError,  # Used in tests, re-raised from MetricBuilder
     InvalidParameterError,
-    SegmentValueNotFoundError,
+    SegmentLevelNotFoundError,
 )
 from retentioneering.metrics.metric_builder import MetricBuilder, MetricConfig
 
@@ -61,16 +61,16 @@ def _build_composite_path(
 
     This uses `factorize` rather than the previous `astype(str) + sep +
     astype(str)` string concatenation, which had two failure modes: numeric
-    segment values came back stringified (e.g. `1.0` instead of `1`), and rows
-    with a missing (None/NaN) segment value — which `add_segment` can produce
+    segment levels came back stringified (e.g. `1.0` instead of `1`), and rows
+    with a missing (None/NaN) segment level — which `add_segment` can produce
     via its `func`/`sql` modes — silently vanished, since concatenating a NaN
     into a string produces NaN for the whole composite key. `path_col` is
     already guaranteed non-null by Eventstream's own validation, and
-    `use_na_sentinel=False` gives every distinct segment value (including a
+    `use_na_sentinel=False` gives every distinct segment level (including a
     missing one) its own stable code, so the composite id is always defined.
 
     Returns the composite id array and a mapping from composite id back to the
-    original segment value (None for a missing segment, the original value
+    original segment level (None for a missing segment, the original level
     otherwise).
     """
     segment_codes, segment_uniques = pd.factorize(
@@ -99,7 +99,7 @@ def _segment_mask(series: pd.Series, value: Any) -> pd.Series:
 
 @dataclass
 class SegmentOverview:
-    """Builds overview of metric distributions across segment values"""
+    """Builds overview of metric distributions across segment levels"""
 
     eventstream: "Eventstream"
 
@@ -129,7 +129,7 @@ class SegmentOverview:
         Returns:
             DataFrame with:
                 - Rows: metric names (segment_size and segment_share always first)
-                - Columns: unique segment values
+                - Columns: unique segment levels
                 - Values: aggregated metric values for each segment
         """
         path_col = path_col or self.eventstream.schema.path_col
@@ -139,7 +139,7 @@ class SegmentOverview:
         if segment_col not in df.columns:
             raise ValueError(f"Segment column '{segment_col}' not found in DataFrame")
 
-        # Create composite path ID: (path_id, segment_value)
+        # Create composite path ID: (path_id, segment_level)
         composite_col = "__composite_path_id__"
         composite_ids, segment_by_composite = _build_composite_path(
             df, path_col, segment_col
@@ -200,7 +200,7 @@ class SegmentOverview:
                 raise ValueError(f"Unknown aggregation type: {agg}")
 
         # Compute segment_size and segment_share. dropna=False keeps paths with a
-        # missing (None/NaN) segment value as their own group instead of
+        # missing (None/NaN) segment level as their own group instead of
         # silently excluding them.
         grouped = metrics_df.groupby(segment_col, dropna=False)
         segment_sizes = grouped.size()
@@ -222,17 +222,17 @@ class SegmentOverview:
         # Compute complement_distance separately (needs full dataframe)
         for col in complement_distance_cols:
             complement_distance_values = {}
-            for segment_value in segment_sizes.index:
-                mask = _segment_mask(metrics_df[segment_col], segment_value)
+            for segment_level in segment_sizes.index:
+                mask = _segment_mask(metrics_df[segment_col], segment_level)
                 segment_data = metrics_df.loc[mask, col].dropna()
                 complement_data = metrics_df.loc[~mask, col].dropna()
 
                 if len(segment_data) > 0 and len(complement_data) > 0:
-                    complement_distance_values[segment_value] = wasserstein_distance(
+                    complement_distance_values[segment_level] = wasserstein_distance(
                         segment_data.values, complement_data.values
                     )
                 else:
-                    complement_distance_values[segment_value] = np.nan
+                    complement_distance_values[segment_level] = np.nan
 
             result_data[f"{col}_complement_distance"] = pd.Series(
                 complement_distance_values
@@ -265,27 +265,27 @@ class SegmentOverview:
     def get_metric_distribution(
         self,
         segment_col: str,
-        segment_value: Any | List[Any],
+        segment_level: Any | List[Any],
         metric: Dict[str, Any],
         complement: bool = False,
         path_col: str | None = None,
     ) -> Dict[str, Any]:
         """
-        Calculate distribution statistics for a metric across one or two segment values.
+        Calculate distribution statistics for a metric across one or two segment levels.
 
         Args:
             segment_col: Name of the segment column
-            segment_value: Either a single segment value (None selects paths with a
-                missing segment value) or a list of two values
+            segment_level: Either a single segment level (None selects paths with a
+                missing segment level) or a list of two levels
             metric: Metric configuration dict with 'metric' and optional 'metric_args'
-            complement: If True and segment_value is a single value, compare with
-                       complement (all other values in the segment). Ignored for pairs.
+            complement: If True and segment_level is a single level, compare with
+                       complement (all other levels in the segment). Ignored for pairs.
             path_col: Path ID column (if None, taken from schema)
 
         Returns:
-            For single segment value:
+            For single segment level:
                 {"distribution": {...distribution data...}}
-            For pair of segment values:
+            For pair of segment levels:
                 {"distribution_1": {...}, "distribution_2": {...}, "distance": float}
         """
         df = self.eventstream.df.copy()
@@ -307,46 +307,46 @@ class SegmentOverview:
                 allowed_values=self.eventstream.schema.segment_cols,
             )
 
-        # Normalize segment_value to list and validate complement config. A plain
-        # (non-list) value — including None, which selects paths with a missing
-        # segment value — is treated as a single segment; only an explicit list
+        # Normalize segment_level to list and validate complement config. A plain
+        # (non-list) level — including None, which selects paths with a missing
+        # segment level — is treated as a single segment; only an explicit list
         # requests a pair comparison.
-        if isinstance(segment_value, list):
-            segment_values = list(segment_value)
+        if isinstance(segment_level, list):
+            segment_levels = list(segment_level)
             if complement:
                 raise InvalidComplementConfigError(
-                    "complement=True is only valid when a single segment value is provided. "
-                    "When comparing two segment values, set complement=False."
+                    "complement=True is only valid when a single segment level is provided. "
+                    "When comparing two segment levels, set complement=False."
                 )
             use_complement = False
         else:
-            segment_values = [segment_value]
+            segment_levels = [segment_level]
             if not complement:
                 raise InvalidComplementConfigError(
-                    "When a single segment value is provided, complement must be True. "
+                    "When a single segment level is provided, complement must be True. "
                     "Either set complement=True to compare with the rest of the segment, "
-                    "or provide two segment values to compare."
+                    "or provide two segment levels to compare."
                 )
             use_complement = True
 
-        # Validate segment values exist. NaN/None both mean "missing segment
-        # value", so normalize both sides before comparing.
-        available_segment_values = [
+        # Validate segment levels exist. NaN/None both mean "missing segment
+        # level", so normalize both sides before comparing.
+        available_segment_levels = [
             None if pd.isna(v) else v for v in df[segment_col].unique().tolist()
         ]
-        segment_values = [None if pd.isna(sv) else sv for sv in segment_values]
-        for sv in segment_values:
-            if sv not in available_segment_values:
-                raise SegmentValueNotFoundError(
-                    segment_value=sv,
+        segment_levels = [None if pd.isna(sv) else sv for sv in segment_levels]
+        for sv in segment_levels:
+            if sv not in available_segment_levels:
+                raise SegmentLevelNotFoundError(
+                    segment_level=sv,
                     segment_col=segment_col,
-                    available_values=available_segment_values,
+                    available_levels=available_segment_levels,
                 )
 
         # Validate metric configuration using MetricBuilder
         MetricBuilder(self.eventstream).validate_metric_config(metric)
 
-        # Create composite path ID: (path_id, segment_value)
+        # Create composite path ID: (path_id, segment_level)
         composite_col = "__composite_path_id__"
         composite_ids, segment_by_composite = _build_composite_path(
             df, path_col, segment_col
@@ -385,9 +385,9 @@ class SegmentOverview:
             )
         metric_col = metric_cols[0]
 
-        # Get data for segment values
-        if len(segment_values) == 1:
-            mask = _segment_mask(metrics_df[segment_col], segment_values[0])
+        # Get data for segment levels
+        if len(segment_levels) == 1:
+            mask = _segment_mask(metrics_df[segment_col], segment_levels[0])
             data_1 = metrics_df.loc[mask, metric_col].dropna().values
 
             if use_complement:
@@ -397,8 +397,8 @@ class SegmentOverview:
                 distribution, log_scale = self._build_single_distribution(data_1)
                 return {"distribution": distribution, "log_scale": log_scale}
         else:
-            mask_1 = _segment_mask(metrics_df[segment_col], segment_values[0])
-            mask_2 = _segment_mask(metrics_df[segment_col], segment_values[1])
+            mask_1 = _segment_mask(metrics_df[segment_col], segment_levels[0])
+            mask_2 = _segment_mask(metrics_df[segment_col], segment_levels[1])
             data_1 = metrics_df.loc[mask_1, metric_col].dropna().values
             data_2 = metrics_df.loc[mask_2, metric_col].dropna().values
             return self._build_pair_distribution(data_1, data_2)

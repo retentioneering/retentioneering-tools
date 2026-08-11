@@ -500,7 +500,7 @@ class TestFilterPathsAST:
             _ = stream.filter_paths(condition=condition)
 
     def test__in_segment_any_mode_scalar_value(self) -> None:
-        """in_segment with mode=any and a scalar segment_value keeps only matching paths"""
+        """in_segment with mode=any and a scalar segment_level keeps only matching paths"""
         stream = build_stream()
         condition = {
             "op": "=",
@@ -518,7 +518,7 @@ class TestFilterPathsAST:
         assert res.equals(expected)
 
     def test__in_segment_all_mode_scalar_value(self) -> None:
-        """in_segment with mode=all keeps paths where segment_value is the only value"""
+        """in_segment with mode=all keeps paths where segment_level is the only value"""
         stream = build_stream()
         condition = {
             "op": "=",
@@ -536,7 +536,7 @@ class TestFilterPathsAST:
         assert res.equals(expected)
 
     def test__in_segment_event_share_mode(self) -> None:
-        """in_segment with mode=event_share keeps paths where segment_value covers >= threshold"""
+        """in_segment with mode=event_share keeps paths where segment_level covers >= threshold"""
         stream = build_stream()
         condition = {
             "op": "=",
@@ -603,8 +603,8 @@ class TestFilterPathsAST:
         expected = stream.filter_events(keep={"user_id": ["user_1"]})
         assert res.equals(expected)
 
-    def test__in_segment_none_segment_value_raises(self) -> None:
-        """in_segment with segment_value=None cannot be used in condition"""
+    def test__in_segment_none_segment_level_raises(self) -> None:
+        """in_segment with segment_level=None cannot be used in condition"""
         stream = build_stream()
         condition = {
             "op": "=",

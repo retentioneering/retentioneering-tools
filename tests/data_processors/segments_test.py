@@ -21,7 +21,7 @@ def get_df():
 
 
 class TestFilterEvents:
-    def test__add_segment_values(self) -> None:
+    def test__add_segment_levels(self) -> None:
         df = get_df()
         schema = {"segment_cols": ["country"]}
         stream = Eventstream(df, schema)

@@ -44,6 +44,13 @@ condition), while `in_segment_bulk` is the shorthand that fans out over whole
 segment columns and, like the other `*_bulk` metrics, cannot appear in a
 condition.
 
+Note that both spell the level key differently — `segment_level` (singular) for
+`in_segment`, `segment_levels` (a list) for `in_segment_bulk` — and that either
+one rejects a `metric_args` key it doesn't recognise, including the other's
+spelling and the pre-5.0 name `segment_value`. Omitting the level key is how
+you ask for *every* level, so a key that was quietly ignored would turn a
+one-column metric into one column per level rather than fail.
+
 ## Example config for every metric
 
 Each entry below is a complete metric config. They are shown in a single

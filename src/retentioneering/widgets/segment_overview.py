@@ -132,7 +132,7 @@ class SegmentOverviewWidget(RetentioneeringWidget):
     def _tool_get_metric_distribution(self, params: dict):
         return self._eventstream.get_metric_distribution(
             segment_col=params["segment_col"],
-            segment_value=params["segment_value"],
+            segment_level=params["segment_level"],
             metric=params["metric"],
             complement=params.get("complement", False),
             path_col=params.get("path_col"),
@@ -204,7 +204,7 @@ class SegmentOverviewWidget(RetentioneeringWidget):
         try:
             result = self._eventstream.get_metric_distribution(
                 segment_col=req["segment_col"],
-                segment_value=req["segment_value"],
+                segment_level=req["segment_level"],
                 metric=req["metric"],
                 complement=req.get("complement", False),
                 path_col=req.get("path_col"),

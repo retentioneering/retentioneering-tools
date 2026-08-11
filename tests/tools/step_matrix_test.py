@@ -53,7 +53,7 @@ class TestStepMatrix:
 
         pd.testing.assert_frame_equal(res, expected)
 
-    def test__diff_with_rest_pools_all_other_segment_values(self) -> None:
+    def test__diff_with_rest_pools_all_other_segment_levels(self) -> None:
         """diff value2="<REST>" must pool every other segment value, not just one."""
         df = pd.DataFrame(
             [

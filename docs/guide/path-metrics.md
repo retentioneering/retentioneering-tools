@@ -23,6 +23,7 @@ Path metrics are scalar values computed per path (see [Key concepts](/docs/event
 | `first_event_time` | Unix timestamp of the first event in the path. | — |
 | `matches_pattern` | 1 if the path matches a sequence pattern, 0 otherwise. Events are separated by `->` and matched as whole tokens (not substrings); `.*` matches any sequence of whole events, and one position can be a class of events (`[a\|b]`, `[^a]`, `.`). Example: `home->.*->[purchase\|cart]`. See [Path Patterns](/docs/path-patterns) for the full syntax. | `pattern`: str |
 | `in_segment` | Checks whether path events belong to a segment level. Mode `any`: at least one event has the level. `all`: all events have the level. `event_share`: at least a threshold share of events have the level. If multiple segment levels are selected, a separate metric is created for each level. | `segment_name`: str, `segment_level`: str or list[str], `mode`: `"any"` \| `"all"` \| `"event_share"`, `threshold`: float (for `event_share`) |
+| `in_segment_bulk` | The same membership check as `in_segment`, expanded into one column per (segment column, level) pair. Omit `segment_levels` for every level of the given segment column; omit `segment_name` as well for every level of **every** segment column. An explicit empty `segment_levels` list is invalid, and `segment_levels` requires a `segment_name` — levels belong to one column. | `segment_name`: str (optional; omit/`None` for all segment columns), `segment_levels`: list[str] (optional; omit/`None` for all levels), `mode`, `threshold`: same as `in_segment` |
 
 `event_count`/`has_event` are strict single-event metrics — one number per path,
 comparable directly in a Filter Paths condition. Passing a list of events is a
@@ -37,6 +38,66 @@ overloading `events`:
   combine a list of events into one 0/1 result (AND/OR respectively) — these
   **can** be used in Filter Paths conditions.
 
+`in_segment`/`in_segment_bulk` split the same way over segment levels:
+`in_segment` names its levels explicitly (and stays usable in a Filter Paths
+condition), while `in_segment_bulk` is the shorthand that fans out over whole
+segment columns and, like the other `*_bulk` metrics, cannot appear in a
+condition.
+
+## Example config for every metric
+
+Each entry below is a complete metric config. They are shown in a single
+`get_metrics()` call (per-path values, no `agg`); the same dicts work in
+Segment Overview `metrics` and Cluster Analysis `features` /
+`overview_metrics`, with an `agg` key added where that context requires one.
+
+```python
+stream.get_metrics([
+    {"metric": "length"},
+    {"metric": "duration"},
+    {"metric": "first_event_time"},
+
+    # every calendar day with any event; pass active_events to count only
+    # the days a path did something specific
+    {"metric": "active_days"},
+    {"metric": "active_days", "metric_args": {"active_events": ["purchase"]}},
+
+    # single event — one column, comparable in a Filter Paths condition
+    {"metric": "event_count", "metric_args": {"event": "purchase"}},
+    {"metric": "has_event", "metric_args": {"event": "purchase"}},
+
+    # bulk — one column per event; omit "events" for every event in the stream
+    {"metric": "event_count_bulk", "metric_args": {"events": ["add_to_cart", "purchase"]}},
+    {"metric": "has_event_bulk", "metric_args": {"events": ["add_to_cart", "purchase"]}},
+    {"metric": "event_count_bulk"},
+
+    # several events combined into one 0/1 column (AND / OR)
+    {"metric": "has_all_events", "metric_args": {"events": ["add_to_cart", "purchase"]}},
+    {"metric": "has_any_event", "metric_args": {"events": ["promo_view", "discount_applied"]}},
+
+    # seconds between first occurrences; path_start/path_end work as anchors
+    {"metric": "time_between", "metric_args": {"start_event": "path_start", "end_event": "purchase"}},
+
+    {"metric": "matches_pattern", "metric_args": {"pattern": "home->.*->purchase"}},
+
+    # segment membership — one named level, or a list of them
+    {"metric": "in_segment", "metric_args": {"segment_name": "channel", "segment_level": "mobile"}},
+    {"metric": "in_segment", "metric_args": {"segment_name": "channel", "segment_level": ["mobile", "desktop"], "mode": "all"}},
+    {"metric": "in_segment", "metric_args": {"segment_name": "channel", "segment_level": "mobile", "mode": "event_share", "threshold": 0.5}},
+
+    # segment membership in bulk — one column per (segment column, level)
+    {"metric": "in_segment_bulk", "metric_args": {"segment_name": "channel", "segment_levels": ["mobile", "desktop"]}},
+    {"metric": "in_segment_bulk", "metric_args": {"segment_name": "channel"}},          # every level of "channel"
+    {"metric": "in_segment_bulk"},                                                      # every level of every segment column
+    {"metric": "in_segment_bulk", "metric_args": {"mode": "event_share", "threshold": 0.5}},
+])
+```
+
+The columns these produce are named after the config: `length`,
+`event_count_purchase`, `has_event_bulk_purchase`,
+`has_all_events_add_to_cart_and_purchase`, `time_from_path_start_to_purchase`,
+`in_segment_channel_mobile_any`, `in_segment_bulk_channel_mobile_any`, and so on.
+
 ## Metric config format
 
 Metrics appear in two different config formats depending on where they are used:
@@ -48,7 +109,7 @@ Metrics appear in two different config formats depending on where they are used:
 | Key | Required | Description |
 |---|---|---|
 | `metric` | yes | Metric name from the table above. |
-| `metric_args` | depends | Additional arguments for the metric. Required for `event_count`, `has_event`, `event_count_bulk`/`has_event_bulk` (unless the wildcard is intended), `has_all_events`/`has_any_event`, `time_between`, `matches_pattern`, and `in_segment`; optional for `active_days`. |
+| `metric_args` | depends | Additional arguments for the metric. Required for `event_count`, `has_event`, `event_count_bulk`/`has_event_bulk` (unless the wildcard is intended), `has_all_events`/`has_any_event`, `time_between`, `matches_pattern`, and `in_segment`; optional for `active_days` and `in_segment_bulk`. |
 | `agg` | yes (Segment Overview `metrics` and Cluster Analysis `overview_metrics` only) | Aggregation function. See aggregations below. |
 
 ```python
@@ -108,7 +169,16 @@ In [Filter Paths](/docs/data-processors/filter-paths), metrics are used inside a
 
 Supported operators: `=` (or `==`), `!=`, `>`, `<`, `>=`, `<=`. Logical nodes use `and`, `or`, `not` with an `args` list.
 
-`event_count_bulk`/`has_event_bulk` cannot appear in a condition leaf — they expand into
-multiple columns, and a condition needs exactly one comparable value per path. Use the
-non-bulk `event_count`/`has_event` for a single event, or `has_all_events`/`has_any_event`
-for a multi-event AND/OR condition.
+```python
+# Keep paths that stayed in one segment level for most of their events
+{"op": "=", "metric": "in_segment",
+ "metric_args": {"segment_name": "channel", "segment_level": "mobile",
+                 "mode": "event_share", "threshold": 0.8},
+ "value": True}
+```
+
+`event_count_bulk`/`has_event_bulk`/`in_segment_bulk` cannot appear in a condition leaf —
+they expand into multiple columns, and a condition needs exactly one comparable value per
+path. Use the non-bulk `event_count`/`has_event` for a single event, or
+`has_all_events`/`has_any_event` for a multi-event AND/OR condition; use `in_segment` with
+an explicit `segment_name`/`segment_level` for a segment-membership condition.

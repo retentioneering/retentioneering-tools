@@ -473,7 +473,7 @@ export function metricBaseName(metricName: string): string {
   // "length_mean" → "length"
   // Bulk variants are checked before the plain ones: "event_count_bulk_x" also
   // starts with "event_count", so the more specific prefix has to win.
-  const known = ["event_count_bulk", "has_event_bulk", "has_all_events", "has_any_event", "event_count", "has_event", "time_between", "active_days", "in_segment", "matches_pattern", "first_event_time", "duration", "length"];
+  const known = ["event_count_bulk", "has_event_bulk", "in_segment_bulk", "has_all_events", "has_any_event", "event_count", "has_event", "time_between", "active_days", "in_segment", "matches_pattern", "first_event_time", "duration", "length"];
   for (const k of known) if (metricName.startsWith(k)) return k;
   return metricName.split("_")[0];
 }

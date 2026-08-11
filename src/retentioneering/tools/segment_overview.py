@@ -380,7 +380,8 @@ class SegmentOverview:
                 f"produced {len(metric_cols)} metrics: {metric_cols}. "
                 f"For metrics like 'event_count_bulk'/'has_event_bulk', specify "
                 f"metric_args={{'events': [...]}} with exactly one event, or use the "
-                f"non-bulk 'event_count'/'has_event' metric."
+                f"non-bulk 'event_count'/'has_event' metric. For 'in_segment_bulk', use "
+                f"'in_segment' with a single 'segment_level'."
             )
         metric_col = metric_cols[0]
 

@@ -421,6 +421,13 @@ def _build_server(
               {"metric": "matches_pattern",
                "metric_args": {"pattern": "add_to_cart->.*->purchase"}}
                   — 0/1 whether path matches the pattern
+              {"metric": "in_segment",
+               "metric_args": {"segment_name": "channel", "segment_level": "mobile"}}
+                  — 0/1 whether the path belongs to that segment level;
+                    "mode": "any" (default) / "all" / "event_share" (+ "threshold")
+              {"metric": "in_segment_bulk", "metric_args": {"segment_name": "channel"}}
+                  — one in_segment column per level of that segment column;
+                    omit "segment_name" for every level of every segment column
 
             Examples:
               Conversion rate to purchase by platform:

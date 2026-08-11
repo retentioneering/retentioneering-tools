@@ -35,6 +35,13 @@ Supports metrics:
     - all: segment_level is the only value in the segment column
     - event_share: segment_level appears in at least N% of events
       - threshold: percentage of events (e.g., 0.1 for 10%)
+- in_segment_bulk - the same 0/1 membership check, expanded into one column per
+  (segment column, segment level) pair
+  - segment_name: segment column name, or omit/None for every segment column
+  - segment_levels: list of segment values, or omit/None for every level of the
+    selected segment column(s) (an explicit empty list is invalid - only
+    omitting/None means "all levels"); requires segment_name
+  - mode / threshold: same as in_segment
 """
 
 from typing import Any, Dict, List, Set
@@ -68,6 +75,7 @@ VALID_METRICS = {
     "active_days",
     "matches_pattern",
     "in_segment",
+    "in_segment_bulk",
 }
 
 # Valid modes for the in_segment metric
@@ -191,7 +199,57 @@ def _normalize_in_segment(metric_args: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _normalize_in_segment_threshold(metric_args: Dict[str, Any]) -> Any:
+def _normalize_in_segment_bulk(metric_args: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalizes in_segment_bulk's metric_args shape - the wildcard-friendly
+    sibling of `_normalize_in_segment`.
+
+    Both 'segment_name' and 'segment_levels' may be omitted/None, each meaning
+    "all of them" (all segment columns / all levels of the selected column),
+    resolved at build time. As with event_count_bulk's 'events', an explicit
+    empty list is rejected rather than read as the wildcard. 'segment_levels'
+    without a 'segment_name' is rejected too: a level list only makes sense
+    relative to one segment column.
+    """
+    segment_name = metric_args.get("segment_name")
+    segment_levels = metric_args.get("segment_levels")
+    mode = metric_args.get("mode", "any")
+
+    if "segment_level" in metric_args:
+        raise InvalidMetricConfigError(
+            "'in_segment_bulk' metric takes 'segment_levels' (a list), not "
+            "'segment_level'. Use the 'in_segment' metric for a single level."
+        )
+    if mode not in IN_SEGMENT_MODES:
+        raise InvalidMetricConfigError(
+            f"'in_segment_bulk' metric has invalid mode '{mode}'. Valid modes: {sorted(IN_SEGMENT_MODES)}"
+        )
+
+    if segment_levels is not None:
+        if not isinstance(segment_levels, list):
+            raise InvalidMetricConfigError(
+                "'in_segment_bulk' metric 'segment_levels' must be a list, or omitted/None"
+            )
+        if len(segment_levels) == 0:
+            raise InvalidMetricConfigError(
+                "'in_segment_bulk' metric 'segment_levels' must not be an empty list. "
+                "Omit 'segment_levels' (or pass None) to select every level."
+            )
+        if not segment_name:
+            raise InvalidMetricConfigError(
+                "'in_segment_bulk' metric requires 'segment_name' when 'segment_levels' "
+                "is given - levels belong to a single segment column."
+            )
+
+    return {
+        "segment_name": segment_name or None,
+        "segment_levels": segment_levels,
+        "mode": mode,
+    }
+
+
+def _normalize_in_segment_threshold(
+    metric_args: Dict[str, Any], metric_name: str = "in_segment"
+) -> Any:
     """Normalizes the 'threshold' metric_args value for in_segment's 'event_share'
     mode: required when present. Range checking (0-1) needs no real-eventstream
     data, but is validate-only (see `MetricBuilder.validate_metric_config`) since
@@ -199,7 +257,7 @@ def _normalize_in_segment_threshold(metric_args: Dict[str, Any]) -> Any:
     threshold = metric_args.get("threshold")
     if threshold is None:
         raise InvalidMetricConfigError(
-            "'in_segment' metric with mode 'event_share' requires 'threshold' (e.g., 0.1 for 10%)"
+            f"'{metric_name}' metric with mode 'event_share' requires 'threshold' (e.g., 0.1 for 10%)"
         )
     return threshold
 
@@ -409,6 +467,36 @@ class MetricConfig:
                 result["threshold"] = _normalize_in_segment_threshold(metric_args)
 
             return result
+        elif metric == "in_segment_bulk":
+            norm = _normalize_in_segment_bulk(metric_args)
+            segment_name = norm["segment_name"]  # None means all segment columns
+            segment_levels = norm["segment_levels"]  # None means all levels
+            mode = norm["mode"]
+
+            # metric_names stays None while either half is a wildcard - the
+            # segment columns and their levels aren't known without the
+            # eventstream, so the real column names only exist at build time.
+            metric_names = (
+                [f"in_segment_bulk_{segment_name}_{v}_{mode}" for v in segment_levels]
+                if segment_name is not None and segment_levels is not None
+                else None
+            )
+
+            result = {
+                "type": "in_segment_bulk",
+                "segment_name": segment_name,
+                "segment_levels": segment_levels,
+                "mode": mode,
+                "metric_names": metric_names,
+                "original": config_dict,
+            }
+
+            if mode == "event_share":
+                result["threshold"] = _normalize_in_segment_threshold(
+                    metric_args, "in_segment_bulk"
+                )
+
+            return result
         else:
             raise InvalidMetricConfigError(
                 f"Unknown metric type: '{metric}'. Valid metrics: {sorted(VALID_METRICS)}"
@@ -552,6 +640,52 @@ class MetricBuilder:
                         f"'event_share' mode requires 'threshold' between 0 and 1 (got {threshold})"
                     )
 
+        elif metric_name == "in_segment_bulk":
+            norm = _normalize_in_segment_bulk(metric_args)
+            segment_name, segment_levels, mode = (
+                norm["segment_name"],
+                norm["segment_levels"],
+                norm["mode"],
+            )
+
+            if segment_name is None:
+                # Wildcard over every segment column - only meaningful if the
+                # eventstream has at least one.
+                if not self.schema.segment_cols:
+                    raise InvalidMetricConfigError(
+                        "'in_segment_bulk' metric with no 'segment_name' requires at least "
+                        "one segment column in the eventstream, but there are none. "
+                        "Add one with add_segment() or add_clusters()."
+                    )
+            else:
+                if segment_name not in self.schema.segment_cols:
+                    raise InvalidMetricConfigError(
+                        f"Segment '{segment_name}' not found. Available segments: {self.schema.segment_cols}"
+                    )
+                if segment_levels is not None:
+                    available_segment_levels = set(
+                        self.df[segment_name].unique().tolist()
+                    )
+                    for v in segment_levels:
+                        if v not in available_segment_levels:
+                            raise InvalidMetricConfigError(
+                                f"Segment value '{v}' not found in segment '{segment_name}'. "
+                                f"Available values: {sorted(str(x) for x in available_segment_levels)}"
+                            )
+
+            if mode == "event_share":
+                threshold = _normalize_in_segment_threshold(
+                    metric_args, "in_segment_bulk"
+                )
+                if (
+                    not isinstance(threshold, (int, float))
+                    or threshold < 0
+                    or threshold > 1
+                ):
+                    raise InvalidMetricConfigError(
+                        f"'event_share' mode requires 'threshold' between 0 and 1 (got {threshold})"
+                    )
+
     def build_metrics(
         self, config: List[Dict[str, Any]], path_col: str | None = None
     ) -> pd.DataFrame:
@@ -634,6 +768,8 @@ class MetricBuilder:
             return self._build_active_days(path_col, config.get("active_events"))
         elif config["type"] == "in_segment":
             return self._build_in_segment(config, path_col)
+        elif config["type"] == "in_segment_bulk":
+            return self._build_in_segment_bulk(config, path_col)
         else:
             raise InvalidMetricConfigError(f"Unknown metric type: '{config['type']}'")
 
@@ -890,20 +1026,77 @@ class MetricBuilder:
         Can handle multiple segment values at once, generating one column per value.
         If segment_levels is None, generates metrics for all unique values in the segment.
         """
-        segment_name = config["segment_name"]
-        segment_levels = config["segment_levels"]
-        mode = config["mode"]
+        return self._build_in_segment_columns(
+            segment_name=config["segment_name"],
+            segment_levels=config["segment_levels"],
+            mode=config["mode"],
+            threshold=config.get("threshold"),
+            path_col=path_col,
+            col_prefix="in_segment_",
+        )
 
+    def _build_in_segment_bulk(
+        self, config: Dict[str, Any], path_col: str
+    ) -> pd.DataFrame:
+        """
+        Builds in_segment_bulk metrics (0/1) - the same per-level membership
+        columns as in_segment, but with both halves of the selection allowed to
+        be wildcards: `segment_name=None` means every segment column in the
+        schema, `segment_levels=None` means every level of the selected
+        column(s). One column per (segment column, level) pair.
+        """
+        segment_name = config["segment_name"]
+        segment_names = (
+            list(self.schema.segment_cols) if segment_name is None else [segment_name]
+        )
+
+        frames = [
+            self._build_in_segment_columns(
+                segment_name=name,
+                segment_levels=config["segment_levels"],
+                mode=config["mode"],
+                threshold=config.get("threshold"),
+                path_col=path_col,
+                col_prefix="in_segment_bulk_",
+            )
+            for name in segment_names
+        ]
+
+        if not frames:
+            return pd.DataFrame()
+        if len(frames) == 1:
+            return frames[0]
+        return pd.concat(frames, axis=1)
+
+    def _resolve_segment_levels(self, segment_name: str) -> List[Any]:
+        """Every level actually present in a segment column, sorted by string
+        representation for a stable column order. Missing values are skipped -
+        NaN can't be compared with `=` in SQL, so a NaN "level" would only ever
+        produce an all-zero column."""
+        unique_values = self.df[segment_name].unique().tolist()
+        return sorted((v for v in unique_values if not pd.isna(v)), key=str)
+
+    def _build_in_segment_columns(
+        self,
+        segment_name: str,
+        segment_levels: List[Any] | None,
+        mode: str,
+        threshold: Any,
+        path_col: str,
+        col_prefix: str,
+    ) -> pd.DataFrame:
+        """Shared primitive behind in_segment and in_segment_bulk: one 0/1
+        column per level of a single segment column, named
+        '{col_prefix}{segment_name}_{level}_{mode}'. `segment_levels=None`
+        resolves to every level present in the column."""
         df = self.df
 
-        # Resolve segment_levels if None (use all unique values, keep original types)
         if segment_levels is None:
-            unique_values = df[segment_name].unique().tolist()
-            # Sort with string representation for consistent ordering
-            segment_levels = sorted(unique_values, key=lambda x: str(x))
+            segment_levels = self._resolve_segment_levels(segment_name)
 
-        # Build metric names
-        metric_names = [f"in_segment_{segment_name}_{v}_{mode}" for v in segment_levels]
+        metric_names = [
+            f"{col_prefix}{segment_name}_{v}_{mode}" for v in segment_levels
+        ]
 
         # Build metrics for each segment value
         result_dfs = []
@@ -945,7 +1138,6 @@ class MetricBuilder:
 
             elif mode == "event_share":
                 # Path belongs if segment_level appears in at least N% of events
-                threshold = config["threshold"]
                 query = f"""
                 WITH path_counts AS (
                     SELECT

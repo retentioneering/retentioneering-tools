@@ -764,3 +764,115 @@ class TestInSegmentBulk:
             [{"metric": "in_segment", "metric_args": {"segment_name": "segment"}}]
         )
         assert single.columns.tolist() == ["in_segment_segment_s1_any"]
+
+
+class TestInSegmentUnknownArgs:
+    """An unread metric_args key used to be ignored. For the key naming the
+    level that is not harmless: the level then reads as "not given", which
+    means "every level", so the metric silently fans out into one column per
+    level instead of failing."""
+
+    def test__pre_5_0_segment_value_key_rejected(self) -> None:
+        stream = build_segmented_stream()
+        with pytest.raises(InvalidMetricConfigError, match="not 'segment_value'"):
+            stream.get_metrics(
+                [
+                    {
+                        "metric": "in_segment",
+                        "metric_args": {
+                            "segment_name": "segment",
+                            "segment_value": "s1",
+                        },
+                    }
+                ]
+            )
+
+    def test__pre_5_0_segment_value_key_rejected_for_bulk(self) -> None:
+        stream = build_segmented_stream()
+        with pytest.raises(InvalidMetricConfigError, match="not 'segment_value'"):
+            stream.get_metrics(
+                [
+                    {
+                        "metric": "in_segment_bulk",
+                        "metric_args": {
+                            "segment_name": "segment",
+                            "segment_value": "s1",
+                        },
+                    }
+                ]
+            )
+
+    def test__plural_segment_levels_key_rejected(self) -> None:
+        """Mirror of in_segment_bulk rejecting the singular spelling."""
+        stream = build_segmented_stream()
+        with pytest.raises(InvalidMetricConfigError, match="not 'segment_levels'"):
+            stream.get_metrics(
+                [
+                    {
+                        "metric": "in_segment",
+                        "metric_args": {
+                            "segment_name": "segment",
+                            "segment_levels": ["s1"],
+                        },
+                    }
+                ]
+            )
+
+    def test__misspelled_key_rejected(self) -> None:
+        stream = build_segmented_stream()
+        with pytest.raises(InvalidMetricConfigError, match="unknown metric_args key"):
+            stream.get_metrics(
+                [
+                    {
+                        "metric": "in_segment",
+                        "metric_args": {
+                            "segment_name": "segment",
+                            "segment_level": "s1",
+                            "Mode": "all",
+                        },
+                    }
+                ]
+            )
+
+    def test__rejected_in_a_filter_paths_condition_too(self) -> None:
+        """The condition path derives column names on its own; without the same
+        check it reported the level as merely 'unknown until runtime'."""
+        stream = build_segmented_stream()
+        with pytest.raises(InvalidMetricConfigError, match="not 'segment_value'"):
+            stream.filter_paths(
+                {
+                    "op": "=",
+                    "metric": "in_segment",
+                    "metric_args": {"segment_name": "segment", "segment_value": "s1"},
+                    "value": True,
+                }
+            )
+
+    def test__every_documented_key_still_accepted(self) -> None:
+        stream = build_segmented_stream()
+        result = stream.get_metrics(
+            [
+                {
+                    "metric": "in_segment",
+                    "metric_args": {
+                        "segment_name": "segment",
+                        "segment_level": "s1",
+                        "mode": "event_share",
+                        "threshold": 0.5,
+                    },
+                },
+                {
+                    "metric": "in_segment_bulk",
+                    "metric_args": {
+                        "segment_name": "channel",
+                        "segment_levels": ["mobile"],
+                        "mode": "event_share",
+                        "threshold": 0.5,
+                    },
+                },
+            ]
+        )
+        assert result.columns.tolist() == [
+            "in_segment_segment_s1_event_share",
+            "in_segment_bulk_channel_mobile_event_share",
+        ]

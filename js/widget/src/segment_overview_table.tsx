@@ -584,13 +584,13 @@ export function useDistributionSelection({ host, result, rootRef, segmentCol, pa
       const si2 = parseInt(rowCells[1].split(":")[1]);
       host.set("dist_request", JSON.stringify({
         segment_col: segmentCol, path_col: pathIdCol || null,
-        segment_value: [result.segments[si1], result.segments[si2]], metric,
+        segment_level: [result.segments[si1], result.segments[si2]], metric,
       }));
     } else {
       const si  = parseInt(rowCells[0].split(":")[1]);
       host.set("dist_request", JSON.stringify({
         segment_col: segmentCol, path_col: pathIdCol || null,
-        segment_value: result.segments[si], metric, complement: true,
+        segment_level: result.segments[si], metric, complement: true,
       }));
     }
   }, [result, ctxMenu, selected, segmentCol, pathIdCol, events, host]);

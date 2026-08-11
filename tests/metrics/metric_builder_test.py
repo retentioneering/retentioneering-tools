@@ -743,7 +743,7 @@ class TestInSegmentBulk:
                 }
             )
 
-    def test__paths_with_no_segment_value_are_skipped_not_crashed(self) -> None:
+    def test__paths_with_no_segment_level_are_skipped_not_crashed(self) -> None:
         """A segment column may have paths with no assigned level. NaN is not a
         level: SQL equality can never match it, and it used to be interpolated
         into the query as a bare `nan` identifier, crashing the whole build."""

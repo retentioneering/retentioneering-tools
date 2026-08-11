@@ -278,7 +278,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
     def _tool_get_metric_distribution(self, params: dict):
         return self._compute_distribution_raw(
             metric=params["metric"],
-            segment_value=params["segment_value"],
+            segment_level=params["segment_level"],
             complement=params.get("complement", False),
             path_col=params.get("path_col") or self.path_col or None,
         )
@@ -401,7 +401,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         }
 
     def _compute_distribution_raw(
-        self, metric, segment_value, complement=False, path_col=None
+        self, metric, segment_level, complement=False, path_col=None
     ) -> dict:
         from retentioneering.tools.cluster_analysis import ClusterAnalysis
 
@@ -410,7 +410,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         return ClusterAnalysis(self._eventstream).get_metric_distribution(
             cluster_labels=self._cluster_labels,
             metric=metric,
-            segment_value=segment_value,
+            segment_level=segment_level,
             complement=complement,
             path_col=path_col,
         )
@@ -420,7 +420,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         try:
             result = self._compute_distribution_raw(
                 metric=req["metric"],
-                segment_value=req["segment_value"],
+                segment_level=req["segment_level"],
                 complement=req.get("complement", False),
                 path_col=self.path_col or None,
             )

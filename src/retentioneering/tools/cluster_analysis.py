@@ -498,7 +498,7 @@ class ClusterAnalysis:
         self,
         cluster_labels: pd.Series,
         metric: Dict[str, Any],
-        segment_value: str | List[str],
+        segment_level: str | List[str],
         complement: bool = False,
         path_col: str | None = None,
     ) -> Dict[str, Any]:
@@ -513,7 +513,7 @@ class ClusterAnalysis:
         temp_stream = self._temp_cluster_stream(cluster_labels, path_col)
         return temp_stream.get_metric_distribution(
             segment_col=SEGMENT_COL,
-            segment_value=segment_value,
+            segment_level=segment_level,
             metric=metric,
             complement=complement,
             path_col=path_col,

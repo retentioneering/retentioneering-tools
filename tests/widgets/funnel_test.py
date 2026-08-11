@@ -24,7 +24,7 @@ def _make_stream() -> Eventstream:
 
 
 class TestFunnelWidgetDiff:
-    def test__segment_diff_uses_segment_values_as_labels(self) -> None:
+    def test__segment_diff_uses_segment_levels_as_labels(self) -> None:
         """Regression guard: (segment_col, value1, value2) must keep using
         the segment values as group labels, as before."""
         stream = _make_stream()

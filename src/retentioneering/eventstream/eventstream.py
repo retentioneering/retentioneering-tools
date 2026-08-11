@@ -14,7 +14,7 @@ from retentioneering.tools.types import T_TransitionMatrixValues, T_Diff
 from retentioneering.utils.sequences import find_delimiter_collisions
 
 #: `diff`/`get_segment_levels` sentinel standing in for a missing (None/NaN)
-#: segment value, since it can't be a real dict/query value the way `<REST>` can.
+#: segment level, since it can't be a real dict/query value the way `<REST>` can.
 SEGMENT_MISSING = "<MISSING>"
 
 
@@ -406,7 +406,7 @@ class Eventstream:
               count/mean/std/min/percentiles/max rows and `length`/`duration`
               columns
             - `segments`: DataFrame of segment_col/value/count/share, one row
-              per segment value across all segment columns
+              per segment level across all segment columns
 
         Examples
         --------
@@ -1403,14 +1403,14 @@ class Eventstream:
         ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
-    def _filter_by_segment_values(
-        self, segment_col: str, values: list
+    def _filter_by_segment_levels(
+        self, segment_col: str, levels: list
     ) -> "Eventstream":
-        """`keep`-style filter, but values may include SEGMENT_MISSING — which
+        """`keep`-style filter, but levels may include SEGMENT_MISSING — which
         `keep=` can't express, since SQL `IN` never matches NULL."""
-        if SEGMENT_MISSING not in values:
-            return self.filter_events(keep={segment_col: values})
-        real_values = {v for v in values if v != SEGMENT_MISSING}
+        if SEGMENT_MISSING not in levels:
+            return self.filter_events(keep={segment_col: levels})
+        real_values = {v for v in levels if v != SEGMENT_MISSING}
         return self.filter_events(
             func=lambda df: df[segment_col].isin(real_values) | df[segment_col].isna()
         )
@@ -1419,7 +1419,7 @@ class Eventstream:
         from retentioneering.exceptions import (
             EmptyEventstreamError,
             DiffConfigError,
-            SegmentValueNotFoundError,
+            SegmentLevelNotFoundError,
             PathIdNotFoundError,
         )
 
@@ -1451,29 +1451,29 @@ class Eventstream:
 
             v1 = _coerce(v1)
             if v1 not in all_vals:
-                raise SegmentValueNotFoundError(
-                    segment_value=v1,
+                raise SegmentLevelNotFoundError(
+                    segment_level=v1,
                     segment_col=segment_col,
-                    available_values=sorted(all_vals),
+                    available_levels=sorted(all_vals),
                 )
-            s1 = self._filter_by_segment_values(segment_col, [v1])
+            s1 = self._filter_by_segment_levels(segment_col, [v1])
             if v2 == "<REST>":
                 v2_vals = list(all_vals - {v1})
                 if not v2_vals:
                     raise DiffConfigError(
-                        f"'{segment_col}' has no other values besides '{v1}'; "
-                        "'<REST>' requires at least one complementary value."
+                        f"'{segment_col}' has no other levels besides '{v1}'; "
+                        "'<REST>' requires at least one complementary level."
                     )
             else:
                 v2 = _coerce(v2)
                 if v2 not in all_vals:
-                    raise SegmentValueNotFoundError(
-                        segment_value=v2,
+                    raise SegmentLevelNotFoundError(
+                        segment_level=v2,
                         segment_col=segment_col,
-                        available_values=sorted(all_vals),
+                        available_levels=sorted(all_vals),
                     )
                 v2_vals = [v2]
-            s2 = self._filter_by_segment_values(segment_col, v2_vals)
+            s2 = self._filter_by_segment_levels(segment_col, v2_vals)
         elif len(split) == 2:
             ids1, ids2 = split[0], split[1]
             path_col = path_col or self.schema.path_col
@@ -1588,7 +1588,7 @@ class Eventstream:
         diff : tuple or list, optional
             Draws a comparative chart for a pair of segments; see
             [Diff mode](/docs/widgets#diff-mode). `(segment_col, value1, value2)` to
-            compare two segment values, or `(path_ids1, path_ids2)` to compare two
+            compare two segment levels, or `(path_ids1, path_ids2)` to compare two
             explicit path-id groups. `value2` may be `<REST>`, meaning "every other
             value of `segment_col`". Either value may be `<MISSING>`, meaning paths
             with no `segment_col` value assigned (e.g. left unset by `add_segment`'s
@@ -2172,7 +2172,7 @@ class Eventstream:
         """
         Interactive segment comparison heatmap for Jupyter notebooks.
 
-        Rows are metrics, columns are segment values. Click a cell to see that
+        Rows are metrics, columns are segment levels. Click a cell to see that
         metric's distribution for the segment; shift-click a second cell in the
         same row to compare two distributions side by side. `segment_col` and
         `metrics` are also editable from the widget's sidebar without
@@ -2235,7 +2235,7 @@ class Eventstream:
         event_col: str | None = None,
     ) -> "pd.DataFrame":
         """
-        Compute aggregated metrics across segment values (headless).
+        Compute aggregated metrics across segment levels (headless).
 
         Parameters
         ----------
@@ -2256,7 +2256,7 @@ class Eventstream:
         Returns
         -------
         pd.DataFrame
-            Metrics as rows and segment values as columns. Always includes
+            Metrics as rows and segment levels as columns. Always includes
             segment_size and segment_share as the first two rows.
         """
         from retentioneering.tools.segment_overview import SegmentOverview
@@ -2492,16 +2492,16 @@ class Eventstream:
     def get_metric_distribution(
         self,
         segment_col: str,
-        segment_value,
+        segment_level,
         metric: dict,
         complement: bool = False,
         path_col: str | None = None,
     ) -> dict:
-        """Compute histogram/KDE distribution for a metric across one or two segment values.
+        """Compute histogram/KDE distribution for a metric across one or two segment levels.
 
         Parameters
         ----------
-        segment_value:
+        segment_level:
             Single string → compare with complement (complement=True required).
             List of two strings → compare the two distributions.
         """
@@ -2509,7 +2509,7 @@ class Eventstream:
 
         return SegmentOverview(self).get_metric_distribution(
             segment_col=segment_col,
-            segment_value=segment_value,
+            segment_level=segment_level,
             metric=metric,
             complement=complement,
             path_col=path_col,

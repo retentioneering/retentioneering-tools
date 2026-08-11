@@ -142,7 +142,7 @@ Returns a dict:
 | `date_range` | `min`, `max`, `span` |
 | `event_frequency` | `DataFrame` of `event`/`count`/`share`, sorted descending, limited to `top_events` rows (default 20; pass `top_events=None` for the full, unranked list). `.attrs["truncated"]` and `.attrs["n_total_events"]` say whether/how much this was cut down |
 | `path_stats` | dict keyed by each entry of `path_cols`, each a `DataFrame` (`DataFrame.describe()` shape: count/mean/std/min/percentiles/max) with `length`/`duration` columns |
-| `segments` | `DataFrame` of `segment_col`/`value`/`count`/`share`, one row per segment value across all segment columns |
+| `segments` | `DataFrame` of `segment_col`/`value`/`count`/`share`, one row per segment level across all segment columns |
 
 ## Other Eventstream methods
 
@@ -173,7 +173,7 @@ features = stream.get_metrics([
 
 Metric configs here take no `agg` field — these are raw per-path values, not aggregates. `event_count_bulk` / `has_event_bulk` expand into one column per event.
 
-`get_metric_distribution()` is the related one-off: it returns the distribution of a single metric for one segment value against another (or against everything else, with `complement=True`), which is what the Segment Overview widget draws when you click a cell.
+`get_metric_distribution()` is the related one-off: it returns the distribution of a single metric for one segment level against another (or against everything else, with `complement=True`), which is what the Segment Overview widget draws when you click a cell.
 
 ### Conversion from one event to another
 

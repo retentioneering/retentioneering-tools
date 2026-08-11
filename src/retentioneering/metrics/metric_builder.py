@@ -27,9 +27,9 @@ Supports metrics:
 - matches_pattern - whether path matches a token pattern (0/1)
   - pattern: string pattern like "login->.*->purchase" (literal events matched as whole
     tokens, not substrings; ".*" matches any run of whole events)
-- in_segment - binary metric showing if a path belongs to a segment value (0/1)
+- in_segment - binary metric showing if a path belongs to a segment level (0/1)
   - segment_name: segment column name
-  - segment_level: segment value (string, list of strings, or None for all values)
+  - segment_level: segment level (string, list of strings, or None for all levels)
   - mode:
     - any: segment_level appears at least once
     - all: segment_level is the only value in the segment column
@@ -38,7 +38,7 @@ Supports metrics:
 - in_segment_bulk - the same 0/1 membership check, expanded into one column per
   (segment column, segment level) pair
   - segment_name: segment column name, or omit/None for every segment column
-  - segment_levels: list of segment values, or omit/None for every level of the
+  - segment_levels: list of segment levels, or omit/None for every level of the
     selected segment column(s) (an explicit empty list is invalid - only
     omitting/None means "all levels"); requires segment_name
   - mode / threshold: same as in_segment
@@ -756,7 +756,7 @@ class MetricBuilder:
 
         Raises:
             InvalidMetricConfigError: If any metric configuration references an
-                event or segment value that doesn't exist, so typos fail loudly
+                event or segment level that doesn't exist, so typos fail loudly
                 instead of silently producing all-zero metrics.
         """
         path_col = path_col or self.schema.path_col
@@ -1078,7 +1078,7 @@ class MetricBuilder:
         - all: segment_level is the only value in the segment column
         - event_share: segment_level appears in at least N% of events
 
-        Can handle multiple segment values at once, generating one column per value.
+        Can handle multiple segment levels at once, generating one column per level.
         If segment_levels is None, generates metrics for all unique values in the segment.
         """
         return self._build_in_segment_columns(
@@ -1153,7 +1153,7 @@ class MetricBuilder:
             f"{col_prefix}{segment_name}_{v}_{mode}" for v in segment_levels
         ]
 
-        # Build metrics for each segment value
+        # Build metrics for each segment level
         result_dfs = []
         path_col_q = engine.quote_ident(path_col)
         segment_name_q = engine.quote_ident(segment_name)

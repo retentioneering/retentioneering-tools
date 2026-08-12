@@ -25,20 +25,86 @@ as query parameters.
 
 from __future__ import annotations
 
+import os
+import threading
+
 import duckdb
 import pandas as pd
 
 __all__ = ["run", "quote_ident"]
 
 
+#: The DuckDB instance that every query uses. It is built when the first query
+#: runs and then shared for the rest of the process. It is ``None`` before
+#: that, and ``None`` again inside a child process after a fork (see
+#: :func:`_reset_after_fork`).
+_ROOT: duckdb.DuckDBPyConnection | None = None
+
+#: Stops two threads from building `_ROOT` twice when they both send the very
+#: first query at the same time.
+_ROOT_LOCK = threading.Lock()
+
+#: Instances that a child process got from its parent through ``fork()``. The
+#: child keeps them here instead of dropping them. If it dropped the last
+#: reference, Python would close the instance, and closing one that the parent
+#: still uses is the thing we must avoid. Nothing ever reads this list again.
+_ABANDONED: list[duckdb.DuckDBPyConnection] = []
+
+
+def _root() -> duckdb.DuckDBPyConnection:
+    """Return the shared DuckDB instance, building it if there is none yet.
+
+    We build it late, on the first query, and not when the module is imported.
+    An instance costs both time and memory, so a program that imports
+    retentioneering but never runs a query should not pay for one.
+    """
+    global _ROOT
+    if _ROOT is None:
+        with _ROOT_LOCK:
+            # Check again inside the lock. Another thread may have built the
+            # instance while this one was waiting for its turn.
+            if _ROOT is None:
+                _ROOT = duckdb.connect()
+    return _ROOT
+
+
+def _reset_after_fork() -> None:
+    """Let go of the instance we got from the parent, but never close it.
+
+    A DuckDB instance cannot be used after a ``fork()``. Closing it is not the
+    answer either, because the parent still uses it. So the child keeps the
+    object in `_ABANDONED`, where it stays alive and Python never closes it,
+    and then empties the slot. The next call to :func:`run` builds a new
+    instance for the child.
+
+    We replace `_ROOT_LOCK` as well. Only the thread that called ``fork()``
+    lives on in the child, so if another thread held the lock at that moment,
+    the lock would stay locked for ever.
+    """
+    global _ROOT, _ROOT_LOCK
+    if _ROOT is not None:
+        _ABANDONED.append(_ROOT)
+        _ROOT = None
+    _ROOT_LOCK = threading.Lock()
+
+
+# Windows has no fork(), so there is nothing to register there.
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reset_after_fork)
+
+
 def run(sql: str, /, **tables: pd.DataFrame) -> pd.DataFrame:
     """
     Execute a SQL query against one or more explicitly named pandas frames.
 
-    A fresh, private DuckDB connection is created for each call, the given
-    frames are registered on it under their keyword name, and the query is
-    executed and eagerly materialized to a pandas DataFrame before the
-    connection is closed. Callers no longer need a same-named local variable
+    The whole process shares one DuckDB instance, built when the first query
+    runs, and this call takes a cursor on it. The frames you pass are put on
+    that cursor under their keyword name, the query runs, the result is turned
+    into a pandas DataFrame, and then the cursor is closed. Every cursor has
+    its own temporary catalog, so whatever one call puts there belongs to that
+    call alone and is gone when it ends. Calls stay as separate as they were
+    when each one opened its own database, but without the cost of building a
+    database every time. Callers no longer need a same-named local variable
     for DuckDB's replacement-scan to find — the mapping from SQL table name
     to pandas frame is explicit at the call site.
 
@@ -48,7 +114,7 @@ def run(sql: str, /, **tables: pd.DataFrame) -> pd.DataFrame:
         The SQL query text. Any table it references by an unqualified name
         (e.g. ``FROM df``) must be passed as a same-named keyword argument.
     **tables:
-        Pandas DataFrames to register on the query's connection, keyed by the
+        Pandas DataFrames to register on the query's cursor, keyed by the
         name they are referenced as in `sql`.
 
     Returns
@@ -64,13 +130,13 @@ def run(sql: str, /, **tables: pd.DataFrame) -> pd.DataFrame:
             df=self.df,
         )
     """
-    con = duckdb.connect()
+    cur = _root().cursor()
     try:
         for name, frame in tables.items():
-            con.register(name, frame)
-        return con.sql(sql).df()
+            cur.register(name, frame)
+        return cur.sql(sql).df()
     finally:
-        con.close()
+        cur.close()
 
 
 def quote_ident(identifier: str) -> str:

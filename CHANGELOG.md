@@ -30,6 +30,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - `utils.session_detection.parse_timeout` moved to `utils.durations.parse_duration`, the one parser for every user-facing duration input; `parse_timeout` remains as a thin wrapper
 - Docs: the MCP server guide moved from `/docs/mcp` to `/docs/mcp-server` (`docs/guide/mcp.md` → `docs/guide/mcp-server.md`), reserving `/docs/mcp` for a future documentation MCP endpoint. All in-repo links were updated; the old URL is not redirected — it 404s until the endpoint lands there
 - `docs/scripts/render_pages.py`: `copy_guide_pages()` now wipes `docs/build/guide/` before copying, so a renamed or deleted guide page no longer lingers in the build output
+- `engine.run()` now shares one DuckDB instance across the process and takes a cursor for each query, instead of building a new database every time. Opening one costs a fixed few milliseconds, so the saving grows with the number of queries rather than the size of the data: a full `pytest tests/` run drops by about a quarter. The instance is built on the first query, not at import. Frames registered by a call are still private to it, but catalog objects are not: a table or a view created through a processor's `sql=` argument now lives for the rest of the process, where before it died with the connection
 
 ### Fixed
 

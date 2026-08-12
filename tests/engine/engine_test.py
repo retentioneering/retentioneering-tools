@@ -8,6 +8,7 @@ process from using the instance of its parent.
 """
 
 import os
+import pathlib
 import signal
 import subprocess
 import sys
@@ -128,13 +129,23 @@ class TestCursorIsolation:
 
 
 class TestLazyInstance:
-    def test__importing_the_package_does_not_build_an_instance(self):
+    def test__importing_the_module_does_not_build_an_instance(self):
         # This is why we build late. A program that imports retentioneering but
         # never runs a query should not pay for an instance it does not use.
+        #
+        # The module is loaded on its own, from its file, rather than through
+        # `import retentioneering`. It imports nothing from the package, so the
+        # two are the same run of the same code, but going through the package
+        # would also pull in scipy, sklearn, gensim and mcp, which costs seconds
+        # and tests nothing extra here.
+        module_path = pathlib.Path(engine.__file__).resolve()
         code = (
-            "import retentioneering\n"
-            "from retentioneering import engine\n"
-            "raise SystemExit(0 if engine._ROOT is None else 1)\n"
+            "import importlib.util, sys\n"
+            f"spec = importlib.util.spec_from_file_location('probe', r'{module_path}')\n"
+            "mod = importlib.util.module_from_spec(spec)\n"
+            "sys.modules['probe'] = mod\n"
+            "spec.loader.exec_module(mod)\n"
+            "raise SystemExit(0 if mod._ROOT is None else 1)\n"
         )
 
         assert subprocess.run([sys.executable, "-c", code], check=False).returncode == 0

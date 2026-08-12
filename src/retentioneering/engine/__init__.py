@@ -45,9 +45,11 @@ _ROOT: duckdb.DuckDBPyConnection | None = None
 _ROOT_LOCK = threading.Lock()
 
 #: Instances that a child process got from its parent through ``fork()``. The
-#: child keeps them here instead of dropping them. If it dropped the last
-#: reference, Python would close the instance, and closing one that the parent
-#: still uses is the thing we must avoid. Nothing ever reads this list again.
+#: child moves them here instead of dropping them, so that the close does not
+#: happen while the child is running and the parent is still using the
+#: instance. This only delays the close, it does not stop it: at shutdown
+#: Python clears module globals and the destructor runs then. Nothing ever
+#: reads this list again.
 _ABANDONED: list[duckdb.DuckDBPyConnection] = []
 
 
@@ -69,13 +71,17 @@ def _root() -> duckdb.DuckDBPyConnection:
 
 
 def _reset_after_fork() -> None:
-    """Let go of the instance we got from the parent, but never close it.
+    """Move the instance we got from the parent aside, so the child stops using it.
 
-    A DuckDB instance cannot be used after a ``fork()``. Closing it is not the
-    answer either, because the parent still uses it. So the child keeps the
-    object in `_ABANDONED`, where it stays alive and Python never closes it,
-    and then empties the slot. The next call to :func:`run` builds a new
-    instance for the child.
+    A DuckDB instance cannot be used after a ``fork()``. Dropping it is not the
+    answer either, because that closes it while the parent is still using it.
+    So the child moves the object into `_ABANDONED` and empties the slot, and
+    the next call to :func:`run` builds a new instance for the child.
+
+    This delays the close, it does not prevent it. At shutdown Python clears
+    module globals and the destructor runs then. Forking a process that uses
+    DuckDB is not sound in general, and this handler only keeps the close out
+    of the working life of the child.
 
     We replace `_ROOT_LOCK` as well. Only the thread that called ``fork()``
     lives on in the child, so if another thread held the lock at that moment,
@@ -100,13 +106,18 @@ def run(sql: str, /, **tables: pd.DataFrame) -> pd.DataFrame:
     The whole process shares one DuckDB instance, built when the first query
     runs, and this call takes a cursor on it. The frames you pass are put on
     that cursor under their keyword name, the query runs, the result is turned
-    into a pandas DataFrame, and then the cursor is closed. Every cursor has
-    its own temporary catalog, so whatever one call puts there belongs to that
-    call alone and is gone when it ends. Calls stay as separate as they were
-    when each one opened its own database, but without the cost of building a
-    database every time. Callers no longer need a same-named local variable
-    for DuckDB's replacement-scan to find — the mapping from SQL table name
-    to pandas frame is explicit at the call site.
+    into a pandas DataFrame, and then the cursor is closed.
+
+    What is private to a call is the frames it registers. They live in the
+    cursor's temporary catalog, they are gone when it closes, and one of them
+    always wins over a stored object of the same name. Other state is not
+    private. A query that stores something in the catalog, for example a table
+    or a view sent through a processor's `sql=` argument, keeps it for the life
+    of the process, where before it died with the connection.
+
+    Callers no longer need a same-named local variable for DuckDB's
+    replacement-scan to find — the mapping from SQL table name to pandas frame
+    is explicit at the call site.
 
     Parameters
     ----------

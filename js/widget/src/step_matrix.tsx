@@ -15,6 +15,12 @@ interface MatrixBlock {
 }
 interface MatrixResult {
   matrices: MatrixBlock[];
+  // Whether the strip reaches each of the path's own boundaries. Computed in
+  // Python from the parsed pattern — a pattern that merely mentions a sentinel
+  // (`cart->[^path_end]*->purchase`) does not end at one, which is why this is
+  // not inferred from the pattern string here.
+  starts_at_path_start?: boolean;
+  ends_at_path_end?: boolean;
   event_counts: Record<string, number>;
   event_counts_g1?: Record<string, number>;
   event_counts_g2?: Record<string, number>;
@@ -375,7 +381,7 @@ function computeDefaultOrder(block: MatrixBlock | undefined, isDiff: boolean): s
 
 interface SortState { order: string[]; lex_dir: "asc" | "desc" | null; }
 
-function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hiddenEvents, filteredOut, pinnedEvents, onToggleHidden, onTogglePin, heatmapType, globalHeatmap, eventCounts, eventCountsG1, eventCountsG2, pathPattern, diffSeg, diffV1, diffV2, initialSortState, onSortChange, initialScrollX, onScrollXChange }: {
+function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hiddenEvents, filteredOut, pinnedEvents, onToggleHidden, onTogglePin, heatmapType, globalHeatmap, eventCounts, eventCountsG1, eventCountsG2, startsAtPathStart, endsAtPathEnd, diffSeg, diffV1, diffV2, initialSortState, onSortChange, initialScrollX, onScrollXChange }: {
   blocks: MatrixBlock[]; stepWindow: number; isDiff: boolean; labelWidth: number;
   onLabelResize: (w: number) => void;
   hiddenEvents: Set<string>; filteredOut?: Set<string>; pinnedEvents: Set<string>;
@@ -383,7 +389,7 @@ function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hid
   heatmapType: "overall"|"row"|"col"; globalHeatmap?: boolean;
   eventCounts?: Record<string, number>;
   eventCountsG1?: Record<string, number>; eventCountsG2?: Record<string, number>;
-  pathPattern?: string;
+  startsAtPathStart?: boolean; endsAtPathEnd?: boolean;
   diffSeg?: string | null; diffV1?: string | null; diffV2?: string | null;
   initialSortState?: SortState | null;
   onSortChange?: (order: string[], lexDir: "asc" | "desc" | null) => void;
@@ -620,8 +626,10 @@ function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hid
     scrollSaveTimer.current = setTimeout(() => onScrollXChange?.(scrollXRef.current), 300);
   };
 
-  const showLeftEdge  = !!pathPattern && !pathPattern.startsWith("path_start");
-  const showRightEdge = !pathPattern || !pathPattern.includes("path_end");
+  // Absent flags fall back to the no-pattern layout (starts at the path's first
+  // step, cut at max_steps), which is what a result without them can only be.
+  const showLeftEdge  = startsAtPathStart === false;
+  const showRightEdge = endsAtPathEnd !== true;
 
   // ── Cell tooltip (diff mode) ──────────────────────────────────────────────
   const [cellTip, setCellTip] = React.useState<{
@@ -1037,7 +1045,8 @@ export function render({ host, el, isStatic = false }: RenderContext) {
                 eventCounts={eventCounts}
                 eventCountsG1={result.event_counts_g1}
                 eventCountsG2={result.event_counts_g2}
-                pathPattern={pathPattern}
+                startsAtPathStart={result.starts_at_path_start}
+                endsAtPathEnd={result.ends_at_path_end}
                 diffSeg={diffSeg} diffV1={diffV1} diffV2={diffV2}
 
                 initialSortState={parseJson<SortState | null>(host.get("sort_state") || "", null)}

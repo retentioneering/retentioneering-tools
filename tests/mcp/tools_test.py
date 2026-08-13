@@ -215,8 +215,8 @@ class TestGetConversionRate:
         assert result["path_col"] == "user_id"
         assert result["rows"] == [
             {
-                "start_event": "view",
-                "end_event": "purchase",
+                "start_anchor": "view",
+                "end_anchor": "purchase",
                 "paths_with_start": 2,
                 "converted": 2,
                 "conversion_rate": 1.0,
@@ -244,12 +244,12 @@ class TestGetConversionRate:
         assert result["rows"][0]["conversion_rate"] is None
         json.dumps(result, allow_nan=False)
 
-    def test__end_event_list_fans_out(self) -> None:
+    def test__end_anchor_list_fans_out(self) -> None:
         session = get_session()
 
         result = tools.get_conversion_rate(session, "view", ["purchase", "noise"])
 
-        assert [row["end_event"] for row in result["rows"]] == ["purchase", "noise"]
+        assert [row["end_anchor"] for row in result["rows"]] == ["purchase", "noise"]
 
     def test__within_and_local_preprocessors_are_applied(self) -> None:
         session = get_session()
@@ -281,7 +281,7 @@ class TestGetConversionRate:
         result = tools.get_conversion_rate(session, "Purchse", "view")
 
         assert "error" in result
-        assert "start_event" in result["error"]
+        assert "start_anchor" in result["error"]
 
     def test__is_documented_as_a_method_not_a_preprocessor(self) -> None:
         index = tools.describe_tool("")

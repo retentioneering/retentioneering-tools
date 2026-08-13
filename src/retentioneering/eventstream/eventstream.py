@@ -755,22 +755,34 @@ class Eventstream:
     @_tracked("dp_add_events")
     @_op
     def add_events(
-        self, name: str, source_events=None, sql=None, churn=None
+        self,
+        name: str,
+        source_event=None,
+        sql=None,
+        churn=None,
+        anchor=None,
+        path_col=None,
     ) -> "Eventstream":
         """
         Insert synthetic events derived from existing events or a SQL query.
 
-        Exactly one of `source_events`, `sql`, or `churn` must be provided.
-        The new event rows are appended to the eventstream; original rows are kept.
+        Exactly one of `source_event`, `sql`, `churn`, or `anchor` must be
+        provided. The new event rows are appended to the eventstream; original
+        rows are kept.
+
+        A synthetic event shares its source row's timestamp and sorts *before*
+        it, so it marks the moment the source event opens. The exception is a
+        `churn` event, which closes a stretch of inactivity and so sorts after
+        the last active event (and always before `path_end`).
 
         Parameters
         ----------
         name : str
             Name of the synthetic event to create.
-        source_events : list of str, optional
-            List of existing event names. Every occurrence of any of them gets a
-            synthetic event at the same timestamp, ordered right after the source
-            row — a path with three matching events gets three synthetic events.
+        source_event : str or list of str, optional
+            An existing event name, or several. Every occurrence of any of them
+            gets a synthetic event at the same timestamp — a path with three
+            matching events gets three synthetic events.
         sql : str, optional
             DuckDB SQL SELECT statement that reads from the `eventstream` table alias
             and returns rows in the eventstream schema. Each returned row is added as a
@@ -781,17 +793,53 @@ class Eventstream:
                 a churn event is inserted.
               - `active_events` (list of str, optional) — only these events count as
                 activity; defaults to all events.
+        anchor : str or dict, optional
+            Mark a *position* in each path rather than an event name: an event
+            name, or an anchor spec — the same form `truncate_paths` takes for
+            `start_anchor`, and the same keys (`pattern`, `at`, `occurrence`,
+            `offset`, `offset_side`); see
+            [Path Patterns](/docs/path-patterns). One anchor per call, not a
+            list. By default the anchor resolves once per path
+            (`occurrence="first"`); pass `occurrence="all"` to mark every
+            position the anchor can occupy. Paths where it resolves nowhere get
+            no event.
+
+            This is what makes a position addressable by every other tool: a
+            pattern can say "the cart that was followed by checkout with no cart
+            in between", but only an event name can be centred on by
+            `step_matrix`, counted by a funnel, or filtered on.
+        path_col : str, optional
+            Path ID column the `anchor` is resolved within; defaults to
+            `schema.path_col`. Ignored by the other modes.
 
         Examples
         --------
-            stream.add_events("session_start", source_events=["login", "app_open"])
+            stream.add_events("session_start", source_event=["login", "app_open"])
             stream.add_events("churned", churn={"inactivity_days": 30})
             stream.add_events("churned", churn={"inactivity_days": 30, "active_events": ["purchase"]})
+
+            # the cart that actually led to checkout, not every cart
+            stream.add_events(
+                "checkout_cart",
+                anchor={"pattern": "cart->[^cart]*->shipping_details", "at": "start"},
+            )
+            stream.step_matrix(path_pattern="checkout_cart")
+
+            # every purchase a path made, marked three events ahead of time
+            stream.add_events(
+                "pre_purchase",
+                anchor={"pattern": "purchase", "occurrence": "all", "offset": -3},
+            )
         """
         from retentioneering.data_processors.add_events import AddEvents
 
         new_df, new_schema = AddEvents(
-            name, source_events=source_events, sql=sql, churn=churn
+            name,
+            source_event=source_event,
+            sql=sql,
+            churn=churn,
+            anchor=anchor,
+            path_col=path_col,
         ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
@@ -1307,7 +1355,7 @@ class Eventstream:
     @_tracked("dp_truncate_paths")
     @_op
     def truncate_paths(
-        self, start_event, end_event, path_col=None, event_col=None
+        self, start_anchor, end_anchor, path_col=None, event_col=None
     ) -> "Eventstream":
         """
         Trim each path to the window between two anchors (inclusive).
@@ -1339,11 +1387,15 @@ class Eventstream:
           `catalog, cart, purchase, cart` the last match of
           `"catalog->.*->cart->.*->purchase"` anchors on the *second* event, not
           the fourth. `"first"` is the same match `step_matrix` centres on, given
-          the same `path_pattern`.
+          the same `path_pattern`. `"all"` is rejected here — a window bound has
+          to be a single position; it is for `add_events(anchor=...)`.
         - `offset` — move the anchor off the matched event: an int shifts it that
           many events, a duration string or `pd.Timedelta` (`"30m"`) shifts it in
           time and then snaps to the nearest event *inside* the window. An offset
           that runs past the path's own boundary clamps to it.
+        - `offset_side` — which way a time `offset` rounds to a real event,
+          `"start"` (forward) or `"end"` (backward). Defaults to the side of the
+          window being resolved, which rounds inward; set it to widen instead.
 
         A **list** of anchors keeps the narrowest window they imply — the latest
         start, the earliest end. That expresses both "whichever comes first"
@@ -1354,9 +1406,9 @@ class Eventstream:
 
         Parameters
         ----------
-        start_event : str or dict or list
+        start_anchor : str or dict or list
             Where the window opens.
-        end_event : str or dict or list
+        end_anchor : str or dict or list
             Where the window closes.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
@@ -1365,19 +1417,19 @@ class Eventstream:
 
         Examples
         --------
-            stream.truncate_paths(start_event="registration", end_event="purchase")
-            stream.truncate_paths(start_event="registration", end_event="path_end")
+            stream.truncate_paths(start_anchor="registration", end_anchor="purchase")
+            stream.truncate_paths(start_anchor="registration", end_anchor="path_end")
 
             # keep every path, cutting the converted ones at their purchase
             stream.truncate_paths(
-                start_event="path_start", end_event=["purchase", "path_end"]
+                start_anchor="path_start", end_anchor=["purchase", "path_end"]
             )
 
             # 10 events after the cart that completed catalog -> ... -> add_to_cart,
             # or the purchase if it comes sooner
             stream.truncate_paths(
-                start_event={"pattern": "catalog->.*->add_to_cart"},
-                end_event=[
+                start_anchor={"pattern": "catalog->.*->add_to_cart"},
+                end_anchor=[
                     "purchase",
                     {"pattern": "catalog->.*->add_to_cart", "offset": 10},
                 ],
@@ -1385,8 +1437,8 @@ class Eventstream:
 
             # the half hour that follows a user's last support chat
             stream.truncate_paths(
-                start_event={"pattern": "support_chat", "occurrence": "last"},
-                end_event={
+                start_anchor={"pattern": "support_chat", "occurrence": "last"},
+                end_anchor={
                     "pattern": "support_chat",
                     "occurrence": "last",
                     "offset": "30m",
@@ -1396,8 +1448,8 @@ class Eventstream:
         from retentioneering.data_processors.truncate_paths import TruncatePaths
 
         new_df, new_schema = TruncatePaths(
-            start_event=start_event,
-            end_event=end_event,
+            start_anchor=start_anchor,
+            end_anchor=end_anchor,
             path_col=path_col,
             event_col=event_col,
         ).apply(self._df, self.schema)
@@ -2076,15 +2128,15 @@ class Eventstream:
     @_tracked("get_conversion_rate")
     def get_conversion_rate(
         self,
-        start_event,
-        end_event,
+        start_anchor,
+        end_anchor,
         within=None,
         path_col: str | None = None,
     ) -> pd.DataFrame:
         """
-        Given that `start_event` happened, how often does `end_event` follow?
+        Given that `start_anchor` happened, how often does `end_anchor` follow?
 
-        One row per (`start_event`, `end_event`) pair, counted over **paths**:
+        One row per (`start_anchor`, `end_anchor`) pair, counted over **paths**:
         a path where the start anchor occurred contributes one to the
         denominator no matter how many times it occurred, and converts if the
         end anchor lands strictly after it (within `within`, if given).
@@ -2097,10 +2149,10 @@ class Eventstream:
 
         Parameters
         ----------
-        start_event : str or dict or list
+        start_anchor : str or dict or list
             The condition — where the window opens. `occurrence` (default
             `"first"`) picks which occurrence of it counts.
-        end_event : str or dict or list
+        end_anchor : str or dict or list
             The target(s) looked for after it. The whole pattern has to fall
             after the start anchor, lead-in included.
         within : int or str or pd.Timedelta, optional
@@ -2116,7 +2168,7 @@ class Eventstream:
         pd.DataFrame
             One row per pair, with columns:
 
-            - `start_event`, `end_event` — the anchors' patterns.
+            - `start_anchor`, `end_anchor` — the anchors' patterns.
             - `paths_with_start` — the denominator: paths where the start
               anchor resolved.
             - `converted` — of those, paths where the end anchor followed.
@@ -2153,8 +2205,8 @@ class Eventstream:
         from retentioneering.tools.conversion import ConversionRate
 
         return ConversionRate(self).fit(
-            start_event=start_event,
-            end_event=end_event,
+            start_anchor=start_anchor,
+            end_anchor=end_anchor,
             within=within,
             path_col=path_col,
         )

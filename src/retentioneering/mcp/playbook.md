@@ -124,9 +124,9 @@ right after X?", "is landing on this page good or bad?".
 
 **Steps:**
 
-1. `get_conversion_rate(start_event="Y", end_event="X")` — one call, no preprocessing.
+1. `get_conversion_rate(start_anchor="Y", end_anchor="X")` — one call, no preprocessing.
    Add `within=10` (events) or `within="30m"` (time) when the question has a window;
-   pass `end_event=["X1", "X2", "path_end"]` to ask about several outcomes at once.
+   pass `end_anchor=["X1", "X2", "path_end"]` to ask about several outcomes at once.
 2. Read three numbers, not one:
    - `paths_with_start` — how many paths the rate is even about;
    - `conversion_rate` — the answer;
@@ -142,9 +142,9 @@ strongly negative per session.
 
 **Idioms:**
 ```
-end_event="path_end", within=1                             — exit rate after Y
-start_event={"pattern": "path_start->Y", "at": -1}         — only paths that STARTED on Y
-start_event="Y", end_event="Y"                             — how often Y repeats
+end_anchor="path_end", within=1                             — exit rate after Y
+start_anchor={"pattern": "path_start->Y", "at": -1}         — only paths that STARTED on Y
+start_anchor="Y", end_anchor="Y"                             — how often Y repeats
 ```
 
 **Do not read this off a transition graph.** A graph edge is a share of *transitions*
@@ -184,8 +184,8 @@ behaved. Cut both groups to a window that is defined the same way for each.
    ```
    ```json
    {"type": "truncate_paths",
-    "start_event": {"pattern": "A->.*->B"},
-    "end_event": ["C", {"pattern": "A->.*->B", "offset": 10}]}
+    "start_anchor": {"pattern": "A->.*->B"},
+    "end_anchor": ["C", {"pattern": "A->.*->B", "offset": 10}]}
    ```
 3. `add_transition_graph(diff=["funnel","C","B"])` — `C` is the segment level for
    paths that completed the funnel, `B` for those that stopped at B.

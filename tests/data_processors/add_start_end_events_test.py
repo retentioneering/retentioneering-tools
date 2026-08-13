@@ -97,7 +97,7 @@ class TestAddStartEndEvents:
         assert pd.isna(u1_end["campaign"])
         assert u1_end["timestamp"] == pd.Timestamp("2020-01-01 00:02:00")
         assert u1_end["event_type"] == "path_end"
-        assert u1_end["subindex"] == 3
+        assert u1_end["subindex"] == 4
 
         # non-null path keeps its values on the synthetic rows
         u2_start = res_df[
@@ -115,7 +115,7 @@ class TestAddStartEndEvents:
         u1 = res_df[res_df["user_id"] == "user_1"]
         assert list(u1["event"]) == ["path_start", "A", "B", "C", "path_end"]
         assert list(u1["event_type"]) == ["path_start", "raw", "raw", "raw", "path_end"]
-        assert list(u1["subindex"]) == [0, 1, 1, 1, 3]
+        assert list(u1["subindex"]) == [0, 2, 2, 2, 4]
 
     def test__existing_start_end(self) -> None:
         df = pd.DataFrame(

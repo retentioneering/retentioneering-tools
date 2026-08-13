@@ -490,8 +490,8 @@ def add_segment_overview(
 
 def get_conversion_rate(
     session: Any,
-    start_event: str | dict | list,
-    end_event: str | dict | list,
+    start_anchor: str | dict | list,
+    end_anchor: str | dict | list,
     within: int | str | None = None,
     path_col: str | None = None,
     local_preprocessors: list | None = None,
@@ -515,15 +515,15 @@ def get_conversion_rate(
 
     Parameters
     ----------
-    start_event:
+    start_anchor:
         The condition. An event name, or an anchor spec
         {"pattern": ..., "at": ..., "occurrence": ..., "offset": ...} — the
         same specs truncate_paths takes; call describe_tool("truncate_paths")
         for the spec's keys. A LIST means several separate questions, one row
         each — NOT one anchor assembled from several parts.
-    end_event:
+    end_anchor:
         The target(s) looked for after it, same forms. "path_start" /
-        "path_end" are ordinary names, so end_event="path_end" with within=1
+        "path_end" are ordinary names, so end_anchor="path_end" with within=1
         is an exit rate ("the path ended right after Y").
     within:
         Window measured from the start anchor, far edge included. An int counts
@@ -556,8 +556,8 @@ def get_conversion_rate(
     src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
     try:
         frame = src.get_conversion_rate(
-            start_event=start_event,
-            end_event=end_event,
+            start_anchor=start_anchor,
+            end_anchor=end_anchor,
             within=within,
             path_col=path_col or None,
         )
@@ -576,8 +576,8 @@ def get_conversion_rate(
         "within": within,
         "rows": [
             {
-                "start_event": str(row["start_event"]),
-                "end_event": str(row["end_event"]),
+                "start_anchor": str(row["start_anchor"]),
+                "end_anchor": str(row["end_anchor"]),
                 "paths_with_start": int(row["paths_with_start"]),
                 "converted": int(row["converted"]),
                 "conversion_rate": _num(row["conversion_rate"]),

@@ -183,7 +183,7 @@ Metric configs here take no `agg` field — these are raw per-path values, not a
 stream.get_conversion_rate("add_to_cart", "purchase")
 ```
 
-| start_event | end_event | paths_with_start | converted | conversion_rate | base_rate | lift |
+| start_anchor | end_anchor | paths_with_start | converted | conversion_rate | base_rate | lift |
 |---|---|---|---|---|---|---|
 | add_to_cart | purchase | 522 | 297 | 0.569 | 0.547 | 1.041 |
 
@@ -227,11 +227,11 @@ Every processor call is recorded, so a derived eventstream can describe how it w
 
 ```python
 prepared = stream.filter_events(drop={"event": ["checkout_bug"]}).truncate_paths(
-    start_event="path_start", end_event="purchase"
+    start_anchor="path_start", end_anchor="purchase"
 )
 prepared.recipe()
 # [{"type": "filter_events", "drop": {...}},
-#  {"type": "truncate_paths", "start_event": "path_start", "end_event": "purchase"}]
+#  {"type": "truncate_paths", "start_anchor": "path_start", "end_anchor": "purchase"}]
 ```
 
 `Eventstream.from_recipe(df, recipe)` replays that list onto a base DataFrame, rebuilding an identical eventstream — useful for moving a prepared pipeline between notebooks, storing it next to a report, or handing it to the [MCP server](/docs/mcp-server), whose preprocessor steps use exactly this format. `stream.fingerprint` (a property) is a content hash for checking two eventstreams really are the same, and `stream.equals(other)` compares them directly.

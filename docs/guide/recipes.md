@@ -20,7 +20,7 @@ A [Funnel](/docs/widgets/funnel) `add_to_cart` → `shipping_details` → `purch
 First, look *between* the levels: trim each path to the window between two funnel steps and map what actually happens there:
 
 ```python
-stream.truncate_paths(start_event="shipping_details", end_event="purchase").transition_graph()
+stream.truncate_paths(start_anchor="shipping_details", end_anchor="purchase").transition_graph()
 ```
 
 Second, follow the users who never made it. The `funnel_events` mode of [Add Segment](/docs/data-processors/add-segment) labels each path with the deepest funnel step it completed *in order* — reaching a step out of sequence, or skipping an earlier one, doesn't count — so drop-offs at each level become comparable groups:
@@ -42,7 +42,7 @@ stream.step_sankey(path_pattern="add_to_cart->.*->shipping_details->.*->purchase
 Instead of assuming the intended route, reconstruct the routes that actually end in the target event. Trim every converting path to the window from its start to the first conversion, and drop the rest:
 
 ```python
-stream.truncate_paths(start_event="path_start", end_event="purchase").step_sankey()
+stream.truncate_paths(start_anchor="path_start", end_anchor="purchase").step_sankey()
 ```
 
 [Step Sankey](/docs/widgets/step-sankey) unfolds the converging routes step by step; the [Transition Graph](/docs/widgets/transition-graph) shows the same data as a map.

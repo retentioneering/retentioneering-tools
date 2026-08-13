@@ -2,7 +2,7 @@
 
 A path pattern says "this happened, then that". It is the shared language behind
 [Step Matrix](/docs/widgets/step-matrix)'s `path_pattern`, the
-[`matches_pattern`](/docs/path-metrics) metric, and the `start_event`/`end_event`
+[`matches_pattern`](/docs/path-metrics) metric, and the `start_anchor`/`end_anchor`
 anchors of [`truncate_paths`](/docs/data-processors/truncate-paths). One parser,
 one set of rules, one set of error messages — whatever accepts a pattern accepts
 all of the syntax on this page.
@@ -154,8 +154,8 @@ stream.step_matrix(path_pattern="[payment_error|checkout_bug]")
 
 # a window opening at the first search-or-catalog that leads to a purchase
 stream.truncate_paths(
-    start_event={"pattern": "[search|catalog]->.*->purchase", "at": 0},
-    end_event="purchase",
+    start_anchor={"pattern": "[search|catalog]->.*->purchase", "at": 0},
+    end_anchor="purchase",
 )
 
 # a per-path 0/1 metric
@@ -254,3 +254,65 @@ path `A, X, A, D`:
 Nothing special is happening: "as early as it can be **in any valid match**" is
 the rule in both rows, and under the restricted gap the first `A` takes part in
 no valid match at all.
+
+### `occurrence="all"`
+
+`"all"` picks nothing — it returns *every* position each token can occupy in
+some valid match. On `A, B, A, B` the `A` token of `A->.*->B` resolves to both
+`A`s, where `"first"` would give one and `"last"` the other.
+
+Because it returns several positions per path, the rows no longer describe one
+match, and anything needing a single position rejects it. `truncate_paths` does:
+a window bound has to be one place to cut. `add_events` is what it is for.
+
+## Turning a position into an event
+
+A pattern can describe a position that no event name can — "the cart that
+checkout actually followed, not the one abandoned for more browsing". But only
+an *event name* can be centred on by [Step Matrix](/docs/widgets/step-matrix),
+counted by a funnel, or filtered on. `add_events(anchor=...)` bridges the two:
+it inserts a named event at the position a pattern resolves to.
+
+```python
+# the cart that led to checkout with no cart in between
+stream = stream.add_events(
+    "checkout_cart",
+    anchor={"pattern": "cart->[^cart]*->shipping_details", "at": "start"},
+)
+
+# now the position is addressable like any other event
+stream.step_matrix(path_pattern="checkout_cart")
+stream.get_conversion_rate(start_anchor="checkout_cart", end_anchor="purchase")
+```
+
+The anchor takes the same spec as `truncate_paths`'s `start_anchor` — `pattern`,
+`at`, `occurrence`, `offset`, `offset_side` — with one anchor per call rather
+than a list. By default it marks one position per path; `occurrence="all"` marks
+every one, which is how you count *attempts* rather than users:
+
+```python
+stream.add_events(
+    "checkout_attempt",
+    anchor={"pattern": "cart->[^cart]*->shipping_details",
+            "at": "start", "occurrence": "all"},
+)
+```
+
+The new event shares its anchor's timestamp and sorts immediately **before** it,
+so a matrix centred on the marker shows the anchor event itself at column `1`
+and the true run-up in the negative columns. An `offset` moves the marker off
+the match — `{"pattern": "purchase", "offset": -3}` marks three events before
+each purchase — and clamps to the path's own boundary rather than falling off
+it. A time offset (`"30m"`) lands between events and rounds to a real one:
+forward for a positive offset, backward for a negative one, unless
+`offset_side` says otherwise.
+
+### Why not just centre on the pattern?
+
+`step_matrix(path_pattern=...)` centres each block on the *prefix* of the
+pattern up to that block, so the block for `cart` in
+`cart->[^cart]*->shipping_details` is centred by `path_start->.*->cart` — the
+**first** cart of the path, not the one the restricted gap picked out. The
+pattern still selects which paths are drawn, but the suffix cannot move the
+anchor. A marker event sidesteps this: the position is resolved once, by the
+full pattern, and then addressed by name.

@@ -281,26 +281,31 @@ class TestConversionRateWindow:
 
 
 class TestConversionRateFanOut:
-    def test_each_end_event_gets_its_own_row(self) -> None:
+    def test_each_end_anchor_gets_its_own_row(self) -> None:
         stream = load_ecom()
         targets = ["purchase", "cart", "path_end"]
         fanned = stream.get_conversion_rate("add_to_cart", targets, within=5)
 
-        assert list(fanned["end_event"]) == targets
+        assert list(fanned["end_anchor"]) == targets
         for target in targets:
             single = stream.get_conversion_rate("add_to_cart", target, within=5)
-            row = fanned[fanned["end_event"] == target].reset_index(drop=True)
+            row = fanned[fanned["end_anchor"] == target].reset_index(drop=True)
             pd.testing.assert_frame_equal(row, single)
 
-    def test_each_start_event_gets_its_own_row(self) -> None:
+    def test_each_start_anchor_gets_its_own_row(self) -> None:
         stream = load_ecom()
         starts = ["catalog", "search"]
         fanned = stream.get_conversion_rate(starts, ["purchase", "cart"])
 
-        assert list(fanned["start_event"]) == ["catalog", "catalog", "search", "search"]
+        assert list(fanned["start_anchor"]) == [
+            "catalog",
+            "catalog",
+            "search",
+            "search",
+        ]
         for start in starts:
             single = stream.get_conversion_rate(start, ["purchase", "cart"])
-            rows = fanned[fanned["start_event"] == start].reset_index(drop=True)
+            rows = fanned[fanned["start_anchor"] == start].reset_index(drop=True)
             pd.testing.assert_frame_equal(rows, single)
 
 
@@ -350,12 +355,12 @@ class TestConversionRateValidation:
         )
         with pytest.raises(InvalidParameterError) as exc:
             stream.get_conversion_rate("Purchse", "B")
-        assert "start_event" in str(exc.value)
+        assert "start_anchor" in str(exc.value)
         assert "'A', 'B'" in str(exc.value)
 
         with pytest.raises(InvalidParameterError) as exc:
             stream.get_conversion_rate("A", ["B", "Purchse"])
-        assert "end_event" in str(exc.value)
+        assert "end_anchor" in str(exc.value)
 
     def test_unknown_path_col(self) -> None:
         stream = _stream([["user_1", "A", "2020-01-01 00:00:00"]])

@@ -57,7 +57,7 @@ stream.get_segment_levels()             # {segment_col: [values...]}
 | `rename_events(mapping)` | collapse taxonomies (e.g. `"PLP: *"` families by explicit dict) | unknown keys raise |
 | `collapse_events(consecutive=True | [...])` | dedupe consecutive repeats | count loops BEFORE collapsing if loops are your subject |
 | `split_sessions(timeout="30m" | separator= | start_event=+end_event=)` | derive sessions | duration strings need units; column params use `session_col` naming |
-| `truncate_paths(start_event, end_event)` | window each path between two anchors | each anchor is an event name, a spec `{pattern, at, occurrence, offset}`, or a LIST of either (narrowest window wins). A list is how you get both "whichever comes first" and a keep-whole fallback: `end_event=["purchase", "path_end"]`. A bare name still DROPS paths missing the anchor |
+| `truncate_paths(start_anchor, end_anchor)` | window each path between two anchors | each anchor is an event name, a spec `{pattern, at, occurrence, offset}`, or a LIST of either (narrowest window wins). A list is how you get both "whichever comes first" and a keep-whole fallback: `end_event=["purchase", "path_end"]`. A bare name still DROPS paths missing the anchor |
 | `drop_events / drop_segment / edit_events / rename_segment_levels / sample_paths / to_daily_states / urls_to_events / add_events` | as named | `sample_paths(frac=, random_state=)` for stable subsamples |
 
 ## 3. Metrics registry — one config format everywhere
@@ -111,12 +111,12 @@ data parameters. Common widget params: `diff=`, `path_col=`, `height=`, `sidebar
 | `segment_overview` | DataFrame metrics×segment values | `metrics=[...]` with `agg` |
 | `cluster_analysis` | dict: `overview_df`, `silhouette` (`{"params": [...], "silhouette": [...], "best_index", "selected_index"}`), `cluster_labels`, `best_params` | `n_clusters` accepts int, list, or range string `"3-8"`; features = metric configs. `select={"n_clusters": 5}` interprets that grid point instead of the top score, keeping the whole grid — the top silhouette is a hint, not a verdict, and near-ties are common. `best_params` always describes the interpreted point, so it stays safe to pass to `add_clusters` |
 
-**Headless-only, no widget:** `get_conversion_rate(start_event, end_event, within=None, path_col=None)`
+**Headless-only, no widget:** `get_conversion_rate(start_anchor, end_anchor, within=None, path_col=None)`
 → DataFrame, one row per (start, end) pair: `paths_with_start` (the denominator), `converted`,
 `conversion_rate`, `base_rate` (share of ALL paths where the target occurs at all) and `lift`
 (= rate / base_rate; **< 1 means the start event makes the outcome LESS likely**). Report the
 denominator and the lift, never the rate alone. Both sides take event names or `truncate_paths`
-anchor specs (`path_start` / `path_end` are ordinary names — `end_event="path_end", within=1`
+anchor specs (`path_start` / `path_end` are ordinary names — `end_anchor="path_end", within=1`
 is an exit rate); a LIST on either side FANS OUT into separate questions, one row per
 combination, unlike `truncate_paths` where a list describes one bound. `within` is an int
 (events) or a duration string (`"30m"`), measured from the start anchor, far edge inclusive;

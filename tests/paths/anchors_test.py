@@ -802,3 +802,102 @@ class TestRestrictedGapsOnRealData:
             anchors.validate_pattern_tokens(
                 "add_to_cart->[^suport_chat]*->purchase", events
             )
+
+
+class TestOccurrenceAll:
+    """`"all"` returns every position a token can occupy, so it is the union of
+    what `"first"` and `"last"` pick — and never fewer positions than either."""
+
+    @staticmethod
+    def _stream(paths):
+        return TestResolveAnchorsSmallFixtures._stream(paths)
+
+    def _steps(self, stream, pattern, occurrence, ordinal=0):
+        match = anchors.resolve_anchors(
+            stream.df, stream.schema, pattern, occurrence=occurrence
+        )
+        frame = match.at(ordinal)
+        return sorted(frame["step"].tolist())
+
+    def test__single_token_returns_every_occurrence(self):
+        stream = self._stream({"u1": ["A", "B", "A", "C", "A"]})
+
+        assert self._steps(stream, "A", "all") == [1, 3, 5]
+        assert self._steps(stream, "A", "first") == [1]
+        assert self._steps(stream, "A", "last") == [5]
+
+    def test__includes_both_extremes(self):
+        stream = self._stream({"u1": ["A", "X", "A", "Y", "B", "A", "B"]})
+
+        all_steps = self._steps(stream, "A->.*->B", "all")
+        assert self._steps(stream, "A->.*->B", "first")[0] in all_steps
+        assert self._steps(stream, "A->.*->B", "last")[0] in all_steps
+
+    def test__only_positions_taking_part_in_a_match(self):
+        # the trailing A has no B after it, so it takes part in no match
+        stream = self._stream({"u1": ["A", "B", "A"]})
+
+        assert self._steps(stream, "A->.*->B", "all") == [1]
+
+    def test__restricted_gap_is_honoured_per_position(self):
+        # A(1) is followed by A(3) before the B, so only A(3) qualifies
+        stream = self._stream({"u1": ["A", "X", "A", "Y", "B"]})
+
+        assert self._steps(stream, "A->[^A]*->B", "all") == [3]
+
+    def test__paths_are_independent(self):
+        stream = self._stream({"u1": ["A", "B", "A", "B"], "u2": ["A", "B"]})
+
+        match = anchors.resolve_anchors(
+            stream.df, stream.schema, "A->.*->B", occurrence="all"
+        )
+        frame = match.at(0)
+        assert sorted(frame[frame["user_id"] == "u1"]["step"]) == [1, 3]
+        assert sorted(frame[frame["user_id"] == "u2"]["step"]) == [1]
+
+    def test__non_matching_path_stays_absent(self):
+        stream = self._stream({"u1": ["A", "B"], "u2": ["C"]})
+
+        match = anchors.resolve_anchors(
+            stream.df, stream.schema, "A->.*->B", occurrence="all"
+        )
+        assert match.paths().tolist() == ["u1"]
+
+    def test__resolve_positions_returns_one_row_per_occurrence(self):
+        stream = self._stream({"u1": ["A", "B", "A", "B"]})
+
+        positions = anchors.resolve_positions(
+            stream.df,
+            stream.schema,
+            anchors.parse_spec({"pattern": "A", "occurrence": "all"}),
+        )
+        assert sorted(positions["step"].tolist()) == [1, 3]
+
+    def test__time_offset_keeps_occurrences_apart(self):
+        """The offset query groups by the mark, not only by the path."""
+        stream = self._stream({"u1": ["A", "X", "Y", "A", "Z", "W"]})
+
+        positions = anchors.resolve_positions(
+            stream.df,
+            stream.schema,
+            anchors.parse_spec({"pattern": "A", "occurrence": "all", "offset": "1m"}),
+        )
+        assert sorted(positions["step"].tolist()) == [2, 5]
+
+    def test__offset_side_can_be_set_per_spec(self):
+        stream = self._stream({"u1": ["A", "B", "C"]})
+        spec = anchors.parse_spec(
+            {"pattern": "C", "offset": "-90s", "offset_side": "start"}
+        )
+
+        # mark falls between A and B; "start" rounds forward to B
+        positions = anchors.resolve_positions(stream.df, stream.schema, spec)
+        assert positions["step"].tolist() == [2]
+
+    def test__unknown_occurrence_is_rejected(self):
+        with pytest.raises(InvalidParameterError):
+            anchors.parse_spec({"pattern": "A", "occurrence": "every"})
+
+    def test__unknown_offset_side_is_rejected(self):
+        with pytest.raises(InvalidParameterError):
+            anchors.parse_spec({"pattern": "A", "offset_side": "middle"})

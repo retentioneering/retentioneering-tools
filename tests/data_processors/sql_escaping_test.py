@@ -69,7 +69,9 @@ class TestTruncatePathsEscaping:
             ]
         )
 
-        res = stream.truncate_paths(start_event="cart's_start", end_event="cart's_end")
+        res = stream.truncate_paths(
+            start_anchor="cart's_start", end_anchor="cart's_end"
+        )
 
         assert list(res.df["event"].astype(str)) == ["cart's_start", "A", "cart's_end"]
 
@@ -83,7 +85,7 @@ class TestTruncatePathsEscaping:
         )
 
         res = stream.truncate_paths(
-            start_event="o'brien_page", end_event="o'brien_page"
+            start_anchor="o'brien_page", end_anchor="o'brien_page"
         )
 
         assert list(res.df["event"].astype(str)) == ["o'brien_page"]

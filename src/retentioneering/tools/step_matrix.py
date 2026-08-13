@@ -27,6 +27,7 @@ class StepMatrix:
         diff: T_Diff = None,
         path_col: str | None = None,
         path_pattern: str | None = None,
+        anchor: str | dict | None = None,
     ) -> Tuple[pd.DataFrame, ...]:
         path_col = path_col or self.eventstream.schema.path_col
 
@@ -39,6 +40,23 @@ class StepMatrix:
             raise InvalidParameterError(
                 "path_col", path_col, self.eventstream.schema.path_cols
             )
+
+        if anchor is not None and path_pattern is not None:
+            raise InvalidParameterError(
+                "anchor",
+                "given together with path_pattern",
+                ["anchor (one centred block)", "path_pattern (one block per part)"],
+            )
+
+        if anchor is not None:
+            if diff is None:
+                return tuple(
+                    self._process_anchor_matrix(max_steps, None, anchor, path_col)
+                )
+            sms, sms1, sms2 = self._process_anchor_matrix(
+                max_steps, diff, anchor, path_col
+            )
+            return tuple(sms), tuple(sms1), tuple(sms2)
 
         if path_pattern is None:
             if diff is None:
@@ -180,12 +198,159 @@ class StepMatrix:
 
         return self.eventstream.filter_events(keep={path_col: matching_ids}), match
 
+    def _stepped(self, stream, path_col):
+        """The stream's frame with a 1-based `step` per path."""
+        path_col_q = engine.quote_ident(path_col)
+        index_col_q = engine.quote_ident(self.eventstream.schema.index)
+        subindex_col_q = engine.quote_ident(self.eventstream.schema.subindex)
+        return engine.run(
+            f"""
+            SELECT *, row_number() OVER (
+                PARTITION BY {path_col_q} ORDER BY {index_col_q}, {subindex_col_q}
+            ) AS step
+            FROM df
+            """,
+            df=stream.df,
+        )
+
+    def _centred_block(self, df, centres, max_steps, steps_right, path_col):
+        """One block, laid out around a per-path centre step.
+
+        `centres` is a Series of centre steps indexed by path; a path missing
+        from it has no centre and so contributes nothing.
+        """
+        event_col = self.eventstream.schema.event_col
+        centred = (
+            df.merge(centres.rename("center").to_frame(), how="left", on=[path_col])
+            .assign(step_centered=lambda _df: _df["step"] - _df["center"])
+            .drop("center", axis=1)
+        )
+        sm = (
+            centred.groupby("step_centered")[event_col]
+            .value_counts()
+            .unstack(level=0)
+            .fillna(0)
+        )
+        sm = sm.reindex(columns=range(-max_steps, steps_right + 1)).fillna(0)
+        sm.columns.name = "step"
+        return sm
+
+    def _finalize_block(self, sm, start_anchored):
+        """Synthesize the boundary rows, normalize to shares, order the rows.
+
+        Outside the block's own columns a path is at neither an event nor
+        nothing: it is before its start or past its end, which is what the
+        `path_start` / `path_end` rows carry.
+        """
+        event_col = self.eventstream.schema.event_col
+        path_start = EventTypes().PATH_START.name
+        path_end = EventTypes().PATH_END.name
+
+        if start_anchored:
+            sm.loc[path_end] = sm.loc[path_end].cumsum()
+        else:
+            total_paths = sm[0].sum()
+            totals = sm.drop(index=[path_start, path_end], errors="ignore").sum()
+            sm.loc[path_start, :] = (
+                pd.Series(total_paths, index=sm.columns[sm.columns < 0]) - totals
+            )
+            sm.loc[path_end, :] = (
+                pd.Series(total_paths, index=sm.columns[sm.columns >= 0]) - totals
+            )
+            sm = sm.fillna(0)
+
+        sm = sm / sm.sum()
+        rows_order = (
+            [path_start] + sm.index.drop([path_start, path_end]).tolist() + [path_end]
+        )
+        sm = sm.loc[rows_order]
+        sm.index = pd.Index(sm.index.tolist(), name=event_col)
+        return sm
+
+    def _process_anchor_matrix(self, max_steps, diff, anchor, path_col):
+        """One block, centred where a single anchor spec resolves.
+
+        `path_pattern` answers "lay the pattern's parts out side by side"; this
+        answers "put me at this position". The spec reaches what a pattern
+        cannot say — which occurrence, and an offset in events or in time — and
+        selection falls out of it: a path where the anchor does not resolve has
+        no centre, so it is not in the matrix.
+        """
+        path_col = path_col or self.eventstream.schema.path_col
+        path_end = EventTypes().PATH_END.name
+        spec = self._parse_anchor(anchor)
+
+        if diff is not None:
+            stream1, stream2 = self.eventstream._split_two(diff, path_col=path_col)
+            kwargs = dict(max_steps=max_steps, anchor=anchor, path_col=path_col)
+            try:
+                sms1 = stream1.step_sankey_data(**kwargs)
+            except PatternNoMatchError:
+                raise PatternNoMatchError(spec.pattern, group="the first diff group")
+            try:
+                sms2 = stream2.step_sankey_data(**kwargs)
+            except PatternNoMatchError:
+                raise PatternNoMatchError(spec.pattern, group="the second diff group")
+            new_sms1, new_sms2 = self._align_matrices(list(sms1), list(sms2))
+            sms = [new_sms1[i] - new_sms2[i] for i in range(len(new_sms1))]
+            return sms, new_sms1, new_sms2
+
+        event_col = self.eventstream.schema.event_col
+        anchors.validate_pattern_tokens(
+            spec.pattern,
+            set(self.eventstream.df[event_col].unique().tolist()),
+            param="anchor",
+        )
+        positions = anchors.resolve_positions(
+            self.eventstream.add_start_end_events(path_col=path_col).df,
+            self.eventstream.schema,
+            spec,
+            path_col=path_col,
+        )
+        if positions.empty:
+            raise PatternNoMatchError(spec.pattern)
+
+        # Narrow to the paths the anchor resolved for, as the pattern mode does:
+        # a path with no centre contributes nothing, and leaving it in would keep
+        # its events as all-zero rows. Steps are numbered within a path, so the
+        # positions stay valid across the filter.
+        centres = positions.set_index(path_col)["step"]
+        stream = self.eventstream.filter_events(
+            keep={path_col: centres.index.tolist()}
+        ).add_start_end_events(path_col=path_col)
+        # An anchor sitting on `path_end` has nothing to its right, exactly as a
+        # pattern part ending there does.
+        steps_right = 0 if self._anchor_token(spec) == path_end else max_steps
+        sm = self._centred_block(
+            self._stepped(stream, path_col), centres, max_steps, steps_right, path_col
+        )
+        return [self._finalize_block(sm, start_anchored=False)]
+
+    @staticmethod
+    def _parse_anchor(anchor):
+        """Normalize the spec, refusing the one occurrence mode a matrix cannot
+        render: `"all"` gives several positions per path, and a path counted
+        once per occurrence is no longer the unit the shares are taken over."""
+        spec = anchors.parse_spec(anchor, param="anchor")
+        if spec.occurrence == "all":
+            raise InvalidParameterError(
+                "anchor",
+                "occurrence='all'",
+                ["first", "last"],
+            )
+        return spec
+
+    @staticmethod
+    def _anchor_token(spec) -> str:
+        """The event name the spec anchors on."""
+        tokens = anchors.literal_tokens(spec.pattern)
+        ordinal = spec.ordinal()
+        return tokens[ordinal]
+
     def _process_pattern_matrix(self, max_steps, diff, path_pattern, path_col):
         from retentioneering.exceptions import EmptyEventstreamError as _Empty
 
         path_col = path_col or self.eventstream.schema.path_col
-        index_col = self.eventstream.schema.index
-        subindex_col = self.eventstream.schema.subindex
         event_col = self.eventstream.schema.event_col
         path_start = EventTypes().PATH_START.name
         path_end = EventTypes().PATH_END.name
@@ -205,96 +370,40 @@ class StepMatrix:
 
         if diff is None:
             sms = []
-            df = stream.df
-            path_col_q = engine.quote_ident(path_col)
-            index_col_q = engine.quote_ident(index_col)
-            subindex_col_q = engine.quote_ident(subindex_col)
-            query = f"""
-                SELECT *, row_number() OVER (
-                    PARTITION BY {path_col_q} ORDER BY {index_col_q}, {subindex_col_q}
-                ) AS step
-                FROM df
-            """
-            df = engine.run(query, df=df)
+            df = self._stepped(stream, path_col)
 
             for i, pattern_part in enumerate(parts):
                 is_start_anchored = (i == 0) and (pattern_part[0] == path_start)
 
                 if is_start_anchored:
-                    groupby_col = "step"
-                    df_centered = df.copy()
-                else:
-                    # The block's centre is where its part *begins* — the part is
-                    # laid out to the right of it (see steps_right below), so the
-                    # part's first token, not the pattern's last one. Read off the
-                    # single whole-pattern match, so every block anchors on the
-                    # same one.
-                    centers = (
-                        match.at_part(i)
-                        .set_index(path_col)["step"]
-                        .rename("center")
-                        .to_frame()
+                    sm = (
+                        df.groupby("step")[event_col]
+                        .value_counts()
+                        .unstack(level=0)
+                        .fillna(0)
                     )
-
-                    df_centered = (
-                        df.merge(centers, how="left", on=[path_col])
-                        .assign(step_centered=lambda _df: _df["step"] - _df["center"])
-                        .drop("center", axis=1)
-                    )
-                    groupby_col = "step_centered"
-
-                sm = (
-                    df_centered.groupby(groupby_col)[event_col]
-                    .value_counts()
-                    .unstack(level=0)
-                    .fillna(0)
-                )
-
-                if is_start_anchored:
                     steps = len(pattern_part) + max_steps
                     sm = sm[[col for col in sm.columns if col <= steps]]
                     sm.columns = pd.Index(range(len(sm.columns)), name="step")
                     if len(sm.columns) < max_steps + 1:
                         sm = sm.reindex(columns=range(max_steps + 1)).fillna(0)
                 else:
-                    steps_left = max_steps
+                    # The block's centre is where its part *begins* — the part is
+                    # laid out to the right of it (see steps_right below), so the
+                    # part's first token, not the pattern's last one. Read off the
+                    # single whole-pattern match, so every block anchors on the
+                    # same one.
+                    centres = match.at_part(i).set_index(path_col)["step"]
                     steps_right = (
                         0
                         if pattern_part[-1] == path_end
                         else len(pattern_part) + max_steps - 1
                     )
-                    sm = sm.reindex(columns=range(-steps_left, steps_right + 1)).fillna(
-                        0
+                    sm = self._centred_block(
+                        df, centres, max_steps, steps_right, path_col
                     )
-                    sm.columns.name = "step"
 
-                if not is_start_anchored:
-                    total_paths = sm[0].sum()
-                    totals = sm.drop(
-                        index=[path_start, path_end], errors="ignore"
-                    ).sum()
-                    sm.loc[path_start, :] = (
-                        pd.Series(total_paths, index=sm.columns[sm.columns < 0])
-                        - totals
-                    )
-                    sm.loc[path_end, :] = (
-                        pd.Series(total_paths, index=sm.columns[sm.columns >= 0])
-                        - totals
-                    )
-                    sm = sm.fillna(0)
-                else:
-                    sm.loc[path_end] = sm.loc[path_end].cumsum()
-
-                sm = sm / sm.sum()
-
-                rows_order = (
-                    [path_start]
-                    + sm.index.drop([path_start, path_end]).tolist()
-                    + [path_end]
-                )
-                sm = sm.loc[rows_order]
-                sm.index = pd.Index(sm.index.tolist(), name=event_col)
-                sms.append(sm)
+                sms.append(self._finalize_block(sm, is_start_anchored))
 
             return sms
 

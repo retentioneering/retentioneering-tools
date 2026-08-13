@@ -5,6 +5,7 @@ import traitlets
 from retentioneering.exceptions import RetentioneeringError
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
 from retentioneering.widgets._utils import parse_diff as _parse_diff
+from retentioneering.widgets._utils import pattern_edges as _pattern_edges
 from retentioneering.widgets._utils import step_matrix_blocks as _step_matrix_blocks
 
 
@@ -256,11 +257,14 @@ class StepMatrixWidget(RetentioneeringWidget):
             except Exception:
                 pass
 
+        starts_at_path_start, ends_at_path_end = _pattern_edges(path_pattern)
         return {
             "matrices": matrices,
             "event_counts": event_counts,
             "event_counts_g1": event_counts_g1,
             "event_counts_g2": event_counts_g2,
+            "starts_at_path_start": starts_at_path_start,
+            "ends_at_path_end": ends_at_path_end,
         }
 
     # ── HTML export (export_html/render_static: see RetentioneeringWidget) ────

@@ -91,3 +91,53 @@ class TestStepMatrixWidgetDiff:
             "path_start": 3,
             "path_end": 3,
         }
+
+
+class TestStepMatrixWidgetEdgeFlags:
+    """The payload says whether the strip reaches the path's own boundaries, so
+    the JS does not have to guess it from the pattern string."""
+
+    @staticmethod
+    def _stream() -> Eventstream:
+        rows = []
+        ts = pd.Timestamp("2024-01-01")
+        for i, event in enumerate(["cart", "promo", "purchase", "home"]):
+            rows.append(
+                {
+                    "user_id": "u1",
+                    "event": event,
+                    "timestamp": ts + pd.Timedelta(minutes=i),
+                }
+            )
+        return Eventstream(pd.DataFrame(rows))
+
+    def test__no_pattern(self) -> None:
+        widget = StepMatrixWidget(self._stream())
+
+        result = json.loads(widget.result)
+        assert result["starts_at_path_start"] is True
+        assert result["ends_at_path_end"] is False
+
+    def test__mid_path_pattern(self) -> None:
+        widget = StepMatrixWidget(self._stream(), path_pattern="cart->.*->purchase")
+
+        result = json.loads(widget.result)
+        assert result["starts_at_path_start"] is False
+        assert result["ends_at_path_end"] is False
+
+    def test__pattern_reaching_both_boundaries(self) -> None:
+        widget = StepMatrixWidget(
+            self._stream(), path_pattern="path_start->.*->path_end"
+        )
+
+        result = json.loads(widget.result)
+        assert result["starts_at_path_start"] is True
+        assert result["ends_at_path_end"] is True
+
+    def test__a_mentioned_sentinel_is_not_a_boundary(self) -> None:
+        widget = StepMatrixWidget(
+            self._stream(), path_pattern="cart->[^path_end]*->purchase"
+        )
+
+        result = json.loads(widget.result)
+        assert result["ends_at_path_end"] is False

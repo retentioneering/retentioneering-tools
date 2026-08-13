@@ -99,13 +99,14 @@ class TestAddEventsBySourceEvents:
         assert synthetic_rows.iloc[0]["country"] == "US"
         assert str(synthetic_rows.iloc[0]["timestamp"]) == "2020-01-01 00:00:00"
 
-    def test__synthetic_event_comes_after_source(self) -> None:
+    def test__synthetic_event_comes_before_source(self) -> None:
+        """A synthetic event marks the moment its source opens, so it precedes it."""
         stream = Eventstream(get_df())
 
         res = stream.add_events(name="S", source_events=["A"])
 
         events_user1 = res.df[res.df["user_id"] == "user_1"]["event"].tolist()
-        assert events_user1.index("A") < events_user1.index("S")
+        assert events_user1.index("S") < events_user1.index("A")
 
     def test__synthetic_event_comes_before_next_raw_event(self) -> None:
         stream = Eventstream(get_df())
@@ -208,13 +209,13 @@ class TestAddEventsByChurn:
                 [
                     ["user_1", "A", "raw", "2020-01-01"],
                     ["user_1", "B", "raw", "2020-01-10"],
-                    ["user_1", "churn", "synthetic", "2020-01-10"],
+                    ["user_1", "churn", "churn", "2020-01-10"],
                     ["user_1", "C", "raw", "2020-03-01"],
                     ["user_2", "A", "raw", "2020-01-01"],
                     ["user_2", "B", "raw", "2020-01-10"],
-                    ["user_2", "churn", "synthetic", "2020-01-10"],
+                    ["user_2", "churn", "churn", "2020-01-10"],
                     ["user_3", "A", "raw", "2020-01-01"],
-                    ["user_3", "churn", "synthetic", "2020-01-01"],
+                    ["user_3", "churn", "churn", "2020-01-01"],
                     ["user_3", "B", "raw", "2020-02-20"],
                 ],
                 columns=["user_id", "event", "event_type", "timestamp"],
@@ -288,6 +289,221 @@ class TestAddEventsByChurn:
             Eventstream(self.get_churn_df()).add_events(
                 name="churn",
                 churn={"inactivity_days": 30, "active_events": "purchase"},
+            )
+
+    def test__churn_event_carries_its_own_type(self) -> None:
+        """Churn closes a stretch of inactivity: it follows the event that
+        started it and still precedes `path_end`."""
+        res = (
+            Eventstream(self.get_churn_df())
+            .add_events(name="churn", churn={"inactivity_days": 30})
+            .add_start_end_events()
+        )
+
+        churn_rows = res.df[res.df["event"] == "churn"]
+        assert set(churn_rows["event_type"]) == {"churn"}
+
+        u1 = res.to_dataframe(exclude_start_end=False)
+        u1 = u1[u1["user_id"] == "user_1"]["event"].tolist()
+        assert u1.index("B") < u1.index("churn") < u1.index("path_end")
+
+
+# ---------------------------------------------------------------------------
+# Mode 4: anchor
+# ---------------------------------------------------------------------------
+
+
+class TestAddEventsByAnchor:
+    def get_anchor_df(self):
+        """
+        user_1: the first cart is abandoned for more browsing, the second is the
+                one checkout actually followed.
+        user_2: two separate checkout attempts, and a cart between them that
+                led nowhere.
+        user_3: never reaches checkout.
+        """
+        rows = []
+        paths = {
+            "user_1": ["main", "cart", "catalog", "cart", "checkout", "pay"],
+            "user_2": ["cart", "checkout", "cart", "catalog", "cart", "checkout"],
+            "user_3": ["main", "cart", "catalog"],
+        }
+        for path, events in paths.items():
+            for i, event in enumerate(events):
+                rows.append(
+                    [path, event, f"2020-01-01 00:{i:02d}:00"],
+                )
+        return pd.DataFrame(rows, columns=["user_id", "event", "timestamp"])
+
+    CHECKOUT = "cart->[^cart]*->checkout"
+
+    def events_of(self, stream, path):
+        df = stream.to_dataframe()
+        return df[df["user_id"] == path]["event"].tolist()
+
+    def test__anchor_marks_the_matched_position_not_the_event_name(self) -> None:
+        res = Eventstream(self.get_anchor_df()).add_events(
+            name="M", anchor={"pattern": self.CHECKOUT, "at": "start"}
+        )
+
+        # the *second* cart — the first is followed by another cart
+        assert self.events_of(res, "user_1") == [
+            "main",
+            "cart",
+            "catalog",
+            "M",
+            "cart",
+            "checkout",
+            "pay",
+        ]
+        # no checkout, no marker
+        assert self.events_of(res, "user_3") == ["main", "cart", "catalog"]
+
+    def test__anchor_marks_once_per_path_by_default(self) -> None:
+        res = Eventstream(self.get_anchor_df()).add_events(
+            name="M", anchor={"pattern": self.CHECKOUT, "at": "start"}
+        )
+
+        assert self.events_of(res, "user_2").count("M") == 1
+
+    def test__occurrence_all_marks_every_valid_position(self) -> None:
+        res = Eventstream(self.get_anchor_df()).add_events(
+            name="M",
+            anchor={"pattern": self.CHECKOUT, "at": "start", "occurrence": "all"},
+        )
+
+        # both carts that checkout followed, but not the middle one
+        assert self.events_of(res, "user_2") == [
+            "M",
+            "cart",
+            "checkout",
+            "cart",
+            "catalog",
+            "M",
+            "cart",
+            "checkout",
+        ]
+
+    def test__marker_precedes_its_anchor_row(self) -> None:
+        res = Eventstream(self.get_anchor_df()).add_events(name="M", anchor="checkout")
+
+        marker = res.df[res.df["event"] == "M"].iloc[0]
+        anchor = res.df[
+            (res.df["user_id"] == marker["user_id"]) & (res.df["event"] == "checkout")
+        ].iloc[0]
+        assert marker["timestamp"] == anchor["timestamp"]
+        assert marker["subindex"] < anchor["subindex"]
+        assert self.events_of(res, "user_1")[-3:] == ["M", "checkout", "pay"]
+
+    def test__bare_string_anchor(self) -> None:
+        res = Eventstream(self.get_anchor_df()).add_events(name="M", anchor="checkout")
+
+        assert self.events_of(res, "user_1").index("M") == 4
+
+    def test__step_offset_moves_the_marker(self) -> None:
+        res = Eventstream(self.get_anchor_df()).add_events(
+            name="M", anchor={"pattern": "checkout", "offset": -2}
+        )
+
+        assert self.events_of(res, "user_1") == [
+            "main",
+            "cart",
+            "M",
+            "catalog",
+            "cart",
+            "checkout",
+            "pay",
+        ]
+
+    def test__offset_past_the_path_boundary_clamps(self) -> None:
+        res = Eventstream(self.get_anchor_df()).add_events(
+            name="M", anchor={"pattern": "checkout", "offset": -99}
+        )
+
+        assert self.events_of(res, "user_1")[0] == "M"
+
+    def test__time_offset_rounds_by_sign_without_offset_side(self) -> None:
+        res = Eventstream(self.get_anchor_df()).add_events(
+            name="M", anchor={"pattern": "cart", "offset": "90s"}
+        )
+
+        # cart at 00:01 + 90s = 00:02:30 → the first event at or after the mark
+        assert self.events_of(res, "user_1") == [
+            "main",
+            "cart",
+            "catalog",
+            "M",
+            "cart",
+            "checkout",
+            "pay",
+        ]
+
+    def test__offset_side_overrides_the_sign_rule(self) -> None:
+        res = Eventstream(self.get_anchor_df()).add_events(
+            name="M",
+            anchor={"pattern": "cart", "offset": "90s", "offset_side": "end"},
+        )
+
+        # same mark, rounded back instead: the last event at or before 00:02:30
+        assert self.events_of(res, "user_1") == [
+            "main",
+            "cart",
+            "M",
+            "catalog",
+            "cart",
+            "checkout",
+            "pay",
+        ]
+
+    def test__path_col_override(self) -> None:
+        df = self.get_anchor_df()
+        df["session_id"] = df["user_id"] + "_s" + (df.index // 3).astype(str)
+        stream = Eventstream(df, {"path_cols": ["user_id", "session_id"]})
+
+        res = stream.add_events(name="M", anchor="cart", path_col="session_id")
+
+        # one marker per session that has a cart, not one per user
+        assert len(res.df[res.df["event"] == "M"]) == len(
+            res.df[res.df["event"] == "cart"].drop_duplicates("session_id")
+        )
+
+    def test__marker_is_addressable_by_other_tools(self) -> None:
+        """The point of the mode: a position becomes an event name."""
+        res = Eventstream(self.get_anchor_df()).add_events(
+            name="checkout_cart", anchor={"pattern": self.CHECKOUT, "at": "start"}
+        )
+
+        blocks = res.step_matrix_data(path_pattern="checkout_cart", max_steps=2)
+        centred = blocks[0]
+        assert centred.loc["checkout_cart", 0] == 1.0
+        assert centred.loc["cart", 1] == 1.0
+
+    def test__anchor_list_raises(self) -> None:
+        with pytest.raises(PreprocessingConfigError, match="not a list"):
+            Eventstream(self.get_anchor_df()).add_events(
+                name="M", anchor=["cart", "checkout"]
+            )
+
+    def test__unknown_anchor_event_raises(self) -> None:
+        with pytest.raises(PreprocessingConfigError):
+            Eventstream(self.get_anchor_df()).add_events(name="M", anchor="nope")
+
+    def test__bad_occurrence_raises(self) -> None:
+        with pytest.raises(PreprocessingConfigError):
+            Eventstream(self.get_anchor_df()).add_events(
+                name="M", anchor={"pattern": "cart", "occurrence": "second"}
+            )
+
+    def test__bad_offset_side_raises(self) -> None:
+        with pytest.raises(PreprocessingConfigError):
+            Eventstream(self.get_anchor_df()).add_events(
+                name="M", anchor={"pattern": "cart", "offset_side": "middle"}
+            )
+
+    def test__unknown_path_col_raises(self) -> None:
+        with pytest.raises(PreprocessingConfigError):
+            Eventstream(self.get_anchor_df()).add_events(
+                name="M", anchor="cart", path_col="nope"
             )
 
 

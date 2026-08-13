@@ -53,7 +53,7 @@ Same concept, different call shape.
 | `collapse_loops(suffix, time_agg)` | [`collapse_events(consecutive=, event_groups=, ...)`](/docs/data-processors/collapse-events) | Loop-squashing is now one mode of a general merging processor. |
 | `group_events` / `group_events_bulk` | [`collapse_events(event_groups=...)`](/docs/data-processors/collapse-events) or [`rename_events`](/docs/data-processors/rename-events) | Renaming several events to one name is `rename_events`; merging runs of them is `collapse_events`. |
 | `split_sessions(timeout, delimiter_events, ...)` | [`split_sessions(timeout=, separator=, start_event=, end_event=, ...)`](/docs/data-processors/split-sessions) | `timeout` now needs an explicit unit — `"30m"` or a `pd.Timedelta`. Bare numbers are rejected. |
-| `truncate_paths(drop_before, drop_after, ...)` | [`truncate_paths(start_event, end_event)`](/docs/data-processors/truncate-paths) | Window anchors are the `start_event`/`end_event` pair everywhere in 5.x. |
+| `truncate_paths(drop_before, drop_after, ...)` | [`truncate_paths(start_anchor, end_anchor)`](/docs/data-processors/truncate-paths) | Window anchors are the `start_event`/`end_event` pair everywhere in 5.x. |
 | `drop_paths()` | [`filter_paths(condition)`](/docs/data-processors/filter-paths) | A condition tree over [path metrics](/docs/path-metrics) — `{"op": ">", "metric": "length", "value": 5}` — instead of fixed thresholds. |
 | `add_positive_events` / `add_negative_events` | [`add_events(name, source_events=[...])`](/docs/data-processors/add-events) | One processor for synthetic events; the positive/negative distinction was only naming. |
 | `label_new_users` / `label_lost_users` / `label_cropped_paths` | [`add_segment`](/docs/data-processors/add-segment), [`add_events(churn=...)`](/docs/data-processors/add-events), [`to_daily_states`](/docs/data-processors/to-daily-states) | Labelling is a segment; a churn marker is a synthetic event; lifecycle states are their own processor. |
@@ -83,7 +83,8 @@ No equivalent in 5.x today. These were cut deliberately to get the rewrite shipp
 5.x follows one vocabulary throughout ([ADR-0008](https://github.com/retentioneering/retentioneering-tools/blob/master/docs/adr/0008-naming-conventions.md)), which is worth skimming before you port a pipeline:
 
 - Column arguments are always `path_col`, `event_col`, `timestamp_col`, `session_col`, `segment_col`.
-- Window anchors are always the `start_event` / `end_event` pair.
+- Window anchors are always the `start_anchor` / `end_anchor` pair; a plain list of
+  boundary event names stays `start_event` / `end_event` (`split_sessions`).
 - Durations are strings with an explicit unit (`"30m"`) or a `pd.Timedelta`; time *outputs* are seconds.
 - `<REST>` is the diff sentinel for "every other value of this segment".
 - Data processors are verb-first (`filter_events`), widgets are nouns (`funnel`), headless twins are `<widget>_data`.

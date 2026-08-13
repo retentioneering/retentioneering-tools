@@ -131,7 +131,7 @@ stream = (
     rete.Eventstream(df)
     .filter_events(drop={"event": ["checkout_bug"]})
     .split_sessions(timeout="30m")
-    .truncate_paths(start_event="path_start", end_event="purchase")
+    .truncate_paths(start_anchor="path_start", end_anchor="purchase")
 )
 ```
 

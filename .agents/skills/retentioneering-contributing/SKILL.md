@@ -104,7 +104,7 @@ Read `references/repo-conventions.md` first. Non-negotiables:
    locally and CI's `lint` job flags the formatting on your PR. Add `make build` only when
    touching widgets/JS.
 3. Follow naming conventions (ADR-0008): `path_col/event_col/timestamp_col/session_col`,
-   `start_event/end_event`, verb-first processors, noun widgets, `<widget>_data` twins.
+   `start_anchor/end_anchor`, verb-first processors, noun widgets, `<widget>_data` twins.
 4. All DuckDB execution goes through the unified query engine (L1) — no ad-hoc
    `duckdb.sql` with replacement-scan idioms (superseded ADR-0002).
 5. Add/extend tests next to the code area (`tests/...`); a bug fix MUST include the

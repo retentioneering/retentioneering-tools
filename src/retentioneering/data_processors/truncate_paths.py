@@ -21,12 +21,12 @@ class TruncatePaths(DataProcessor):
 
     Parameters
     ----------
-    start_event : str or dict or list
+    start_anchor : str or dict or list
         Where the window opens. An event name, an anchor spec, or a list of
         either — see `Eventstream.truncate_paths` for the spec's keys and for
         what a list means.
-    end_event : str or dict or list
-        Where the window closes, same forms as `start_event`. Searched *after*
+    end_anchor : str or dict or list
+        Where the window closes, same forms as `start_anchor`. Searched *after*
         the resolved start, so a path whose end anchor only occurs before its
         start anchor is dropped rather than yielding an inverted window.
     path_col : str, optional
@@ -37,13 +37,13 @@ class TruncatePaths(DataProcessor):
 
     def __init__(
         self,
-        start_event,
-        end_event,
+        start_anchor,
+        end_anchor,
         path_col: str | None = None,
         event_col: str | None = None,
     ) -> None:
-        self.start_specs = self._parse(start_event, "start_event")
-        self.end_specs = self._parse(end_event, "end_event")
+        self.start_specs = self._parse(start_anchor, "start_anchor")
+        self.end_specs = self._parse(end_anchor, "end_anchor")
         self.path_col = path_col
         self.event_col = event_col
         super().__init__()
@@ -58,9 +58,23 @@ class TruncatePaths(DataProcessor):
                 PROCESSOR_NAME, f"Parameter '{param}' must be a non-empty string."
             )
         try:
-            return anchors.parse_specs(value, param=param)
+            specs = anchors.parse_specs(value, param=param)
         except (InvalidParameterError, PatternSyntaxError) as exc:
             raise PreprocessingConfigError(PROCESSOR_NAME, exc.message) from exc
+
+        # A window bound has to be one position. `"all"` deliberately returns
+        # every position the anchor can occupy, which says nothing about where
+        # to cut — the processor that wants them all is `add_events`.
+        for spec in specs:
+            if spec.occurrence == "all":
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME,
+                    f"Parameter '{param}' cannot use occurrence='all': a window "
+                    f"bound must resolve to a single position. Use 'first' or "
+                    f"'last' here; to mark every occurrence of an anchor, use "
+                    f"`add_events(anchor=...)`.",
+                )
+        return specs
 
     def _validate_tokens(self, df: pd.DataFrame, schema: EventstreamSchema) -> None:
         """Reject anchor patterns naming events this eventstream does not have.
@@ -77,8 +91,8 @@ class TruncatePaths(DataProcessor):
         event_col = self.event_col or schema.event_col
         available = df[event_col].unique().tolist()
         for param, specs in (
-            ("start_event", self.start_specs),
-            ("end_event", self.end_specs),
+            ("start_anchor", self.start_specs),
+            ("end_anchor", self.end_specs),
         ):
             for spec in specs:
                 try:
@@ -112,7 +126,7 @@ class TruncatePaths(DataProcessor):
                 df,
                 schema,
                 spec,
-                side=side,
+                offset_side=side,
                 path_col=path_col,
                 event_col=self.event_col,
                 not_before=not_before,

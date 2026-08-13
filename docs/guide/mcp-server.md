@@ -79,7 +79,7 @@ See also [Agent Skills](/docs/agent-skills) — instruction packages for coding 
 | `add_transition_graph(label, ...)` | Compute a transition graph and register it as a report tab. |
 | `add_step_matrix(label, ...)` | Compute a step matrix and register it as a report tab. |
 | `add_segment_overview(label, ...)` | Compute a segment overview and register it as a report tab. |
-| `get_conversion_rate(start_event, end_event, within, ...)` | How often one event is followed by another, with the denominator and the baseline lift. Returns numbers, not a tab — the agent quotes them in backticks. |
+| `get_conversion_rate(start_anchor, end_anchor, within, ...)` | How often one event is followed by another, with the denominator and the baseline lift. Returns numbers, not a tab — the agent quotes them in backticks. |
 | `check_analysis(analysis)` | Validate analysis text before export. |
 | `export_report(title, analysis, path)` | Generate a self-contained HTML report. |
 

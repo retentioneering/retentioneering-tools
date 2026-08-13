@@ -52,7 +52,7 @@ unpack; with `diff` it is `(blocks, g1_blocks, g2_blocks)`.
 ## R4 · Micro-journey between two funnel levels
 
 ```python
-micro = stream.truncate_paths(start_event="basket", end_event="checkout")
+micro = stream.truncate_paths(start_anchor="basket", end_anchor="checkout")
 micro.transition_graph(edge_weight="proba_out")
 micro.get_metrics([{"metric": "length"}, {"metric": "duration"}]).describe()
 ```

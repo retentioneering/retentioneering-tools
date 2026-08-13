@@ -16,9 +16,15 @@ The rules, in force for all future API additions:
 
 1. **One concept — one name.** Column-name arguments end in `_col` and use a
    single vocabulary: `path_col`, `event_col`, `timestamp_col`,
-   `session_col`, `segment_col`. Window anchors are always the
-   `start_event` / `end_event` pair (`truncate_paths`, `split_sessions`, the
-   `time_between` metric). The "everything else" diff sentinel is `<REST>`.
+   `session_col`, `segment_col`. A **positional anchor** — one place in each
+   path, described by an anchor spec (`pattern` / `at` / `occurrence` /
+   `offset` / `offset_side`, see `paths/anchors.py`) — is `start_anchor` /
+   `end_anchor` for a window (`truncate_paths`, `get_conversion_rate`) and
+   `anchor` on its own (`add_events`). A parameter naming *boundary events*
+   as a plain set of names, which is not a position, stays `start_event` /
+   `end_event` (`split_sessions`, `collapse_events`, the `time_between`
+   metric); it is renamed if and when it starts taking anchors. The
+   "everything else" diff sentinel is `<REST>`.
 2. **Match ecosystem priors** where one exists: `n`/`frac`
    (pandas `sample`), `n_clusters`, `min_cluster_size`, `random_state`,
    `nmf_components` (sklearn), `keep`/`drop` column filters. Do not invent a

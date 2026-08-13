@@ -458,8 +458,8 @@ def _build_server(
 
     @_tool()
     def get_conversion_rate(
-        start_event: str | dict | list,
-        end_event: str | dict | list,
+        start_anchor: str | dict | list,
+        end_anchor: str | dict | list,
         within: int | str | None = None,
         path_col: str | None = None,
         local_preprocessors: list | None = None,
@@ -481,14 +481,14 @@ def _build_server(
 
         Parameters
         ----------
-        start_event:
+        start_anchor:
             The condition. An event name, or an anchor spec
             {"pattern", "at", "occurrence", "offset"} — the same specs
             truncate_paths takes. A LIST means several separate questions, one
             row each, NOT one anchor assembled from several parts.
-        end_event:
+        end_anchor:
             The target(s) looked for after it, same forms. "path_start" /
-            "path_end" are ordinary names: end_event="path_end" with within=1
+            "path_end" are ordinary names: end_anchor="path_end" with within=1
             is an exit rate.
         within:
             Window measured from the start anchor, far edge included. An int
@@ -510,7 +510,7 @@ def _build_server(
         1 means the start event makes the target LESS likely.
         """
         result = tools.get_conversion_rate(
-            session, start_event, end_event, within, path_col, local_preprocessors
+            session, start_anchor, end_anchor, within, path_col, local_preprocessors
         )
         return json.dumps(result, ensure_ascii=False)
 

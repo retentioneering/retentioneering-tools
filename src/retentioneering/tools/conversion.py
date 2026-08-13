@@ -31,8 +31,8 @@ if TYPE_CHECKING:
     from retentioneering.eventstream.eventstream import Eventstream
 
 COLUMNS = [
-    "start_event",
-    "end_event",
+    "start_anchor",
+    "end_anchor",
     "paths_with_start",
     "converted",
     "conversion_rate",
@@ -71,13 +71,13 @@ class ConversionRate:
 
     def fit(
         self,
-        start_event,
-        end_event,
+        start_anchor,
+        end_anchor,
         within=None,
         path_col: str | None = None,
     ) -> pd.DataFrame:
         """
-        Conversion from `start_event` to `end_event`, one row per pair.
+        Conversion from `start_anchor` to `end_anchor`, one row per pair.
 
         See `Eventstream.get_conversion_rate` for the parameters and the
         returned columns.
@@ -91,8 +91,8 @@ class ConversionRate:
             raise InvalidParameterError("path_col", path_col, schema.path_cols)
 
         available = df[schema.event_col].unique().tolist()
-        starts = self._parse_side(start_event, "start_event", available)
-        ends = self._parse_side(end_event, "end_event", available)
+        starts = self._parse_side(start_anchor, "start_anchor", available)
+        ends = self._parse_side(end_anchor, "end_anchor", available)
         window = parse_within(within)
 
         total_paths = int(df[path_col].nunique())
@@ -101,11 +101,11 @@ class ConversionRate:
         rows = []
         for start_spec in starts:
             start_pos = anchors.resolve_positions(
-                df, schema, start_spec, side="start", path_col=path_col
+                df, schema, start_spec, offset_side="start", path_col=path_col
             )
             paths_with_start = int(len(start_pos))
             # Step space, strictly after: an end anchor at the same position as
-            # the start one is the start one (`start_event == end_event` asks
+            # the start one is the start one (`start_anchor == end_anchor` asks
             # about a *repeat*), and only steps put a `path_end` sentinel after
             # the last real event rather than on it.
             floor = start_pos[[path_col, "step"]].rename(columns={"step": "bound_step"})
@@ -122,8 +122,8 @@ class ConversionRate:
                 )
                 rows.append(
                     {
-                        "start_event": start_spec.pattern,
-                        "end_event": end_spec.pattern,
+                        "start_anchor": start_spec.pattern,
+                        "end_anchor": end_spec.pattern,
                         "paths_with_start": paths_with_start,
                         "converted": converted,
                         "conversion_rate": rate,
@@ -191,7 +191,7 @@ class ConversionRate:
             self.eventstream.df,
             self.eventstream.schema,
             end_spec,
-            side="end",
+            offset_side="end",
             path_col=path_col,
             not_before=floor,
             not_before_part=0,

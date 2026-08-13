@@ -33,7 +33,8 @@ uv run python docs/scripts/generate_widget_demos.py # regen static widget demos
   docstrings — a docs fix is usually a docstring fix + `render_pages.py`. Guide pages
   live in `docs/guide/*.md`.
 - **Naming** (ADR-0008): one concept, one name — `path_col`, `event_col`,
-  `timestamp_col`, `session_col`, `segment_col`; windows are `start_event`/`end_event`;
+  `timestamp_col`, `session_col`, `segment_col`; window anchors are `start_anchor`/`end_anchor` (a plain list of boundary
+  event names stays `start_event`/`end_event`);
   duration inputs are unit-strings ("30m") or Timedelta, outputs are seconds; processors
   are verb-first, widgets are nouns; diff sentinel is `"<REST>"`.
 - **Metric schema registry**: metric parse/validate and the JS metric editor's name list

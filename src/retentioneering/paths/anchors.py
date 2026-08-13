@@ -38,6 +38,12 @@ about by its result rather than by the procedure that produces it:
 * ``"first"`` puts every token as **early** as that token can be in any valid
   match; ``"last"`` puts it as **late** as it can be. Both results are
   themselves valid matches, and either finds one whenever one exists.
+* ``"all"`` picks nothing: it returns, for each token, *every* position that
+  token can occupy in some valid match. Rows then no longer form a single
+  match — position 3 of one token and position 9 of another need not belong to
+  the same one — so it suits a caller reading one token (marking every
+  occurrence of an anchor) and not one that needs a coherent window. Callers
+  that need exactly one position per path must reject it.
 
 Two consequences worth knowing. ``"last"`` is *not* "the last occurrence of the
 anchor event" — an occurrence that participates in no valid match is not a
@@ -100,7 +106,11 @@ PATH_START = tokens_mod.PATH_START
 PATH_END = tokens_mod.PATH_END
 GAP = tokens_mod.GAP
 
-OCCURRENCES = ("first", "last")
+OCCURRENCES = ("first", "last", "all")
+
+#: Sides an offset may round to. Only a *time* offset needs one — a step offset
+#: lands on a real row either way.
+OFFSET_SIDES = ("start", "end")
 
 # Internal column aliases. Prefixed so they cannot collide with a user column
 # that happens to be named "step" or "path".
@@ -352,7 +362,7 @@ def validate_pattern_tokens(
     member of a positive class) and never where its absence widens it.
 
     `param` names the caller's user-facing parameter, so the error points at
-    ``path_pattern`` / ``start_event`` rather than at this module's internals.
+    ``path_pattern`` / ``start_anchor`` rather than at this module's internals.
     """
     available = set(available_events)
     raw_tokens = pattern.split(PATH_DELIMITER)
@@ -439,11 +449,13 @@ def resolve_anchors(
         ``->``-separated event names; ``.*`` matches any run of events,
         including an empty one. Assumed already normalized by
         :func:`normalize_pattern`.
-    occurrence : {"first", "last"}, default "first"
+    occurrence : {"first", "last", "all"}, default "first"
         Which match to anchor on when the pattern has several. ``"first"``
         returns each token at the earliest position it can occupy in any valid
         match, ``"last"`` at the latest — see this module's docstring for what
-        that does and does not mean.
+        that does and does not mean. ``"all"`` returns every position each token
+        can occupy, so a path may appear more than once per ordinal and the rows
+        no longer describe a single match.
     path_col : str, optional
         Path id column; defaults to ``schema.path_col``.
     event_col : str, optional
@@ -682,30 +694,48 @@ def resolve_anchors(
     # names. (That the extremum is itself a valid match still holds with
     # restricted gaps: pushing either end of a run inwards only shortens what
     # has to stay clean.)
+    keep_all = occurrence == "all"
     agg = "MIN" if occurrence == "first" else "MAX"
     for i in range(len(parts)):
-        ctes.append(
-            f"""m{i} AS (
-                SELECT f.{_PATH}, {agg}(f.s) AS s
-                FROM fwd{i} f JOIN bwd{i} b ON f.{_PATH} = b.{_PATH} AND f.s = b.s
-                GROUP BY f.{_PATH}
-            )"""
+        if keep_all:
+            ctes.append(
+                f"""m{i} AS (
+                    SELECT DISTINCT f.{_PATH}, f.s AS s
+                    FROM fwd{i} f JOIN bwd{i} b ON f.{_PATH} = b.{_PATH} AND f.s = b.s
+                )"""
+            )
+        else:
+            ctes.append(
+                f"""m{i} AS (
+                    SELECT f.{_PATH}, {agg}(f.s) AS s
+                    FROM fwd{i} f JOIN bwd{i} b ON f.{_PATH} = b.{_PATH} AND f.s = b.s
+                    GROUP BY f.{_PATH}
+                )"""
+            )
+
+    if not keep_all:
+        joins = " ".join(
+            f"JOIN m{i} ON m0.{_PATH} = m{i}.{_PATH}" for i in range(1, len(parts))
         )
+        selected = ", ".join(f"m{i}.s AS s{i}" for i in range(len(parts)))
+        ctes.append(f"matched AS (SELECT m0.{_PATH}, {selected} FROM m0 {joins})")
 
-    joins = " ".join(
-        f"JOIN m{i} ON m0.{_PATH} = m{i}.{_PATH}" for i in range(1, len(parts))
-    )
-    selected = ", ".join(f"m{i}.s AS s{i}" for i in range(len(parts)))
-    ctes.append(f"matched AS (SELECT m0.{_PATH}, {selected} FROM m0 {joins})")
-
+    # With one position per part, the parts are joined into a single row first
+    # and the tokens read off it, which is what makes them one coherent match.
+    # `"all"` keeps every position instead, so there is no row to join on — each
+    # part emits its own tokens, and no claim is made that a row of one part
+    # pairs with a row of another (see this module's docstring).
     token_selects = []
     part_ordinals: list[int] = []
     ordinal = 0
     for i, tokens in enumerate(parts):
         part_ordinals.append(ordinal)
+        source = f"m{i}" if keep_all else "matched"
+        column = "s" if keep_all else f"s{i}"
         for offset in range(len(tokens)):
             token_selects.append(
-                f"SELECT {_PATH}, {ordinal} AS {_ORDINAL}, s{i} + {offset} AS {_STEP} FROM matched"
+                f"SELECT {_PATH}, {ordinal} AS {_ORDINAL}, "
+                f"{column} + {offset} AS {_STEP} FROM {source}"
             )
             ordinal += 1
     ctes.append("tokens AS (" + " UNION ALL ".join(token_selects) + ")")
@@ -719,7 +749,7 @@ def resolve_anchors(
             st.{_IDX} AS index
         FROM tokens t
         JOIN stepped st ON st.{_PATH} = t.{_PATH} AND st.{_STEP} = t.{_STEP}
-        ORDER BY t.{_PATH}, t.{_ORDINAL}
+        ORDER BY t.{_PATH}, t.{_ORDINAL}, t.{_STEP}
     """
 
     tables = {"df": df}
@@ -736,7 +766,7 @@ def resolve_anchors(
 
 # ── anchor specs: a pattern plus where in it, which occurrence, and an offset ──
 
-SPEC_KEYS = frozenset({"pattern", "at", "occurrence", "offset"})
+SPEC_KEYS = frozenset({"pattern", "at", "occurrence", "offset", "offset_side"})
 
 
 @dataclass(frozen=True)
@@ -747,6 +777,9 @@ class AnchorSpec:
     at: int | str = "end"
     occurrence: str = "first"
     offset: int | str | pd.Timedelta | None = None
+    #: Which way a *time* offset rounds to a real event; ``None`` lets the
+    #: caller decide (see :func:`resolve_positions`).
+    offset_side: str | None = None
 
     def ordinal(self) -> int:
         """`at` as a token ordinal; ``"start"``/``"end"`` are aliases for 0/-1."""
@@ -764,7 +797,7 @@ def parse_spec(value: object, *, param: str = "anchor") -> AnchorSpec:
     Normalize one anchor bound into an :class:`AnchorSpec`.
 
     A bare string is the degenerate spec ``{"pattern": value}`` — which keeps
-    ``start_event="path_start"`` and the rest of the plain string form working
+    ``start_anchor="path_start"`` and the rest of the plain string form working
     exactly as before.
     """
     if isinstance(value, str):
@@ -787,9 +820,12 @@ def parse_spec(value: object, *, param: str = "anchor") -> AnchorSpec:
         at=value.get("at", "end"),
         occurrence=value.get("occurrence", "first"),
         offset=value.get("offset"),
+        offset_side=value.get("offset_side"),
     )
     if spec.occurrence not in OCCURRENCES:
         raise InvalidParameterError("occurrence", spec.occurrence, list(OCCURRENCES))
+    if spec.offset_side is not None and spec.offset_side not in OFFSET_SIDES:
+        raise InvalidParameterError("offset_side", spec.offset_side, list(OFFSET_SIDES))
     spec.ordinal()  # validate `at` eagerly, before any query runs
     return spec
 
@@ -811,7 +847,7 @@ def _offset_query(
     schema: "EventstreamSchema",
     path_col: str,
     offset: int | float,
-    side: str,
+    offset_side: str,
     *,
     in_steps: bool,
 ) -> str:
@@ -860,17 +896,20 @@ def _offset_query(
         SELECT a.{path_q} AS p, b.ts + {dialect.interval_seconds(offset)} AS mark
         FROM anchor a JOIN base b ON b.p = a.{path_q} AND b.idx = a.bound
     """
-    if side == "start":
+    if offset_side == "start":
         pick, fallback, cmp = "MIN(b.idx)", "e.max_idx", "b.ts >= m.mark"
     else:
         pick, fallback, cmp = "MAX(b.idx)", "e.min_idx", "b.ts <= m.mark"
+    # Grouped by the mark itself, not only by the path: with `occurrence="all"`
+    # one path carries several anchors, and grouping by path alone would fold
+    # them into a single bound.
     return f"""
         WITH base AS ({base}), edges AS ({edges}), mark AS ({mark})
         SELECT m.p AS {path_q}, COALESCE({pick}, {fallback}) AS bound
         FROM mark m
         JOIN edges e ON e.p = m.p
         LEFT JOIN base b ON b.p = m.p AND {cmp}
-        GROUP BY m.p, {fallback}
+        GROUP BY m.p, m.mark, {fallback}
     """
 
 
@@ -900,6 +939,9 @@ def _step_query(schema: "EventstreamSchema", path_col: str) -> str:
     path_q = engine.quote_ident(path_col)
     index_q = engine.quote_ident(schema.index)
     subindex_q = engine.quote_ident(schema.subindex)
+    # DISTINCT because two anchors of the same path can be moved onto the same
+    # row — an offset that runs past the path's end clamps both to it — and a
+    # bound repeated twice would mark the same event twice.
     return f"""
         WITH base AS (
             SELECT {path_q} AS p, {index_q} AS idx,
@@ -908,7 +950,7 @@ def _step_query(schema: "EventstreamSchema", path_col: str) -> str:
                    ) AS step
             FROM df
         )
-        SELECT a.{path_q} AS {path_q}, b.step AS step, a.bound AS bound
+        SELECT DISTINCT a.{path_q} AS {path_q}, b.step AS step, a.bound AS bound
         FROM anchor a JOIN base b ON b.p = a.{path_q} AND b.idx = a.bound
     """
 
@@ -918,7 +960,7 @@ def resolve_positions(
     schema: "EventstreamSchema",
     spec: AnchorSpec,
     *,
-    side: str,
+    offset_side: str | None = None,
     path_col: str | None = None,
     event_col: str | None = None,
     not_before: pd.DataFrame | None = None,
@@ -929,10 +971,17 @@ def resolve_positions(
 
     Parameters
     ----------
-    side : {"start", "end"}
-        Which end of the window this bound is. Only matters for a time offset,
-        whose mark falls between events and so has to round outward-consistently
-        (see :func:`_offset_query`).
+    offset_side : {"start", "end"}, optional
+        Which way a *time* offset rounds to a real event: ``"start"`` takes the
+        first event at or after the mark, ``"end"`` the last one at or before it
+        (a step offset lands on a row either way, so this does nothing to it).
+        A caller cutting a window passes the side it is resolving, which rounds
+        the mark *inward* and keeps an exact hit inside on both sides.
+
+        `spec.offset_side` overrides this. With neither given, the sign decides
+        — forward offsets round forward, backward offsets round backward — so a
+        marker placed ``"30m"` after an anchor never lands before the half hour
+        is up.
     not_before_part : int, optional
         Override for which gap-separated part the floor starts constraining.
         Defaults to the part carrying the anchor token, which lets a pattern's
@@ -945,10 +994,11 @@ def resolve_positions(
         Three columns — `path_col`, ``"step"`` (1-based position within the
         path, ``0`` / ``max_step + 1`` for the boundary sentinels) and
         ``"bound"`` (the ``schema.index`` value). Paths whose pattern did not
-        match are absent.
+        match are absent; with ``occurrence="all"`` a path appears once per
+        position its anchor can occupy.
     """
-    if side not in ("start", "end"):
-        raise InvalidParameterError("side", side, ["start", "end"])
+    if offset_side is not None and offset_side not in OFFSET_SIDES:
+        raise InvalidParameterError("offset_side", offset_side, list(OFFSET_SIDES))
 
     path_col = path_col or schema.path_col
     if not_before_part is None:
@@ -979,7 +1029,11 @@ def resolve_positions(
     else:
         seconds, in_steps = parse_duration(spec.offset, param="offset"), False
 
-    query = _offset_query(schema, path_col, seconds, side, in_steps=in_steps)
+    resolved_side = spec.offset_side or offset_side
+    if resolved_side is None:
+        resolved_side = "end" if seconds < 0 else "start"
+
+    query = _offset_query(schema, path_col, seconds, resolved_side, in_steps=in_steps)
     moved = engine.run(query, df=df, anchor=anchor)
     return engine.run(_step_query(schema, path_col), df=df, anchor=moved)
 
@@ -989,7 +1043,7 @@ def resolve_bound(
     schema: "EventstreamSchema",
     spec: AnchorSpec,
     *,
-    side: str,
+    offset_side: str,
     path_col: str | None = None,
     event_col: str | None = None,
     not_before: pd.DataFrame | None = None,
@@ -1010,7 +1064,7 @@ def resolve_bound(
         df,
         schema,
         spec,
-        side=side,
+        offset_side=offset_side,
         path_col=path_col,
         event_col=event_col,
         not_before=not_before,

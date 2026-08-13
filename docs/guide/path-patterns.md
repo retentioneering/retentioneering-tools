@@ -307,12 +307,17 @@ it. A time offset (`"30m"`) lands between events and rounds to a real one:
 forward for a positive offset, backward for a negative one, unless
 `offset_side` says otherwise.
 
-### Why not just centre on the pattern?
+### When a pattern is enough on its own
 
-`step_matrix(path_pattern=...)` centres each block on the *prefix* of the
-pattern up to that block, so the block for `cart` in
-`cart->[^cart]*->shipping_details` is centred by `path_start->.*->cart` — the
-**first** cart of the path, not the one the restricted gap picked out. The
-pattern still selects which paths are drawn, but the suffix cannot move the
-anchor. A marker event sidesteps this: the position is resolved once, by the
-full pattern, and then addressed by name.
+`step_matrix(path_pattern=...)` already centres on the position the pattern
+names — every block anchors on the same whole-pattern match, so
+`path_pattern="cart->[^cart]*->shipping_details"` gives one block centred on
+that cart and one on the checkout. If a centred matrix is all you need, the
+pattern alone does it, and a marker event adds nothing.
+
+A marker earns its place when the position has to be **addressed elsewhere**:
+counted by a funnel, filtered on, used as a conversion anchor, compared across
+segments. It also reaches two things a pattern cannot say — `occurrence`, where
+the structural spelling gets unwieldy (`cart->[^cart]*->pay->[^cart]*->path_end`
+for "the last checkout attempt"), and `offset`, which has no pattern form at all
+for time (`{"offset": "30m"}`).

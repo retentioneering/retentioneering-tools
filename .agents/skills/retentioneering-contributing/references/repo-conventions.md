@@ -35,6 +35,9 @@ uv run python docs/scripts/generate_widget_demos.py # regen static widget demos
 - **Naming** (ADR-0008): one concept, one name — `path_col`, `event_col`,
   `timestamp_col`, `session_col`, `segment_col`; window anchors are `start_anchor`/`end_anchor` (a plain list of boundary
   event names stays `start_event`/`end_event`);
+  a parameter's number follows its role, not the type it accepts — singular when it
+  names one role even if a list is allowed (`source_event`, `start_anchor`), plural only
+  when the collection is the concept (`funnel_events`, `path_cols`);
   duration inputs are unit-strings ("30m") or Timedelta, outputs are seconds; processors
   are verb-first, widgets are nouns; diff sentinel is `"<REST>"`.
 - **Metric schema registry**: metric parse/validate and the JS metric editor's name list

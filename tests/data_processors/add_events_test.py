@@ -22,7 +22,7 @@ SCHEMA_WITH_EVENT_TYPE = {"event_type": "event_type"}
 
 
 # ---------------------------------------------------------------------------
-# Mode 1: source_events
+# Mode 1: source_event
 # ---------------------------------------------------------------------------
 
 
@@ -30,7 +30,7 @@ class TestAddEventsBySourceEvents:
     def test__single_source_event(self) -> None:
         stream = Eventstream(get_df())
 
-        res = stream.add_events(name="S", source_events=["A"])
+        res = stream.add_events(name="S", source_event=["A"])
 
         expected = Eventstream(
             pd.DataFrame(
@@ -50,10 +50,10 @@ class TestAddEventsBySourceEvents:
 
         assert res.equals(expected)
 
-    def test__multiple_source_events(self) -> None:
+    def test__multiple_source_event(self) -> None:
         stream = Eventstream(get_df())
 
-        res = stream.add_events(name="S", source_events=["A", "B"])
+        res = stream.add_events(name="S", source_event=["A", "B"])
 
         expected = Eventstream(
             pd.DataFrame(
@@ -75,10 +75,10 @@ class TestAddEventsBySourceEvents:
 
         assert res.equals(expected)
 
-    def test__empty_source_events_is_noop(self) -> None:
+    def test__empty_source_event_is_noop(self) -> None:
         stream = Eventstream(get_df())
 
-        res = stream.add_events(name="S", source_events=[])
+        res = stream.add_events(name="S", source_event=[])
 
         assert res.equals(stream)
 
@@ -92,7 +92,7 @@ class TestAddEventsBySourceEvents:
         )
         stream = Eventstream(df, {"custom_cols": ["country"]})
 
-        res = stream.add_events(name="S", source_events=["A"])
+        res = stream.add_events(name="S", source_event=["A"])
 
         synthetic_rows = res.df[res.df["event"] == "S"]
         assert len(synthetic_rows) == 1
@@ -103,7 +103,7 @@ class TestAddEventsBySourceEvents:
         """A synthetic event marks the moment its source opens, so it precedes it."""
         stream = Eventstream(get_df())
 
-        res = stream.add_events(name="S", source_events=["A"])
+        res = stream.add_events(name="S", source_event=["A"])
 
         events_user1 = res.df[res.df["user_id"] == "user_1"]["event"].tolist()
         assert events_user1.index("S") < events_user1.index("A")
@@ -111,22 +111,30 @@ class TestAddEventsBySourceEvents:
     def test__synthetic_event_comes_before_next_raw_event(self) -> None:
         stream = Eventstream(get_df())
 
-        res = stream.add_events(name="S", source_events=["A"])
+        res = stream.add_events(name="S", source_event=["A"])
 
         events_user1 = res.df[res.df["user_id"] == "user_1"]["event"].tolist()
         assert events_user1.index("S") < events_user1.index("B")
 
     def test__unknown_source_event_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
-            Eventstream(get_df()).add_events(name="S", source_events=["UNKNOWN"])
+            Eventstream(get_df()).add_events(name="S", source_event=["UNKNOWN"])
 
-    def test__source_events_not_list_raises(self) -> None:
-        with pytest.raises(PreprocessingConfigError):
-            Eventstream(get_df()).add_events(name="S", source_events="A")
+    def test__bare_string_source_event(self) -> None:
+        """One source event is the norm; the list is the widening."""
+        stream = Eventstream(get_df())
 
-    def test__source_events_non_string_elements_raises(self) -> None:
+        assert stream.add_events(name="S", source_event="A").equals(
+            stream.add_events(name="S", source_event=["A"])
+        )
+
+    def test__source_event_wrong_type_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
-            Eventstream(get_df()).add_events(name="S", source_events=[1, 2])
+            Eventstream(get_df()).add_events(name="S", source_event=123)
+
+    def test__source_event_non_string_elements_raises(self) -> None:
+        with pytest.raises(PreprocessingConfigError):
+            Eventstream(get_df()).add_events(name="S", source_event=[1, 2])
 
 
 # ---------------------------------------------------------------------------
@@ -521,18 +529,18 @@ class TestAddEventsValidation:
         with pytest.raises(PreprocessingConfigError):
             Eventstream(get_df()).add_events(
                 name="S",
-                source_events=["A"],
+                source_event=["A"],
                 churn={"inactivity_days": 30},
             )
 
     def test__name_not_string_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
-            Eventstream(get_df()).add_events(name=123, source_events=["A"])
+            Eventstream(get_df()).add_events(name=123, source_event=["A"])
 
     def test__name_empty_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
-            Eventstream(get_df()).add_events(name="", source_events=["A"])
+            Eventstream(get_df()).add_events(name="", source_event=["A"])
 
     def test__name_with_path_delimiter_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError, match="add->cart"):
-            Eventstream(get_df()).add_events(name="add->cart", source_events=["A"])
+            Eventstream(get_df()).add_events(name="add->cart", source_event=["A"])

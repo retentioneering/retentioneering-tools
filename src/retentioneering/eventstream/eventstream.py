@@ -757,7 +757,7 @@ class Eventstream:
     def add_events(
         self,
         name: str,
-        source_events=None,
+        source_event=None,
         sql=None,
         churn=None,
         anchor=None,
@@ -766,7 +766,7 @@ class Eventstream:
         """
         Insert synthetic events derived from existing events or a SQL query.
 
-        Exactly one of `source_events`, `sql`, `churn`, or `anchor` must be
+        Exactly one of `source_event`, `sql`, `churn`, or `anchor` must be
         provided. The new event rows are appended to the eventstream; original
         rows are kept.
 
@@ -779,10 +779,10 @@ class Eventstream:
         ----------
         name : str
             Name of the synthetic event to create.
-        source_events : list of str, optional
-            List of existing event names. Every occurrence of any of them gets a
-            synthetic event at the same timestamp — a path with three matching
-            events gets three synthetic events.
+        source_event : str or list of str, optional
+            An existing event name, or several. Every occurrence of any of them
+            gets a synthetic event at the same timestamp — a path with three
+            matching events gets three synthetic events.
         sql : str, optional
             DuckDB SQL SELECT statement that reads from the `eventstream` table alias
             and returns rows in the eventstream schema. Each returned row is added as a
@@ -814,7 +814,7 @@ class Eventstream:
 
         Examples
         --------
-            stream.add_events("session_start", source_events=["login", "app_open"])
+            stream.add_events("session_start", source_event=["login", "app_open"])
             stream.add_events("churned", churn={"inactivity_days": 30})
             stream.add_events("churned", churn={"inactivity_days": 30, "active_events": ["purchase"]})
 
@@ -835,7 +835,7 @@ class Eventstream:
 
         new_df, new_schema = AddEvents(
             name,
-            source_events=source_events,
+            source_event=source_event,
             sql=sql,
             churn=churn,
             anchor=anchor,

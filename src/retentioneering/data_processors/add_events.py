@@ -23,7 +23,7 @@ class AddEvents(DataProcessor):
     def __init__(
         self,
         name: str,
-        source_events: List[str] | None = None,
+        source_event: str | List[str] | None = None,
         sql: str | None = None,
         anchor: str | dict | None = None,
         path_col: str | None = None,
@@ -43,7 +43,7 @@ class AddEvents(DataProcessor):
 
         n_modes = sum(
             [
-                source_events is not None,
+                source_event is not None,
                 sql is not None,
                 churn is not None,
                 anchor is not None,
@@ -52,18 +52,21 @@ class AddEvents(DataProcessor):
         if n_modes != 1:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                "Exactly one of 'source_events', 'sql', 'churn', or 'anchor' "
+                "Exactly one of 'source_event', 'sql', 'churn', or 'anchor' "
                 "must be provided.",
             )
 
-        if source_events is not None:
-            if not isinstance(source_events, list):
+        if source_event is not None:
+            if isinstance(source_event, str):
+                source_event = [source_event]
+            elif not isinstance(source_event, list):
                 raise PreprocessingConfigError(
-                    PROCESSOR_NAME, "Argument 'source_events' must be a list."
+                    PROCESSOR_NAME,
+                    "Argument 'source_event' must be an event name or a list of them.",
                 )
-            if not all(isinstance(e, str) for e in source_events):
+            if not all(isinstance(e, str) for e in source_event):
                 raise PreprocessingConfigError(
-                    PROCESSOR_NAME, "All elements in 'source_events' must be strings."
+                    PROCESSOR_NAME, "All elements in 'source_event' must be strings."
                 )
 
         if sql is not None and not isinstance(sql, str):
@@ -101,7 +104,7 @@ class AddEvents(DataProcessor):
         self.anchor_spec = self._parse_anchor(anchor) if anchor is not None else None
 
         self.name = name
-        self.source_events = source_events
+        self.source_event = source_event
         self.sql = sql
         self.churn = churn
         self.path_col = path_col
@@ -126,8 +129,8 @@ class AddEvents(DataProcessor):
     def apply(
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
-        if self.source_events is not None:
-            df_source = self._get_by_source_events(df, schema)
+        if self.source_event is not None:
+            df_source = self._get_by_source_event(df, schema)
         elif self.sql is not None:
             df_source = self._get_by_sql(df, schema)
         elif self.anchor_spec is not None:
@@ -161,22 +164,22 @@ class AddEvents(DataProcessor):
 
         return df, schema
 
-    def _get_by_source_events(
+    def _get_by_source_event(
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> pd.DataFrame:
-        if not self.source_events:
+        if not self.source_event:
             return df.iloc[0:0]
 
         existing = set(df[schema.event_col].cat.categories.tolist())
-        unknown = set(self.source_events) - existing
+        unknown = set(self.source_event) - existing
         if unknown:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                f"Unknown event names in 'source_events': {sorted(unknown)}. "
+                f"Unknown event names in 'source_event': {sorted(unknown)}. "
                 f"Available events: {sorted(existing)}.",
             )
 
-        return df[df[schema.event_col].isin(self.source_events)].copy()
+        return df[df[schema.event_col].isin(self.source_event)].copy()
 
     def _get_by_anchor(
         self, df: pd.DataFrame, schema: EventstreamSchema

@@ -1681,6 +1681,7 @@ class Eventstream:
         diff: T_Diff = None,
         path_col: str | None = None,
         path_pattern: str | None = None,
+        anchor: str | dict | None = None,
     ):
         """
         Compute per-step event-share matrices for Step Matrix / Step Sankey (headless).
@@ -1709,22 +1710,36 @@ class Eventstream:
             the whole path from `path_start` to `path_end`. Each anchor event in
             the pattern produces its own matrix block. To see the
             neighborhood around a single event: `path_pattern="add_to_cart"`.
+        anchor : str or dict, optional
+            Centre everything on one position instead, given as an anchor spec —
+            the same form `truncate_paths` takes for `start_anchor`, and the same
+            keys (`pattern`, `at`, `occurrence`, `offset`, `offset_side`). Yields
+            a single block. Mutually exclusive with `path_pattern`, which lays
+            the pattern's parts out side by side; use `anchor` when the position
+            needs `occurrence` or an `offset`, neither of which a pattern can
+            express. Paths where the anchor does not resolve are absent, so it
+            selects as well as centres. `occurrence="all"` is rejected: several
+            positions per path would make a path count more than once, and the
+            cells are shares of paths.
 
         Returns
         -------
         pd.DataFrame or tuple of pd.DataFrame
-            Without `path_pattern`: a single DataFrame (or, in diff mode,
-            `(combined, group1, group2)` — three DataFrames). With
-            `path_pattern`: one DataFrame per anchor block, as a tuple (or,
-            in diff mode, `(combined_blocks, group1_blocks, group2_blocks)`,
-            each itself a tuple of per-block DataFrames) — a pattern with
-            several anchor events produces several blocks.
+            Without `path_pattern` or `anchor`: a single DataFrame (or, in diff
+            mode, `(combined, group1, group2)` — three DataFrames). With either:
+            one DataFrame per block, as a tuple (or, in diff mode,
+            `(combined_blocks, group1_blocks, group2_blocks)`, each itself a
+            tuple of per-block DataFrames) — a pattern with several anchor events
+            produces several blocks, an `anchor` always one.
 
         Examples
         --------
             df = stream.step_sankey_data(max_steps=10)
             combined, g1, g2 = stream.step_sankey_data(diff=("user_lifecycle", "loyal", "new"))
             blocks = stream.step_sankey_data(path_pattern="add_to_cart->.*->purchase")
+            blocks = stream.step_sankey_data(
+                anchor={"pattern": "add_to_cart", "occurrence": "last"}
+            )
         """
         from retentioneering.tools.step_matrix import StepMatrix
 
@@ -1733,8 +1748,9 @@ class Eventstream:
             diff=diff,
             path_col=path_col,
             path_pattern=path_pattern,
+            anchor=anchor,
         )
-        if path_pattern is not None:
+        if path_pattern is not None or anchor is not None:
             return result
         if diff is None:
             (sm,) = result
@@ -1749,6 +1765,7 @@ class Eventstream:
         diff: T_Diff = None,
         path_col: str | None = None,
         path_pattern: str | None = None,
+        anchor: str | dict | None = None,
     ):
         """
         Alias for `step_sankey_data` — Step Matrix and Step Sankey render the
@@ -1775,16 +1792,27 @@ class Eventstream:
             the whole path from `path_start` to `path_end`. Each anchor event in
             the pattern produces its own matrix block. To see the
             neighborhood around a single event: `path_pattern="add_to_cart"`.
+        anchor : str or dict, optional
+            Centre everything on one position instead, given as an anchor spec —
+            the same form `truncate_paths` takes for `start_anchor`, and the same
+            keys (`pattern`, `at`, `occurrence`, `offset`, `offset_side`). Yields
+            a single block. Mutually exclusive with `path_pattern`, which lays
+            the pattern's parts out side by side; use `anchor` when the position
+            needs `occurrence` or an `offset`, neither of which a pattern can
+            express. Paths where the anchor does not resolve are absent, so it
+            selects as well as centres. `occurrence="all"` is rejected: several
+            positions per path would make a path count more than once, and the
+            cells are shares of paths.
 
         Returns
         -------
         pd.DataFrame or tuple of pd.DataFrame
-            Without `path_pattern`: a single DataFrame (or, in diff mode,
-            `(combined, group1, group2)` — three DataFrames). With
-            `path_pattern`: one DataFrame per anchor block, as a tuple (or,
-            in diff mode, `(combined_blocks, group1_blocks, group2_blocks)`,
-            each itself a tuple of per-block DataFrames) — a pattern with
-            several anchor events produces several blocks.
+            Without `path_pattern` or `anchor`: a single DataFrame (or, in diff
+            mode, `(combined, group1, group2)` — three DataFrames). With either:
+            one DataFrame per block, as a tuple (or, in diff mode,
+            `(combined_blocks, group1_blocks, group2_blocks)`, each itself a
+            tuple of per-block DataFrames) — a pattern with several anchor events
+            produces several blocks, an `anchor` always one.
 
         See Also
         --------
@@ -1795,6 +1823,7 @@ class Eventstream:
             diff=diff,
             path_col=path_col,
             path_pattern=path_pattern,
+            anchor=anchor,
         )
 
     @_tracked("widget_step_sankey")
@@ -1804,6 +1833,7 @@ class Eventstream:
         diff=None,
         path_col=None,
         path_pattern=None,
+        anchor=None,
         step_window=None,
         height=None,
         sidebar_open=None,
@@ -1822,6 +1852,11 @@ class Eventstream:
         ----------
         max_steps : int, default 10
             Number of path steps to compute.
+        anchor : str or dict, optional
+            Centre on one position instead of laying out a pattern's parts; an
+            anchor spec, same form as `truncate_paths`' `start_anchor`. Yields a
+            single block and is mutually exclusive with `path_pattern`. See
+            `step_sankey_data`.
         step_window : int, default 3
             Number of step columns shown around each anchor.
         diff : tuple or list, optional
@@ -1853,6 +1888,7 @@ class Eventstream:
             diff=diff if diff is not None else _UNSET,
             path_col=path_col if path_col is not None else _UNSET,
             path_pattern=path_pattern if path_pattern is not None else _UNSET,
+            anchor=anchor if anchor is not None else _UNSET,
             step_window=step_window if step_window is not None else _UNSET,
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
@@ -1866,6 +1902,7 @@ class Eventstream:
         diff=None,
         path_col=None,
         path_pattern=None,
+        anchor=None,
         step_window=None,
         height=None,
         sidebar_open=None,
@@ -1901,6 +1938,11 @@ class Eventstream:
             start at `path_start` or end at `path_end` shows a serrated edge,
             signalling paths continue beyond the visible range. To see the
             neighborhood around a single event: `path_pattern="add_to_cart"`.
+        anchor : str or dict, optional
+            Centre on one position instead of laying out a pattern's parts; an
+            anchor spec, same form as `truncate_paths`' `start_anchor`. Yields a
+            single block and is mutually exclusive with `path_pattern`. See
+            `step_sankey_data`.
         step_window : int, default 3
             Number of step columns shown around each anchor.
         height : int, default 600
@@ -1925,6 +1967,7 @@ class Eventstream:
             diff=diff if diff is not None else _UNSET,
             path_col=path_col if path_col is not None else _UNSET,
             path_pattern=path_pattern if path_pattern is not None else _UNSET,
+            anchor=anchor if anchor is not None else _UNSET,
             step_window=step_window if step_window is not None else _UNSET,
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,

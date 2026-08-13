@@ -17,6 +17,8 @@ class StepMatrixWidget(RetentioneeringWidget):
     diff = traitlets.Unicode("").tag(sync=True)
     path_col = traitlets.Unicode("").tag(sync=True)
     path_pattern = traitlets.Unicode("").tag(sync=True)
+    # "" | JSON anchor spec — mutually exclusive with path_pattern
+    anchor = traitlets.Unicode("").tag(sync=True)
 
     # ── catalogues ─────────────────────────────────────────────────────────────
     event_list = traitlets.Unicode("[]").tag(sync=True)
@@ -47,6 +49,7 @@ class StepMatrixWidget(RetentioneeringWidget):
         "diff",
         "path_col",
         "path_pattern",
+        "anchor",
         "height",
         "sidebar_open",
         "step_window",
@@ -64,6 +67,7 @@ class StepMatrixWidget(RetentioneeringWidget):
         diff=_UNSET,
         path_col=_UNSET,
         path_pattern=_UNSET,
+        anchor=_UNSET,
         step_window=_UNSET,
         height=_UNSET,
         sidebar_open=_UNSET,
@@ -97,6 +101,7 @@ class StepMatrixWidget(RetentioneeringWidget):
         self.diff = json.dumps(list(_diff_val)) if _diff_val else ""
         self.path_col = path_col if path_col is not _UNSET else ""
         self.path_pattern = path_pattern if path_pattern is not _UNSET else ""
+        self.anchor = json.dumps(anchor) if anchor is not _UNSET and anchor else ""
         self.step_window = step_window if step_window is not _UNSET else 3
         self.height = height if height is not _UNSET else 600
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
@@ -109,6 +114,7 @@ class StepMatrixWidget(RetentioneeringWidget):
                     ("diff", diff),
                     ("path_col", path_col),
                     ("path_pattern", path_pattern),
+                    ("anchor", anchor),
                     ("step_window", step_window),
                     ("height", height),
                     ("sidebar_open", sidebar_open),
@@ -122,14 +128,36 @@ class StepMatrixWidget(RetentioneeringWidget):
 
         self.observe(
             self._on_params_change,
-            names=["max_steps", "diff", "path_col", "path_pattern"],
+            names=["max_steps", "diff", "path_col", "path_pattern", "anchor"],
         )
         self._start_state_autosave()
 
+    def _anchor_spec(self):
+        """The `anchor` traitlet as a spec, or None. Carried as JSON since
+        traitlets sync to the browser as plain strings."""
+        if not self.anchor:
+            return None
+        try:
+            return json.loads(self.anchor)
+        except (TypeError, ValueError):
+            return self.anchor
+
     # ── widget-specific observer ───────────────────────────────────────────────
 
-    def _on_params_change(self, _change):
+    def _on_params_change(self, change):
         if not self._initialized:
+            return
+        # The sidebar can only set `path_pattern`, and the two modes are
+        # mutually exclusive — so a pattern typed there replaces an anchor
+        # passed from Python instead of colliding with it. Clearing the
+        # traitlet triggers this observer again, which recomputes.
+        if (
+            change
+            and change.get("name") == "path_pattern"
+            and change.get("new")
+            and self.anchor
+        ):
+            self.anchor = ""
             return
         self._recompute()
 
@@ -141,6 +169,7 @@ class StepMatrixWidget(RetentioneeringWidget):
             path_col=params.get("path_col") or self.path_col or None,
             diff=_parse_diff(params.get("diff")),
             path_pattern=params.get("path_pattern") or self.path_pattern or None,
+            anchor=params.get("anchor") or self._anchor_spec(),
         )
 
     #: See RetentioneeringWidget.compute_tools. Tool name mirrors this
@@ -160,6 +189,7 @@ class StepMatrixWidget(RetentioneeringWidget):
                 path_col=self.path_col or None,
                 diff=_parse_diff(self.diff),
                 path_pattern=self.path_pattern or None,
+                anchor=self._anchor_spec(),
             )
             self.result = json.dumps(result)
         except RetentioneeringError:
@@ -171,15 +201,16 @@ class StepMatrixWidget(RetentioneeringWidget):
             self.is_loading = False
 
     def _compute_raw(
-        self, max_steps, path_col=None, diff=None, path_pattern=None
+        self, max_steps, path_col=None, diff=None, path_pattern=None, anchor=None
     ) -> dict:
         raw = self._eventstream.step_sankey_data(
             max_steps=max_steps,
             diff=diff,
             path_col=path_col,
             path_pattern=path_pattern,
+            anchor=anchor,
         )
-        raw = _step_matrix_blocks(raw, diff, path_pattern)
+        raw = _step_matrix_blocks(raw, diff, path_pattern or anchor)
         if diff is not None:
             diff_sms, sms1, sms2 = raw
             matrices = [_df_to_matrix(sm) for sm in diff_sms]
@@ -257,7 +288,7 @@ class StepMatrixWidget(RetentioneeringWidget):
             except Exception:
                 pass
 
-        starts_at_path_start, ends_at_path_end = _pattern_edges(path_pattern)
+        starts_at_path_start, ends_at_path_end = _pattern_edges(path_pattern, anchor)
         return {
             "matrices": matrices,
             "event_counts": event_counts,
@@ -279,6 +310,7 @@ class StepMatrixWidget(RetentioneeringWidget):
             "diff": json.loads(self.diff) if self.diff else None,
             "path_col": self.path_col or "",
             "path_pattern": self.path_pattern or "",
+            "anchor": self.anchor or "",
             "path_cols": json.loads(self.path_cols or "[]"),
             "segment_levels": json.loads(self.segment_levels or "{}"),
             "event_list": json.loads(self.event_list or "[]"),

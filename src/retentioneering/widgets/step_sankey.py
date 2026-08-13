@@ -18,6 +18,8 @@ class StepSankeyWidget(RetentioneeringWidget):
     path_pattern = traitlets.Unicode("").tag(
         sync=True
     )  # "" | "path_start->.*->event->.*->path_end"
+    # "" | JSON anchor spec — mutually exclusive with path_pattern
+    anchor = traitlets.Unicode("").tag(sync=True)
 
     # ── catalogues ────────────────────────────────────────────────────────────
     path_cols = traitlets.Unicode("[]").tag(sync=True)
@@ -45,6 +47,7 @@ class StepSankeyWidget(RetentioneeringWidget):
         "diff",
         "path_col",
         "path_pattern",
+        "anchor",
         "step_window",
         "height",
         "sidebar_open",
@@ -60,6 +63,7 @@ class StepSankeyWidget(RetentioneeringWidget):
         diff=_UNSET,
         path_col=_UNSET,
         path_pattern=_UNSET,
+        anchor=_UNSET,
         height=_UNSET,
         sidebar_open=_UNSET,
         step_window=_UNSET,
@@ -84,6 +88,7 @@ class StepSankeyWidget(RetentioneeringWidget):
         self.diff = json.dumps(list(_diff_val)) if _diff_val else ""
         self.path_col = path_col if path_col is not _UNSET else ""
         self.path_pattern = path_pattern if path_pattern is not _UNSET else ""
+        self.anchor = json.dumps(anchor) if anchor is not _UNSET and anchor else ""
         self.height = height if height is not _UNSET else 500
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
         self.step_window = step_window if step_window is not _UNSET else 3
@@ -97,6 +102,7 @@ class StepSankeyWidget(RetentioneeringWidget):
                     ("diff", diff),
                     ("path_col", path_col),
                     ("path_pattern", path_pattern),
+                    ("anchor", anchor),
                     ("step_window", step_window),
                     ("height", height),
                     ("sidebar_open", sidebar_open),
@@ -110,15 +116,37 @@ class StepSankeyWidget(RetentioneeringWidget):
         self._initialized = True
         self.observe(
             self._on_params_change,
-            names=["max_steps", "diff", "path_col", "path_pattern"],
+            names=["max_steps", "diff", "path_col", "path_pattern", "anchor"],
         )
         self.observe(self._on_positions_change, names=["node_positions"])
         self._start_state_autosave()
 
+    def _anchor_spec(self):
+        """The `anchor` traitlet as a spec, or None. Carried as JSON since
+        traitlets sync to the browser as plain strings."""
+        if not self.anchor:
+            return None
+        try:
+            return json.loads(self.anchor)
+        except (TypeError, ValueError):
+            return self.anchor
+
     # ── observers ─────────────────────────────────────────────────────────────
 
-    def _on_params_change(self, _change):
+    def _on_params_change(self, change):
         if not self._initialized:
+            return
+        # The sidebar can only set `path_pattern`, and the two modes are
+        # mutually exclusive — so a pattern typed there replaces an anchor
+        # passed from Python instead of colliding with it. Clearing the
+        # traitlet triggers this observer again, which recomputes.
+        if (
+            change
+            and change.get("name") == "path_pattern"
+            and change.get("new")
+            and self.anchor
+        ):
+            self.anchor = ""
             return
         self._recompute()
 
@@ -134,6 +162,7 @@ class StepSankeyWidget(RetentioneeringWidget):
             path_col=params.get("path_col") or self.path_col or None,
             diff=_parse_diff(params.get("diff")),
             path_pattern=params.get("path_pattern") or self.path_pattern or None,
+            anchor=params.get("anchor") or self._anchor_spec(),
         )
 
     #: See RetentioneeringWidget.compute_tools.
@@ -150,6 +179,7 @@ class StepSankeyWidget(RetentioneeringWidget):
                 path_col=self.path_col or None,
                 diff=_parse_diff(self.diff),
                 path_pattern=self.path_pattern or None,
+                anchor=self._anchor_spec(),
             )
             self.result = json.dumps(result)
         except RetentioneeringError:
@@ -161,15 +191,16 @@ class StepSankeyWidget(RetentioneeringWidget):
             self.is_loading = False
 
     def _compute_raw(
-        self, max_steps: int, path_col=None, diff=None, path_pattern=None
+        self, max_steps: int, path_col=None, diff=None, path_pattern=None, anchor=None
     ) -> dict:
         raw = self._eventstream.step_sankey_data(
             max_steps=max_steps,
             diff=diff,
             path_col=path_col,
             path_pattern=path_pattern,
+            anchor=anchor,
         )
-        raw = _step_matrix_blocks(raw, diff, path_pattern)
+        raw = _step_matrix_blocks(raw, diff, path_pattern or anchor)
 
         if diff is not None:
             diff_sms, sms1, sms2 = raw
@@ -229,6 +260,7 @@ class StepSankeyWidget(RetentioneeringWidget):
             "diff": json.loads(self.diff) if self.diff else None,
             "path_col": self.path_col or "",
             "path_pattern": self.path_pattern or "",
+            "anchor": self.anchor or "",
             "path_cols": json.loads(self.path_cols or "[]"),
             "segment_levels": json.loads(self.segment_levels or "{}"),
             "step_window": self.step_window,

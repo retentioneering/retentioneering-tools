@@ -75,6 +75,19 @@ what users tend to do right before dropping off (or completing their path).
 
 <DemoWidget cmd={`stream.step_matrix(path_pattern="path_end")`} path="/docs-demos/widgets/step-matrix/path_pattern_dropoff.html" height={660} />
 
+### Anchor - which occurrence, and offsets
+`path_pattern` lays a pattern's parts out side by side, one block each, and always
+centers on the *first* match. `anchor` centers on one position instead, and takes the
+same spec as `truncate_paths`' `start_anchor` — so it reaches the two things a pattern
+cannot say: which occurrence, and an offset in events or in time.
+
+<DemoWidget cmd={`stream.step_matrix(anchor={"pattern": "cart", "occurrence": "last"})`} path="/docs-demos/widgets/step-matrix/anchor_last.html" height={660} />
+
+The two are mutually exclusive. A path where the anchor does not resolve has no center,
+so it is not in the matrix — the anchor selects as well as centers. `occurrence="all"`
+is rejected here: several centers per path would let one path count more than once,
+while every cell is a share of paths.
+
 ### Diff mode
 Passing `diff` splits paths into two segments and shows the difference between them at
 each step, making it easy to spot where the segments' behavior diverges.

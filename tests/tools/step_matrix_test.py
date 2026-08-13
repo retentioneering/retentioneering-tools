@@ -945,3 +945,118 @@ class TestStepMatrixCentringMatchesTheWholePattern:
             common = old.index.intersection(new.index)
             assert len(common) > 0
             assert (old.loc[common] == new.loc[common]).all(), (pattern, i)
+
+
+class TestStepMatrixAnchor:
+    """`anchor` centres on one position instead of laying a pattern's parts out.
+    It reaches what a pattern cannot say — which occurrence, and an offset."""
+
+    @staticmethod
+    def _stream(paths=None):
+        paths = paths or {"u1": ["cart", "x", "cart", "y", "pay"]}
+        rows = []
+        ts = pd.Timestamp("2024-01-01")
+        for pid, events in paths.items():
+            for i, event in enumerate(events):
+                rows.append(
+                    {
+                        "user_id": pid,
+                        "event": event,
+                        "timestamp": ts + pd.Timedelta(minutes=i),
+                    }
+                )
+        return Eventstream(pd.DataFrame(rows))
+
+    def test__yields_a_single_block(self):
+        blocks = self._stream().step_matrix_data(anchor="cart", max_steps=2)
+
+        assert len(blocks) == 1
+        assert blocks[0].loc["cart", 0] == pytest.approx(1.0)
+
+    def test__occurrence_selects_which_one(self):
+        stream = self._stream()
+
+        first = stream.step_matrix_data(
+            anchor={"pattern": "cart", "occurrence": "first"}, max_steps=2
+        )[0]
+        last = stream.step_matrix_data(
+            anchor={"pattern": "cart", "occurrence": "last"}, max_steps=2
+        )[0]
+
+        assert first.loc["path_start", -1] == pytest.approx(1.0)
+        assert last.loc["x", -1] == pytest.approx(1.0)
+
+    def test__offset_moves_the_centre(self):
+        block = self._stream().step_matrix_data(
+            anchor={"pattern": "cart", "offset": 1}, max_steps=2
+        )[0]
+
+        assert block.loc["x", 0] == pytest.approx(1.0)
+
+    def test__time_offset(self):
+        block = self._stream().step_matrix_data(
+            anchor={"pattern": "cart", "occurrence": "last", "offset": "1m"},
+            max_steps=2,
+        )[0]
+
+        assert block.loc["y", 0] == pytest.approx(1.0)
+
+    def test__a_path_without_the_anchor_is_absent(self):
+        stream = self._stream({"u1": ["cart", "pay"], "u2": ["home", "pay"]})
+
+        block = stream.step_matrix_data(anchor="cart", max_steps=2)[0]
+
+        # only u1 is centred, so `home` never appears
+        assert "home" not in block.index
+
+    def test__no_path_matches_raises(self):
+        """Every token exists, but no path has them in that order."""
+        with pytest.raises(PatternNoMatchError):
+            self._stream().step_matrix_data(anchor="pay->.*->cart", max_steps=2)
+
+    def test__anchor_on_path_end_has_no_right_side(self):
+        block = self._stream().step_matrix_data(anchor="path_end", max_steps=2)[0]
+
+        assert list(block.columns) == [-2, -1, 0]
+
+    def test__diff_mode(self):
+        df = pd.DataFrame(
+            [
+                ["u1", "cart", "2024-01-01 00:00:00", "a"],
+                ["u1", "pay", "2024-01-01 00:01:00", "a"],
+                ["u2", "cart", "2024-01-01 00:00:00", "b"],
+                ["u2", "home", "2024-01-01 00:01:00", "b"],
+            ],
+            columns=["user_id", "event", "timestamp", "seg"],
+        )
+        stream = Eventstream(df, {"segment_cols": ["seg"]})
+
+        combined, g1, g2 = stream.step_matrix_data(
+            anchor="cart", diff=("seg", "a", "b"), max_steps=1
+        )
+
+        assert len(combined) == len(g1) == len(g2) == 1
+        assert combined[0].loc["pay", 1] == pytest.approx(1.0)
+
+    def test__occurrence_all_is_rejected(self):
+        """Several centres per path would make a path count more than once,
+        while the cells are shares of paths."""
+        with pytest.raises(InvalidParameterError, match="all"):
+            self._stream().step_matrix_data(
+                anchor={"pattern": "cart", "occurrence": "all"}, max_steps=2
+            )
+
+    def test__anchor_and_path_pattern_are_mutually_exclusive(self):
+        with pytest.raises(InvalidParameterError, match="path_pattern"):
+            self._stream().step_matrix_data(
+                anchor="cart", path_pattern="cart->.*->pay", max_steps=2
+            )
+
+    def test__unknown_event_in_the_anchor_is_rejected(self):
+        with pytest.raises(InvalidParameterError):
+            self._stream().step_matrix_data(anchor="nope", max_steps=2)
+
+    def test__step_sankey_shares_the_mode(self):
+        blocks = self._stream().step_sankey_data(anchor="cart", max_steps=2)
+
+        assert len(blocks) == 1

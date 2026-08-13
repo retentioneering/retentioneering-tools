@@ -141,3 +141,56 @@ class TestStepMatrixWidgetEdgeFlags:
 
         result = json.loads(widget.result)
         assert result["ends_at_path_end"] is False
+
+
+class TestStepMatrixWidgetAnchor:
+    """The anchor reaches the widgets as a JSON traitlet, since traitlets sync
+    to the browser as plain strings."""
+
+    @staticmethod
+    def _stream() -> Eventstream:
+        rows = []
+        ts = pd.Timestamp("2024-01-01")
+        for i, event in enumerate(["cart", "x", "cart", "y", "pay"]):
+            rows.append(
+                {
+                    "user_id": "u1",
+                    "event": event,
+                    "timestamp": ts + pd.Timedelta(minutes=i),
+                }
+            )
+        return Eventstream(pd.DataFrame(rows))
+
+    def test__anchor_yields_one_block(self) -> None:
+        widget = StepMatrixWidget(
+            self._stream(), anchor={"pattern": "cart", "occurrence": "last"}
+        )
+
+        assert widget.error == ""
+        result = json.loads(widget.result)
+        assert len(result["matrices"]) == 1
+
+    def test__edges_come_from_the_anchor_token(self) -> None:
+        widget = StepMatrixWidget(self._stream(), anchor="path_end")
+
+        result = json.loads(widget.result)
+        assert result["starts_at_path_start"] is False
+        assert result["ends_at_path_end"] is True
+
+    def test__a_pattern_typed_in_the_sidebar_replaces_the_anchor(self) -> None:
+        """The sidebar can only set `path_pattern`, and the two are mutually
+        exclusive — so it wins rather than producing an error state."""
+        widget = StepMatrixWidget(self._stream(), anchor="cart")
+        assert widget.anchor
+
+        widget.path_pattern = "cart->.*->pay"
+
+        assert widget.anchor == ""
+        assert widget.error == ""
+        assert len(json.loads(widget.result)["matrices"]) == 2
+
+    def test__bare_string_anchor(self) -> None:
+        widget = StepMatrixWidget(self._stream(), anchor="cart")
+
+        assert widget.error == ""
+        assert json.loads(widget.result)["matrices"]

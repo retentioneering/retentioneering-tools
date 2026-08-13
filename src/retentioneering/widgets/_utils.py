@@ -18,7 +18,7 @@ def step_matrix_blocks(raw, diff, path_pattern):
     return (combined,), (group1,), (group2,)
 
 
-def pattern_edges(path_pattern) -> tuple[bool, bool]:
+def pattern_edges(path_pattern, anchor=None) -> tuple[bool, bool]:
     """Whether the rendered strip reaches each of the path's own boundaries.
 
     `(starts_at_path_start, ends_at_path_end)`. A strip that does not reach a
@@ -32,12 +32,20 @@ def pattern_edges(path_pattern) -> tuple[bool, bool]:
     from retentioneering.eventstream.event_type import EventTypes
     from retentioneering.paths import anchors
 
-    if not path_pattern:
-        # No pattern: the matrix is laid out from the path's first step and cut
-        # at max_steps, so it starts at the boundary and does not reach the end.
+    if not path_pattern and anchor is None:
+        # Neither: the matrix is laid out from the path's first step and cut at
+        # max_steps, so it starts at the boundary and does not reach the end.
         return True, False
 
     types = EventTypes()
+    if not path_pattern:
+        # An anchor is a single position: it reaches a boundary only by being
+        # one.
+        spec = anchors.parse_spec(anchor, param="anchor")
+        tokens = anchors.literal_tokens(spec.pattern)
+        token = tokens[spec.ordinal()]
+        return token == types.PATH_START.name, token == types.PATH_END.name
+
     parts = anchors.split_parts(path_pattern)
     return parts[0][0] == types.PATH_START.name, parts[-1][-1] == types.PATH_END.name
 

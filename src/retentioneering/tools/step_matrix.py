@@ -157,10 +157,18 @@ class StepMatrix:
 
     # ── pattern matrix ───────────────────────────────────────────────────────
 
-    def _filter_paths_by_pattern(
-        self, path_pattern: str, path_col: str
-    ) -> "Eventstream":
-        """Filter eventstream to paths matching the given path_pattern."""
+    def _resolve_pattern(self, path_pattern: str, path_col: str):
+        """Locate the pattern once, and narrow the stream to the paths it matched.
+
+        One resolution answers both questions this needs: which paths to draw,
+        and where each of the pattern's parts sits in them. They must come from
+        the *same* match — resolving a prefix per block instead would anchor
+        each block on a different occurrence than the pattern names (a suffix
+        cannot move the anchor it is not part of).
+
+        Steps are numbered within a path, so positions found before filtering
+        stay valid after it.
+        """
         stream = self.eventstream.add_start_end_events(path_col=path_col)
         match = anchors.resolve_anchors(
             stream.df, stream.schema, path_pattern, path_col=path_col
@@ -170,7 +178,7 @@ class StepMatrix:
         if not matching_ids:
             raise PatternNoMatchError(path_pattern)
 
-        return self.eventstream.filter_events(keep={path_col: matching_ids})
+        return self.eventstream.filter_events(keep={path_col: matching_ids}), match
 
     def _process_pattern_matrix(self, max_steps, diff, path_pattern, path_col):
         from retentioneering.exceptions import EmptyEventstreamError as _Empty
@@ -183,23 +191,17 @@ class StepMatrix:
         path_end = EventTypes().PATH_END.name
 
         try:
-            stream = self._filter_paths_by_pattern(
-                path_pattern, path_col
-            ).add_start_end_events(path_col=path_col)
+            stream, match = self._resolve_pattern(path_pattern, path_col)
+            stream = stream.add_start_end_events(path_col=path_col)
         except PatternNoMatchError:
             raise
         except _Empty:
             raise PatternNoMatchError(path_pattern)
 
-        original_pattern = path_pattern
         # Split on the pattern's own structure rather than on the literal string
         # "->.*->": a gap may be restricted ("->[^X]*->"), and a string split
         # would read `A->[^X]*->B` as three strictly adjacent tokens.
-        parts, gaps = anchors.split_pattern(path_pattern)
-        skip_first_matrix = parts[0][0] != path_start
-        if skip_first_matrix:
-            parts = [[path_start]] + parts
-            gaps = [None, anchors.GAP] + list(gaps[1:])
+        parts = anchors.split_parts(path_pattern)
 
         if diff is None:
             sms = []
@@ -216,26 +218,19 @@ class StepMatrix:
             df = engine.run(query, df=df)
 
             for i, pattern_part in enumerate(parts):
-                current_pattern_str = anchors.join_pattern(
-                    parts[: i + 1], gaps[: i + 1]
-                )
                 is_start_anchored = (i == 0) and (pattern_part[0] == path_start)
 
                 if is_start_anchored:
                     groupby_col = "step"
                     df_centered = df.copy()
                 else:
-                    # The block's centre is where the final part *begins* — the
-                    # part is then laid out to the right of it (see steps_right
-                    # below), so at_part(-1), not the pattern's last token.
+                    # The block's centre is where its part *begins* — the part is
+                    # laid out to the right of it (see steps_right below), so the
+                    # part's first token, not the pattern's last one. Read off the
+                    # single whole-pattern match, so every block anchors on the
+                    # same one.
                     centers = (
-                        anchors.resolve_anchors(
-                            stream.df,
-                            stream.schema,
-                            current_pattern_str,
-                            path_col=path_col,
-                        )
-                        .at_part(-1)
+                        match.at_part(i)
                         .set_index(path_col)["step"]
                         .rename("center")
                         .to_frame()
@@ -301,31 +296,23 @@ class StepMatrix:
                 sm.index = pd.Index(sm.index.tolist(), name=event_col)
                 sms.append(sm)
 
-            if skip_first_matrix:
-                sms = sms[1:]
-
             return sms
 
         else:
             stream1, stream2 = self.eventstream._split_two(diff, path_col=path_col)
-            # Use original_pattern so skip_first_matrix logic applies correctly in each sub-call
             kwargs = dict(
                 max_steps=max_steps,
-                path_pattern=original_pattern,
+                path_pattern=path_pattern,
                 path_col=path_col,
             )
             try:
                 sms1 = stream1.step_sankey_data(**kwargs)
             except PatternNoMatchError:
-                raise PatternNoMatchError(
-                    original_pattern, group="the first diff group"
-                )
+                raise PatternNoMatchError(path_pattern, group="the first diff group")
             try:
                 sms2 = stream2.step_sankey_data(**kwargs)
             except PatternNoMatchError:
-                raise PatternNoMatchError(
-                    original_pattern, group="the second diff group"
-                )
+                raise PatternNoMatchError(path_pattern, group="the second diff group")
 
             new_sms1, new_sms2 = self._align_matrices(list(sms1), list(sms2))
             sms = [new_sms1[i] - new_sms2[i] for i in range(len(new_sms1))]

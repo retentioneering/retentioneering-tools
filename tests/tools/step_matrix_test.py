@@ -835,3 +835,113 @@ class TestStepMatrixRestrictedGaps:
             path_pattern="A->[^X]*->B", max_steps=2, diff=("country", "US", "UK")
         )
         assert len(blocks) == len(g1) == len(g2) == 2
+
+
+class TestStepMatrixCentringMatchesTheWholePattern:
+    """Every block anchors on the *same* match of the whole pattern.
+
+    The trap this closes: centring each block on the pattern's prefix instead.
+    A prefix cannot see the constraints that follow it, so with a restricted
+    gap the earlier blocks landed on an occurrence that takes part in no match
+    of the pattern the user wrote — silently, since the block still shows its
+    own event at column 0 and the path set is unaffected.
+    """
+
+    @staticmethod
+    def _stream(paths):
+        rows = []
+        ts = pd.Timestamp("2024-01-01")
+        for pid, events in paths.items():
+            for i, event in enumerate(events):
+                rows.append(
+                    {
+                        "user_id": pid,
+                        "event": event,
+                        "timestamp": ts + pd.Timedelta(minutes=i),
+                    }
+                )
+        return Eventstream(pd.DataFrame(rows))
+
+    # The first `basket` is abandoned for more browsing; only the second one is
+    # followed by checkout with no basket in between.
+    REPRO = {"u1": ["basket", "catalog", "product", "basket", "shipping_details"]}
+    PATTERN = "basket->[^basket]*->shipping_details"
+
+    def test__centres_on_the_occurrence_the_pattern_names(self):
+        stream = self._stream(self.REPRO)
+
+        block = stream.step_matrix_data(path_pattern=self.PATTERN, max_steps=3)[0]
+
+        # centred on basket #2, so `product` precedes it
+        assert block.loc["product", -1] == pytest.approx(1.0)
+        assert block.loc["path_start", -1] == pytest.approx(0.0)
+
+    def test__agrees_with_resolve_anchors(self):
+        """The two must not disagree — `truncate_paths`' docstring promises
+        `occurrence="first"` is the match Step Matrix centres on."""
+        from retentioneering.paths import anchors
+
+        stream = self._stream(self.REPRO)
+        match = anchors.resolve_anchors(stream.df, stream.schema, self.PATTERN)
+        centre_step = int(match.at_part(0)["step"].iloc[0])
+
+        block = stream.step_matrix_data(path_pattern=self.PATTERN, max_steps=4)[0]
+        events = self._stream(self.REPRO).to_dataframe()["event"].tolist()
+        # column 0 of the block is the event at `centre_step` (1-based)
+        assert block.loc[events[centre_step - 1], 0] == pytest.approx(1.0)
+        assert block.loc[events[centre_step - 2], -1] == pytest.approx(1.0)
+
+    def test__an_earlier_occurrence_can_be_preceded_by_the_anchor_event(self):
+        """Centring on the *first* occurrence made "the anchor event never
+        precedes itself" true by construction — a claim about the bug, not
+        about the data."""
+        stream = self._stream({"u1": ["basket", "basket", "shipping_details"]})
+
+        block = stream.step_matrix_data(path_pattern=self.PATTERN, max_steps=2)[0]
+
+        assert block.loc["basket", -1] == pytest.approx(1.0)
+
+    @pytest.mark.parametrize(
+        "pattern",
+        [
+            "A->.*->B",
+            "A->.*->B->.*->C",
+            "[A|D]->.*->C",
+            "A->B",
+            "path_start->.*->B",
+        ],
+    )
+    def test__unrestricted_gaps_are_unaffected(self, pattern):
+        """The prefix chain was correct while every gap was unrestricted: an
+        early token always extends to a full match, so minimising it per prefix
+        and minimising it over the whole pattern agree. This pins that the
+        change is scoped to restricted gaps.
+        """
+        from retentioneering.paths import anchors
+
+        stream = self._stream(
+            {
+                "u1": ["A", "X", "A", "B", "D", "C"],
+                "u2": ["D", "A", "B", "q", "C"],
+                "u3": ["A", "B", "C"],
+            }
+        )
+        parts = anchors.split_parts(pattern)
+        _, gaps = anchors.split_pattern(pattern)
+        full = anchors.resolve_anchors(stream.df, stream.schema, pattern)
+
+        for i in range(len(parts)):
+            prefix_parts, prefix_gaps = parts[: i + 1], list(gaps[: i + 1])
+            if prefix_parts[0][0] != "path_start":
+                prefix_parts = [["path_start"]] + prefix_parts
+                prefix_gaps = [None, anchors.GAP] + prefix_gaps[1:]
+            prefix = anchors.join_pattern(prefix_parts, prefix_gaps)
+            old = (
+                anchors.resolve_anchors(stream.df, stream.schema, prefix)
+                .at_part(-1)
+                .set_index("user_id")["step"]
+            )
+            new = full.at_part(i).set_index("user_id")["step"]
+            common = old.index.intersection(new.index)
+            assert len(common) > 0
+            assert (old.loc[common] == new.loc[common]).all(), (pattern, i)

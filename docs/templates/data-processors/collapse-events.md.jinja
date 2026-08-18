@@ -11,11 +11,13 @@ for each below.
 ## Choosing the chunks
 
 Every mode below answers one question — *which rows belong together* — and
-exactly one of them may be given. `event_groups` and `bounds` cut the path into
-windows, `bounds` spelled as in
-[Split Sessions](/docs/data-processors/split-sessions); `loops` and `group_col` group by runs of equal values
-instead. What the merged event is *called* is a separate question, answered by
-`name` — see [Naming the merged event](#naming-the-merged-event) below.
+exactly one of them may be given. `loops` and `group_col` group **adjacent rows
+sharing a value**: the same event repeating, or the same value of a column.
+`event_groups` and `bounds` cut the path into **windows** instead, `bounds`
+spelled as in [Split Sessions](/docs/data-processors/split-sessions).
+
+What the merged event is *called* is a separate question, answered by `name` —
+see [Naming the merged event](#naming-the-merged-event) below.
 
 ### loops
 
@@ -42,12 +44,16 @@ since `click` isn't in the list:
 
 `page_view → click → click → product_view`
 
-### events
+### event_groups
 
-Any run of the listed events collapses into one group, wherever it occurs —
-the events don't need to be adjacent to *each other* in the parameter, just
-adjacent in the path. Events not in the list pass through unchanged and end
-a run.
+The events that belong to one group: any run drawn from the set collapses into
+a single event, wherever it occurs — they don't need to be adjacent to *each
+other* in the parameter, just adjacent in the path. Events outside the set pass
+through unchanged and end a run.
+
+This is the difference from `loops`, which the two names now carry:
+`event_groups=["a", "b"]` merges `a, a, b, b` into one event, `loops=["a", "b"]`
+into two.
 
 Before: `home → payment_details → shipping_details → review_page → purchase`
 

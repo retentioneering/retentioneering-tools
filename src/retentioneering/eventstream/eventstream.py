@@ -503,17 +503,17 @@ class Eventstream:
         method : str, default "kmeans"
             Clustering algorithm. One of `"kmeans"` or `"hdbscan"`.
         method_args : dict, optional
-            Parameters of the chosen `method` — the `metric` / `metric_args`
-            shape applied to algorithms:
+            Parameters of the chosen `method`: `n_clusters` for `"kmeans"`
+            (required), `min_cluster_size` and `cluster_selection_epsilon` for
+            `"hdbscan"` (both optional). This is the `metric` / `metric_args`
+            shape applied to algorithms, so a key that does not belong to
+            `method` raises rather than being ignored. `scaler` and
+            `nmf_components` are not method arguments — they are pipeline steps
+            applied before clustering, so they stay outside this dict.
 
             - `"kmeans"` — `n_clusters` (int, required).
             - `"hdbscan"` — `min_cluster_size` (int, default 5),
               `cluster_selection_epsilon` (float, default 0.0).
-
-            A key that does not belong to `method` raises rather than being
-            ignored. `scaler` and `nmf_components` are not method arguments —
-            they are pipeline steps applied before clustering, so they stay
-            outside this dict.
         scaler : str or None, default "minmax"
             Feature scaler applied before clustering. One of `"minmax"`, `"std"`, or `None`.
             (`"standard"` is accepted as a legacy alias of `"std"`.)
@@ -1036,7 +1036,11 @@ class Eventstream:
             Must differ from the event column — for repeats of the same event
             use `loops`.
         name : str or dict or list, optional
-            What the merged event is called. Three forms:
+            What the merged event is called: a literal string, `{"col": "<column>"}`
+            to take another column's value, or a list of cases naming each group by
+            what happened inside it. Required for the window modes, which have no
+            natural name of their own; `loops` defaults to the repeated event's name
+            and `group_col` to the value of the column being grouped on.
 
             - a **string** — that literal name.
             - `{"col": "<column>"}` — the value of another column, so a run of
@@ -1047,10 +1051,6 @@ class Eventstream:
               A condition is the `filter_paths` condition tree, over the metrics
               `has_event`, `event_count`, `has_all_events`, `has_any_event`,
               `duration`, `length`, `time_between`, `active_days`.
-
-            Required for the window modes, which have no natural name of their
-            own. `loops` defaults to the repeated event's name and `group_col`
-            to the value of the column being grouped on.
         agg : dict, optional
             Aggregation rules for non-event columns when rows are merged, as a
             `{column: agg_func}` dict. `agg_func` is one of `"first"` (default),
@@ -1360,11 +1360,11 @@ class Eventstream:
             Event name(s) that mark a session boundary. The separator event starts a new
             session; the separator row itself is dropped from the output.
         bounds : dict, optional
-            Sessions delimited by their own opening and closing events. Both keys
-            are required:
+            Sessions delimited by their own opening and closing events, given as
+            `start_event` and `end_event` — both required. Events outside a
+            `start_event`..`end_event` window get no session.
               - `start_event` (str or list of str) — event name(s) that open a session.
               - `end_event` (str or list of str) — event name(s) that close it.
-            Events outside a `start_event`..`end_event` window get no session.
         timeout : str or pandas.Timedelta, optional
             Inactivity gap after which a new session starts, as a pandas-style
             duration string with an explicit unit — e.g. `"30m"`, `"1h"`,
@@ -2446,15 +2446,16 @@ class Eventstream:
             Clustering algorithm.
         method_args : dict, optional
             Parameters of the chosen `method`, same shape and schema as
-            `cluster_analysis_data`:
+            `cluster_analysis_data`: `n_clusters` for `"kmeans"` (also editable
+            in the sidebar, so a value passed here is a starting point rather
+            than a lock), `min_cluster_size` and `cluster_selection_epsilon` for
+            `"hdbscan"` — which the sidebar has no fields for, making this the
+            only way to set them.
 
             - `"kmeans"` — `n_clusters` (int, list of int, or a range string like
               `"3-8"`; a list or range runs a silhouette-scored grid search).
-              Defaults to `"3-8"`. This is the one the sidebar also edits, so a
-              value passed here is the starting point, not a lock.
-            - `"hdbscan"` — `min_cluster_size`, `cluster_selection_epsilon`. The
-              sidebar has no fields for these, so passing them here is the only
-              way to set them.
+              Defaults to `"3-8"`.
+            - `"hdbscan"` — `min_cluster_size`, `cluster_selection_epsilon`.
         scaler : {"minmax", "std"}, optional
             Feature scaler applied before clustering; default `"minmax"`.
         overview_metrics : list of dict, optional
@@ -2556,17 +2557,17 @@ class Eventstream:
         method : {"kmeans", "hdbscan"}, default "kmeans"
             Clustering algorithm.
         method_args : dict, optional
-            Parameters of the chosen `method`. Every value may be a single value
-            or a list, and any list triggers a silhouette-scored grid search over
-            it:
+            Parameters of the chosen `method`: `n_clusters` for `"kmeans"`
+            (defaulting to the range `"3-8"`), `min_cluster_size` and
+            `cluster_selection_epsilon` for `"hdbscan"`. Every value may be a
+            single value or a list, and any list triggers a silhouette-scored
+            grid search over it. A key that does not belong to `method` raises
+            rather than being ignored.
 
             - `"kmeans"` — `n_clusters` (int, list of int, or a range string like
               `"3-8"`). Defaults to `"3-8"`, i.e. a grid search.
             - `"hdbscan"` — `min_cluster_size` (int, default 5),
               `cluster_selection_epsilon` (float, default 0.0).
-
-            A key that does not belong to `method` raises rather than being
-            ignored.
         scaler : {"minmax", "std"}, optional
             Feature scaler applied before clustering; default `"minmax"`.
         nmf_components : int or list of int, optional

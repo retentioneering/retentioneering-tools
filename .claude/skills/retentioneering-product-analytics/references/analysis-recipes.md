@@ -72,13 +72,13 @@ FEATURES = (
     + [{"metric": "event_count", "metric_args": {"event": e}} for e in KEY_FAMILIES]
 )
 res = stream.cluster_analysis_data(
-    features=FEATURES, n_clusters="3-8",
+    features=FEATURES, method_args={"n_clusters": "3-8"},
     overview_metrics=FEATURES + [
         {"metric": "has_event", "metric_args": {"event": "purchase"}, "agg": "mean"},
     ],   # outcome goes HERE, for validation only
 )
 labeled = stream.add_clusters(name="behavior", features=FEATURES,
-                              n_clusters=res["best_params"]["n_clusters"])
+                              **res["best_params"])
 ```
 
 Read: conversion spread ACROSS clusters (from overview) is the finding; cluster profiles
@@ -100,7 +100,7 @@ pogo = stream.get_metrics([{"metric": "matches_pattern",
                             "metric_args": {"pattern": "listing->product->listing"}}])
 ```
 
-Pitfalls (both are result-killers): (1) count loops BEFORE `collapse_events(consecutive=)`
+Pitfalls (both are result-killers): (1) count loops BEFORE `collapse_events(loops=)`
 — collapsing erases them; (2) naive "conversion of users with loop vs without" is
 confounded by exposure — longer paths have more loops AND more chances to convert;
 stratify by path-length quantiles before comparing.

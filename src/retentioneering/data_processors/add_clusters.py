@@ -18,6 +18,7 @@ from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import PreprocessingConfigError
 from retentioneering.metrics.metric_builder import MetricBuilder
 from retentioneering.tools.cluster_analysis import normalize_scaler
+from retentioneering.utils.clustering_methods import parse_method_args
 
 PROCESSOR_NAME = "add_clusters"
 
@@ -58,10 +59,8 @@ class AddClusters(DataProcessor):
         name: str,
         features: List[Dict[str, Any]],
         method: T_ClusteringMethod = "kmeans",
+        method_args: Dict[str, Any] | None = None,
         scaler: T_Scaler = "minmax",
-        n_clusters: int | None = None,
-        min_cluster_size: int | None = None,
-        cluster_selection_epsilon: float | None = None,
         nmf_components: int | None = None,
         path_col: str | None = None,
         event_col: str | None = None,
@@ -80,11 +79,12 @@ class AddClusters(DataProcessor):
                          {"metric": "event_count", "metric_args": {"event": "purchase"}}
                      ]
             method: Clustering method - "kmeans" or "hdbscan"
+            method_args: Parameters of the chosen `method` — `n_clusters` for
+                     "kmeans" (required), `min_cluster_size` /
+                     `cluster_selection_epsilon` for "hdbscan" (both optional).
+                     A key belonging to another method is an error.
             scaler: Feature scaler - "minmax", "std", or None. Default is "minmax".
                      "standard" is accepted as a legacy alias of "std".
-            n_clusters: Number of clusters for k-means (required for kmeans)
-            min_cluster_size: Minimum cluster size for HDBSCAN
-            cluster_selection_epsilon: Cluster selection epsilon for HDBSCAN
             path_col: Path ID column (if None, taken from schema)
             event_col: Event column (if None, taken from schema)
         """
@@ -97,25 +97,15 @@ class AddClusters(DataProcessor):
         self.path_col = path_col
         self.event_col = event_col
 
-        # Validate method and collect method-specific parameters
-        if method == "kmeans":
-            if n_clusters is None:
-                raise PreprocessingConfigError(
-                    PROCESSOR_NAME, "n_clusters is required for kmeans method"
-                )
-            self.method_params = {"n_clusters": n_clusters}
-        elif method == "hdbscan":
-            self.method_params = {}
-            if min_cluster_size is not None:
-                self.method_params["min_cluster_size"] = min_cluster_size
-            if cluster_selection_epsilon is not None:
-                self.method_params["cluster_selection_epsilon"] = (
-                    cluster_selection_epsilon
-                )
-        else:
+        self.method_params = parse_method_args(
+            method,
+            method_args,
+            error=lambda msg: PreprocessingConfigError(PROCESSOR_NAME, msg),
+        )
+        if method == "kmeans" and self.method_params.get("n_clusters") is None:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                f"Unknown clustering method: {method}. Use 'kmeans' or 'hdbscan'.",
+                "method_args={'n_clusters': ...} is required for the 'kmeans' method",
             )
 
         super().__init__()

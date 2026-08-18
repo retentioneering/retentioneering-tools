@@ -31,6 +31,8 @@ from retentioneering.exceptions import (
     GridPointNotFoundError,
 )
 from retentioneering.metrics.metric_builder import MetricBuilder
+from retentioneering.utils.clustering_methods import METHOD_ARGS, parse_method_args
+from retentioneering.utils.sentinels import UNSET as _UNSET
 
 SEGMENT_COL = "__cluster__"
 SILHOUETTE_SAMPLE_SIZE = 2_000
@@ -86,6 +88,28 @@ def parse_n_clusters(value):
         return None
 
 
+def _as_call_params(
+    method: str, scaler: T_Scaler, params: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Reshape a flat grid point into `add_clusters` keyword arguments.
+
+    Grid points stay flat inside `silhouette["params"]` — they are coordinates in
+    a space whose axes span both method arguments (`n_clusters`) and pipeline
+    steps (`nmf_components`), and `select` matches against them by bare name.
+    `best_params` is the other thing: a call, so it carries the API's shape and
+    can be splatted straight into `add_clusters`.
+    """
+    method_keys = METHOD_ARGS[method]
+    call: Dict[str, Any] = {
+        "method": method,
+        "method_args": {k: v for k, v in params.items() if k in method_keys},
+        "scaler": scaler,
+    }
+    call.update({k: v for k, v in params.items() if k not in method_keys})
+    return call
+
+
 @dataclass
 class ClusterAnalysis:
     eventstream: "Eventstream"
@@ -94,16 +118,19 @@ class ClusterAnalysis:
         self,
         features_config: List[Dict[str, Any]],
         method: T_ClusteringMethod = "kmeans",
+        method_args: Dict[str, Any] | None = None,
         scaler: T_Scaler = "minmax",
-        n_clusters: int | List[int] | str | None = None,
-        min_cluster_size: int | List[int] | None = None,
-        cluster_selection_epsilon: float | List[float] | None = None,
         nmf_components: int | List[int] | None = None,
         overview_metrics: List[Dict[str, Any]] | None = None,
         path_col: str | None = None,
         event_col: str | None = None,
         select: Dict[str, Any] | None = None,
     ) -> Dict[str, Any]:
+        args = parse_method_args(method, method_args, error=ValueError)
+        n_clusters = args.get("n_clusters")
+        min_cluster_size = args.get("min_cluster_size")
+        cluster_selection_epsilon = args.get("cluster_selection_epsilon")
+
         if n_clusters is None and method == "kmeans":
             n_clusters = "3-8"
         n_clusters = parse_n_clusters(n_clusters)
@@ -116,7 +143,9 @@ class ClusterAnalysis:
             else:
                 n_clusters_missing = n_clusters is None
             if n_clusters_missing:
-                raise ValueError("n_clusters is required for kmeans method")
+                raise ValueError(
+                    "method_args={'n_clusters': ...} is required for the 'kmeans' method"
+                )
 
         path_col = path_col or self.eventstream.schema.path_col
         event_col = event_col or self.eventstream.schema.event_col
@@ -175,7 +204,9 @@ class ClusterAnalysis:
                 )
                 result["overview_df"] = overview_df
                 result["cluster_labels"] = cluster_labels
-                result["best_params"] = chosen.get("params")
+                result["best_params"] = _as_call_params(
+                    method, scaler, chosen.get("params") or {}
+                )
                 if chosen.get("nmf_data") is not None:
                     nmf_data = chosen["nmf_data"]
                     nmf_data["W_cluster_means"] = self._compute_w_cluster_means(
@@ -225,14 +256,15 @@ class ClusterAnalysis:
         )
 
         if method == "kmeans":
-            best_params: Dict[str, Any] = {"n_clusters": n_clusters}
+            used: Dict[str, Any] = {"n_clusters": n_clusters}
         else:
-            best_params = {
+            used = {
                 "min_cluster_size": min_cluster_size or 5,
                 "cluster_selection_epsilon": cluster_selection_epsilon or 0.0,
             }
         if nmf_components is not None:
-            best_params["nmf_components"] = nmf_components
+            used["nmf_components"] = nmf_components
+        best_params = _as_call_params(method, scaler, used)
 
         return {
             "overview_df": overview_df,
@@ -498,8 +530,9 @@ class ClusterAnalysis:
         self,
         cluster_labels: pd.Series,
         metric: Dict[str, Any],
-        segment_level: str | List[str],
-        complement: bool = False,
+        *,
+        segment_level: Any = _UNSET,
+        segment_levels: List[str] | None = None,
         path_col: str | None = None,
     ) -> Dict[str, Any]:
         """Distribution of `metric` across one or two clusters from the last Apply.
@@ -507,14 +540,15 @@ class ClusterAnalysis:
         `cluster_labels` is the `cluster_labels` Series `fit()` returns (path id →
         cluster name) — the widget caches it and passes it back in here rather than
         re-running clustering. Delegates to `SegmentOverview.get_metric_distribution`
-        via a throwaway temp stream, exactly like the overview heatmap does.
+        via a throwaway temp stream, exactly like the overview heatmap does, and
+        takes the same mutually-exclusive `segment_level` / `segment_levels`.
         """
         path_col = path_col or self.eventstream.schema.path_col
         temp_stream = self._temp_cluster_stream(cluster_labels, path_col)
         return temp_stream.get_metric_distribution(
             segment_col=SEGMENT_COL,
-            segment_level=segment_level,
             metric=metric,
-            complement=complement,
+            segment_level=segment_level,
+            segment_levels=segment_levels,
             path_col=path_col,
         )

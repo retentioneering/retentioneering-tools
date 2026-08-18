@@ -157,7 +157,7 @@ class TestSplitSessionsStartEnd:
                 ["user_1", "end", "2020-01-01 00:03:00"],
             ]
         )
-        res = stream.split_sessions(start_event="start", end_event="end")
+        res = stream.split_sessions(bounds={"start_event": "start", "end_event": "end"})
         df = res.df
 
         assert "start" not in df["event"].values
@@ -178,7 +178,7 @@ class TestSplitSessionsStartEnd:
                 ["user_1", "end", "2020-01-01 00:02:00"],
             ]
         )
-        res = stream.split_sessions(start_event="start", end_event="end")
+        res = stream.split_sessions(bounds={"start_event": "start", "end_event": "end"})
         df = res.df
 
         assert list(df["event"].astype(str)) == ["event_1", "event_2", "event_3"]
@@ -207,7 +207,7 @@ class TestSplitSessionsStartEnd:
                 ["user_2", "end", "2020-01-01 00:02:00"],
             ]
         )
-        res = stream.split_sessions(start_event="start", end_event="end")
+        res = stream.split_sessions(bounds={"start_event": "start", "end_event": "end"})
         df = res.df
 
         u1 = df[df["user_id"] == "user_1"]["session_index"].tolist()
@@ -269,20 +269,30 @@ class TestSplitSessionsValidation:
         with pytest.raises(PreprocessingConfigError):
             stream.split_sessions()
 
-    def test_raises_start_without_end(self):
+    def test_raises_bounds_without_end(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
-        with pytest.raises(PreprocessingConfigError):
-            stream.split_sessions(start_event="start")
+        with pytest.raises(PreprocessingConfigError, match="requires both"):
+            stream.split_sessions(bounds={"start_event": "start"})
 
-    def test_raises_end_without_start(self):
+    def test_raises_bounds_without_start(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
-        with pytest.raises(PreprocessingConfigError):
-            stream.split_sessions(end_event="end")
+        with pytest.raises(PreprocessingConfigError, match="requires both"):
+            stream.split_sessions(bounds={"end_event": "end"})
+
+    def test_raises_unknown_bounds_key(self):
+        stream = make_stream([["user_1", "A", "2020-01-01"]])
+        with pytest.raises(PreprocessingConfigError, match="unknown 'bounds' key"):
+            stream.split_sessions(
+                bounds={"start_event": "s", "end_event": "e", "timeout": "30m"}
+            )
 
     def test_raises_multiple_boundary_modes(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError):
-            stream.split_sessions(separator="sep", start_event="start", end_event="end")
+            stream.split_sessions(
+                separator="sep",
+                bounds={"start_event": "start", "end_event": "end"},
+            )
 
     def test_raises_session_col_already_exists(self):
         df = pd.DataFrame(

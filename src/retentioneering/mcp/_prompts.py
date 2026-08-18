@@ -265,7 +265,7 @@ def _static_instructions(tail: str = "") -> str:
         "",
         "### Noise removal before any analysis",
         "Call update_base_stream first (ask user to confirm) with one or more of:",
-        "  collapse_events consecutive=True  — removes self-loops",
+        "  collapse_events loops=True  — removes self-loops",
         "  filter_paths length > N          — removes very short sessions",
         "  filter_events column/values      — removes specific noise events",
         tail or "- Save reports to a convenient local path.",
@@ -306,8 +306,8 @@ def _system_instructions(
         ]
     if context.get("description"):
         header.append(f"Business context: {context['description']}")
-    if context.get("events"):
-        descs = ", ".join(f"'{k}': {v}" for k, v in context["events"].items())
+    if context.get("event_groups"):
+        descs = ", ".join(f"'{k}': {v}" for k, v in context["event_groups"].items())
         header.append(f"Event meanings: {descs}")
     if context.get("kpis"):
         descs = ", ".join(f"'{k}': {v}" for k, v in context["kpis"].items())

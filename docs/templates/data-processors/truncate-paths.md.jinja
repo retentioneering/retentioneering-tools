@@ -3,8 +3,8 @@
 {% block how_it_works %}
 ## How it works
 
-For each path, `truncate_paths` finds the first `start_event` and the first
-`end_event` **after** it, and keeps only the window between them, both anchors
+For each path, `truncate_paths` finds the first `start_anchor` and the first
+`end_anchor` **after** it, and keeps only the window between them, both anchors
 included. A path missing either anchor — or containing them in the wrong order
 — is dropped entirely, so the output holds only paths that actually made the
 journey you asked about.
@@ -16,7 +16,7 @@ Before — three paths, only one of which registers and then buys:
 - u3: `home → registration → browse` (never purchased)
 
 ```python
-stream.truncate_paths(start_event="registration", end_event="purchase")
+stream.truncate_paths(start_anchor="registration", end_anchor="purchase")
 ```
 
 After — u1 is trimmed to the window; u2 and u3 are gone:
@@ -33,7 +33,7 @@ Use `path_start` / `path_end` to anchor on the real ends of a path — for
 example, everything a user did before their first purchase:
 
 ```python
-stream.truncate_paths(start_event="path_start", end_event="purchase")
+stream.truncate_paths(start_anchor="path_start", end_anchor="purchase")
 ```
 
 ## Anchoring on a sequence, not just an event
@@ -84,8 +84,8 @@ CONVERTING_CART = {
 }
 
 stream.truncate_paths(
-    start_event={**CONVERTING_CART, "offset": -1},     # one event before it
-    end_event={**CONVERTING_CART, "offset": "30m"},    # half an hour after it
+    start_anchor={**CONVERTING_CART, "offset": -1},     # one event before it
+    end_anchor={**CONVERTING_CART, "offset": "30m"},    # half an hour after it
 )
 ```
 
@@ -177,7 +177,7 @@ the earliest end. Two quite different things fall out of that one rule.
 A fallback, when one group has no end event at all:
 
 ```python
-stream.truncate_paths(start_event="path_start", end_event=["purchase", "path_end"])
+stream.truncate_paths(start_anchor="path_start", end_anchor=["purchase", "path_end"])
 ```
 
 Converters are cut at their purchase; everyone else keeps their whole path
@@ -189,8 +189,8 @@ And a budget, when you are comparing two groups:
 
 ```python
 stream.truncate_paths(
-    start_event={"pattern": "catalog->.*->add_to_cart"},
-    end_event=["purchase", {"pattern": "catalog->.*->add_to_cart", "offset": 10}],
+    start_anchor={"pattern": "catalog->.*->add_to_cart"},
+    end_anchor=["purchase", {"pattern": "catalog->.*->add_to_cart", "offset": 10}],
 )
 ```
 

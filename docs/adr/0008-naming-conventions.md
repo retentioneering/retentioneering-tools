@@ -22,8 +22,9 @@ The rules, in force for all future API additions:
    `end_anchor` for a window (`truncate_paths`, `get_conversion_rate`) and
    `anchor` on its own (`add_events`). A parameter naming *boundary events*
    as a plain set of names, which is not a position, stays `start_event` /
-   `end_event` (`split_sessions`, `collapse_events`, the `time_between`
-   metric); it is renamed if and when it starts taking anchors. The
+   `end_event` — as the keys of `bounds` in `split_sessions` /
+   `collapse_events`, and in the `time_between` metric's `metric_args`; it is
+   renamed if and when it starts taking anchors. The
    "everything else" diff sentinel is `<REST>`.
 2. **Number encodes the role, not the arity of the accepted value.** Singular
    when the parameter names *one role*, whether it then takes exactly one
@@ -65,9 +66,43 @@ The rules, in force for all future API additions:
 7. **Mode selection = argument selection.** Where a method has alternative
    modes, each mode is one mutually-exclusive argument
    (`keep`/`drop`/`func`/`sql`), not a dict of generic keys or a flag.
+   A mode needing more than one parameter carries them *inside* its own
+   argument (`split_sessions(bounds={"start_event", "end_event"})`), never as
+   further top-level parameters that only apply to one mode — a parameter belonging
+   to a mode that was not selected is otherwise accepted and silently
+   ignored, which is the failure this rule exists to prevent. The one
+   exception to "not a flag" that keeps coming up and is *not* allowed: a
+   boolean whose value is fully determined by another argument's type
+   (the removed `get_metric_distribution(complement=)`) carries no
+   information and only creates a way to be wrong.
+   Corollary: the parameters of a *cross-cutting step* are not mode
+   parameters and stay flat — `scaler` and `nmf_components` apply to every
+   clustering method, so they sit beside `method`, not inside its arguments.
+   Two further corollaries, both learned from `collapse_events`:
+   modes belong in the **signature**, not as keys of a config object — a list
+   of specs (its old `event_groups`) hides them from `help()`, from the MCP
+   docs and from mode validation, and buys nothing a chained call does not
+   already give. (It also hides *features*: that processor's `timeout` key
+   worked and was tested, yet appeared in no docstring for as long as it lived
+   inside the spec.) And a parameter that is *orthogonal* to the mode stays out of
+   it: `collapse_events`' `name` answers "what is the merged event called",
+   which every mode has to answer, so it is one argument beside them rather
+   than a key repeated inside each.
 8. Deliberate exceptions are allowed but must be documented: `proba_out` /
    `proba_in` keep the sklearn-flavoured "proba" because the values are
    transition probabilities and that framing is the point.
+   The second one is **`<name>` + `<name>_args`**, where the mode is a name
+   from an open registry and its arguments are that name's own schema:
+   `{"metric": ..., "metric_args": {...}}` throughout the metrics registry,
+   and `method` / `method_args` on the three clustering surfaces. It reads
+   as a violation of rule 7 (the args *are* a dict of per-mode keys) and is
+   permitted because the registry is open-ended — one argument per algorithm
+   would grow the signature with every addition — while the selector itself
+   stays a visible scalar rather than being buried in the dict. Applies only
+   where the registry is genuinely open; two fixed alternatives are two
+   arguments. Validation is not optional here: a key that does not belong to
+   the selected name must raise, since the type system no longer separates
+   the modes.
 
 ## Consequences
 

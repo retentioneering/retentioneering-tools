@@ -32,7 +32,7 @@ overloading `events`:
 
 - `event_count_bulk`/`has_event_bulk` are a **shorthand for multiple metrics** —
   they expand into one column per event, for Segment Overview/Cluster Analysis.
-  They cannot be used inside a Filter Paths (or `collapse_events` case)
+  They cannot be used inside a Filter Paths (or `collapse_events` naming case)
   condition, since a condition needs exactly one comparable value per path.
 - `has_all_events`/`has_any_event` are genuine single-valued metrics that
   combine a list of events into one 0/1 result (AND/OR respectively) — these

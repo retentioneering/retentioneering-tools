@@ -27,10 +27,14 @@ class TestClusterAnalysisWidgetSave:
     def test__chosen_params_reports_fixed_n_clusters(self) -> None:
         stream = _make_stream()
         widget = ClusterAnalysisWidget(
-            stream, features=[{"metric": "length"}], n_clusters=2
+            stream, features=[{"metric": "length"}], method_args={"n_clusters": 2}
         )
 
-        assert json.loads(widget.chosen_params) == {"n_clusters": 2}
+        assert json.loads(widget.chosen_params) == {
+            "method": "kmeans",
+            "method_args": {"n_clusters": 2},
+            "scaler": "minmax",
+        }
 
     def test__chosen_params_reports_grid_search_winner(self) -> None:
         # Needs enough distinct paths for KMeans(n_clusters=3) to be valid.
@@ -51,17 +55,33 @@ class TestClusterAnalysisWidgetSave:
         )
         stream = Eventstream(df)
         widget = ClusterAnalysisWidget(
-            stream, features=[{"metric": "length"}], n_clusters=[2, 3]
+            stream, features=[{"metric": "length"}], method_args={"n_clusters": [2, 3]}
         )
         assert widget.error == ""
 
         params = json.loads(widget.chosen_params)
-        assert params["n_clusters"] in (2, 3)
+        assert params["method_args"]["n_clusters"] in (2, 3)
+
+    def test__hdbscan_args_reach_the_computation(self) -> None:
+        """The widget has no sidebar fields for hdbscan, so `method_args` is the
+        only way to configure it — it used to have no way at all."""
+        stream = _make_stream()
+        widget = ClusterAnalysisWidget(
+            stream,
+            features=[{"metric": "length"}],
+            method="hdbscan",
+            method_args={"min_cluster_size": 2},
+        )
+
+        assert widget.error == ""
+        params = json.loads(widget.chosen_params)
+        assert params["method"] == "hdbscan"
+        assert params["method_args"]["min_cluster_size"] == 2
 
     def test__save_mutates_shared_eventstream(self) -> None:
         stream = _make_stream()
         widget = ClusterAnalysisWidget(
-            stream, features=[{"metric": "length"}], n_clusters=2
+            stream, features=[{"metric": "length"}], method_args={"n_clusters": 2}
         )
 
         widget.save_segment_name = "cluster"
@@ -86,7 +106,7 @@ class TestClusterAnalysisWidgetSave:
     def test__save_without_rename(self) -> None:
         stream = _make_stream()
         widget = ClusterAnalysisWidget(
-            stream, features=[{"metric": "length"}], n_clusters=2
+            stream, features=[{"metric": "length"}], method_args={"n_clusters": 2}
         )
 
         widget.save_segment_name = "cluster"
@@ -101,7 +121,7 @@ class TestClusterAnalysisWidgetSave:
     def test__save_without_segment_name_reports_error(self) -> None:
         stream = _make_stream()
         widget = ClusterAnalysisWidget(
-            stream, features=[{"metric": "length"}], n_clusters=2
+            stream, features=[{"metric": "length"}], method_args={"n_clusters": 2}
         )
 
         widget.save_trigger = "1"
@@ -113,7 +133,7 @@ class TestClusterAnalysisWidgetSave:
     def test__save_with_colliding_segment_name_reports_error(self) -> None:
         stream = _make_stream()
         widget = ClusterAnalysisWidget(
-            stream, features=[{"metric": "length"}], n_clusters=2
+            stream, features=[{"metric": "length"}], method_args={"n_clusters": 2}
         )
         widget.save_segment_name = "user_id"
         widget.save_trigger = "1"
@@ -139,13 +159,15 @@ class TestClusterAnalysisWidgetDefaults:
 class TestClusterAnalysisStreamVarName:
     def test__infers_the_variable_name_used_at_the_call_site(self) -> None:
         es = _make_stream()
-        widget = es.cluster_analysis(features=[{"metric": "length"}], n_clusters=2)
+        widget = es.cluster_analysis(
+            features=[{"metric": "length"}], method_args={"n_clusters": 2}
+        )
 
         assert widget.stream_var_name == "es"
 
     def test__falls_back_to_stream_when_not_bound_to_a_variable(self) -> None:
         widget = _make_stream().cluster_analysis(
-            features=[{"metric": "length"}], n_clusters=2
+            features=[{"metric": "length"}], method_args={"n_clusters": 2}
         )
 
         assert widget.stream_var_name == "stream"
@@ -155,7 +177,7 @@ class TestClusterAnalysisStreamVarName:
         has no caller frame to inspect, so it must fall back to the default."""
         stream = _make_stream()
         widget = ClusterAnalysisWidget(
-            stream, features=[{"metric": "length"}], n_clusters=2
+            stream, features=[{"metric": "length"}], method_args={"n_clusters": 2}
         )
 
         assert widget.stream_var_name == "stream"
@@ -182,7 +204,7 @@ FEATURES = [
 
 def _widget(**kwargs):
     return ClusterAnalysisWidget(
-        _grid_stream(), features=FEATURES, n_clusters="2-4", **kwargs
+        _grid_stream(), features=FEATURES, method_args={"n_clusters": "2-4"}, **kwargs
     )
 
 
@@ -192,7 +214,10 @@ class TestClusterAnalysisWidgetGridSelection:
         sil = json.loads(widget.result)["silhouette"]
         assert widget.selected_params == ""
         assert sil["selected_index"] is None
-        assert json.loads(widget.chosen_params) == sil["params"][sil["best_index"]]
+        assert (
+            json.loads(widget.chosen_params)["method_args"]
+            == sil["params"][sil["best_index"]]
+        )
 
     def test__selecting_a_point_rebuilds_the_overview_for_it(self) -> None:
         widget = _widget()
@@ -208,7 +233,7 @@ class TestClusterAnalysisWidgetGridSelection:
         partition on screen, not the one that happened to win on score."""
         widget = _widget()
         widget.selected_params = json.dumps({"n_clusters": 4})
-        assert json.loads(widget.chosen_params) == {"n_clusters": 4}
+        assert json.loads(widget.chosen_params)["method_args"] == {"n_clusters": 4}
 
     def test__saving_materialises_the_selected_partition(self) -> None:
         widget = _widget()

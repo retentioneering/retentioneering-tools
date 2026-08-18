@@ -9,7 +9,9 @@ if TYPE_CHECKING:
 
 from retentioneering.exceptions import GridPointNotFoundError, RetentioneeringError
 from retentioneering.tools.cluster_analysis import parse_n_clusters as _parse_n_clusters
+from retentioneering.utils.clustering_methods import parse_method_args
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
+from retentioneering.widgets._utils import distribution_levels as _distribution_levels
 
 
 class ClusterAnalysisWidget(RetentioneeringWidget):
@@ -93,8 +95,8 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         eventstream,
         features=_UNSET,
         method=_UNSET,
+        method_args=_UNSET,
         scaler=_UNSET,
-        n_clusters=_UNSET,
         overview_metrics=_UNSET,
         path_col=_UNSET,
         height=_UNSET,
@@ -147,9 +149,22 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         )
         self.method = method if method is not _UNSET else "kmeans"
         self.scaler = scaler if scaler is not _UNSET else "minmax"
-        _nc = n_clusters if n_clusters is not _UNSET else ""
+        # `method_args` is one public argument; the traitlets behind it stay flat
+        # because they are the JS protocol (the sidebar binds n_clusters as its
+        # own field), not the API.
+        _args = parse_method_args(
+            self.method,
+            method_args if method_args is not _UNSET else None,
+            error=ValueError,
+        )
+        self._hdbscan_args = {
+            k: v for k, v in _args.items() if k != "n_clusters" and v is not None
+        }
+        _nc = _args.get("n_clusters")
         self.n_clusters = (
-            json.dumps(_nc) if isinstance(_nc, list) else (str(_nc) if _nc else "3-8")
+            json.dumps(_nc)
+            if isinstance(_nc, list)
+            else (str(_nc) if _nc not in (None, "") else "3-8")
         )
         self.nmf_enabled = False
         self.nmf_components = ""
@@ -173,7 +188,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
                     ("features", features),
                     ("method", method),
                     ("scaler", scaler),
-                    ("n_clusters", n_clusters),
+                    ("n_clusters", method_args),
                     ("overview_metrics", overview_metrics),
                     ("path_col", path_col),
                     ("height", height),
@@ -278,8 +293,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
     def _tool_get_metric_distribution(self, params: dict):
         return self._compute_distribution_raw(
             metric=params["metric"],
-            segment_level=params["segment_level"],
-            complement=params.get("complement", False),
+            levels=_distribution_levels(params),
             path_col=params.get("path_col") or self.path_col or None,
         )
 
@@ -349,6 +363,18 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         finally:
             self.is_loading = False
 
+    def _method_args(self, method, n_clusters) -> dict:
+        """
+        The chosen method's own arguments.
+
+        The sidebar only edits `n_clusters`; hdbscan's arguments come from the
+        constructor and are kept here so the widget can run a method whose
+        parameters its UI does not (yet) expose.
+        """
+        if method == "kmeans":
+            return {"n_clusters": n_clusters}
+        return dict(self._hdbscan_args)
+
     def _compute_raw(
         self,
         features,
@@ -367,8 +393,8 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         raw = self._eventstream.cluster_analysis_data(
             features=features,
             method=method,
+            method_args=self._method_args(method, n_clusters),
             scaler=scaler,
-            n_clusters=n_clusters,
             nmf_components=nmf_components,
             overview_metrics=metrics,
             path_col=path_col,
@@ -400,9 +426,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
             "cluster_labels": raw.get("cluster_labels"),
         }
 
-    def _compute_distribution_raw(
-        self, metric, segment_level, complement=False, path_col=None
-    ) -> dict:
+    def _compute_distribution_raw(self, metric, levels: dict, path_col=None) -> dict:
         from retentioneering.tools.cluster_analysis import ClusterAnalysis
 
         if self._cluster_labels is None:
@@ -410,9 +434,8 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         return ClusterAnalysis(self._eventstream).get_metric_distribution(
             cluster_labels=self._cluster_labels,
             metric=metric,
-            segment_level=segment_level,
-            complement=complement,
             path_col=path_col,
+            **levels,
         )
 
     def _compute_distribution(self, req: dict):
@@ -420,8 +443,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         try:
             result = self._compute_distribution_raw(
                 metric=req["metric"],
-                segment_level=req["segment_level"],
-                complement=req.get("complement", False),
+                levels=_distribution_levels(req),
                 path_col=self.path_col or None,
             )
             self.dist_result = json.dumps(
@@ -464,22 +486,17 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
             rename = json.loads(self.save_rename) if self.save_rename else {}
             params = json.loads(self.chosen_params) if self.chosen_params else {}
 
+            # `chosen_params` is already `add_clusters`-shaped (method /
+            # method_args / scaler / nmf_components), so the call is a splat
+            # rather than a per-method reassembly.
             kwargs: dict = {
                 "name": name,
                 "features": features,
+                "path_col": self.path_col or None,
                 "method": self.method,
                 "scaler": self.scaler or None,
-                "path_col": self.path_col or None,
+                **params,
             }
-            if self.method == "kmeans":
-                kwargs["n_clusters"] = params.get("n_clusters")
-            else:
-                kwargs["min_cluster_size"] = params.get("min_cluster_size")
-                kwargs["cluster_selection_epsilon"] = params.get(
-                    "cluster_selection_epsilon"
-                )
-            if params.get("nmf_components") is not None:
-                kwargs["nmf_components"] = params["nmf_components"]
 
             self._apply_clusters_inplace(kwargs, rename)
             self.save_result = json.dumps({"ok": True, "segment_name": name})

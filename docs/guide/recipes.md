@@ -173,34 +173,34 @@ stream = stream.add_clusters(
         {"metric": "active_days"},
         {"metric": "has_event", "metric_args": {"event": "purchase"}},
     ],
-    n_clusters=4,
+    method_args={"n_clusters": 4},
 )
 ```
 
-Note the difference in `n_clusters`: the widget searches a range (`"3-8"` by default) and picks the best split by silhouette score, while `add_clusters` materializes one specific clustering and therefore needs an exact number. You don't have to copy it by hand — the widget's "Save Clusters" button writes the matching `add_clusters(...)` call for you, and the headless twin returns the same thing under `best_params`:
+Note the difference in `n_clusters`: the widget searches a range (`"3-8"` by default) and picks the best split by silhouette score, while `add_clusters` materializes one specific clustering and therefore needs an exact number. Either way it travels inside `method_args`, the dict holding the chosen `method`'s own parameters — `n_clusters` for k-means, `min_cluster_size` / `cluster_selection_epsilon` for hdbscan. You don't have to copy it by hand — the widget's "Save Clusters" button writes the matching `add_clusters(...)` call for you, and the headless twin returns the same thing under `best_params`:
 
 ```python
 features = [{"metric": "length"}, {"metric": "active_days"}]
 
 result = stream.cluster_analysis_data(features=features)
-result["best_params"]                     # e.g. {"n_clusters": 3} — the winning split
+result["best_params"]                     # {"method": "kmeans", "method_args": {"n_clusters": 3}, ...}
 
 stream = stream.add_clusters("behavior", features=features, **result["best_params"])
 ```
 
-`best_params` carries only the searched-over parameters, so pass the same `features` alongside it.
+`best_params` is already shaped as `add_clusters` keyword arguments, but it says only how to cluster — pass the same `features` alongside it.
 
 The winner is a hint, not a verdict — scores across a range are often close enough that it is decided by noise, while the runner-up splits into groups you can actually name. In the widget, click any bar in the **Silhouette** tab to interpret that partition instead; everything downstream follows the pick, "Save Clusters" included. Headlessly, `select` does the same while keeping the whole grid:
 
 ```python
-result = stream.cluster_analysis_data(features=features, n_clusters="3-8")
+result = stream.cluster_analysis_data(features=features, method_args={"n_clusters": "3-8"})
 list(zip(result["silhouette"]["params"], result["silhouette"]["silhouette"]))
 # [({'n_clusters': 3}, 0.41), ({'n_clusters': 4}, 0.40), ({'n_clusters': 5}, 0.37), ...]
 
 picked = stream.cluster_analysis_data(
-    features=features, n_clusters="3-8", select={"n_clusters": 4},
+    features=features, method_args={"n_clusters": "3-8"}, select={"n_clusters": 4},
 )
-picked["best_params"]                     # {"n_clusters": 4} — safe to save as before
+picked["best_params"]                     # method_args: {"n_clusters": 4} — safe to save as before
 ```
 
 `select` takes an entry of `silhouette["params"]`, so choosing a point is copying one across.
@@ -250,13 +250,13 @@ stream.cluster_analysis(
 )
 ```
 
-Once the split looks right, label the clusters right in the UI and click "Save Clusters" to persist the clusters which will become a new column in the eventstream. This is equivalent to running [Add Clusters](/docs/data-processors/add-clusters) with the same `path_col`, `features`, and `n_clusters` you settled on.
+Once the split looks right, label the clusters right in the UI and click "Save Clusters" to persist the clusters which will become a new column in the eventstream. This is equivalent to running [Add Clusters](/docs/data-processors/add-clusters) with the same `path_col`, `features`, and `method_args` you settled on.
 
 Finally, collapse each session into a single event named after its type with
 [Collapse Events](/docs/data-processors/collapse-events):
 
 ```python
-stream = stream.collapse_events(session_col="session_id", session_type_col="session_type")
+stream = stream.collapse_events(group_col="session_id", name={"col": "session_type"})
 ```
 
 The new eventstream has one synthetic event per session, and the number of unique

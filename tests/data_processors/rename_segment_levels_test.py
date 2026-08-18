@@ -64,7 +64,7 @@ class TestRenameSegmentLevels:
             name="cluster",
             features=[{"metric": "length"}],
             method="kmeans",
-            n_clusters=2,
+            method_args={"n_clusters": 2},
         ).rename_segment_levels("cluster", {"cluster_0": "short", "cluster_1": "long"})
 
         assert "cluster" in res.schema.segment_cols

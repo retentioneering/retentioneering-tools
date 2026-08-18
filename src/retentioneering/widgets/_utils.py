@@ -5,6 +5,19 @@ from __future__ import annotations
 import json
 
 
+def distribution_levels(req: dict) -> dict:
+    """
+    Pick the `get_metric_distribution` mode out of a JS request.
+
+    The front end sends `segment_levels` (a pair) or `segment_level` (one level
+    against every other level of the column); mirroring the Python signature
+    keeps the mutual exclusivity expressed in exactly one place.
+    """
+    if req.get("segment_levels") is not None:
+        return {"segment_levels": req["segment_levels"]}
+    return {"segment_level": req["segment_level"]}
+
+
 def step_matrix_blocks(raw, diff, path_pattern):
     """Normalize `step_matrix_data`/`step_sankey_data`'s return value back to
     the always-tuple-of-blocks form: without `path_pattern` those methods

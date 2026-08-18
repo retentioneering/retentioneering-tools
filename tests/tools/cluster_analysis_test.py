@@ -41,7 +41,7 @@ def get_df():
 
 def get_large_df():
     """12 users with varying path lengths - enough distinct paths for the
-    default n_clusters="3-8" grid search, which needs at least 8 samples."""
+    default method_args={"n_clusters": "3-8"} grid search, which needs at least 8 samples."""
     rows = []
     for i in range(12):
         uid = f"user_{i}"
@@ -65,7 +65,7 @@ class TestClusterAnalysis:
                 {"metric": "duration"},
             ],
             method="kmeans",
-            n_clusters=2,
+            method_args={"n_clusters": 2},
             scaler="minmax",
             overview_metrics=[
                 {"metric": "length", "agg": "mean"},
@@ -79,8 +79,13 @@ class TestClusterAnalysis:
         assert "length_mean" in overview_df.index
         assert len(overview_df.columns) <= 2
 
-        # best_params reports the exact (fixed) config used, for reproducing via add_clusters
-        assert result["best_params"] == {"n_clusters": 2}
+        # best_params reports the exact (fixed) config used, already shaped as
+        # add_clusters keyword arguments
+        assert result["best_params"] == {
+            "method": "kmeans",
+            "method_args": {"n_clusters": 2},
+            "scaler": "minmax",
+        }
 
     def test_kmeans_silhouette(self) -> None:
         """Test silhouette mode returns scores for each k"""
@@ -93,7 +98,7 @@ class TestClusterAnalysis:
                 {"metric": "duration"},
             ],
             method="kmeans",
-            n_clusters=[2, 3, 4, 5],
+            method_args={"n_clusters": [2, 3, 4, 5]},
             scaler="minmax",
         )
 
@@ -114,8 +119,8 @@ class TestClusterAnalysis:
         # best_params reports the winning n_clusters from the grid search,
         # so callers can reproduce the exact same clustering via add_clusters.
         assert "best_params" in result
-        assert result["best_params"]["n_clusters"] in [2, 3, 4, 5]
-        best_idx = sil["params"].index(result["best_params"])
+        assert result["best_params"]["method_args"]["n_clusters"] in [2, 3, 4, 5]
+        best_idx = sil["params"].index(result["best_params"]["method_args"])
         assert sil["silhouette"][best_idx] == max(sil["silhouette"])
 
     def test_kmeans_n_clusters_range_string(self) -> None:
@@ -130,7 +135,7 @@ class TestClusterAnalysis:
                 {"metric": "duration"},
             ],
             method="kmeans",
-            n_clusters="2-5",
+            method_args={"n_clusters": "2-5"},
             scaler="minmax",
         )
 
@@ -141,7 +146,7 @@ class TestClusterAnalysis:
             4,
             5,
         ]
-        assert result["best_params"]["n_clusters"] in [2, 3, 4, 5]
+        assert result["best_params"]["method_args"]["n_clusters"] in [2, 3, 4, 5]
 
     def test_hdbscan_basic(self) -> None:
         """Test hdbscan clustering with overview"""
@@ -154,7 +159,7 @@ class TestClusterAnalysis:
                 {"metric": "duration"},
             ],
             method="hdbscan",
-            min_cluster_size=2,
+            method_args={"min_cluster_size": 2},
             scaler="minmax",
             overview_metrics=[
                 {"metric": "length", "agg": "mean"},
@@ -176,7 +181,7 @@ class TestClusterAnalysis:
                 {"metric": "duration"},
             ],
             method="hdbscan",
-            min_cluster_size=[2, 3, 4],
+            method_args={"min_cluster_size": [2, 3, 4]},
             scaler="minmax",
         )
 
@@ -204,8 +209,10 @@ class TestClusterAnalysis:
                 {"metric": "duration"},
             ],
             method="hdbscan",
-            min_cluster_size=[2, 3],
-            cluster_selection_epsilon=[0.0, 0.25, 0.5],
+            method_args={
+                "min_cluster_size": [2, 3],
+                "cluster_selection_epsilon": [0.0, 0.25, 0.5],
+            },
             scaler="minmax",
         )
 
@@ -228,7 +235,7 @@ class TestClusterAnalysis:
                 {"metric": "event_count", "metric_args": {"event": "view"}},
             ],
             method="kmeans",
-            n_clusters=2,
+            method_args={"n_clusters": 2},
             scaler="minmax",
             nmf_components=2,
             overview_metrics=[
@@ -262,7 +269,7 @@ class TestClusterAnalysis:
                 {"metric": "has_event", "metric_args": {"event": "purchase"}},
             ],
             method="kmeans",
-            n_clusters=[2, 3, 4],
+            method_args={"n_clusters": [2, 3, 4]},
             scaler="minmax",
             nmf_components=2,
         )
@@ -291,7 +298,7 @@ class TestClusterAnalysis:
                 {"metric": "has_event", "metric_args": {"event": "purchase"}},
             ],
             method="kmeans",
-            n_clusters=2,
+            method_args={"n_clusters": 2},
             scaler="minmax",
             nmf_components=[2, 3],
         )
@@ -316,7 +323,7 @@ class TestClusterAnalysis:
                 {"metric": "has_event", "metric_args": {"event": "purchase"}},
             ],
             method="kmeans",
-            n_clusters=[2, 3],
+            method_args={"n_clusters": [2, 3]},
             scaler="minmax",
             nmf_components=[2, 3],
         )
@@ -356,7 +363,7 @@ class TestClusterAnalysis:
             7,
             8,
         ]
-        assert result["best_params"]["n_clusters"] in range(3, 9)
+        assert result["best_params"]["method_args"]["n_clusters"] in range(3, 9)
 
     def test_kmeans_missing_n_clusters_nmf_k_search_defaults_to_range(self) -> None:
         """The same "3-8" default applies when nmf_components is itself a
@@ -387,7 +394,7 @@ class TestClusterAnalysis:
         result = stream.cluster_analysis_data(
             features=[{"metric": "length"}],
             method="kmeans",
-            n_clusters=2,
+            method_args={"n_clusters": 2},
             scaler="minmax",
             overview_metrics=[],
         )
@@ -409,7 +416,7 @@ class TestClusterAnalysis:
                     {"metric": "has_event", "metric_args": {"event": "purchse"}},
                 ],
                 method="kmeans",
-                n_clusters=2,
+                method_args={"n_clusters": 2},
                 scaler="minmax",
             )
 
@@ -430,24 +437,30 @@ class TestGridSelection:
         return Eventstream(get_large_df())
 
     def test__default_interprets_the_silhouette_winner(self, stream):
-        res = stream.cluster_analysis_data(features=self.FEATURES, n_clusters=[2, 3, 4])
+        res = stream.cluster_analysis_data(
+            features=self.FEATURES, method_args={"n_clusters": [2, 3, 4]}
+        )
         sil = res["silhouette"]
         assert sil["selected_index"] is None
-        assert res["best_params"] == sil["params"][sil["best_index"]]
+        assert res["best_params"]["method_args"] == sil["params"][sil["best_index"]]
 
     def test__select_interprets_the_named_point(self, stream):
         res = stream.cluster_analysis_data(
-            features=self.FEATURES, n_clusters=[2, 3, 4], select={"n_clusters": 4}
+            features=self.FEATURES,
+            method_args={"n_clusters": [2, 3, 4]},
+            select={"n_clusters": 4},
         )
-        assert res["best_params"] == {"n_clusters": 4}
+        assert res["best_params"]["method_args"] == {"n_clusters": 4}
         assert res["cluster_labels"].nunique() == 4
 
     def test__select_keeps_the_whole_grid_and_marks_the_winner(self, stream):
         plain = stream.cluster_analysis_data(
-            features=self.FEATURES, n_clusters=[2, 3, 4]
+            features=self.FEATURES, method_args={"n_clusters": [2, 3, 4]}
         )
         picked = stream.cluster_analysis_data(
-            features=self.FEATURES, n_clusters=[2, 3, 4], select={"n_clusters": 4}
+            features=self.FEATURES,
+            method_args={"n_clusters": [2, 3, 4]},
+            select={"n_clusters": 4},
         )
         assert picked["silhouette"]["params"] == plain["silhouette"]["params"]
         assert picked["silhouette"]["silhouette"] == plain["silhouette"]["silhouette"]
@@ -457,11 +470,11 @@ class TestGridSelection:
 
     def test__selecting_the_winner_is_the_same_as_not_selecting(self, stream):
         plain = stream.cluster_analysis_data(
-            features=self.FEATURES, n_clusters=[2, 3, 4]
+            features=self.FEATURES, method_args={"n_clusters": [2, 3, 4]}
         )
         winner = plain["silhouette"]["params"][plain["silhouette"]["best_index"]]
         picked = stream.cluster_analysis_data(
-            features=self.FEATURES, n_clusters=[2, 3, 4], select=winner
+            features=self.FEATURES, method_args={"n_clusters": [2, 3, 4]}, select=winner
         )
         assert picked["best_params"] == plain["best_params"]
         pd.testing.assert_series_equal(
@@ -473,26 +486,54 @@ class TestGridSelection:
         selection in play that has to mean the selected point, or you would save
         a different clustering than the one you read."""
         res = stream.cluster_analysis_data(
-            features=self.FEATURES, n_clusters=[2, 3, 4], select={"n_clusters": 4}
+            features=self.FEATURES,
+            method_args={"n_clusters": [2, 3, 4]},
+            select={"n_clusters": 4},
         )
         saved = stream.add_clusters(
             name="c", features=self.FEATURES, **res["best_params"]
         )
         assert len(saved.get_segment_levels()["c"]) == 4
 
+    def test__best_params_round_trips_an_hdbscan_run(self, stream):
+        """The round trip has to carry `method` too — without it `add_clusters`
+        would silently fall back to its kmeans default."""
+        res = stream.cluster_analysis_data(
+            features=self.FEATURES,
+            method="hdbscan",
+            method_args={"min_cluster_size": 2},
+        )
+        assert res["best_params"]["method"] == "hdbscan"
+        saved = stream.add_clusters(
+            name="c", features=self.FEATURES, **res["best_params"]
+        )
+        assert "c" in saved.schema.segment_cols
+
+    def test__method_args_of_the_other_method_raise(self, stream):
+        with pytest.raises(ValueError, match="'kmeans' method"):
+            stream.cluster_analysis_data(
+                features=self.FEATURES,
+                method="hdbscan",
+                method_args={"n_clusters": 3},
+            )
+
     def test__unknown_grid_point_raises_and_lists_the_grid(self, stream):
         from retentioneering.exceptions import GridPointNotFoundError
 
         with pytest.raises(GridPointNotFoundError) as exc:
             stream.cluster_analysis_data(
-                features=self.FEATURES, n_clusters=[2, 3, 4], select={"n_clusters": 9}
+                features=self.FEATURES,
+                method_args={"n_clusters": [2, 3, 4]},
+                select={"n_clusters": 9},
             )
         assert "n_clusters" in exc.value.message and "9" in exc.value.message
 
     def test__select_without_a_grid_is_rejected(self, stream):
         with pytest.raises(ValueError, match="only applies to a grid search"):
             stream.cluster_analysis_data(
-                features=self.FEATURES, n_clusters=3, select={"n_clusters": 3}
+                features=self.FEATURES,
+                method_args={"n_clusters": 3},
+                select={"n_clusters": 3},
             )
 
     def test__partial_select_is_fine_when_it_picks_out_one_point(self, stream):
@@ -500,11 +541,11 @@ class TestGridSelection:
         about, as long as only one point matches."""
         res = stream.cluster_analysis_data(
             features=self.FEATURES,
-            n_clusters=[2, 3],
+            method_args={"n_clusters": [2, 3]},
             nmf_components=[2],
             select={"n_clusters": 3},
         )
-        assert res["best_params"]["n_clusters"] == 3
+        assert res["best_params"]["method_args"]["n_clusters"] == 3
 
     def test__partial_select_matching_several_points_is_rejected(self, stream):
         """Silently interpreting whichever match came first would answer a
@@ -515,7 +556,7 @@ class TestGridSelection:
         with pytest.raises(AmbiguousGridPointError) as exc:
             stream.cluster_analysis_data(
                 features=self.FEATURES,
-                n_clusters=[2, 3],
+                method_args={"n_clusters": [2, 3]},
                 nmf_components=[2, 3],
                 select={"n_clusters": 3},
             )

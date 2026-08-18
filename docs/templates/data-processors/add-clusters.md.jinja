@@ -13,13 +13,15 @@ clusters behave like any other segment, in diff mode, Segment Overview, or the
 
 Two things are worth knowing before you call it.
 
-**`n_clusters` is required for k-means, and that is not an oversight.** The
+**`method_args={"n_clusters": ...}` is required for k-means, and that is not an
+oversight.** The
 widget searches a range and picks a winner by silhouette score, because it can
 show you the result and let you disagree. A processor writing a column into your
 data has no such conversation, so it asks for the exact number rather than
 guessing one. The intended flow is to settle the question in the widget first —
 "Save Clusters" emits the matching call, and headlessly
-`cluster_analysis_data()["best_params"]` carries the same value:
+`cluster_analysis_data()["best_params"]` carries the same value — already shaped
+as the arguments of this call, so it splats straight in:
 
 ```python
 features = [{"metric": "length"}, {"metric": "active_days"}]

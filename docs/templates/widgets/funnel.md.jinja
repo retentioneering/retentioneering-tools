@@ -37,7 +37,7 @@ discarded detail back on a narrower question:
 
 ```python
 # what actually happens between two levels
-stream.truncate_paths(start_event="add_to_cart", end_event="purchase").transition_graph()
+stream.truncate_paths(start_anchor="add_to_cart", end_anchor="purchase").transition_graph()
 
 # turn "how far did this path get" into a segment, then compare the groups
 labelled = stream.add_segment("funnel", funnel_events=["add_to_cart", "shipping_details", "purchase"])

@@ -36,8 +36,7 @@ def parse_method_args(
     """
     if method not in METHOD_ARGS:
         raise error(
-            f"Unknown clustering method: {method!r}. "
-            f"Use one of {sorted(METHOD_ARGS)}."
+            f"Unknown clustering method: {method!r}. Use one of {sorted(METHOD_ARGS)}."
         )
 
     allowed = METHOD_ARGS[method]

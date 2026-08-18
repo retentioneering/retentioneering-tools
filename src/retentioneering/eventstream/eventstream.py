@@ -995,7 +995,7 @@ class Eventstream:
         events=None,
         separator=None,
         bounds=None,
-        runs=None,
+        group_col=None,
         name=None,
         timeout=None,
         agg=None,
@@ -1006,7 +1006,7 @@ class Eventstream:
         Merge a run of events into a single representative event.
 
         Two independent decisions. **How to chunk the path** is exactly one mode:
-        `consecutive` or `runs` group by runs of equal values, while `events`,
+        `consecutive` or `group_col` group adjacent rows sharing a value, while `events`,
         `separator`, `bounds` and `timeout` cut the path into windows — the same
         vocabulary `split_sessions` uses, so a chunking that works there works
         here. **How to name** the merged event is `name`, which is orthogonal to
@@ -1024,12 +1024,12 @@ class Eventstream:
         bounds : dict, optional
             Collapse every event between a `start_event` and the next
             `end_event`, both included. Requires both keys.
-        runs : str, optional
-            Collapse each run of equal values in this column. A run, not every
-            row sharing the value: a value that comes back later in the path is
-            a second event, not one event stretched across the gap. Must differ
-            from the event column — for repeats of the same event use
-            `consecutive`.
+        group_col : str, optional
+            Collapse each run of *adjacent* rows sharing this column's value.
+            Not SQL's `GROUP BY`: a value that comes back later in the path
+            starts a second event rather than joining the first across the gap.
+            Must differ from the event column — for repeats of the same event
+            use `consecutive`.
         name : str or dict or list, optional
             What the merged event is called. Three forms:
 
@@ -1044,7 +1044,7 @@ class Eventstream:
               `duration`, `length`, `time_between`, `active_days`.
 
             Required for the window modes, which have no natural name of their
-            own. `consecutive` defaults to the repeated event's name and `runs`
+            own. `consecutive` defaults to the repeated event's name and `group_col`
             to the value of the column being grouped on.
         timeout : str or pandas.Timedelta, optional
             Also break a window on an inactivity gap of this length. Combines
@@ -1076,11 +1076,11 @@ class Eventstream:
             )
 
             # One event per session, named after the session's type column
-            stream.collapse_events(runs="session_id", name={"col": "session_type"})
+            stream.collapse_events(group_col="session_id", name={"col": "session_type"})
 
             # One event per session, named by what the session did
             stream.collapse_events(
-                runs="session_id",
+                group_col="session_id",
                 name=[
                     {"condition": {"op": "=", "metric": "has_event", "value": True,
                                    "metric_args": {"event": "purchase"}},
@@ -1096,7 +1096,7 @@ class Eventstream:
             events=events,
             separator=separator,
             bounds=bounds,
-            runs=runs,
+            group_col=group_col,
             name=name,
             timeout=timeout,
             agg=agg,

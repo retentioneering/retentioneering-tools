@@ -206,7 +206,7 @@ class TestCollapseEventsFromCol:
         schema = {**SCHEMA, "custom_cols": ["session_type"]}
         stream = Eventstream(df, schema)
 
-        res = stream.collapse_events(runs="session_type")
+        res = stream.collapse_events(group_col="session_type")
 
         assert events(res) == ["session_type_1", "session_type_2"]
 
@@ -225,7 +225,7 @@ class TestCollapseEventsFromCol:
         schema = {**SCHEMA, "custom_cols": ["col"]}
         stream = Eventstream(df, schema)
 
-        res = stream.collapse_events(runs="col")
+        res = stream.collapse_events(group_col="col")
         df_res = res.df
 
         u1 = list(df_res[df_res["user_id"] == "user_1"]["event"].astype(str))
@@ -253,12 +253,12 @@ class TestCollapseEventsValidation:
     def test_raises_runs_col_not_found(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError):
-            stream.collapse_events(runs="nonexistent_col")
+            stream.collapse_events(group_col="nonexistent_col")
 
     def test_raises_runs_col_same_as_event_col(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError):
-            stream.collapse_events(runs="event")
+            stream.collapse_events(group_col="event")
 
     def test_raises_run_mode_with_boundary_mode(self):
         """Runs and windows are different ways to chunk, not composable ones."""
@@ -289,7 +289,9 @@ class TestCollapseEventsValidation:
     def test_raises_name_col_not_found(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError):
-            stream.collapse_events(runs="nonexistent", name={"col": "also_nonexistent"})
+            stream.collapse_events(
+                group_col="nonexistent", name={"col": "also_nonexistent"}
+            )
 
     def test_raises_name_col_missing_from_stream(self):
         df = pd.DataFrame(
@@ -301,7 +303,7 @@ class TestCollapseEventsValidation:
         schema = {**SCHEMA, "custom_cols": ["session_id"]}
         stream = Eventstream(df, schema)
         with pytest.raises(PreprocessingConfigError):
-            stream.collapse_events(runs="session_id", name={"col": "nonexistent"})
+            stream.collapse_events(group_col="session_id", name={"col": "nonexistent"})
 
     def test_raises_empty_events(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
@@ -382,7 +384,9 @@ class TestCollapseEventsBySessionType:
                 ["user_1", "D", 2, "purchase", "2020-01-01 00:03:00"],
             ]
         )
-        res = stream.collapse_events(runs="session_id", name={"col": "session_type"})
+        res = stream.collapse_events(
+            group_col="session_id", name={"col": "session_type"}
+        )
 
         assert events(res) == ["browse", "purchase"]
 
@@ -394,7 +398,9 @@ class TestCollapseEventsBySessionType:
                 ["user_1", "B", 1, "browse", "2020-01-01 00:01:00"],
             ]
         )
-        res = stream.collapse_events(runs="session_id", name={"col": "session_type"})
+        res = stream.collapse_events(
+            group_col="session_id", name={"col": "session_type"}
+        )
 
         assert all(res.df[res.schema.event_type] == COLLAPSED)
 
@@ -407,7 +413,9 @@ class TestCollapseEventsBySessionType:
                 ["user_1", "C", 1, "browse", "2020-01-01 00:15:00"],
             ]
         )
-        res = stream.collapse_events(runs="session_id", name={"col": "session_type"})
+        res = stream.collapse_events(
+            group_col="session_id", name={"col": "session_type"}
+        )
 
         ts = pd.to_datetime(res.df["timestamp"].iloc[0])
         assert ts == pd.Timestamp("2020-01-01 00:05:00")
@@ -422,7 +430,9 @@ class TestCollapseEventsBySessionType:
                 ["user_2", "B", 3, "browse", "2020-01-01 00:01:00"],
             ]
         )
-        res = stream.collapse_events(runs="session_id", name={"col": "session_type"})
+        res = stream.collapse_events(
+            group_col="session_id", name={"col": "session_type"}
+        )
         df = res.df
 
         u1 = list(df[df["user_id"] == "user_1"]["event"].astype(str))
@@ -438,7 +448,9 @@ class TestCollapseEventsBySessionType:
                 ["user_1", "B", 2, "purchase", "2020-01-01 00:01:00"],
             ]
         )
-        res = stream.collapse_events(runs="session_id", name={"col": "session_type"})
+        res = stream.collapse_events(
+            group_col="session_id", name={"col": "session_type"}
+        )
 
         assert sorted(events(res)) == ["browse", "purchase"]
 
@@ -463,7 +475,7 @@ class TestCollapseEventsBySessionType:
         stream = Eventstream(df, schema)
 
         res = stream.collapse_events(
-            runs="session_id", name={"col": "session_type"}, agg={"score": "max"}
+            group_col="session_id", name={"col": "session_type"}, agg={"score": "max"}
         )
         df_res = res.df
         browse_row = df_res[df_res["event"] == "browse"]
@@ -488,7 +500,9 @@ class TestCollapseEventsBySessionType:
         schema = {**SCHEMA, "custom_cols": ["session_id", "session_type", "score"]}
         stream = Eventstream(df, schema)
 
-        res = stream.collapse_events(runs="session_id", name={"col": "session_type"})
+        res = stream.collapse_events(
+            group_col="session_id", name={"col": "session_type"}
+        )
         df_res = res.df
         assert int(df_res["score"].iloc[0]) == 10
 
@@ -1025,7 +1039,7 @@ def _session_stream():
 
 class TestCollapseEventsNaming:
     def test_runs_defaults_to_the_column_value(self):
-        assert events(_session_stream().collapse_events(runs="session_id")) == [
+        assert events(_session_stream().collapse_events(group_col="session_id")) == [
             "s1",
             "s2",
             "s1",
@@ -1035,12 +1049,12 @@ class TestCollapseEventsNaming:
         """A value that comes back later is a second event, not one event
         stretched across the gap — which is what grouping by the value would do,
         producing a row whose timestamp span swallows the session in between."""
-        res = _session_stream().collapse_events(runs="session_id")
+        res = _session_stream().collapse_events(group_col="session_id")
         assert len(res.to_dataframe()) == 3
 
     def test_name_from_another_column(self):
         res = _session_stream().collapse_events(
-            runs="session_id", name={"col": "session_kind"}
+            group_col="session_id", name={"col": "session_kind"}
         )
         assert events(res) == ["browse", "buy", "browse"]
 
@@ -1048,7 +1062,7 @@ class TestCollapseEventsNaming:
         """`cases` used to be reachable only through `event_groups`; a group is a
         group, so it now applies to any mode."""
         res = _session_stream().collapse_events(
-            runs="session_id",
+            group_col="session_id",
             name=[
                 {
                     "condition": {

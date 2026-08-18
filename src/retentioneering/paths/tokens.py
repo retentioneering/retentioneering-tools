@@ -334,8 +334,7 @@ def gap_violation_sql(gap: Gap, column: str) -> str | None:
         return None
     sentinels = ", ".join(quote_literal(name) for name in SENTINELS)
     return (
-        f"(NOT ({token_sql(gap.constraint, column)}) "
-        f"AND {column} NOT IN ({sentinels}))"
+        f"(NOT ({token_sql(gap.constraint, column)}) AND {column} NOT IN ({sentinels}))"
     )
 
 

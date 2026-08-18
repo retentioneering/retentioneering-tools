@@ -50,7 +50,7 @@ Same concept, different call shape.
 | `to_dataframe(copy=False)` | [`to_dataframe(exclude_start_end=True)`](/docs/eventstream#getting-your-data-back-out) | The result is always a snapshot, so there is no `copy` flag. |
 | `filter_events(func)` | [`filter_events(keep=, drop=, func=, sql=)`](/docs/data-processors/filter-events) | `func` is now one of four alternative modes; `keep`/`drop` cover the common cases without a lambda. |
 | `rename(rules: list[dict])` | [`rename_events(mapping: dict)`](/docs/data-processors/rename-events) | A plain `{old: new}` dict. |
-| `collapse_loops(suffix, time_agg)` | [`collapse_events(consecutive=, events=, runs=, ...)`](/docs/data-processors/collapse-events) | Loop-squashing is now one mode of a general merging processor. |
+| `collapse_loops(suffix, time_agg)` | [`collapse_events(consecutive=, events=, group_col=, ...)`](/docs/data-processors/collapse-events) | Loop-squashing is now one mode of a general merging processor. |
 | `group_events` / `group_events_bulk` | [`collapse_events(events=..., name=...)`](/docs/data-processors/collapse-events) or [`rename_events`](/docs/data-processors/rename-events) | Renaming several events to one name is `rename_events`; merging runs of them is `collapse_events`. |
 | `split_sessions(timeout, delimiter_events, ...)` | [`split_sessions(timeout=, separator=, bounds=, ...)`](/docs/data-processors/split-sessions) | `timeout` now needs an explicit unit — `"30m"` or a `pd.Timedelta`. Bare numbers are rejected. |
 | `truncate_paths(drop_before, drop_after, ...)` | [`truncate_paths(start_anchor, end_anchor)`](/docs/data-processors/truncate-paths) | Window anchors are the `start_anchor`/`end_anchor` pair everywhere in 5.x; each takes an event name, an anchor spec, or a list. |

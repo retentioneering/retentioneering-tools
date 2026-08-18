@@ -26,7 +26,7 @@ BOUNDS_KEYS = ("start_event", "end_event")
 #: Modes that chunk a path by its events, sharing `split_sessions`' vocabulary.
 BOUNDARY_MODES = ("events", "separator", "bounds")
 #: Modes that chunk a path by runs of equal values.
-RUN_MODES = ("consecutive", "runs")
+RUN_MODES = ("consecutive", "group_col")
 
 
 @dataclass
@@ -48,7 +48,7 @@ class CollapseEvents(DataProcessor):
     separator: List[str] | None
     start_event: List[str] | None
     end_event: List[str] | None
-    runs: str | None
+    group_col: str | None
     name: Any
     timeout_seconds: float | None
     agg: Dict[str, str]
@@ -61,7 +61,7 @@ class CollapseEvents(DataProcessor):
         events: str | List[str] | None = None,
         separator: str | List[str] | None = None,
         bounds: Dict[str, Any] | None = None,
-        runs: str | None = None,
+        group_col: str | None = None,
         name: Any = None,
         timeout: "str | pd.Timedelta | None" = None,
         agg: Dict[str, str] | None = None,
@@ -72,7 +72,7 @@ class CollapseEvents(DataProcessor):
         self.events = to_list(events) if events else None
         self.separator = to_list(separator) if separator else None
         self.start_event, self.end_event = self._parse_bounds(bounds)
-        self.runs = runs
+        self.group_col = group_col
         self.name = name
         if timeout is not None:
             try:
@@ -270,8 +270,8 @@ class CollapseEvents(DataProcessor):
 
         if self.mode == "consecutive":
             result = self._collapse_consecutive(df, schema, path_col, event_col)
-        elif self.mode == "runs":
-            result = self._collapse_runs(df, schema, path_col, event_col)
+        elif self.mode == "group_col":
+            result = self._collapse_group_col(df, schema, path_col, event_col)
         else:
             result = self._collapse_boundary(df, schema, path_col, event_col)
 
@@ -535,7 +535,7 @@ class CollapseEvents(DataProcessor):
         res = engine.run(query, df=df)
         return res[schema.cols]
 
-    def _collapse_runs(
+    def _collapse_group_col(
         self,
         df: pd.DataFrame,
         schema: EventstreamSchema,
@@ -543,17 +543,19 @@ class CollapseEvents(DataProcessor):
         event_col: str,
     ) -> pd.DataFrame:
         """
-        Collapse each run of equal values in `runs` into one event.
+        Collapse each run of equal values in `group_col` into one event.
 
-        A *run*, not every row sharing the value: a value that comes back later
-        in the path is a second event, not the same one stretched across the gap.
+        Grouping is by *runs*, not by value — this is not SQL's `GROUP BY`. A
+        value that comes back later in the path starts a second event rather
+        than joining the first one across the gap, which would produce an event
+        whose span swallows everything in between.
         """
         self._validate_name_col(df)
         ts_col = schema.timestamp_col
         subindex_col = schema.subindex
         event_type_col = schema.event_type
         collapsed_event_type = EventTypes().COLLAPSED_EVENT.type
-        col = self.runs
+        col = self.group_col
 
         if col not in df.columns:
             raise PreprocessingConfigError(
@@ -562,7 +564,7 @@ class CollapseEvents(DataProcessor):
         if col == event_col:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                f"'runs' must differ from the event column '{event_col}'; to collapse "
+                f"'group_col' must differ from the event column '{event_col}'; to collapse "
                 f"repeats of the same event use consecutive=True",
             )
 
@@ -577,7 +579,7 @@ class CollapseEvents(DataProcessor):
         event_type_col_q = engine.quote_ident(event_type_col)
         col_q = engine.quote_ident(col)
 
-        # Without `name`, the run is named after the value it is a run of.
+        # Without `name`, the group is named after the value it is a run of.
         name_expr, metric_agg_chunk = self._name_sql(
             "CAST(_run_value AS VARCHAR)", event_col, ts_col
         )

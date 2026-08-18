@@ -14,7 +14,7 @@ Every mode below answers one question — *which rows belong together* — and
 exactly one of them may be given. `events`, `separator`, `bounds` and `timeout`
 cut the path into windows using the same vocabulary
 [Split Sessions](/docs/data-processors/split-sessions) uses, so a chunking that
-works there works here; `consecutive` and `runs` group by runs of equal values
+works there works here; `consecutive` and `group_col` group by runs of equal values
 instead. What the merged event is *called* is a separate question, answered by
 `name` — see [Naming the merged event](#naming-the-merged-event) below.
 
@@ -100,7 +100,7 @@ Breaks a window on an inactivity gap. Combines with any of the three modes
 above, or stands alone as its own mode — `timeout="30m"` with no other
 boundary collapses each burst of activity separated by half an hour of silence.
 
-### runs
+### group_col
 
 Collapses each run of consecutive rows sharing the same value of a column.
 A *run*, not every row carrying the value: a value that comes back later in the
@@ -110,7 +110,7 @@ Before: `home → catalog → search → add_to_cart → purchase`, with
 `screen_type` = `browse, browse, browse, action, action`
 
 ```python
-stream.collapse_events(runs="screen_type")
+stream.collapse_events(group_col="screen_type")
 ```
 
 After — three `browse` rows collapse into one `browse` event, and the two
@@ -119,7 +119,7 @@ After — three `browse` rows collapse into one `browse` event, and the two
 `browse → action`
 
 Sessions are the same shape, since a session id is constant for a run of rows:
-`runs="session_id"` gives one event per session. On its own that names each
+`group_col="session_id"` gives one event per session. On its own that names each
 event after the session id, which is rarely what you want — pair it with `name`
 below.
 
@@ -134,7 +134,7 @@ below.
 
 `name="checkout"` — every group the mode produced becomes an event with that
 name. Required for the window modes, which have no name of their own to fall
-back on. `consecutive` defaults to the repeated event's name, `runs` to the
+back on. `consecutive` defaults to the repeated event's name, `group_col` to the
 value of the column it grouped on.
 
 ### Another column's value
@@ -144,7 +144,7 @@ Before: `home → catalog → add_to_cart → purchase`, with `session_id` =
 buying_session, buying_session`
 
 ```python
-stream.collapse_events(runs="session_id", name={"col": "session_kind"})
+stream.collapse_events(group_col="session_id", name={"col": "session_kind"})
 ```
 
 After — each session becomes a single event named after its type, at the
@@ -185,13 +185,13 @@ After — the label depends on whether `purchase` occurred inside each group:
 - user 1: `successful_checkout`
 - user 2: `abandoned_checkout`
 
-Because naming is orthogonal, the same list works on any mode. On `runs` it is
+Because naming is orthogonal, the same list works on any mode. On `group_col` it is
 the one-liner for "name each session by what it did", which otherwise takes an
 `add_segment` with a windowed SQL query first:
 
 ```python
 stream.collapse_events(
-    runs="session_id",
+    group_col="session_id",
     name=[
         {"condition": {"op": "=", "metric": "has_event", "value": True,
                        "metric_args": {"event": "purchase"}},

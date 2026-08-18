@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.exceptions import (
-    InvalidComplementConfigError,
+    InvalidSegmentSelectionError,
     InvalidMetricConfigError,
     InvalidParameterError,
     SegmentLevelNotFoundError,
@@ -1025,7 +1025,7 @@ class TestMetricDistribution:
     """Tests for metric_distribution method"""
 
     def test_single_segment_with_complement(self) -> None:
-        """Test distribution for a single segment value with complement=True"""
+        """Test distribution for one segment level against its complement."""
         # Create users with varying path lengths
         rows = []
         for i in range(50):
@@ -1044,10 +1044,9 @@ class TestMetricDistribution:
             segment_col="segment",
             segment_level="segment_1",
             metric={"metric": "length"},
-            complement=True,
         )
 
-        # Should return pair distribution when complement=True
+        # A lone level is still a pair: it is compared with its complement
         assert "distribution_1" in result
         assert "distribution_2" in result
         assert "distance" in result
@@ -1094,7 +1093,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_level=["segment_1", "segment_2"],
+            segment_levels=["segment_1", "segment_2"],
             metric={"metric": "has_event", "metric_args": {"event": "purchase"}},
         )
 
@@ -1139,7 +1138,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_level=["segment_1", "segment_2"],
+            segment_levels=["segment_1", "segment_2"],
             metric={"metric": "length"},
         )
 
@@ -1158,7 +1157,7 @@ class TestMetricDistribution:
         assert result["distribution_2"]["mean"] > result["distribution_1"]["mean"]
 
     def test_complement_mode(self) -> None:
-        """Test distribution with complement=True"""
+        """Test `segment_level=` — one level against every other level."""
         # Create two clearly different distributions
         rows = []
         # segment_1: short paths (1-3 events)
@@ -1185,10 +1184,9 @@ class TestMetricDistribution:
             segment_col="segment",
             segment_level="segment_1",
             metric={"metric": "length"},
-            complement=True,
         )
 
-        # Should have pair response structure (because complement=True)
+        # Pair response structure: the level and its complement
         assert "distribution_1" in result
         assert "distribution_2" in result
         assert "distance" in result
@@ -1217,7 +1215,6 @@ class TestMetricDistribution:
             segment_col="segment",
             segment_level=None,
             metric={"metric": "length"},
-            complement=True,
         )
 
         assert result["distribution_1"]["mean"] == 1.0  # the None-segment path
@@ -1240,7 +1237,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_level=["segment_1", None],
+            segment_levels=["segment_1", None],
             metric={"metric": "length"},
         )
 
@@ -1266,7 +1263,7 @@ class TestMetricDistribution:
         ):
             SegmentOverview(stream).get_metric_distribution(
                 segment_col="invalid_segment",
-                segment_level=["segment_1", "segment_2"],
+                segment_levels=["segment_1", "segment_2"],
                 metric={"metric": "length"},
             )
 
@@ -1288,7 +1285,7 @@ class TestMetricDistribution:
         ):
             SegmentOverview(stream).get_metric_distribution(
                 segment_col="segment",
-                segment_level=["segment_1", "non_existent"],
+                segment_levels=["segment_1", "non_existent"],
                 metric={"metric": "length"},
             )
 
@@ -1313,7 +1310,6 @@ class TestMetricDistribution:
             segment_col="segment",
             segment_level="segment_1",
             metric={"metric": "event_count", "metric_args": {"event": "click"}},
-            complement=True,
         )
 
         dist = result["distribution_1"]
@@ -1337,7 +1333,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_level=["segment_1", "segment_2"],
+            segment_levels=["segment_1", "segment_2"],
             metric={"metric": "length"},
         )
 
@@ -1360,7 +1356,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_level=["segment_1", "segment_2"],
+            segment_levels=["segment_1", "segment_2"],
             metric={"metric": "length"},
         )
 
@@ -1387,7 +1383,7 @@ class TestMetricDistribution:
         ):
             SegmentOverview(stream).get_metric_distribution(
                 segment_col="segment",
-                segment_level=["segment_1", "segment_2"],
+                segment_levels=["segment_1", "segment_2"],
                 metric={
                     "metric": "event_count_bulk",
                     "metric_args": {"events": ["click", "purchase"]},
@@ -1414,15 +1410,15 @@ class TestMetricDistribution:
         ):
             SegmentOverview(stream).get_metric_distribution(
                 segment_col="segment",
-                segment_level=["segment_1", "segment_2"],
+                segment_levels=["segment_1", "segment_2"],
                 metric={
                     "metric": "has_event_bulk",
                     "metric_args": {"events": ["click", "purchase"]},
                 },
             )
 
-    def test_single_segment_without_complement_error(self) -> None:
-        """Test that error is raised when single segment provided without complement=True"""
+    def test_no_segment_selection_error(self) -> None:
+        """Neither mode given: the pair being compared is unnamed."""
         df = pd.DataFrame(
             [
                 ["user_1", "A", "segment_1", "2020-01-01 00:00:00"],
@@ -1434,18 +1430,14 @@ class TestMetricDistribution:
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
-        with pytest.raises(
-            InvalidComplementConfigError, match="complement must be True"
-        ):
+        with pytest.raises(InvalidSegmentSelectionError, match="exactly one of"):
             SegmentOverview(stream).get_metric_distribution(
                 segment_col="segment",
-                segment_level="segment_1",
                 metric={"metric": "length"},
-                complement=False,
             )
 
-    def test_two_segments_with_complement_error(self) -> None:
-        """Test that error is raised when two segments provided with complement=True"""
+    def test_both_segment_modes_error(self) -> None:
+        """Both modes given at once."""
         df = pd.DataFrame(
             [
                 ["user_1", "A", "segment_1", "2020-01-01 00:00:00"],
@@ -1457,15 +1449,32 @@ class TestMetricDistribution:
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
-        with pytest.raises(
-            InvalidComplementConfigError,
-            match="complement=True is only valid when a single segment",
-        ):
+        with pytest.raises(InvalidSegmentSelectionError, match="exactly one of"):
             SegmentOverview(stream).get_metric_distribution(
                 segment_col="segment",
-                segment_level=["segment_1", "segment_2"],
                 metric={"metric": "length"},
-                complement=True,
+                segment_level="segment_1",
+                segment_levels=["segment_1", "segment_2"],
+            )
+
+    def test_segment_levels_wrong_arity_error(self) -> None:
+        """`segment_levels` is a pair; one level is the other mode's job."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "segment_1", "2020-01-01 00:00:00"],
+                ["user_2", "A", "segment_2", "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "segment", "timestamp"],
+        )
+
+        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        stream = Eventstream(df, schema)
+
+        with pytest.raises(InvalidSegmentSelectionError, match="exactly two levels"):
+            SegmentOverview(stream).get_metric_distribution(
+                segment_col="segment",
+                metric={"metric": "length"},
+                segment_levels=["segment_1"],
             )
 
     def test_invalid_path_col(self) -> None:
@@ -1487,7 +1496,7 @@ class TestMetricDistribution:
         ):
             SegmentOverview(stream).get_metric_distribution(
                 segment_col="segment",
-                segment_level=["segment_1", "segment_2"],
+                segment_levels=["segment_1", "segment_2"],
                 metric={"metric": "length"},
                 path_col="invalid_col",
             )
@@ -1534,7 +1543,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_level=["segment_1", "segment_2"],
+            segment_levels=["segment_1", "segment_2"],
             metric={"metric": "length"},
         )
 
@@ -1561,7 +1570,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_level=["segment_1", "segment_2"],
+            segment_levels=["segment_1", "segment_2"],
             metric={"metric": "has_event", "metric_args": {"event": "purchase"}},
         )
 
@@ -1591,7 +1600,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_level=["segment_1", "segment_2"],
+            segment_levels=["segment_1", "segment_2"],
             metric={"metric": "length"},
         )
 
@@ -1624,7 +1633,7 @@ class TestMetricDistribution:
 
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
-            segment_level=["control__1", "test__1"],
+            segment_levels=["control__1", "test__1"],
             metric={"metric": "length"},
         )
 
@@ -1653,7 +1662,6 @@ class TestMetricDistribution:
             segment_col="segment",
             segment_level="control__1",
             metric={"metric": "length"},
-            complement=True,
         )
 
         # distribution_1: control__1 (1 path, length 2)

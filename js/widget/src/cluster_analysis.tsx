@@ -461,10 +461,17 @@ function pyRepr(v: any): string {
 }
 
 function buildAddClustersCode(streamVarName: string, name: string, features: any[], method: string, scaler: string, params: Record<string, any>, pathCol: string, rename: Record<string, string>): string {
-  const lines = [`    name=${pyRepr(name)},`, `    features=${pyRepr(features)},`, `    method=${pyRepr(method)},`];
-  if (scaler) lines.push(`    scaler=${pyRepr(scaler)},`);
-  for (const key of ["n_clusters", "min_cluster_size", "cluster_selection_epsilon", "nmf_components"]) {
-    if (params[key] !== undefined && params[key] !== null) lines.push(`    ${key}=${pyRepr(params[key])},`);
+  // `params` is chosen_params: already add_clusters-shaped (method / method_args /
+  // scaler / nmf_components), so this renders it rather than reassembling it.
+  const usedMethod = (params.method as string) || method;
+  const usedScaler = params.scaler !== undefined ? params.scaler : scaler;
+  const methodArgs = (params.method_args ?? {}) as Record<string, any>;
+
+  const lines = [`    name=${pyRepr(name)},`, `    features=${pyRepr(features)},`, `    method=${pyRepr(usedMethod)},`];
+  if (Object.keys(methodArgs).length > 0) lines.push(`    method_args=${pyRepr(methodArgs)},`);
+  if (usedScaler) lines.push(`    scaler=${pyRepr(usedScaler)},`);
+  if (params.nmf_components !== undefined && params.nmf_components !== null) {
+    lines.push(`    nmf_components=${pyRepr(params.nmf_components)},`);
   }
   if (pathCol) lines.push(`    path_col=${pyRepr(pathCol)},`);
 

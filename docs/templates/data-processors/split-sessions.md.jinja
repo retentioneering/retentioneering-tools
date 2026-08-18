@@ -47,15 +47,16 @@ After — two sessions; the `sep` events themselves are removed:
 
 `event_1 → event_2 → event_3`, with `session_id` = `user_1_1, user_1_1, user_1_2`
 
-### start_event + end_event
+### bounds
 
 A session is every event strictly between a `start_event` and the next
-`end_event` — both boundary events are dropped from the output.
+`end_event` — both boundary events are dropped from the output. The two keys
+are one mode, so they travel together in one argument.
 
 Before: `start → event_1 → event_2 → end`
 
 ```python
-stream.split_sessions(start_event="start", end_event="end")
+stream.split_sessions(bounds={"start_event": "start", "end_event": "end"})
 ```
 
 After:

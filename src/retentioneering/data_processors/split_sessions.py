@@ -1,6 +1,6 @@
 import pandas as pd
 from dataclasses import dataclass
-from typing import Any, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 from retentioneering import engine
 from retentioneering.data_processors.data_processor import DataProcessor
@@ -14,6 +14,9 @@ from retentioneering.utils.session_detection import (
 )
 
 PROCESSOR_NAME = "split_sessions"
+
+
+BOUNDS_KEYS = ("start_event", "end_event")
 
 
 @dataclass
@@ -32,8 +35,7 @@ class SplitSessions(DataProcessor):
         session_col: str = "session_id",
         session_index_col: str = "session_index",
         separator: str | List[str] | None = None,
-        start_event: str | List[str] | None = None,
-        end_event: str | List[str] | None = None,
+        bounds: Dict[str, Any] | None = None,
         timeout: "str | pd.Timedelta | None" = None,
         path_col: str | None = None,
         event_col: str | None = None,
@@ -41,6 +43,7 @@ class SplitSessions(DataProcessor):
         self.session_col = session_col
         self.session_index_col = session_index_col
         self.separator = to_list(separator) if separator else None
+        start_event, end_event = self._parse_bounds(bounds)
         self.start_event = to_list(start_event) if start_event else None
         self.end_event = to_list(end_event) if end_event else None
         if timeout is not None:
@@ -56,27 +59,46 @@ class SplitSessions(DataProcessor):
 
         self._validate()
 
+    @staticmethod
+    def _parse_bounds(bounds: Dict[str, Any] | None) -> Tuple[Any, Any]:
+        """Unpack the `bounds` mode dict into its two anchors."""
+        if bounds is None:
+            return None, None
+        if not isinstance(bounds, dict):
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"'bounds' must be a dict with keys {list(BOUNDS_KEYS)}, got {type(bounds).__name__}",
+            )
+        unknown = sorted(set(bounds) - set(BOUNDS_KEYS))
+        if unknown:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"unknown 'bounds' key(s) {unknown}; allowed keys are {list(BOUNDS_KEYS)}",
+            )
+        missing = [k for k in BOUNDS_KEYS if not bounds.get(k)]
+        if missing:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"'bounds' requires both {list(BOUNDS_KEYS)}; missing {missing}",
+            )
+        return bounds["start_event"], bounds["end_event"]
+
     def _validate(self) -> None:
         boundary_count = sum(
             [
                 bool(self.separator),
-                bool(self.start_event) or bool(self.end_event),
+                bool(self.start_event),
             ]
         )
         if boundary_count > 1:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                "specify at most one boundary mode: 'separator' or 'start_event'+'end_event'",
+                "specify at most one boundary mode: 'separator' or 'bounds'",
             )
         if self.timeout_seconds is None and boundary_count == 0:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                "specify at least one of: 'separator', 'start_event'+'end_event', 'timeout'",
-            )
-        if bool(self.start_event) != bool(self.end_event):
-            raise PreprocessingConfigError(
-                PROCESSOR_NAME,
-                "'start_event' and 'end_event' must be specified together",
+                "specify at least one of: 'separator', 'bounds', 'timeout'",
             )
 
     def _as_group(self) -> dict:

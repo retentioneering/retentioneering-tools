@@ -11,6 +11,7 @@ from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import SchemaConfigError
 from retentioneering.ops import op as _op
 from retentioneering.tools.types import T_TransitionMatrixValues, T_Diff
+from retentioneering.utils.sentinels import UNSET as _SEGMENT_LEVEL_UNSET
 from retentioneering.utils.sequences import find_delimiter_collisions
 
 #: `diff`/`get_segment_levels` sentinel standing in for a missing (None/NaN)
@@ -472,10 +473,8 @@ class Eventstream:
         name: str,
         features: list,
         method: str = "kmeans",
+        method_args: dict | None = None,
         scaler: str | None = "minmax",
-        n_clusters=None,
-        min_cluster_size=None,
-        cluster_selection_epsilon=None,
         nmf_components=None,
         path_col=None,
         event_col=None,
@@ -503,15 +502,21 @@ class Eventstream:
             documentation page for the full metric reference.
         method : str, default "kmeans"
             Clustering algorithm. One of `"kmeans"` or `"hdbscan"`.
+        method_args : dict, optional
+            Parameters of the chosen `method` — the `metric` / `metric_args`
+            shape applied to algorithms:
+
+            - `"kmeans"` — `n_clusters` (int, required).
+            - `"hdbscan"` — `min_cluster_size` (int, default 5),
+              `cluster_selection_epsilon` (float, default 0.0).
+
+            A key that does not belong to `method` raises rather than being
+            ignored. `scaler` and `nmf_components` are not method arguments —
+            they are pipeline steps applied before clustering, so they stay
+            outside this dict.
         scaler : str or None, default "minmax"
             Feature scaler applied before clustering. One of `"minmax"`, `"std"`, or `None`.
             (`"standard"` is accepted as a legacy alias of `"std"`.)
-        n_clusters : int, optional
-            Number of clusters (required for `"kmeans"`).
-        min_cluster_size : int, optional
-            Minimum cluster size (used by `"hdbscan"`).
-        cluster_selection_epsilon : float, optional
-            HDBSCAN cluster-selection epsilon.
         nmf_components : int, optional
             When set, reduces features to this many NMF components before clustering.
         path_col : str, optional
@@ -528,9 +533,13 @@ class Eventstream:
                     {"metric": "event_count", "metric_args": {"event": "purchase"}},
                 ],
                 method="kmeans",
-                n_clusters=4,
+                method_args={"n_clusters": 4},
                 scaler="minmax",
             )
+
+            # the same clustering the headless analysis settled on
+            result = stream.cluster_analysis_data(features=[{"metric": "length"}])
+            stream.add_clusters(name="cluster", features=[{"metric": "length"}], **result["best_params"])
         """
         from retentioneering.data_processors.add_clusters import AddClusters
 
@@ -539,10 +548,8 @@ class Eventstream:
             name=name,
             features=features,
             method=method,
+            method_args=method_args,
             scaler=scaler,
-            n_clusters=n_clusters,
-            min_cluster_size=min_cluster_size,
-            cluster_selection_epsilon=cluster_selection_epsilon,
             nmf_components=nmf_components,
             path_col=path_col,
             event_col=event_col,
@@ -987,8 +994,7 @@ class Eventstream:
         consecutive=None,
         event_groups=None,
         group_col=None,
-        session_col=None,
-        session_type_col=None,
+        sessions=None,
         agg=None,
         path_col=None,
         event_col=None,
@@ -997,7 +1003,7 @@ class Eventstream:
         Merge consecutive or grouped events into a single representative event.
 
         Exactly one of `consecutive`, `event_groups`, `group_col`, or
-        `session_col` must be provided.
+        `sessions` must be provided.
 
         Parameters
         ----------
@@ -1019,11 +1025,11 @@ class Eventstream:
             the same value is collapsed into one event named after that value.
             Example: a `session_type` column with values `browse, browse, search`
             collapses the path into `browse -> search` events.
-        session_col : str, optional
-            Collapse events within each session defined by this column. Requires
-            `session_type_col` as well.
-        session_type_col : str, optional
-            Column that distinguishes session event types (used with `session_col`).
+        sessions : dict, optional
+            Collapse events within each session. Both keys are required:
+              - `session_col` (str) — column holding the session identifier.
+              - `session_type_col` (str) — column that distinguishes session
+                event types.
         agg : dict, optional
             Aggregation rules for non-event columns when rows are merged, as a
             `{column: agg_func}` dict. `agg_func` is one of `"first"` (default),
@@ -1052,8 +1058,7 @@ class Eventstream:
             consecutive=consecutive,
             event_groups=event_groups,
             group_col=group_col,
-            session_col=session_col,
-            session_type_col=session_type_col,
+            sessions=sessions,
             agg=agg,
             path_col=path_col,
             event_col=event_col,
@@ -1214,7 +1219,9 @@ class Eventstream:
         Examples
         --------
             stream.add_clusters(
-                name="cluster", features=[{"metric": "length"}], n_clusters=3
+                name="cluster",
+                features=[{"metric": "length"}],
+                method_args={"n_clusters": 3},
             ).rename_segment_levels(
                 "cluster", {"cluster_0": "buyers", "cluster_1": "browsers"}
             )
@@ -1292,8 +1299,7 @@ class Eventstream:
         session_col="session_id",
         session_index_col="session_index",
         separator=None,
-        start_event=None,
-        end_event=None,
+        bounds=None,
         timeout=None,
         path_col=None,
         event_col=None,
@@ -1301,10 +1307,9 @@ class Eventstream:
         """
         Split each path into sub-sessions and add session ID and index columns.
 
-        At least one boundary criterion must be provided: `separator`,
-        `start_event` + `end_event`, or `timeout`. `separator` and
-        `start_event`/`end_event` are mutually exclusive; `timeout` may be combined
-        with either.
+        At least one boundary criterion must be provided: `separator`, `bounds`,
+        or `timeout`. `separator` and `bounds` are mutually exclusive; `timeout`
+        may be combined with either.
 
         Parameters
         ----------
@@ -1315,12 +1320,12 @@ class Eventstream:
         separator : str or list of str, optional
             Event name(s) that mark a session boundary. The separator event starts a new
             session; the separator row itself is dropped from the output.
-        start_event : str or list of str, optional
-            Event name(s) that mark the start of a session. Must be provided together
-            with `end_event`.
-        end_event : str or list of str, optional
-            Event name(s) that mark the end of a session. Must be provided together
-            with `start_event`.
+        bounds : dict, optional
+            Sessions delimited by their own opening and closing events. Both keys
+            are required:
+              - `start_event` (str or list of str) — event name(s) that open a session.
+              - `end_event` (str or list of str) — event name(s) that close it.
+            Events outside a `start_event`..`end_event` window get no session.
         timeout : str or pandas.Timedelta, optional
             Inactivity gap after which a new session starts, as a pandas-style
             duration string with an explicit unit — e.g. `"30m"`, `"1h"`,
@@ -1335,7 +1340,7 @@ class Eventstream:
         --------
             stream.split_sessions(timeout="30m")
             stream.split_sessions(separator="app_open")
-            stream.split_sessions(start_event="session_start", end_event="session_end")
+            stream.split_sessions(bounds={"start_event": "session_start", "end_event": "session_end"})
             stream.split_sessions(separator="app_open", timeout="1h")
         """
         from retentioneering.data_processors.split_sessions import SplitSessions
@@ -1344,8 +1349,7 @@ class Eventstream:
             session_col=session_col,
             session_index_col=session_index_col,
             separator=separator,
-            start_event=start_event,
-            end_event=end_event,
+            bounds=bounds,
             timeout=timeout,
             path_col=path_col,
             event_col=event_col,
@@ -2368,8 +2372,8 @@ class Eventstream:
         self,
         features: list | None = None,
         method: str | None = None,
+        method_args: dict | None = None,
         scaler: str | None = None,
-        n_clusters=None,
         overview_metrics: list | None = None,
         path_col: str | None = None,
         select: dict | None = None,
@@ -2401,12 +2405,19 @@ class Eventstream:
             triggers clustering.
         method : {"kmeans", "hdbscan"}, default "kmeans"
             Clustering algorithm.
+        method_args : dict, optional
+            Parameters of the chosen `method`, same shape and schema as
+            `cluster_analysis_data`:
+
+            - `"kmeans"` — `n_clusters` (int, list of int, or a range string like
+              `"3-8"`; a list or range runs a silhouette-scored grid search).
+              Defaults to `"3-8"`. This is the one the sidebar also edits, so a
+              value passed here is the starting point, not a lock.
+            - `"hdbscan"` — `min_cluster_size`, `cluster_selection_epsilon`. The
+              sidebar has no fields for these, so passing them here is the only
+              way to set them.
         scaler : {"minmax", "std"}, optional
             Feature scaler applied before clustering; default `"minmax"`.
-        n_clusters : int, list of int, or str, optional
-            Number of clusters. A single int fixes the cluster count; a list of
-            ints or a range string (e.g. `"3-8"`) runs a silhouette-scored grid
-            search over that range and picks the best. Defaults to `"3-8"`.
         overview_metrics : list of dict, optional
             Metrics shown in the overview heatmap after clustering (independent
             of `features`). If omitted, the sidebar starts pre-filled with a
@@ -2419,8 +2430,10 @@ class Eventstream:
             Path ID column override; defaults to `schema.path_col`.
         select : dict, optional
             Which grid point the widget opens on, e.g. `{"n_clusters": 5}`; by
-            default the top-scoring one. Only meaningful when `n_clusters` (or
-            another parameter) is a range, and equivalent to clicking that bar in
+            default the top-scoring one. Its keys are bare parameter names, as
+            they appear in `silhouette["params"]` — a grid point is a coordinate,
+            not a call. Only meaningful when a `method_args` value (or
+            `nmf_components`) is a range, and equivalent to clicking that bar in
             the Silhouette tab. Persisted with the rest of the widget state.
         height : int, default 520
             Widget height in pixels.
@@ -2434,7 +2447,13 @@ class Eventstream:
         --------
             stream.cluster_analysis(
                 features=[{"metric": "length"}, {"metric": "duration"}, {"metric": "event_count_bulk"}],
-                n_clusters="3-6",
+                method_args={"n_clusters": "3-6"},
+            )
+
+            stream.cluster_analysis(
+                features=[{"metric": "length"}],
+                method="hdbscan",
+                method_args={"min_cluster_size": 50},
             )
         """
         from retentioneering.widgets.cluster_analysis import (
@@ -2447,8 +2466,8 @@ class Eventstream:
             stream_var_name=_infer_caller_var_name(self),
             features=features if features is not None else _UNSET,
             method=method if method is not None else _UNSET,
+            method_args=method_args if method_args is not None else _UNSET,
             scaler=scaler if scaler is not None else _UNSET,
-            n_clusters=n_clusters if n_clusters is not None else _UNSET,
             overview_metrics=overview_metrics
             if overview_metrics is not None
             else _UNSET,
@@ -2464,10 +2483,8 @@ class Eventstream:
         self,
         features: list,
         method: str = "kmeans",
+        method_args: dict | None = None,
         scaler: str | None = "minmax",
-        n_clusters=None,
-        min_cluster_size=None,
-        cluster_selection_epsilon=None,
         nmf_components=None,
         overview_metrics: list | None = None,
         path_col: str | None = None,
@@ -2477,16 +2494,18 @@ class Eventstream:
         """
         Run cluster analysis headlessly and return a dict of results.
 
-        Pass lists for n_clusters / nmf_components / min_cluster_size to trigger
-        grid search with silhouette scoring. For the kmeans method (the default),
-        n_clusters defaults to `"3-8"` if omitted — including for
+        Pass lists inside `method_args` (or for `nmf_components`) to trigger grid
+        search with silhouette scoring. For the kmeans method (the default),
+        `n_clusters` defaults to `"3-8"` if omitted — including for
         nmf_components-only searches.
 
         `best_params` holds the concrete parameter values actually used to produce
         `overview_df` (the winning combination when searching, the point named by
-        `select` if you named one, or just the fixed values passed in otherwise) —
-        pass it straight to `add_clusters` to materialize the same clustering as a
-        segment column.
+        `select` if you named one, or just the fixed values passed in otherwise),
+        already shaped as `add_clusters` keyword arguments (`method`,
+        `method_args`, `scaler`, and `nmf_components` if one was used) — splat it
+        into `add_clusters` to materialize the same clustering as a segment
+        column.
 
         Parameters
         ----------
@@ -2497,20 +2516,20 @@ class Eventstream:
             widget.
         method : {"kmeans", "hdbscan"}, default "kmeans"
             Clustering algorithm.
+        method_args : dict, optional
+            Parameters of the chosen `method`. Every value may be a single value
+            or a list, and any list triggers a silhouette-scored grid search over
+            it:
+
+            - `"kmeans"` — `n_clusters` (int, list of int, or a range string like
+              `"3-8"`). Defaults to `"3-8"`, i.e. a grid search.
+            - `"hdbscan"` — `min_cluster_size` (int, default 5),
+              `cluster_selection_epsilon` (float, default 0.0).
+
+            A key that does not belong to `method` raises rather than being
+            ignored.
         scaler : {"minmax", "std"}, optional
             Feature scaler applied before clustering; default `"minmax"`.
-        n_clusters : int, list of int, or str, optional
-            Number of clusters. A single int fixes the cluster count; a list of
-            ints or a range string (e.g. `"3-8"`) runs a silhouette-scored grid
-            search over that range and picks the best. Defaults to `"3-8"`.
-        min_cluster_size : int or list of int, optional
-            Minimum cluster size for the `"hdbscan"` method; defaults to `5`.
-            A list triggers a silhouette-scored grid search over the given
-            values.
-        cluster_selection_epsilon : float or list of float, optional
-            Cluster selection epsilon for the `"hdbscan"` method; defaults to
-            `0.0`. A list triggers a silhouette-scored grid search over the
-            given values.
         nmf_components : int or list of int, optional
             Number of components for an optional NMF (non-negative matrix
             factorization) step applied to the scaled features before
@@ -2550,14 +2569,13 @@ class Eventstream:
               one row per path segmented by cluster label.
             - `cluster_labels`: `Series` of the cluster label assigned to each
               path, indexed by `path_col`.
-            - `best_params`: concrete parameter values used to produce
-              `overview_df` — pass straight to `add_clusters`.
+            - `best_params`: the parameter values used to produce `overview_df`,
+              shaped as `add_clusters` keyword arguments — splat straight into it.
             - `nmf`: `None` if `nmf_components` was not passed (or, in a grid
               search, if no candidate used NMF); otherwise a dict with
               `H_matrix`, `features`, and `W_cluster_means`.
-            - `silhouette`: only present when a list was passed for
-              `n_clusters` / `nmf_components` / `min_cluster_size` /
-              `cluster_selection_epsilon` (grid search mode). A dict of two
+            - `silhouette`: only present when a list was passed for a
+              `method_args` value or for `nmf_components` (grid search mode). A dict of two
               parallel lists — `{"params": [{"n_clusters": 3}, ...],
               "silhouette": [0.87, ...]}` — one entry per candidate tried;
               zip them to inspect individual scores. Also carries `best_index`
@@ -2572,10 +2590,8 @@ class Eventstream:
         return ClusterAnalysis(self).fit(
             features_config=features,
             method=method,
+            method_args=method_args,
             scaler=scaler,
-            n_clusters=n_clusters,
-            min_cluster_size=min_cluster_size,
-            cluster_selection_epsilon=cluster_selection_epsilon,
             nmf_components=nmf_components,
             overview_metrics=overview_metrics,
             path_col=path_col,
@@ -2587,25 +2603,56 @@ class Eventstream:
     def get_metric_distribution(
         self,
         segment_col: str,
-        segment_level,
         metric: dict,
-        complement: bool = False,
+        *,
+        segment_level=_SEGMENT_LEVEL_UNSET,
+        segment_levels: list | None = None,
         path_col: str | None = None,
     ) -> dict:
-        """Compute histogram/KDE distribution for a metric across one or two segment levels.
+        """
+        Histogram/KDE distribution of a per-path metric, compared across two groups.
+
+        Exactly one of `segment_level` or `segment_levels` must be provided —
+        they are the two ways of naming the pair being compared.
 
         Parameters
         ----------
-        segment_level:
-            Single string → compare with complement (complement=True required).
-            List of two strings → compare the two distributions.
+        segment_col : str
+            Segment column the levels are read from.
+        metric : dict
+            Metric config, `{"metric": ..., "metric_args": ...}`, producing exactly
+            one value per path. See the [Path Metrics](/docs/path-metrics) page.
+        segment_level : optional
+            One level, compared against **its complement** — every other level of
+            `segment_col` taken together. `None` is a level in its own right (paths
+            whose segment value is missing), which is why omitting the argument,
+            not passing `None`, is what selects the other mode.
+        segment_levels : list, optional
+            Exactly two levels, compared against each other.
+        path_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
+
+        Returns
+        -------
+        dict
+            `distribution_1`, `distribution_2` (each with `bins`, `counts`,
+            `counts_normalized`, `kde`, `mean`, `median`), `distance` (Wasserstein
+            distance between them) and `log_scale`. With `segment_level`,
+            `distribution_2` is the complement.
+
+        Examples
+        --------
+            stream.get_metric_distribution("cluster", {"metric": "length"}, segment_level="cluster_0")
+            stream.get_metric_distribution(
+                "cluster", {"metric": "duration"}, segment_levels=["cluster_0", "cluster_1"]
+            )
         """
         from retentioneering.tools.segment_overview import SegmentOverview
 
         return SegmentOverview(self).get_metric_distribution(
             segment_col=segment_col,
-            segment_level=segment_level,
             metric=metric,
-            complement=complement,
+            segment_level=segment_level,
+            segment_levels=segment_levels,
             path_col=path_col,
         )

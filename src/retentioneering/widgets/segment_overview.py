@@ -4,6 +4,7 @@ import traitlets
 
 from retentioneering.exceptions import RetentioneeringError
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
+from retentioneering.widgets._utils import distribution_levels as _distribution_levels
 
 
 class SegmentOverviewWidget(RetentioneeringWidget):
@@ -132,10 +133,9 @@ class SegmentOverviewWidget(RetentioneeringWidget):
     def _tool_get_metric_distribution(self, params: dict):
         return self._eventstream.get_metric_distribution(
             segment_col=params["segment_col"],
-            segment_level=params["segment_level"],
             metric=params["metric"],
-            complement=params.get("complement", False),
             path_col=params.get("path_col"),
+            **_distribution_levels(params),
         )
 
     #: See RetentioneeringWidget.compute_tools.
@@ -204,10 +204,9 @@ class SegmentOverviewWidget(RetentioneeringWidget):
         try:
             result = self._eventstream.get_metric_distribution(
                 segment_col=req["segment_col"],
-                segment_level=req["segment_level"],
                 metric=req["metric"],
-                complement=req.get("complement", False),
                 path_col=req.get("path_col"),
+                **_distribution_levels(req),
             )
             self.dist_result = json.dumps(
                 result,

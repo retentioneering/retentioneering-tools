@@ -173,7 +173,7 @@ features = stream.get_metrics([
 
 Metric configs here take no `agg` field — these are raw per-path values, not aggregates. `event_count_bulk` / `has_event_bulk` expand into one column per event.
 
-`get_metric_distribution()` is the related one-off: it returns the distribution of a single metric for one segment level against another (or against everything else, with `complement=True`), which is what the Segment Overview widget draws when you click a cell.
+`get_metric_distribution()` is the related one-off: it returns the distribution of a single metric for two segment levels against each other (`segment_levels=["a", "b"]`) or for one level against everything else (`segment_level="a"`), which is what the Segment Overview widget draws when you click a cell.
 
 ### Conversion from one event to another
 

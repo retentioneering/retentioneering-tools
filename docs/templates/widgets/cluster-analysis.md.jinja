@@ -75,24 +75,25 @@ the winner.
     features=[
         {"metric": "event_count_bulk", "metric_args": {"events": ["catalog", "product_view", "add_to_cart", "purchase"]}},
     ],
-    n_clusters=3,
+    method_args={"n_clusters": 3},
 )`} path="/docs-demos/widgets/cluster-analysis/basic.html" height={580} />
 {% endblock %}
 
 {% block data_params_note %}
 Data parameters change the computed result. They are the arguments of the
 widget's headless twin `stream.{{ headless_name }}()` — see
-[headless mode](#headless-mode) below — with three exceptions, all of which the
-twin accepts and this constructor does not:
+[headless mode](#headless-mode) below — with one exception, which the twin
+accepts and this constructor does not:
 
 - `nmf_components` — see [NMF](#nmf) below. It is *not* missing from the widget:
   the sidebar has an NMF toggle and a component-count field, and the result
   arrives as the H-matrix / W Cluster Means tabs. It is only unavailable as a
   constructor argument, so set it in the sidebar or use the headless twin.
-- `min_cluster_size`, `cluster_selection_epsilon` — tuning knobs for
-  `method="hdbscan"`. The method itself can be passed to the widget, but there
-  is no sidebar control to switch it and no way to tune these two from the
-  widget at all. Use the headless twin for hdbscan work.
+
+`method` and its `method_args` are accepted here, but the sidebar only edits
+`n_clusters`: there is no control to switch the algorithm, and none for
+hdbscan's `min_cluster_size` / `cluster_selection_epsilon`. Passing them to the
+constructor is the way to run hdbscan in the widget.
 {% endblock %}
 
 {% block extra %}
@@ -109,7 +110,9 @@ Reach for it when `features` is wide and correlated — a wildcard
 `event_count_bulk` over a few dozen events is the standard case. Twenty
 near-duplicate count columns let the loudest events dominate the distance
 calculation; a handful of components spreads the signal out. Like `n_clusters`,
-`nmf_components` accepts a single number or a range to grid-search.
+`nmf_components` accepts a single number or a range to grid-search. It sits
+outside `method_args` because it is a pipeline step, not a parameter of the
+clustering algorithm — the same is true of `scaler`.
 
 The payoff is interpretability, and it arrives as two extra tabs:
 
@@ -130,7 +133,7 @@ The widget explores; [`add_clusters`](/docs/data-processors/add-clusters)
 persists. The two differ in one place: `cluster_analysis` searches a range of
 cluster counts (`"3-8"` by default) and picks a winner, while `add_clusters`
 materializes one specific clustering and therefore needs an exact
-`n_clusters`.
+`method_args={"n_clusters": ...}`.
 
 You don't have to transcribe it. "Save Clusters" in the sidebar writes the
 matching `add_clusters(...)` call — optionally with your renamed cluster labels —
@@ -140,12 +143,12 @@ and headlessly the same value comes back as `best_params`:
 features = [{"metric": "length"}, {"metric": "active_days"}]
 
 result = stream.cluster_analysis_data(features=features)
-result["best_params"]        # e.g. {"n_clusters": 3}
+result["best_params"]        # {"method": "kmeans", "method_args": {"n_clusters": 3}, "scaler": "minmax"}
 
 stream = stream.add_clusters("behavior", features=features, **result["best_params"])
 ```
 
-`best_params` holds only the parameters that were searched over, so pass the
-same `features` alongside it.
+`best_params` is shaped as `add_clusters` keyword arguments, but it carries only
+how the clustering was configured — pass the same `features` alongside it.
 
 {% endblock %}

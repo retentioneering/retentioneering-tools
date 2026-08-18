@@ -72,13 +72,13 @@ FEATURES = (
     + [{"metric": "event_count", "metric_args": {"event": e}} for e in KEY_FAMILIES]
 )
 res = stream.cluster_analysis_data(
-    features=FEATURES, n_clusters="3-8",
+    features=FEATURES, method_args={"n_clusters": "3-8"},
     overview_metrics=FEATURES + [
         {"metric": "has_event", "metric_args": {"event": "purchase"}, "agg": "mean"},
     ],   # outcome goes HERE, for validation only
 )
 labeled = stream.add_clusters(name="behavior", features=FEATURES,
-                              n_clusters=res["best_params"]["n_clusters"])
+                              **res["best_params"])
 ```
 
 Read: conversion spread ACROSS clusters (from overview) is the finding; cluster profiles

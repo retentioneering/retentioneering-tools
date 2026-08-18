@@ -21,12 +21,13 @@ if TYPE_CHECKING:
 
 
 from retentioneering.exceptions import (
-    InvalidComplementConfigError,
     InvalidMetricConfigError,  # Used in tests, re-raised from MetricBuilder
     InvalidParameterError,
+    InvalidSegmentSelectionError,
     SegmentLevelNotFoundError,
 )
 from retentioneering.metrics.metric_builder import MetricBuilder, MetricConfig
+from retentioneering.utils.sentinels import UNSET as _UNSET
 
 # Threshold for considering metric as discrete (use bar chart instead of histogram)
 DISCRETE_THRESHOLD = 10
@@ -265,9 +266,10 @@ class SegmentOverview:
     def get_metric_distribution(
         self,
         segment_col: str,
-        segment_level: Any | List[Any],
         metric: Dict[str, Any],
-        complement: bool = False,
+        *,
+        segment_level: Any = _UNSET,
+        segment_levels: List[Any] | None = None,
         path_col: str | None = None,
     ) -> Dict[str, Any]:
         """
@@ -275,17 +277,18 @@ class SegmentOverview:
 
         Args:
             segment_col: Name of the segment column
-            segment_level: Either a single segment level (None selects paths with a
-                missing segment level) or a list of two levels
             metric: Metric configuration dict with 'metric' and optional 'metric_args'
-            complement: If True and segment_level is a single level, compare with
-                       complement (all other levels in the segment). Ignored for pairs.
+            segment_level: One level, compared against its complement — every
+                other level of `segment_col`. `None` is a level in its own right
+                (paths with a missing segment level), which is why "not given"
+                is a sentinel rather than `None`.
+            segment_levels: Two levels, compared against each other.
             path_col: Path ID column (if None, taken from schema)
 
+        Exactly one of `segment_level` / `segment_levels` is required.
+
         Returns:
-            For single segment level:
-                {"distribution": {...distribution data...}}
-            For pair of segment levels:
+            For a single segment level (vs. its complement) and for a pair alike:
                 {"distribution_1": {...}, "distribution_2": {...}, "distance": float}
         """
         df = self.eventstream.df.copy()
@@ -307,26 +310,31 @@ class SegmentOverview:
                 allowed_values=self.eventstream.schema.segment_cols,
             )
 
-        # Normalize segment_level to list and validate complement config. A plain
-        # (non-list) level — including None, which selects paths with a missing
-        # segment level — is treated as a single segment; only an explicit list
-        # requests a pair comparison.
-        if isinstance(segment_level, list):
-            segment_levels = list(segment_level)
-            if complement:
-                raise InvalidComplementConfigError(
-                    "complement=True is only valid when a single segment level is provided. "
-                    "When comparing two segment levels, set complement=False."
+        # Pick the comparison mode. `segment_level` may legitimately be None (paths
+        # with a missing segment level), so "was it given at all" is the sentinel,
+        # not the value.
+        given = (segment_level is not _UNSET, segment_levels is not None)
+        if sum(given) != 1:
+            raise InvalidSegmentSelectionError(
+                "Provide exactly one of: 'segment_level' (one level, compared with "
+                "every other level of the segment column) or 'segment_levels' "
+                "(two levels, compared with each other)."
+            )
+
+        if segment_levels is not None:
+            if (
+                not isinstance(segment_levels, (list, tuple))
+                or len(segment_levels) != 2
+            ):
+                raise InvalidSegmentSelectionError(
+                    f"'segment_levels' must be a list of exactly two levels, got "
+                    f"{segment_levels!r}. To compare one level with the rest of the "
+                    f"segment column, use 'segment_level' instead."
                 )
+            segment_levels = list(segment_levels)
             use_complement = False
         else:
             segment_levels = [segment_level]
-            if not complement:
-                raise InvalidComplementConfigError(
-                    "When a single segment level is provided, complement must be True. "
-                    "Either set complement=True to compare with the rest of the segment, "
-                    "or provide two segment levels to compare."
-                )
             use_complement = True
 
         # Validate segment levels exist. NaN/None both mean "missing segment
@@ -385,23 +393,16 @@ class SegmentOverview:
             )
         metric_col = metric_cols[0]
 
-        # Get data for segment levels
-        if len(segment_levels) == 1:
-            mask = _segment_mask(metrics_df[segment_col], segment_levels[0])
-            data_1 = metrics_df.loc[mask, metric_col].dropna().values
-
-            if use_complement:
-                data_2 = metrics_df.loc[~mask, metric_col].dropna().values
-                return self._build_pair_distribution(data_1, data_2)
-            else:
-                distribution, log_scale = self._build_single_distribution(data_1)
-                return {"distribution": distribution, "log_scale": log_scale}
+        # Get data for segment levels. Both modes end in a pair: a lone level is
+        # paired with its complement.
+        mask_1 = _segment_mask(metrics_df[segment_col], segment_levels[0])
+        data_1 = metrics_df.loc[mask_1, metric_col].dropna().values
+        if use_complement:
+            data_2 = metrics_df.loc[~mask_1, metric_col].dropna().values
         else:
-            mask_1 = _segment_mask(metrics_df[segment_col], segment_levels[0])
             mask_2 = _segment_mask(metrics_df[segment_col], segment_levels[1])
-            data_1 = metrics_df.loc[mask_1, metric_col].dropna().values
             data_2 = metrics_df.loc[mask_2, metric_col].dropna().values
-            return self._build_pair_distribution(data_1, data_2)
+        return self._build_pair_distribution(data_1, data_2)
 
     def _is_discrete(self, data: np.ndarray) -> bool:
         """Check if data should be treated as discrete (bar chart) or continuous (histogram)"""
@@ -538,64 +539,6 @@ class SegmentOverview:
         except Exception:
             # KDE can fail for various reasons (e.g., singular covariance matrix)
             return None
-
-    def _build_single_distribution(
-        self, data: np.ndarray, use_log_scale: bool | None = None
-    ) -> Tuple[Dict[str, Any], bool]:
-        """
-        Build distribution statistics for a single data array.
-
-        Args:
-            data: Array of metric values
-            use_log_scale: If None, auto-detect; if True/False, force that mode
-
-        Returns:
-            (distribution_dict, log_scale_used)
-        """
-        if len(data) == 0:
-            return {
-                "bins": [],
-                "counts": [],
-                "counts_normalized": [],
-                "kde": None,
-                "mean": float("nan"),
-                "median": float("nan"),
-            }, False
-
-        is_discrete = self._is_discrete(data)
-
-        # Determine if we should use log scale
-        if use_log_scale is None:
-            log_scale = not is_discrete and self._should_use_log_scale(data)
-        else:
-            log_scale = use_log_scale and not is_discrete
-
-        # Transform data if using log scale
-        if log_scale:
-            data_for_hist = self._log_transform(data)
-        else:
-            data_for_hist = data
-
-        if is_discrete:
-            bins, counts = self._build_discrete_histogram(data_for_hist)
-            kde = None
-        else:
-            bins, counts = self._build_histogram(data_for_hist)
-            kde = self._build_kde(data_for_hist)
-
-        total_count = counts.sum()
-        counts_normalized = (
-            (counts / total_count).tolist() if total_count > 0 else counts.tolist()
-        )
-
-        return {
-            "bins": bins.tolist(),
-            "counts": counts.tolist(),
-            "counts_normalized": counts_normalized,
-            "kde": kde,
-            "mean": float(np.mean(data_for_hist)),
-            "median": float(np.median(data_for_hist)),
-        }, log_scale
 
     def _build_pair_distribution(
         self, data_1: np.ndarray, data_2: np.ndarray

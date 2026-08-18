@@ -128,9 +128,9 @@ class PathIdNotFoundError(RetentioneeringError):
         super().__init__(message, "PATH_ID_NOT_FOUND")
 
 
-class InvalidComplementConfigError(MetricDistributionError):
+class InvalidSegmentSelectionError(MetricDistributionError):
     def __init__(self, message: str):
-        super().__init__(message, "INVALID_COMPLEMENT_CONFIG")
+        super().__init__(message, "INVALID_SEGMENT_SELECTION")
 
 
 class WidgetExportError(RetentioneeringError):

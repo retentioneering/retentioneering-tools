@@ -170,17 +170,18 @@ After — three `browse` rows collapse into one `browse` event, and the two
 
 `browse → action`
 
-### session_col + session_type_col
+### sessions
 
-Collapses every session (identified by `session_col`) into a single event
-named after that session's `session_type_col` value.
+Collapses every session (identified by the `session_col` key) into a single
+event named after that session's `session_type_col` value. Both keys are
+required — they are one mode, so they travel together in one argument.
 
 Before: `home → catalog → add_to_cart → purchase`, with `session_id` =
 `s1, s1, s2, s2` and `session_kind` = `browsing_session, browsing_session,
 buying_session, buying_session`
 
 ```python
-stream.collapse_events(session_col="session_id", session_type_col="session_kind")
+stream.collapse_events(sessions={"session_col": "session_id", "session_type_col": "session_kind"})
 ```
 
 After — each session becomes a single event named after its type, at the

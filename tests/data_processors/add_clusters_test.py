@@ -85,7 +85,7 @@ class TestAddClusters:
             name="cluster",
             features=features,
             method="kmeans",
-            n_clusters=2,
+            method_args={"n_clusters": 2},
             scaler="minmax",
         )
 
@@ -116,7 +116,7 @@ class TestAddClusters:
             name="buyer_cluster",
             features=features,
             method="kmeans",
-            n_clusters=2,
+            method_args={"n_clusters": 2},
             scaler="minmax",
         )
 
@@ -137,7 +137,7 @@ class TestAddClusters:
             name="view_cluster",
             features=features,
             method="kmeans",
-            n_clusters=2,
+            method_args={"n_clusters": 2},
             scaler="standard",
         )
 
@@ -154,7 +154,7 @@ class TestAddClusters:
             name="cluster",
             features=features,
             method="kmeans",
-            n_clusters=2,
+            method_args={"n_clusters": 2},
             scaler=None,
         )
 
@@ -185,23 +185,31 @@ class TestAddClusters:
             )
 
         default_add_clusters = labels_from(
-            stream.add_clusters(name="cluster", features=features, n_clusters=2),
+            stream.add_clusters(
+                name="cluster", features=features, method_args={"n_clusters": 2}
+            ),
             "cluster",
         )
         explicit_minmax = labels_from(
             stream.add_clusters(
-                name="cluster", features=features, n_clusters=2, scaler="minmax"
+                name="cluster",
+                features=features,
+                method_args={"n_clusters": 2},
+                scaler="minmax",
             ),
             "cluster",
         )
         unscaled = labels_from(
             stream.add_clusters(
-                name="cluster", features=features, n_clusters=2, scaler=None
+                name="cluster",
+                features=features,
+                method_args={"n_clusters": 2},
+                scaler=None,
             ),
             "cluster",
         )
         cluster_analysis_labels = stream.cluster_analysis_data(
-            features=features, n_clusters=2
+            features=features, method_args={"n_clusters": 2}
         )["cluster_labels"].sort_index()
 
         # Sanity check: on this dataset, scaling actually changes the grouping -
@@ -219,12 +227,59 @@ class TestAddClusters:
 
         features = [{"metric": "length"}]
 
-        with pytest.raises(PreprocessingConfigError, match="n_clusters is required"):
+        with pytest.raises(PreprocessingConfigError, match="n_clusters.* is required"):
             stream.add_clusters(
                 name="cluster",
                 features=features,
                 method="kmeans",
                 scaler="minmax",
+            )
+
+    def test_method_args_of_the_other_method_raise(self) -> None:
+        """A parameter belonging to another method is an error, not a no-op.
+
+        The flat `n_clusters=` / `min_cluster_size=` signature used to accept
+        both and silently drop whichever didn't match `method`.
+        """
+        stream = Eventstream(get_df())
+        features = [{"metric": "length"}]
+
+        with pytest.raises(PreprocessingConfigError, match="'kmeans' method"):
+            stream.add_clusters(
+                name="cluster",
+                features=features,
+                method="hdbscan",
+                method_args={"n_clusters": 2},
+            )
+
+        with pytest.raises(PreprocessingConfigError, match="'hdbscan' method"):
+            stream.add_clusters(
+                name="cluster",
+                features=features,
+                method="kmeans",
+                method_args={"n_clusters": 2, "min_cluster_size": 10},
+            )
+
+    def test_unknown_method_args_key_raises(self) -> None:
+        stream = Eventstream(get_df())
+        with pytest.raises(
+            PreprocessingConfigError, match="not a clustering parameter"
+        ):
+            stream.add_clusters(
+                name="cluster",
+                features=[{"metric": "length"}],
+                method="kmeans",
+                method_args={"n_clusters": 2, "nmf_components": 2},
+            )
+
+    def test_unknown_method_raises(self) -> None:
+        stream = Eventstream(get_df())
+        with pytest.raises(PreprocessingConfigError, match="Unknown clustering method"):
+            stream.add_clusters(
+                name="cluster",
+                features=[{"metric": "length"}],
+                method="dbscan",
+                method_args={"n_clusters": 2},
             )
 
     def test_hdbscan_basic(self) -> None:
@@ -241,7 +296,7 @@ class TestAddClusters:
             name="cluster",
             features=features,
             method="hdbscan",
-            min_cluster_size=2,
+            method_args={"min_cluster_size": 2},
             scaler="minmax",
         )
 
@@ -264,8 +319,7 @@ class TestAddClusters:
             name="cluster",
             features=features,
             method="hdbscan",
-            min_cluster_size=2,
-            cluster_selection_epsilon=0.5,
+            method_args={"min_cluster_size": 2, "cluster_selection_epsilon": 0.5},
             scaler="standard",
         )
 
@@ -285,7 +339,7 @@ class TestAddClusters:
                 name="existing_segment",
                 features=features,
                 method="kmeans",
-                n_clusters=2,
+                method_args={"n_clusters": 2},
             )
 
     def test_reserved_column_name(self) -> None:
@@ -297,7 +351,10 @@ class TestAddClusters:
 
         with pytest.raises(PreprocessingConfigError, match="already reserved"):
             stream.add_clusters(
-                name="user_id", features=features, method="kmeans", n_clusters=2
+                name="user_id",
+                features=features,
+                method="kmeans",
+                method_args={"n_clusters": 2},
             )
 
     def test_unknown_method(self) -> None:
@@ -312,7 +369,7 @@ class TestAddClusters:
                 name="cluster",
                 features=features,
                 method="unknown_method",
-                n_clusters=2,
+                method_args={"n_clusters": 2},
             )
 
     def test_cluster_labels_mapped_to_all_events(self) -> None:
@@ -326,7 +383,7 @@ class TestAddClusters:
             name="cluster",
             features=features,
             method="kmeans",
-            n_clusters=2,
+            method_args={"n_clusters": 2},
             scaler="minmax",
         )
 
@@ -354,7 +411,7 @@ class TestAddClusters:
             name="multi_cluster",
             features=features,
             method="kmeans",
-            n_clusters=3,
+            method_args={"n_clusters": 3},
             scaler="minmax",
         )
 
@@ -374,7 +431,7 @@ class TestAddClusters:
             name="cluster",
             features=features,
             method="kmeans",
-            n_clusters=2,
+            method_args={"n_clusters": 2},
             scaler="std",
         )
 
@@ -387,7 +444,7 @@ class TestAddClusters:
         stream = Eventstream(df)
 
         features = [{"metric": "length"}, {"metric": "duration"}]
-        kwargs = dict(features=features, method="kmeans", n_clusters=2)
+        kwargs = dict(features=features, method="kmeans", method_args={"n_clusters": 2})
 
         legacy = stream.add_clusters(name="cluster", scaler="standard", **kwargs)
         canonical = stream.add_clusters(name="cluster", scaler="std", **kwargs)
@@ -411,7 +468,7 @@ class TestAddClusters:
             name="nmf_cluster",
             features=features,
             method="kmeans",
-            n_clusters=2,
+            method_args={"n_clusters": 2},
             scaler="minmax",
             nmf_components=2,
         )
@@ -446,7 +503,7 @@ class TestAddClusters:
             name="nmf_hdb_cluster",
             features=features,
             method="hdbscan",
-            min_cluster_size=2,
+            method_args={"min_cluster_size": 2},
             scaler="minmax",
             nmf_components=2,
         )
@@ -474,7 +531,7 @@ class TestAddClusters:
                 name="cluster",
                 features=features,
                 method="kmeans",
-                n_clusters=2,
+                method_args={"n_clusters": 2},
                 scaler="minmax",
             )
 
@@ -501,7 +558,7 @@ class TestAddClusters:
             name="cluster",
             features=features,
             method="kmeans",
-            n_clusters=2,
+            method_args={"n_clusters": 2},
             path_col="session_id",
         )
 

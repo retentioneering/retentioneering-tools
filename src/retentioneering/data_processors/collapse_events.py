@@ -23,6 +23,8 @@ from retentioneering.utils.sql_quoting import quote_literal
 
 PROCESSOR_NAME = "collapse_events"
 
+SESSIONS_KEYS = ("session_col", "session_type_col")
+
 
 @dataclass
 class CollapseEvents(DataProcessor):
@@ -40,8 +42,7 @@ class CollapseEvents(DataProcessor):
         consecutive: bool | List[str] | None = None,
         event_groups: List[Dict[str, Any]] | None = None,
         group_col: str | None = None,
-        session_col: str | None = None,
-        session_type_col: str | None = None,
+        sessions: Dict[str, Any] | None = None,
         agg: Dict[str, str] | None = None,
         path_col: str | None = None,
         event_col: str | None = None,
@@ -49,8 +50,7 @@ class CollapseEvents(DataProcessor):
         self.consecutive = consecutive
         self.event_groups = event_groups
         self.group_col = group_col
-        self.session_col = session_col
-        self.session_type_col = session_type_col
+        self.session_col, self.session_type_col = self._parse_sessions(sessions)
         self.agg = agg or {}
         self.path_col = path_col
         self.event_col = event_col
@@ -60,17 +60,12 @@ class CollapseEvents(DataProcessor):
             self.consecutive is not None,
             bool(self.event_groups),
             self.group_col is not None,
-            self.session_col is not None,
+            sessions is not None,
         ]
         if sum(modes) != 1:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                "Provide exactly one of: consecutive, event_groups, group_col, session_col",
-            )
-
-        if self.session_col is not None and self.session_type_col is None:
-            raise PreprocessingConfigError(
-                PROCESSOR_NAME, "'session_col' requires 'session_type_col'"
+                "Provide exactly one of: consecutive, event_groups, group_col, sessions",
             )
 
         if event_groups is not None:
@@ -88,6 +83,31 @@ class CollapseEvents(DataProcessor):
                         raise PreprocessingConfigError(
                             PROCESSOR_NAME, str(exc)
                         ) from exc
+
+    @staticmethod
+    def _parse_sessions(sessions: Dict[str, Any] | None) -> Tuple[Any, Any]:
+        """Unpack the `sessions` mode dict into its two column names."""
+        if sessions is None:
+            return None, None
+        if not isinstance(sessions, dict):
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"'sessions' must be a dict with keys {list(SESSIONS_KEYS)}, "
+                f"got {type(sessions).__name__}",
+            )
+        unknown = sorted(set(sessions) - set(SESSIONS_KEYS))
+        if unknown:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"unknown 'sessions' key(s) {unknown}; allowed keys are {list(SESSIONS_KEYS)}",
+            )
+        missing = [k for k in SESSIONS_KEYS if not sessions.get(k)]
+        if missing:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"'sessions' requires both {list(SESSIONS_KEYS)}; missing {missing}",
+            )
+        return sessions["session_col"], sessions["session_type_col"]
 
     @staticmethod
     def _validate_group(g: Dict[str, Any]) -> None:

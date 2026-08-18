@@ -24,9 +24,9 @@ real accepted-style contributions.
 retentioneering X.Y.Z (pip wheel | source checkout @ <sha>), Python 3.x, OS
 ```
 
-**Worked example (style reference).** *Expectation:* docstring says `n_clusters` accepts
+**Worked example (style reference).** *Expectation:* docstring says `n_clusters` (inside `method_args`) accepts
 a range string `"3-8"`. *Reality:* `InvalidParameterError` from sklearn. *Repro:* 6-line
-toy stream + `cluster_analysis_data(..., n_clusters="3-8")` with `assert "best_params"
+toy stream + `cluster_analysis_data(..., method_args={"n_clusters": "3-8"})` with `assert "best_params"
 in res`. *Impact:* 2 analysts hit it independently in one day; both fell back to lists.
 
 ## T2 · Feature / API-change proposal (issue)

@@ -256,9 +256,7 @@ Finally, collapse each session into a single event named after its type with
 [Collapse Events](/docs/data-processors/collapse-events):
 
 ```python
-stream = stream.collapse_events(
-    sessions={"session_col": "session_id", "session_type_col": "session_type"}
-)
+stream = stream.collapse_events(runs="session_id", name={"col": "session_type"})
 ```
 
 The new eventstream has one synthetic event per session, and the number of unique

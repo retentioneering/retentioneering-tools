@@ -992,44 +992,64 @@ class Eventstream:
     def collapse_events(
         self,
         consecutive=None,
-        event_groups=None,
-        group_col=None,
-        sessions=None,
+        events=None,
+        separator=None,
+        bounds=None,
+        runs=None,
+        name=None,
+        timeout=None,
         agg=None,
         path_col=None,
         event_col=None,
     ) -> "Eventstream":
         """
-        Merge consecutive or grouped events into a single representative event.
+        Merge a run of events into a single representative event.
 
-        Exactly one of `consecutive`, `event_groups`, `group_col`, or
-        `sessions` must be provided.
+        Two independent decisions. **How to chunk the path** is exactly one mode:
+        `consecutive` or `runs` group by runs of equal values, while `events`,
+        `separator`, `bounds` and `timeout` cut the path into windows — the same
+        vocabulary `split_sessions` uses, so a chunking that works there works
+        here. **How to name** the merged event is `name`, which is orthogonal to
+        the mode.
 
         Parameters
         ----------
         consecutive : bool or list of str, optional
-            Collapse consecutive repeats of the same event into one.
-            Pass `True` to collapse all events; pass a list of event names to collapse
-            only those specific events.
-        event_groups : list of dict, optional
-            Merge a chain of events into a single representative event.
-              - `events` (str or list of str) — collapse any run of these events, wherever it occurs in the path, into one group.
-              - `separator` (str or list of str) — collapse every event up to and including the next separator event into one group.
-              - `start_event` + `end_event` (str or list of str) — collapse every event between a `start_event` and the next `end_event`, inclusive of both, into one group.
-              - `name` (str) — label for the merged event, required unless `cases` are given.
-              - `cases` (list of dict, optional) — conditional labels evaluated against the group's own events, falling back to `name` for groups no case matched.
-            See [event_groups](/docs/data-processors/collapse-events#event_groups)
-            below for worked examples.
-        group_col : str, optional
-            Group consecutive rows by this column's value: each run of rows sharing
-            the same value is collapsed into one event named after that value.
-            Example: a `session_type` column with values `browse, browse, search`
-            collapses the path into `browse -> search` events.
-        sessions : dict, optional
-            Collapse events within each session. Both keys are required:
-              - `session_col` (str) — column holding the session identifier.
-              - `session_type_col` (str) — column that distinguishes session
-                event types.
+            Collapse runs of the same event into one. `True` collapses every
+            event; a list of event names collapses only those.
+        events : str or list of str, optional
+            Collapse any run of these events, wherever it occurs in the path.
+        separator : str or list of str, optional
+            Collapse every event up to and including the next separator event.
+        bounds : dict, optional
+            Collapse every event between a `start_event` and the next
+            `end_event`, both included. Requires both keys.
+        runs : str, optional
+            Collapse each run of equal values in this column. A run, not every
+            row sharing the value: a value that comes back later in the path is
+            a second event, not one event stretched across the gap. Must differ
+            from the event column — for repeats of the same event use
+            `consecutive`.
+        name : str or dict or list, optional
+            What the merged event is called. Three forms:
+
+            - a **string** — that literal name.
+            - `{"col": "<column>"}` — the value of another column, so a run of
+              sessions can be named by the session's type.
+            - a **list of cases** — `{"condition": ..., "name": ...}` dicts
+              evaluated against the group's own events, optionally closed by a
+              plain string used as the fallback for groups no case matched.
+              A condition is the `filter_paths` condition tree, over the metrics
+              `has_event`, `event_count`, `has_all_events`, `has_any_event`,
+              `duration`, `length`, `time_between`, `active_days`.
+
+            Required for the window modes, which have no natural name of their
+            own. `consecutive` defaults to the repeated event's name and `runs`
+            to the value of the column being grouped on.
+        timeout : str or pandas.Timedelta, optional
+            Also break a window on an inactivity gap of this length. Combines
+            with `events` / `separator` / `bounds`, or stands alone as its own
+            mode. Takes a duration string with an explicit unit (`"30m"`).
         agg : dict, optional
             Aggregation rules for non-event columns when rows are merged, as a
             `{column: agg_func}` dict. `agg_func` is one of `"first"` (default),
@@ -1046,19 +1066,39 @@ class Eventstream:
             # Collapse any run of the same event
             stream.collapse_events(consecutive=True)
 
-            # Collapse only repeated page_view events
+            # Collapse only repeated product_view events
             stream.collapse_events(consecutive=["product_view"])
 
             # Merge checkout steps into a single "checkout" event
-            stream.collapse_events(event_groups=[{"events": ["checkout_start", "checkout_step", "checkout_confirm"], "name": "checkout"}])
+            stream.collapse_events(
+                events=["checkout_start", "checkout_step", "checkout_confirm"],
+                name="checkout",
+            )
+
+            # One event per session, named after the session's type column
+            stream.collapse_events(runs="session_id", name={"col": "session_type"})
+
+            # One event per session, named by what the session did
+            stream.collapse_events(
+                runs="session_id",
+                name=[
+                    {"condition": {"op": "=", "metric": "has_event", "value": True,
+                                   "metric_args": {"event": "purchase"}},
+                     "name": "buying_session"},
+                    "browsing_session",
+                ],
+            )
         """
         from retentioneering.data_processors.collapse_events import CollapseEvents
 
         new_df, new_schema = CollapseEvents(
             consecutive=consecutive,
-            event_groups=event_groups,
-            group_col=group_col,
-            sessions=sessions,
+            events=events,
+            separator=separator,
+            bounds=bounds,
+            runs=runs,
+            name=name,
+            timeout=timeout,
             agg=agg,
             path_col=path_col,
             event_col=event_col,

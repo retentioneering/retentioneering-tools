@@ -201,8 +201,6 @@ def _step_to_code(step: dict) -> str:
     if t == "collapse_events":
         if args.get("consecutive"):
             return "stream.collapse_events(consecutive=True)"
-        elif args.get("event_groups"):
-            return f"stream.collapse_events(event_groups={args['event_groups']!r})"
     elif t == "filter_events":
         if args.get("keep"):
             return f"stream.filter_events(keep={args['keep']!r})"

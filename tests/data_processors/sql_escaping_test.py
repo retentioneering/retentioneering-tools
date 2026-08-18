@@ -217,23 +217,19 @@ class TestCollapseEventsMetricEscaping:
         )
 
         res = stream.collapse_events(
-            event_groups=[
+            separator="sep",
+            name=[
                 {
-                    "separator": "sep",
-                    "cases": [
-                        {
-                            "condition": {
-                                "op": ">",
-                                "metric": "has_event",
-                                "value": 0,
-                                "metric_args": {"event": "o'brien_page"},
-                            },
-                            "name": "obrien_session",
-                        }
-                    ],
-                    "name": "other_session",
-                }
-            ]
+                    "condition": {
+                        "op": ">",
+                        "metric": "has_event",
+                        "value": 0,
+                        "metric_args": {"event": "o'brien_page"},
+                    },
+                    "name": "obrien_session",
+                },
+                "other_session",
+            ],
         )
 
         assert "obrien_session" in list(res.df["event"].astype(str))
@@ -248,23 +244,19 @@ class TestCollapseEventsMetricEscaping:
         )
 
         res = stream.collapse_events(
-            event_groups=[
+            separator="sep",
+            name=[
                 {
-                    "separator": "sep",
-                    "cases": [
-                        {
-                            "condition": {
-                                "op": ">",
-                                "metric": "event_count",
-                                "value": 1,
-                                "metric_args": {"event": "o'brien_page"},
-                            },
-                            "name": "active_session",
-                        }
-                    ],
-                    "name": "quiet_session",
-                }
-            ]
+                    "condition": {
+                        "op": ">",
+                        "metric": "event_count",
+                        "value": 1,
+                        "metric_args": {"event": "o'brien_page"},
+                    },
+                    "name": "active_session",
+                },
+                "quiet_session",
+            ],
         )
 
         assert list(res.df["event"].astype(str)) == ["active_session"]
@@ -279,26 +271,22 @@ class TestCollapseEventsMetricEscaping:
         )
 
         res = stream.collapse_events(
-            event_groups=[
+            separator="sep",
+            name=[
                 {
-                    "separator": "sep",
-                    "cases": [
-                        {
-                            "condition": {
-                                "op": ">=",
-                                "metric": "time_between",
-                                "value": 100,
-                                "metric_args": {
-                                    "start_event": "o'brien_start",
-                                    "end_event": "o'brien_end",
-                                },
-                            },
-                            "name": "slow_session",
-                        }
-                    ],
-                    "name": "fast_session",
-                }
-            ]
+                    "condition": {
+                        "op": ">=",
+                        "metric": "time_between",
+                        "value": 100,
+                        "metric_args": {
+                            "start_event": "o'brien_start",
+                            "end_event": "o'brien_end",
+                        },
+                    },
+                    "name": "slow_session",
+                },
+                "fast_session",
+            ],
         )
 
         assert list(res.df["event"].astype(str)) == ["slow_session"]

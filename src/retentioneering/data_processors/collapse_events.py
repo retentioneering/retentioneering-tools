@@ -12,27 +12,45 @@ from retentioneering.metrics.condition_ast import ast_to_sql, extract_metric_con
 from retentioneering.metrics.metric_builder import combined_metric_name
 from retentioneering.utils.session_detection import (
     build_session_ctes,
-    detect_mode,
     parse_timeout,
     sql_list,
     to_list,
-    _MODE_TIMEOUT,
 )
 from retentioneering.utils.sequences import find_delimiter_collisions
 from retentioneering.utils.sql_quoting import quote_literal
 
 PROCESSOR_NAME = "collapse_events"
 
-SESSIONS_KEYS = ("session_col", "session_type_col")
+BOUNDS_KEYS = ("start_event", "end_event")
+
+#: Modes that chunk a path by its events, sharing `split_sessions`' vocabulary.
+BOUNDARY_MODES = ("events", "separator", "bounds")
+#: Modes that chunk a path by runs of equal values.
+RUN_MODES = ("consecutive", "runs")
 
 
 @dataclass
 class CollapseEvents(DataProcessor):
+    """
+    Merge a run of events into one, and give the result a name.
+
+    Two decisions, two argument groups. *How to chunk the path* is one
+    mutually-exclusive mode — `consecutive` / `runs` group by runs of equal
+    values, `events` / `separator` / `bounds` / `timeout` cut it into windows,
+    the same vocabulary `split_sessions` uses (they share `build_session_ctes`).
+    *How to name the merged event* is `name`, orthogonal to all of them: a
+    literal, another column's value, or conditions evaluated over the group's
+    own events.
+    """
+
     consecutive: bool | List[str] | None
-    event_groups: List[Dict[str, Any]] | None
-    group_col: str | None
-    session_col: str | None
-    session_type_col: str | None
+    events: List[str] | None
+    separator: List[str] | None
+    start_event: List[str] | None
+    end_event: List[str] | None
+    runs: str | None
+    name: Any
+    timeout_seconds: float | None
     agg: Dict[str, str]
     path_col: str | None
     event_col: str | None
@@ -40,104 +58,199 @@ class CollapseEvents(DataProcessor):
     def __init__(
         self,
         consecutive: bool | List[str] | None = None,
-        event_groups: List[Dict[str, Any]] | None = None,
-        group_col: str | None = None,
-        sessions: Dict[str, Any] | None = None,
+        events: str | List[str] | None = None,
+        separator: str | List[str] | None = None,
+        bounds: Dict[str, Any] | None = None,
+        runs: str | None = None,
+        name: Any = None,
+        timeout: "str | pd.Timedelta | None" = None,
         agg: Dict[str, str] | None = None,
         path_col: str | None = None,
         event_col: str | None = None,
     ) -> None:
         self.consecutive = consecutive
-        self.event_groups = event_groups
-        self.group_col = group_col
-        self.session_col, self.session_type_col = self._parse_sessions(sessions)
+        self.events = to_list(events) if events else None
+        self.separator = to_list(separator) if separator else None
+        self.start_event, self.end_event = self._parse_bounds(bounds)
+        self.runs = runs
+        self.name = name
+        if timeout is not None:
+            try:
+                self.timeout_seconds = parse_timeout(timeout)
+            except ValueError as exc:
+                raise PreprocessingConfigError(PROCESSOR_NAME, str(exc)) from exc
+        else:
+            self.timeout_seconds = None
         self.agg = agg or {}
         self.path_col = path_col
         self.event_col = event_col
         super().__init__()
 
-        modes = [
-            self.consecutive is not None,
-            bool(self.event_groups),
-            self.group_col is not None,
-            sessions is not None,
-        ]
-        if sum(modes) != 1:
-            raise PreprocessingConfigError(
-                PROCESSOR_NAME,
-                "Provide exactly one of: consecutive, event_groups, group_col, sessions",
-            )
+        self._validate_modes()
+        self.cases, self.name_col, self.literal_name = self._parse_name(name)
 
-        if event_groups is not None:
-            if not event_groups:
-                raise PreprocessingConfigError(
-                    PROCESSOR_NAME, "event_groups must not be empty"
-                )
-            self.event_groups = [dict(g) for g in event_groups]
-            for g in self.event_groups:
-                self._validate_group(g)
-                if g.get("timeout") is not None:
-                    try:
-                        g["timeout"] = parse_timeout(g["timeout"])
-                    except ValueError as exc:
-                        raise PreprocessingConfigError(
-                            PROCESSOR_NAME, str(exc)
-                        ) from exc
+    # ── modes ────────────────────────────────────────────────────────────────
 
     @staticmethod
-    def _parse_sessions(sessions: Dict[str, Any] | None) -> Tuple[Any, Any]:
-        """Unpack the `sessions` mode dict into its two column names."""
-        if sessions is None:
+    def _parse_bounds(bounds: Dict[str, Any] | None) -> Tuple[Any, Any]:
+        """Unpack the `bounds` mode dict into its two anchors."""
+        if bounds is None:
             return None, None
-        if not isinstance(sessions, dict):
+        if not isinstance(bounds, dict):
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                f"'sessions' must be a dict with keys {list(SESSIONS_KEYS)}, "
-                f"got {type(sessions).__name__}",
+                f"'bounds' must be a dict with keys {list(BOUNDS_KEYS)}, "
+                f"got {type(bounds).__name__}",
             )
-        unknown = sorted(set(sessions) - set(SESSIONS_KEYS))
+        unknown = sorted(set(bounds) - set(BOUNDS_KEYS))
         if unknown:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                f"unknown 'sessions' key(s) {unknown}; allowed keys are {list(SESSIONS_KEYS)}",
+                f"unknown 'bounds' key(s) {unknown}; allowed keys are {list(BOUNDS_KEYS)}",
             )
-        missing = [k for k in SESSIONS_KEYS if not sessions.get(k)]
+        missing = [k for k in BOUNDS_KEYS if not bounds.get(k)]
         if missing:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                f"'sessions' requires both {list(SESSIONS_KEYS)}; missing {missing}",
+                f"'bounds' requires both {list(BOUNDS_KEYS)}; missing {missing}",
             )
-        return sessions["session_col"], sessions["session_type_col"]
+        return to_list(bounds["start_event"]), to_list(bounds["end_event"])
+
+    def _validate_modes(self) -> None:
+        run_modes = [m for m in RUN_MODES if getattr(self, m) is not None]
+        boundary_modes = [
+            m
+            for m in BOUNDARY_MODES
+            if (self.start_event if m == "bounds" else getattr(self, m))
+        ]
+        has_timeout = self.timeout_seconds is not None
+
+        if len(boundary_modes) > 1:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"specify at most one boundary mode, got {boundary_modes}: "
+                f"{list(BOUNDARY_MODES)} are alternatives",
+            )
+        if run_modes and (boundary_modes or has_timeout):
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"{run_modes[0]!r} groups by runs of equal values and cannot be "
+                f"combined with the boundary modes "
+                f"{list(BOUNDARY_MODES) + ['timeout']}",
+            )
+        if len(run_modes) > 1:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"specify at most one of {list(RUN_MODES)}, got {run_modes}",
+            )
+        if not run_modes and not boundary_modes and not has_timeout:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"provide exactly one mode: {list(RUN_MODES) + list(BOUNDARY_MODES)} "
+                f"or 'timeout'",
+            )
+
+    @property
+    def mode(self) -> str:
+        """Which chunking mode this call selected."""
+        for m in RUN_MODES:
+            if getattr(self, m) is not None:
+                return m
+        if self.events:
+            return "events"
+        if self.separator:
+            return "separator"
+        if self.start_event:
+            return "bounds"
+        return "timeout"
+
+    def _as_group(self) -> dict:
+        """The boundary spec in the shared `session_detection` shape."""
+        g: Dict[str, Any] = {}
+        if self.events:
+            g["events"] = self.events
+        if self.separator:
+            g["separator"] = self.separator
+        if self.start_event:
+            g["start_event"] = self.start_event
+            g["end_event"] = self.end_event
+        if self.timeout_seconds is not None:
+            g["timeout"] = self.timeout_seconds
+        return g
+
+    # ── naming ───────────────────────────────────────────────────────────────
+
+    def _parse_name(
+        self, name: Any
+    ) -> Tuple[List[Dict[str, Any]], str | None, str | None]:
+        """
+        Split `name` into its three forms: conditions, a column, or a literal.
+
+        Returns `(cases, name_col, literal)`, of which at most `cases` +
+        a literal fallback are set at once.
+        """
+        if name is None:
+            if self.mode in BOUNDARY_MODES or self.mode == "timeout":
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME,
+                    f"the {self.mode!r} mode needs a 'name' for the merged event: "
+                    f"a string, {{'col': ...}}, or a list of conditions",
+                )
+            return [], None, None
+
+        if isinstance(name, str):
+            self._check_delimiters([name])
+            return [], None, name
+
+        if isinstance(name, dict):
+            unknown = sorted(set(name) - {"col"})
+            if unknown or "col" not in name:
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME,
+                    f"a dict 'name' takes exactly one key, 'col' — got {sorted(name)}",
+                )
+            return [], name["col"], None
+
+        if isinstance(name, (list, tuple)):
+            entries = list(name)
+            if not entries:
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, "a list 'name' must hold at least one case"
+                )
+            fallback = None
+            if isinstance(entries[-1], str):
+                fallback = entries.pop()
+            if not entries:
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME,
+                    "a list 'name' holding only a fallback is just that string — "
+                    "pass it directly as name=",
+                )
+            for case in entries:
+                if (
+                    not isinstance(case, dict)
+                    or "condition" not in case
+                    or not case.get("name")
+                ):
+                    raise PreprocessingConfigError(
+                        PROCESSOR_NAME,
+                        "each case in a list 'name' is a dict with 'condition' and "
+                        "'name'; the last entry may be a plain string used as the "
+                        "fallback for groups no case matched",
+                    )
+            self._check_delimiters(
+                [c["name"] for c in entries] + ([fallback] if fallback else [])
+            )
+            return entries, None, fallback
+
+        raise PreprocessingConfigError(
+            PROCESSOR_NAME,
+            f"'name' must be a string, {{'col': ...}} or a list of cases, "
+            f"got {type(name).__name__}",
+        )
 
     @staticmethod
-    def _validate_group(g: Dict[str, Any]) -> None:
-        has_events = bool(g.get("events"))
-        has_separator = bool(g.get("separator"))
-        has_start = bool(g.get("start_event"))
-        has_end = bool(g.get("end_event"))
-
-        boundary_count = sum([has_events, has_separator, has_start or has_end])
-        if boundary_count != 1:
-            raise PreprocessingConfigError(
-                PROCESSOR_NAME,
-                "each group must define exactly one boundary mode: 'events', 'separator', or 'start_event'+'end_event'",
-            )
-        if has_start and not has_end:
-            raise PreprocessingConfigError(
-                PROCESSOR_NAME, "'start_event' requires 'end_event'"
-            )
-        if has_end and not has_start:
-            raise PreprocessingConfigError(
-                PROCESSOR_NAME, "'end_event' requires 'start_event'"
-            )
-        if not g.get("name") and not g.get("cases"):
-            raise PreprocessingConfigError(
-                PROCESSOR_NAME,
-                "each group must specify 'name' or at least one item in 'cases'",
-            )
-
-        names = [g["name"]] if g.get("name") else []
-        names += [c["name"] for c in (g.get("cases") or []) if c.get("name")]
+    def _check_delimiters(names: List[str]) -> None:
         offenders = find_delimiter_collisions(names)
         if offenders:
             raise PreprocessingConfigError(
@@ -147,24 +260,20 @@ class CollapseEvents(DataProcessor):
                 f"matching. Choose different names.",
             )
 
+    # ── application ──────────────────────────────────────────────────────────
+
     def apply(
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
         path_col = self.path_col or schema.path_col
         event_col = self.event_col or schema.event_col
 
-        if self.consecutive is not None:
+        if self.mode == "consecutive":
             result = self._collapse_consecutive(df, schema, path_col, event_col)
-        elif self.event_groups:
-            result = df
-            for group in self.event_groups:
-                result = self._collapse_group(
-                    result, schema, path_col, event_col, group
-                )
-        elif self.group_col is not None:
-            return self._collapse_by_col(df, schema, path_col, event_col)
+        elif self.mode == "runs":
+            result = self._collapse_runs(df, schema, path_col, event_col)
         else:
-            return self._collapse_by_session_type(df, schema, path_col, event_col)
+            result = self._collapse_boundary(df, schema, path_col, event_col)
 
         for col in schema.event_cols + schema.segment_cols:
             if col in result.columns:
@@ -173,6 +282,69 @@ class CollapseEvents(DataProcessor):
                 result[col] = result[col].cat.as_unordered()
 
         return result, schema
+
+    # ── naming SQL ───────────────────────────────────────────────────────────
+
+    def _name_sql(
+        self, default_expr: str, event_col: str, ts_col: str
+    ) -> Tuple[str, str]:
+        """
+        Build the merged event's name expression, plus any aggregates it needs.
+
+        Returns `(name_expr, metric_agg_chunk)`. `name_expr` is evaluated *after*
+        the GROUP BY, so `cases` can compare group-level aggregates; the chunk
+        carries those aggregates into the grouped CTE. `default_expr` is the name
+        the mode implies when `name` says nothing — the event itself, or the
+        column being grouped on.
+        """
+        # Every form below is evaluated after the GROUP BY, so a column-valued
+        # name has to ride into the grouped CTE as an aggregate first.
+        if self.name_col is not None:
+            col_q = engine.quote_ident(self.name_col)
+            return (
+                "CAST(_name_value AS VARCHAR)",
+                f", ANY_VALUE({col_q}) AS _name_value",
+            )
+
+        fallback = (
+            quote_literal(self.literal_name)
+            if self.literal_name is not None
+            else default_expr
+        )
+        if not self.cases:
+            return fallback, ""
+
+        metric_col_names: List[str] = []
+        metric_agg_parts: List[str] = []
+        seen_keys: Set[str] = set()
+        for case in self.cases:
+            for mc in extract_metric_configs(case["condition"], PROCESSOR_NAME):
+                key = (mc["metric"], str(sorted((mc.get("metric_args") or {}).items())))
+                if key in seen_keys:
+                    continue
+                seen_keys.add(key)
+                for col_name, agg_sql in self._metric_agg_sql(mc, event_col, ts_col):
+                    if col_name not in metric_col_names:
+                        metric_col_names.append(col_name)
+                        metric_agg_parts.append(
+                            f"{agg_sql} AS {engine.quote_ident(col_name)}"
+                        )
+
+        case_when_parts = [
+            f"WHEN {ast_to_sql(case['condition'], PROCESSOR_NAME)} "
+            f"THEN {quote_literal(case['name'])}"
+            for case in self.cases
+        ]
+        name_expr = f"CASE {' '.join(case_when_parts)} ELSE {fallback} END"
+        chunk = (", " + ", ".join(metric_agg_parts)) if metric_agg_parts else ""
+        return name_expr, chunk
+
+    def _validate_name_col(self, df: pd.DataFrame) -> None:
+        if self.name_col is not None and self.name_col not in df.columns:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"name column {self.name_col!r} not found in eventstream",
+            )
 
     @staticmethod
     def _session_agg_exprs(
@@ -279,6 +451,8 @@ class CollapseEvents(DataProcessor):
                 f"multiple columns.)",
             )
 
+    # ── builders ─────────────────────────────────────────────────────────────
+
     def _collapse_consecutive(
         self,
         df: pd.DataFrame,
@@ -286,17 +460,21 @@ class CollapseEvents(DataProcessor):
         path_col: str,
         event_col: str,
     ) -> pd.DataFrame:
-        timestamp_col = schema.timestamp_col
+        self._validate_name_col(df)
+        ts_col = schema.timestamp_col
         collapsed_event_type = EventTypes().COLLAPSED_EVENT.type
-        exclude = {path_col, schema.event_col, schema.event_type}
-        agg_exprs = self._session_agg_exprs(df, self.agg, exclude, timestamp_col)
-        agg_chunk = (", ".join(agg_exprs)) if agg_exprs else ""
+        exclude = {path_col, event_col, schema.event_type}
+        agg_exprs = self._session_agg_exprs(df, self.agg, exclude, ts_col)
+        agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
 
         path_col_q = engine.quote_ident(path_col)
         event_col_q = engine.quote_ident(event_col)
-        timestamp_col_q = engine.quote_ident(timestamp_col)
+        ts_col_q = engine.quote_ident(ts_col)
         event_type_col_q = engine.quote_ident(schema.event_type)
         subindex_col_q = engine.quote_ident(schema.subindex)
+
+        # A run of one event keeps that event's own name unless `name` overrides it.
+        name_expr, metric_agg_chunk = self._name_sql("_event", event_col, ts_col)
 
         # LAG/SUM below must be ordered by a unique key: (timestamp, subindex) can
         # tie (subindex is the same for all raw events), and DuckDB's default RANGE
@@ -306,17 +484,22 @@ class CollapseEvents(DataProcessor):
         if self.consecutive is True:
             is_start_condition = f"LAG({event_col_q}) OVER (PARTITION BY {path_col_q} ORDER BY _rn) = {event_col_q}"
         else:
-            events_list = sql_list(self.consecutive)
+            events_list = sql_list(to_list(self.consecutive))
             is_start_condition = (
                 f"LAG({event_col_q}) OVER (PARTITION BY {path_col_q} ORDER BY _rn) = {event_col_q}"
                 f" AND {event_col_q} IN ({events_list})"
             )
 
+        collapsed_select = ", ".join(
+            f"{name_expr} AS {event_col_q}" if c == event_col else engine.quote_ident(c)
+            for c in schema.cols
+        )
+
         query = f"""
         WITH ordered AS (
             SELECT *,
                 ROW_NUMBER() OVER (
-                    PARTITION BY {path_col_q} ORDER BY {timestamp_col_q}, {subindex_col_q}
+                    PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
                 ) AS _rn
             FROM df
         ),
@@ -333,96 +516,163 @@ class CollapseEvents(DataProcessor):
                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
                 ) AS grp
             FROM event_group_starts
+        ),
+        grouped AS (
+            SELECT
+                {path_col_q},
+                ANY_VALUE({event_col_q}) AS _event,
+                CASE WHEN COUNT(*) > 1 THEN '{collapsed_event_type}' ELSE ARG_MIN({event_type_col_q}, {ts_col_q}) END AS {event_type_col_q},
+                MIN(_rn) AS _first_rn
+                {metric_agg_chunk}
+                {agg_chunk}
+            FROM event_groups
+            GROUP BY {path_col_q}, grp
         )
-        SELECT
-            {path_col_q},
-            ANY_VALUE({event_col_q}) AS {event_col_q},
-            CASE WHEN COUNT(*) > 1 THEN '{collapsed_event_type}' ELSE ARG_MIN({event_type_col_q}, {timestamp_col_q}) END AS {event_type_col_q},
-            {agg_chunk}
-        FROM event_groups
-        GROUP BY {path_col_q}, grp
-        ORDER BY {path_col_q}, MIN(_rn)
+        SELECT {collapsed_select}
+        FROM grouped
+        ORDER BY {path_col_q}, _first_rn
         """
         res = engine.run(query, df=df)
-        res = res[schema.cols]
-        return res
+        return res[schema.cols]
 
-    def _collapse_group(
+    def _collapse_runs(
         self,
         df: pd.DataFrame,
         schema: EventstreamSchema,
         path_col: str,
         event_col: str,
-        group: Dict[str, Any],
     ) -> pd.DataFrame:
+        """
+        Collapse each run of equal values in `runs` into one event.
+
+        A *run*, not every row sharing the value: a value that comes back later
+        in the path is a second event, not the same one stretched across the gap.
+        """
+        self._validate_name_col(df)
         ts_col = schema.timestamp_col
         subindex_col = schema.subindex
         event_type_col = schema.event_type
         collapsed_event_type = EventTypes().COLLAPSED_EVENT.type
+        col = self.runs
+
+        if col not in df.columns:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, f"column '{col}' not found in eventstream"
+            )
+        if col == event_col:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"'runs' must differ from the event column '{event_col}'; to collapse "
+                f"repeats of the same event use consecutive=True",
+            )
+
+        explicit_cols = {path_col, event_col, event_type_col, ts_col, subindex_col, col}
+        agg_exprs = self._session_agg_exprs(df, self.agg, explicit_cols, ts_col)
+        agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
 
         path_col_q = engine.quote_ident(path_col)
         event_col_q = engine.quote_ident(event_col)
         ts_col_q = engine.quote_ident(ts_col)
         subindex_col_q = engine.quote_ident(subindex_col)
         event_type_col_q = engine.quote_ident(event_type_col)
+        col_q = engine.quote_ident(col)
 
-        cases: List[Dict[str, Any]] = group.get("cases", [])
-        mode = detect_mode(group)
-        # `name` is the merged event's label; with `cases` it acts as the
-        # fallback for sessions no case matched. When only `cases` are given,
-        # fall back to the group's first event (or "session" in timeout mode).
-        if mode == _MODE_TIMEOUT:
-            name = group.get("name", "session")
-        else:
-            name = group.get("name", to_list(group.get("events") or ["session"])[0])
+        # Without `name`, the run is named after the value it is a run of.
+        name_expr, metric_agg_chunk = self._name_sql(
+            "CAST(_run_value AS VARCHAR)", event_col, ts_col
+        )
+
+        run_col_select = (
+            f", ANY_VALUE({col_q}) AS {col_q}" if col in schema.cols else ""
+        )
+        collapsed_select = ", ".join(
+            f"{name_expr} AS {event_col_q}" if c == event_col else engine.quote_ident(c)
+            for c in schema.cols
+        )
+
+        query = f"""
+        WITH
+        ordered AS (
+            SELECT *,
+                ROW_NUMBER() OVER (
+                    PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
+                ) AS _rn
+            FROM df
+        ),
+        group_starts AS (
+            SELECT *,
+                CASE WHEN {col_q} IS DISTINCT FROM
+                          LAG({col_q}) OVER (PARTITION BY {path_col_q} ORDER BY _rn)
+                     THEN 1 ELSE 0 END AS _is_new_group
+            FROM ordered
+        ),
+        with_group AS (
+            SELECT *,
+                SUM(_is_new_group) OVER (
+                    PARTITION BY {path_col_q} ORDER BY _rn
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+                ) AS _grp
+            FROM group_starts
+        ),
+        grouped AS (
+            SELECT
+                {path_col_q},
+                MIN({ts_col_q}) AS {ts_col_q},
+                MIN({subindex_col_q}) AS {subindex_col_q},
+                ANY_VALUE({col_q}) AS _run_value,
+                '{collapsed_event_type}' AS {event_type_col_q}
+                {run_col_select}
+                {metric_agg_chunk}
+                {agg_chunk}
+            FROM with_group
+            GROUP BY {path_col_q}, _grp
+        )
+        SELECT {collapsed_select}
+        FROM grouped
+        ORDER BY {path_col_q}, {ts_col_q}, {subindex_col_q}
+        """
+        return engine.run(query, df=df)
+
+    def _collapse_boundary(
+        self,
+        df: pd.DataFrame,
+        schema: EventstreamSchema,
+        path_col: str,
+        event_col: str,
+    ) -> pd.DataFrame:
+        """
+        Collapse each window the boundary spec cuts out; rows outside stay put.
+
+        The windows come from `session_detection.build_session_ctes`, the same
+        chunking `split_sessions` writes into a column.
+        """
+        self._validate_name_col(df)
+        ts_col = schema.timestamp_col
+        subindex_col = schema.subindex
+        event_type_col = schema.event_type
+        collapsed_event_type = EventTypes().COLLAPSED_EVENT.type
+
+        path_col_q = engine.quote_ident(path_col)
+        ts_col_q = engine.quote_ident(ts_col)
+        subindex_col_q = engine.quote_ident(subindex_col)
+        event_type_col_q = engine.quote_ident(event_type_col)
+        event_col_q = engine.quote_ident(event_col)
+
+        # A window has no natural name of its own — `name` is required here, so
+        # the default below is only ever reached through a cases fallback.
+        default = quote_literal(self.events[0] if self.events else "session")
+        name_expr, metric_agg_chunk = self._name_sql(default, event_col, ts_col)
 
         session_ctes = build_session_ctes(
-            group, path_col, event_col, ts_col, subindex_col
+            self._as_group(), path_col, event_col, ts_col, subindex_col
         )
-
-        all_metric_configs: List[Dict[str, Any]] = []
-        seen_keys: Set[str] = set()
-        for case in cases:
-            for mc in extract_metric_configs(case["condition"], PROCESSOR_NAME):
-                key = (mc["metric"], str(sorted((mc.get("metric_args") or {}).items())))
-                if key not in seen_keys:
-                    seen_keys.add(key)
-                    all_metric_configs.append(mc)
-
-        metric_col_names: List[str] = []
-        metric_agg_parts: List[str] = []
-        for mc in all_metric_configs:
-            for col_name, agg_sql in self._metric_agg_sql(mc, event_col, ts_col):
-                if col_name not in metric_col_names:
-                    metric_col_names.append(col_name)
-                    metric_agg_parts.append(
-                        f"{agg_sql} AS {engine.quote_ident(col_name)}"
-                    )
-
-        metric_agg_chunk = (
-            (", " + ", ".join(metric_agg_parts)) if metric_agg_parts else ""
-        )
-
-        if cases:
-            case_when_parts = [
-                f"WHEN {ast_to_sql(case['condition'], PROCESSOR_NAME)} THEN '{case['name'].replace(chr(39), chr(39) * 2)}'"
-                for case in cases
-            ]
-            fallback_escaped = name.replace("'", "''")
-            classify_expr = (
-                f"CASE {' '.join(case_when_parts)} ELSE '{fallback_escaped}' END"
-            )
-        else:
-            classify_expr = f"'{name.replace(chr(39), chr(39) * 2)}'"
 
         exclude_cols = {path_col, event_col, event_type_col, ts_col}
         agg_exprs = self._session_agg_exprs(df, self.agg, exclude_cols, ts_col)
         agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
 
         collapsed_select = ", ".join(
-            f"{classify_expr} AS {event_col_q}"
-            if c == event_col
-            else engine.quote_ident(c)
+            f"{name_expr} AS {event_col_q}" if c == event_col else engine.quote_ident(c)
             for c in schema.cols
         )
         cols_list = ", ".join(engine.quote_ident(c) for c in schema.cols)
@@ -456,185 +706,7 @@ class CollapseEvents(DataProcessor):
         SELECT {cols_list} FROM uncollapsed
         ORDER BY {path_col_q}, {ts_col_q}, {subindex_col_q}
         """
-
         return engine.run(query, df=df)
-
-    def _collapse_by_col(
-        self,
-        df: pd.DataFrame,
-        schema: EventstreamSchema,
-        path_col: str,
-        event_col: str,
-    ) -> Tuple[pd.DataFrame, EventstreamSchema]:
-        ts_col = schema.timestamp_col
-        subindex_col = schema.subindex
-        event_type_col = schema.event_type
-        collapsed_event_type = EventTypes().COLLAPSED_EVENT.type
-        col = self.group_col
-
-        if col not in df.columns:
-            raise PreprocessingConfigError(
-                PROCESSOR_NAME, f"column '{col}' not found in eventstream"
-            )
-        if col == event_col:
-            raise PreprocessingConfigError(
-                PROCESSOR_NAME,
-                f"'group_col' must differ from event column '{event_col}'",
-            )
-
-        explicit_cols = {
-            path_col,
-            event_col,
-            event_type_col,
-            ts_col,
-            subindex_col,
-            col,
-        }
-        agg_exprs = self._session_agg_exprs(df, self.agg, explicit_cols, ts_col)
-        agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
-
-        path_col_q = engine.quote_ident(path_col)
-        event_col_q = engine.quote_ident(event_col)
-        ts_col_q = engine.quote_ident(ts_col)
-        subindex_col_q = engine.quote_ident(subindex_col)
-        event_type_col_q = engine.quote_ident(event_type_col)
-        col_q = engine.quote_ident(col)
-
-        group_col_select = f", {col_q}" if col in schema.cols else ""
-        cols_list = ", ".join(engine.quote_ident(c) for c in schema.cols)
-
-        query = f"""
-        WITH
-        ordered AS (
-            SELECT *,
-                ROW_NUMBER() OVER (
-                    PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
-                ) AS _rn
-            FROM df
-        ),
-        group_starts AS (
-            SELECT *,
-                CASE WHEN {col_q} IS DISTINCT FROM
-                          LAG({col_q}) OVER (PARTITION BY {path_col_q} ORDER BY _rn)
-                     THEN 1 ELSE 0 END AS _is_new_group
-            FROM ordered
-        ),
-        with_group AS (
-            SELECT *,
-                SUM(_is_new_group) OVER (
-                    PARTITION BY {path_col_q} ORDER BY _rn
-                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-                ) AS _grp
-            FROM group_starts
-        ),
-        collapsed AS (
-            SELECT
-                {path_col_q},
-                MIN({ts_col_q}) AS {ts_col_q},
-                MIN({subindex_col_q}) AS {subindex_col_q},
-                CAST({col_q} AS VARCHAR) AS {event_col_q},
-                '{collapsed_event_type}' AS {event_type_col_q}
-                {group_col_select}
-                {agg_chunk}
-            FROM with_group
-            GROUP BY {path_col_q}, _grp, {col_q}
-        )
-        SELECT {cols_list}
-        FROM collapsed
-        ORDER BY {path_col_q}, {ts_col_q}, {subindex_col_q}
-        """
-
-        result = engine.run(query, df=df)
-
-        for c in schema.event_cols + schema.segment_cols:
-            if c in result.columns:
-                result[c] = result[c].astype("category")
-                result[c] = result[c].cat.remove_unused_categories()
-                result[c] = result[c].cat.as_unordered()
-
-        return result, schema
-
-    def _collapse_by_session_type(
-        self,
-        df: pd.DataFrame,
-        schema: EventstreamSchema,
-        path_col: str,
-        event_col: str,
-    ) -> Tuple[pd.DataFrame, EventstreamSchema]:
-        ts_col = schema.timestamp_col
-        subindex_col = schema.subindex
-        event_type_col = schema.event_type
-        collapsed_event_type = EventTypes().COLLAPSED_EVENT.type
-        session_col = self.session_col
-        session_type_col = self.session_type_col
-
-        if session_col not in df.columns:
-            raise PreprocessingConfigError(
-                PROCESSOR_NAME, f"column '{session_col}' not found in eventstream"
-            )
-        if session_type_col not in df.columns:
-            raise PreprocessingConfigError(
-                PROCESSOR_NAME, f"column '{session_type_col}' not found in eventstream"
-            )
-
-        explicit_cols = {
-            path_col,
-            event_col,
-            event_type_col,
-            ts_col,
-            subindex_col,
-            session_col,
-            session_type_col,
-        }
-        agg_exprs = self._session_agg_exprs(df, self.agg, explicit_cols, ts_col)
-        agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
-
-        path_col_q = engine.quote_ident(path_col)
-        event_col_q = engine.quote_ident(event_col)
-        ts_col_q = engine.quote_ident(ts_col)
-        subindex_col_q = engine.quote_ident(subindex_col)
-        event_type_col_q = engine.quote_ident(event_type_col)
-        session_col_q = engine.quote_ident(session_col)
-        session_type_col_q = engine.quote_ident(session_type_col)
-        cols_list = ", ".join(engine.quote_ident(c) for c in schema.cols)
-
-        # session_col and session_type_col may be in schema.cols (custom_cols),
-        # so include them explicitly to satisfy the final SELECT.
-        extra_session_cols = ""
-        if session_col in schema.cols:
-            extra_session_cols += f", ANY_VALUE({session_col_q}) AS {session_col_q}"
-        if session_type_col in schema.cols:
-            extra_session_cols += (
-                f", ANY_VALUE({session_type_col_q}) AS {session_type_col_q}"
-            )
-
-        query = f"""
-        WITH collapsed AS (
-            SELECT
-                {path_col_q},
-                MIN({ts_col_q}) AS {ts_col_q},
-                MIN({subindex_col_q}) AS {subindex_col_q},
-                CAST(ANY_VALUE({session_type_col_q}) AS VARCHAR) AS {event_col_q},
-                '{collapsed_event_type}' AS {event_type_col_q}
-                {extra_session_cols}
-                {agg_chunk}
-            FROM df
-            GROUP BY {path_col_q}, {session_col_q}
-        )
-        SELECT {cols_list}
-        FROM collapsed
-        ORDER BY {path_col_q}, {ts_col_q}, {subindex_col_q}
-        """
-
-        result = engine.run(query, df=df)
-
-        for c in schema.event_cols + schema.segment_cols:
-            if c in result.columns:
-                result[c] = result[c].astype("category")
-                result[c] = result[c].cat.remove_unused_categories()
-                result[c] = result[c].cat.as_unordered()
-
-        return result, schema
 
 
 # Module-level alias so daily_states.py can import this without depending on the class

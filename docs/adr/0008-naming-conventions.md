@@ -22,8 +22,9 @@ The rules, in force for all future API additions:
    `end_anchor` for a window (`truncate_paths`, `get_conversion_rate`) and
    `anchor` on its own (`add_events`). A parameter naming *boundary events*
    as a plain set of names, which is not a position, stays `start_event` /
-   `end_event` (`split_sessions`, `collapse_events`, the `time_between`
-   metric); it is renamed if and when it starts taking anchors. The
+   `end_event` — as the keys of `bounds` in `split_sessions` /
+   `collapse_events`, and in the `time_between` metric's `metric_args`; it is
+   renamed if and when it starts taking anchors. The
    "everything else" diff sentinel is `<REST>`.
 2. **Number encodes the role, not the arity of the accepted value.** Singular
    when the parameter names *one role*, whether it then takes exactly one
@@ -66,9 +67,8 @@ The rules, in force for all future API additions:
    modes, each mode is one mutually-exclusive argument
    (`keep`/`drop`/`func`/`sql`), not a dict of generic keys or a flag.
    A mode needing more than one parameter carries them *inside* its own
-   argument (`collapse_events(sessions={"session_col", "session_type_col"})`,
-   `split_sessions(bounds={"start_event", "end_event"})`), never as further
-   top-level parameters that only apply to one mode — a parameter belonging
+   argument (`split_sessions(bounds={"start_event", "end_event"})`), never as
+   further top-level parameters that only apply to one mode — a parameter belonging
    to a mode that was not selected is otherwise accepted and silently
    ignored, which is the failure this rule exists to prevent. The one
    exception to "not a flag" that keeps coming up and is *not* allowed: a
@@ -78,6 +78,14 @@ The rules, in force for all future API additions:
    Corollary: the parameters of a *cross-cutting step* are not mode
    parameters and stay flat — `scaler` and `nmf_components` apply to every
    clustering method, so they sit beside `method`, not inside its arguments.
+   Two further corollaries, both learned from `collapse_events`:
+   modes belong in the **signature**, not as keys of a config object — a list
+   of specs (its old `event_groups`) hides them from `help()`, from the MCP
+   docs and from mode validation, and buys nothing a chained call does not
+   already give. And a parameter that is *orthogonal* to the mode stays out of
+   it: `collapse_events`' `name` answers "what is the merged event called",
+   which every mode has to answer, so it is one argument beside them rather
+   than a key repeated inside each.
 8. Deliberate exceptions are allowed but must be documented: `proba_out` /
    `proba_in` keep the sklearn-flavoured "proba" because the values are
    transition probabilities and that framing is the point.

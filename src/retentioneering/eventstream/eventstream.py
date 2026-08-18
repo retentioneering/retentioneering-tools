@@ -585,7 +585,9 @@ class Eventstream:
             Name of the column that contains raw URL strings.
         nodes : list of dict
             URL path tree. Each node dict must have a `"path"` key (str) and may
-            include:
+            add `"aggregate_children"` to collapse everything below it,
+            `"exclude"` to drop those rows, and `"name"` to set the slug used for
+            the collapsed pages.
               - `"aggregate_children"` (bool) — collapse every page below this node
                 into one `<path>/<slug>` event. The slug is a fixed placeholder, not
                 the URL's own segment: all of `/catalog/phones` and
@@ -876,14 +878,14 @@ class Eventstream:
         name : str
             Name of the new segment column.
         rules : list, optional
-            CASE-WHEN rules. A list of conditions plus a final else entry:
+            CASE-WHEN rules: a list of condition entries plus a final else entry,
+            e.g. `[["country", "=", "US", "domestic"], ["international"]]`.
               - Each condition entry is `[column, op, value, label]` — translates to
                 `WHEN <column> <op> <value> THEN <label>` in SQL. A string `value`
                 is quoted for you, so write `"US"`, not `"'US'"` — the exception is
                 `op="in"`, whose value is inserted raw and must therefore be a
                 complete SQL tuple: `"('GB', 'DE', 'FR')"`.
               - The last entry is `[else_label]` — the ELSE branch label.
-            Example: `[["country", "=", "US", "domestic"], ["international"]]`.
         func : callable, optional
             A function that accepts the raw pandas DataFrame and returns a collection of
             segment labels with the same length and order as the eventstream rows.
@@ -911,7 +913,13 @@ class Eventstream:
             labeled `inside` if its timestamp falls within `[start, end]`,
             otherwise `outside`.
         metric_bins : dict, optional
-            Split paths into bins by a per-path metric. Keys:
+            Split paths into bins by a per-path metric, keyed by `metric`
+            (required), exactly one of `edges` / `quantiles` for the cut points,
+            and optional `segment_levels` naming the bins. Paths the metric has no
+            value for (`time_between` is the one that can be undefined — for a path
+            missing either of its two events) get the level `"undefined"`, which is
+            not one of the bins and so is not counted against `segment_levels`;
+            rename it with `rename_segment_levels`.
 
             - `metric` (required) — a metric config, `{"metric": ..., "metric_args": ...}`,
               as used by `filter_paths` and `add_clusters`. It must produce exactly
@@ -928,12 +936,6 @@ class Eventstream:
             - `segment_levels` — one name per bin, so `len(segment_levels)` is
               always the number of bins. Omit for auto names: `"[5, 15)"` for
               `edges`, `q1`..`qN` for `quantiles`.
-
-            Exactly one of `edges` / `quantiles` is required. Paths the metric has
-            no value for (`time_between` is the one that can be undefined — for a
-            path missing either of its two events) get the level `"undefined"`,
-            which is not one of the bins and so is not counted against
-            `segment_levels`; rename it with `rename_segment_levels`.
         path_col : str, optional
             Path ID column override for `funnel_events` and `metric_bins` modes;
             defaults to `schema.path_col`.

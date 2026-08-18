@@ -11,10 +11,9 @@ for each below.
 ## Choosing the chunks
 
 Every mode below answers one question — *which rows belong together* — and
-exactly one of them may be given. `event_groups`, `separator` and `bounds` cut the
-path into windows using the same vocabulary
-[Split Sessions](/docs/data-processors/split-sessions) uses, so a chunking that
-works there works here; `loops` and `group_col` group by runs of equal values
+exactly one of them may be given. `event_groups` and `bounds` cut the path into
+windows, `bounds` spelled as in
+[Split Sessions](/docs/data-processors/split-sessions); `loops` and `group_col` group by runs of equal values
 instead. What the merged event is *called* is a separate question, answered by
 `name` — see [Naming the merged event](#naming-the-merged-event) below.
 
@@ -60,24 +59,6 @@ stream.collapse_events(
 ```
 
 After: `home → checkout → purchase`
-
-### separator
-
-A window is every event up to and including the next `separator` event
-(inclusive of the separator itself). Trailing events after the *last*
-separator in a path aren't part of any window and pass through unchanged.
-
-Before: `search → search_submit → browse → search → search_submit → purchase`
-
-```python
-stream.collapse_events(separator="search_submit", name="search_session")
-```
-
-After — two separate `search_session` groups (each ending at its own
-`search_submit`); the trailing `purchase` has no separator after it, so it's
-left uncollapsed:
-
-`search_session → search_session → purchase`
 
 ### bounds
 

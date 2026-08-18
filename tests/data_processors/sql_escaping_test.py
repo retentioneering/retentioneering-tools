@@ -212,12 +212,12 @@ class TestCollapseEventsMetricEscaping:
         stream = make_stream(
             [
                 ["user_1", "o'brien_page", "2020-01-01 00:00:00"],
-                ["user_1", "sep", "2020-01-01 00:01:00"],
+                ["user_1", "checkout", "2020-01-01 00:01:00"],
             ]
         )
 
         res = stream.collapse_events(
-            separator="sep",
+            event_groups=["o'brien_page", "checkout"],
             name=[
                 {
                     "condition": {
@@ -239,12 +239,12 @@ class TestCollapseEventsMetricEscaping:
             [
                 ["user_1", "o'brien_page", "2020-01-01 00:00:00"],
                 ["user_1", "o'brien_page", "2020-01-01 00:01:00"],
-                ["user_1", "sep", "2020-01-01 00:02:00"],
+                ["user_1", "checkout", "2020-01-01 00:02:00"],
             ]
         )
 
         res = stream.collapse_events(
-            separator="sep",
+            event_groups=["o'brien_page", "checkout"],
             name=[
                 {
                     "condition": {
@@ -266,12 +266,11 @@ class TestCollapseEventsMetricEscaping:
             [
                 ["user_1", "o'brien_start", "2020-01-01 00:00:00"],
                 ["user_1", "o'brien_end", "2020-01-01 00:01:40"],
-                ["user_1", "sep", "2020-01-01 00:02:00"],
             ]
         )
 
         res = stream.collapse_events(
-            separator="sep",
+            event_groups=["o'brien_start", "o'brien_end"],
             name=[
                 {
                     "condition": {

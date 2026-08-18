@@ -23,7 +23,7 @@ PROCESSOR_NAME = "collapse_events"
 BOUNDS_KEYS = ("start_event", "end_event")
 
 #: Modes that chunk a path by its events, sharing `split_sessions`' vocabulary.
-BOUNDARY_MODES = ("event_groups", "separator", "bounds")
+BOUNDARY_MODES = ("event_groups", "bounds")
 #: Modes that chunk a path by runs of equal values.
 RUN_MODES = ("loops", "group_col")
 
@@ -35,8 +35,8 @@ class CollapseEvents(DataProcessor):
 
     Two decisions, two argument groups. *How to chunk the path* is one
     mutually-exclusive mode — `loops` / `group_col` group adjacent rows
-    sharing a value, `event_groups` / `separator` / `bounds` cut it into windows, the
-    same vocabulary `split_sessions` uses (they share `build_session_ctes`).
+    sharing a value, `event_groups` / `bounds` cut it into windows, sharing
+    `split_sessions`' `build_session_ctes`.
     Inactivity is deliberately not one of them: breaking on a time gap is
     `split_sessions(timeout=...)`, whose session column this processor then
     collapses through `group_col`.
@@ -47,7 +47,6 @@ class CollapseEvents(DataProcessor):
 
     loops: bool | List[str] | None
     event_groups: List[str] | None
-    separator: List[str] | None
     start_event: List[str] | None
     end_event: List[str] | None
     group_col: str | None
@@ -60,7 +59,6 @@ class CollapseEvents(DataProcessor):
         self,
         loops: bool | List[str] | None = None,
         event_groups: str | List[str] | None = None,
-        separator: str | List[str] | None = None,
         bounds: Dict[str, Any] | None = None,
         group_col: str | None = None,
         name: Any = None,
@@ -70,7 +68,6 @@ class CollapseEvents(DataProcessor):
     ) -> None:
         self.loops = loops
         self.event_groups = self._parse_event_groups(event_groups)
-        self.separator = to_list(separator) if separator else None
         self.start_event, self.end_event = self._parse_bounds(bounds)
         self.group_col = group_col
         self.name = name
@@ -170,8 +167,6 @@ class CollapseEvents(DataProcessor):
                 return m
         if self.event_groups:
             return "event_groups"
-        if self.separator:
-            return "separator"
         return "bounds"
 
     def _as_group(self) -> dict:
@@ -179,8 +174,6 @@ class CollapseEvents(DataProcessor):
         g: Dict[str, Any] = {}
         if self.event_groups:
             g["events"] = self.event_groups
-        if self.separator:
-            g["separator"] = self.separator
         if self.start_event:
             g["start_event"] = self.start_event
             g["end_event"] = self.end_event

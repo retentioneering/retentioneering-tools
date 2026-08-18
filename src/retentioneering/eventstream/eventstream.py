@@ -993,7 +993,6 @@ class Eventstream:
         self,
         loops=None,
         event_groups=None,
-        separator=None,
         bounds=None,
         group_col=None,
         name=None,
@@ -1006,9 +1005,8 @@ class Eventstream:
 
         Two independent decisions. **How to chunk the path** is exactly one mode:
         `loops` or `group_col` group adjacent rows sharing a value, while
-        `event_groups`, `separator` and `bounds` cut the path into windows — the same
-        vocabulary `split_sessions` uses, so a chunking that works there works
-        here. **How to name** the merged event is `name`, which is orthogonal to
+        `event_groups` and `bounds` cut the path into windows, the latter
+        spelled as in `split_sessions`. **How to name** the merged event is `name`, which is orthogonal to
         the mode.
 
         Breaking on an inactivity gap is not a mode here: run
@@ -1028,8 +1026,6 @@ class Eventstream:
             `loops`, the run may mix the listed events —
             `event_groups=["a", "b"]` turns `a, a, b, b` into one event, where
             `loops=["a", "b"]` turns it into two.
-        separator : str or list of str, optional
-            Collapse every event up to and including the next separator event.
         bounds : dict, optional
             Collapse every event between a `start_event` and the next
             `end_event`, both included. Requires both keys.
@@ -1099,7 +1095,6 @@ class Eventstream:
         new_df, new_schema = CollapseEvents(
             loops=loops,
             event_groups=event_groups,
-            separator=separator,
             bounds=bounds,
             group_col=group_col,
             name=name,

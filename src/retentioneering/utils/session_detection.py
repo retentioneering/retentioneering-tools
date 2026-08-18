@@ -43,25 +43,21 @@ def build_session_ctes(
     event_col: str,
     ts_col: str,
     subindex_col: str,
-    separator_starts: bool = False,
 ) -> str:
     """
     Dispatches to the appropriate CTE builder based on the boundary mode in `group`.
     `group` may additionally carry `timeout` (seconds) to add time-gap breaks.
 
-    separator_starts: if True, the separator event marks the START of a new session
-    (the separator itself is not in-session). If False (default), the separator marks
-    the END of a session (the separator is included in the session being collapsed).
+    A separator marks the START of a new session and is not itself in-session,
+    which is what `split_sessions` means by it. `collapse_events` used to call in
+    here with the opposite reading — separator ends the window and belongs to it
+    — giving one word two meanings across the two processors; that mode is gone.
     """
     mode = detect_mode(group)
     if mode == _MODE_EVENTS:
         return _ctes_events(group, path_col, event_col, ts_col, subindex_col)
     if mode == _MODE_SEPARATOR:
-        if separator_starts:
-            return _ctes_separator_start(
-                group, path_col, event_col, ts_col, subindex_col
-            )
-        return _ctes_separator(group, path_col, event_col, ts_col, subindex_col)
+        return _ctes_separator_start(group, path_col, event_col, ts_col, subindex_col)
     if mode == _MODE_START_END:
         return _ctes_start_end(group, path_col, event_col, ts_col, subindex_col)
     return _ctes_timeout(group["timeout"], path_col, ts_col, subindex_col)
@@ -133,58 +129,6 @@ session_starts AS (
         CASE WHEN _in_session = 1
                   AND (
                       COALESCE(LAG(_in_session) OVER (PARTITION BY {path_col_q} ORDER BY _rn), 0) = 0
-                      {timeout_or}
-                  )
-             THEN 1 ELSE 0 END AS _is_new_session
-    FROM in_session
-),
-with_session_id AS (
-    SELECT *,
-        SUM(_is_new_session) OVER (
-            PARTITION BY {path_col_q} ORDER BY _rn
-            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-        ) AS _session_counter
-    FROM session_starts
-)"""
-
-
-def _ctes_separator(group, path_col, event_col, ts_col, subindex_col):
-    separators = to_list(group["separator"])
-    timeout_or = _timeout_or_clause(group, path_col, ts_col)
-
-    path_col_q = engine.quote_ident(path_col)
-    event_col_q = engine.quote_ident(event_col)
-    ts_col_q = engine.quote_ident(ts_col)
-    subindex_col_q = engine.quote_ident(subindex_col)
-
-    return f"""
-tagged AS (
-    SELECT *,
-        CASE WHEN {event_col_q} IN ({sql_list(separators)}) THEN 1 ELSE 0 END AS _is_sep,
-        ROW_NUMBER() OVER (
-            PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
-        ) AS _rn
-    FROM df
-),
-sep_lookahead AS (
-    SELECT *,
-        MIN(CASE WHEN _is_sep = 1 THEN _rn END) OVER (
-            PARTITION BY {path_col_q} ORDER BY _rn
-            ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING
-        ) AS _next_sep_rn
-    FROM tagged
-),
-in_session AS (
-    SELECT *,
-        CASE WHEN _next_sep_rn IS NOT NULL THEN 1 ELSE 0 END AS _in_session
-    FROM sep_lookahead
-),
-session_starts AS (
-    SELECT *,
-        CASE WHEN _in_session = 1
-                  AND (
-                      COALESCE(LAG(_in_session) OVER (PARTITION BY {path_col_q} ORDER BY _rn), 0) = 0
-                      OR LAG(_is_sep) OVER (PARTITION BY {path_col_q} ORDER BY _rn) = 1
                       {timeout_or}
                   )
              THEN 1 ELSE 0 END AS _is_new_session

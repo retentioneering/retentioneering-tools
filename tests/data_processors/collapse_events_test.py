@@ -172,13 +172,12 @@ class TestCollapseEventsRepetitive:
 
 
 # ---------------------------------------------------------------------------
-# Boundary modes — events / separator / bounds
+# Boundary modes — event_groups / bounds
 # which was NOT ported to the library (it depends on FilterPaths).
 # ---------------------------------------------------------------------------
 
 # Not ported
 # class TestCollapseEventsGroupsEvents: ...
-# class TestCollapseEventsGroupsSeparator: ...
 # class TestCollapseEventsGroupsStartEnd: ...
 # class TestCollapseEventsGroupsTimeout: ...
 # class TestCollapseEventsGroupsCases: ...
@@ -265,7 +264,7 @@ class TestCollapseEventsValidation:
         composable ones."""
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError, match="cannot be combined"):
-            stream.collapse_events(loops=True, separator="sep", name="s")
+            stream.collapse_events(loops=True, event_groups=["A"], name="s")
 
     def test_raises_timeout_is_not_a_mode(self):
         """Breaking on inactivity belongs to split_sessions; collapse_events
@@ -325,8 +324,12 @@ class TestCollapseEventsValidation:
 
     def test_raises_multiple_boundary_modes(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
-        with pytest.raises(PreprocessingConfigError):
-            stream.collapse_events(event_groups=["A"], separator="sep", name="session")
+        with pytest.raises(PreprocessingConfigError, match="at most one boundary"):
+            stream.collapse_events(
+                event_groups=["A"],
+                bounds={"start_event": "s", "end_event": "e"},
+                name="session",
+            )
 
     def test_raises_start_without_end(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
@@ -621,21 +624,27 @@ class TestCollapseEventsGroupsEvents:
 
 
 class TestCollapseEventsGroupsCases:
+    """Conditional naming. The chunking here is `bounds`, but nothing in `cases`
+    depends on that — the conditions are aggregates over whatever group the mode
+    produced (see TestCollapseEventsNaming for the same cases on other modes)."""
+
+    BOUNDS = {"start_event": "start", "end_event": "end"}
+
+    @staticmethod
+    def _windows(*groups):
+        """Two-marker windows laid end to end, one minute apart."""
+        rows, t = [], 0
+        for g in groups:
+            for event in ["start", *g, "end"]:
+                rows.append(["user_1", event, f"2020-01-01 00:{t:02d}:00"])
+                t += 1
+        return make_stream(rows)
+
     def test_cases_has_metric(self):
-        """Cases with 'has_event' metric assign correct name when event is present."""
-        stream = make_stream(
-            [
-                ["user_1", "A", "2020-01-01 00:00:00"],
-                ["user_1", "purchase", "2020-01-01 00:01:00"],
-                ["user_1", "B", "2020-01-01 00:02:00"],
-                ["user_1", "sep", "2020-01-01 00:03:00"],
-                ["user_1", "C", "2020-01-01 00:04:00"],
-                ["user_1", "D", "2020-01-01 00:05:00"],
-                ["user_1", "sep", "2020-01-01 00:06:00"],
-            ]
-        )
+        """Cases with 'has_event' name a window by what happened inside it."""
+        stream = self._windows(["A", "purchase", "B"], ["C", "D"])
         res = stream.collapse_events(
-            separator="sep",
+            bounds=self.BOUNDS,
             name=[
                 {
                     "condition": {
@@ -649,27 +658,13 @@ class TestCollapseEventsGroupsCases:
                 "no_purchase_session",
             ],
         )
-
-        result_events = events(res)
-        assert "purchase_session" in result_events
-        assert "no_purchase_session" in result_events
+        assert events(res) == ["purchase_session", "no_purchase_session"]
 
     def test_cases_event_count_metric(self):
-        """Cases with 'event_count' metric (documented 'event' key) name sessions by threshold."""
-        stream = make_stream(
-            [
-                # session 1: two 'click' events -> exceeds threshold
-                ["user_1", "click", "2020-01-01 00:00:00"],
-                ["user_1", "click", "2020-01-01 00:01:00"],
-                ["user_1", "sep", "2020-01-01 00:02:00"],
-                # session 2: one 'click' event -> below threshold
-                ["user_1", "click", "2020-01-01 00:03:00"],
-                ["user_1", "A", "2020-01-01 00:04:00"],
-                ["user_1", "sep", "2020-01-01 00:05:00"],
-            ]
-        )
+        """'event_count' (documented 'event' key) names windows by threshold."""
+        stream = self._windows(["click", "click"], ["click", "A"])
         res = stream.collapse_events(
-            separator="sep",
+            bounds=self.BOUNDS,
             name=[
                 {
                     "condition": {
@@ -683,53 +678,32 @@ class TestCollapseEventsGroupsCases:
                 "quiet_session",
             ],
         )
-
         assert events(res) == ["active_session", "quiet_session"]
 
     def test_cases_default_when_no_match(self):
-        """When no case condition matches, the default name is used."""
-        stream = make_stream(
-            [
-                ["user_1", "A", "2020-01-01 00:00:00"],
-                ["user_1", "B", "2020-01-01 00:01:00"],
-                ["user_1", "sep", "2020-01-01 00:02:00"],
-            ]
-        )
+        """When no case matches, the fallback is used."""
+        stream = self._windows(["A", "B"])
         res = stream.collapse_events(
-            separator="sep",
+            bounds=self.BOUNDS,
             name=[
                 {
                     "condition": {
-                        "op": ">",
+                        "op": "=",
                         "metric": "has_event",
-                        "value": 0,
+                        "value": True,
                         "metric_args": {"event": "purchase"},
                     },
                     "name": "purchase_session",
                 },
-                "other_session",
+                "plain_session",
             ],
         )
-
-        assert "other_session" in events(res)
-        assert "purchase_session" not in events(res)
+        assert events(res) == ["plain_session"]
 
     def test_cases_has_all_events_metric(self):
-        """Cases with 'has_all_events' (AND semantics) name sessions containing
-        every listed event."""
-        stream = make_stream(
-            [
-                # session 1: has both A and B -> matches
-                ["user_1", "A", "2020-01-01 00:00:00"],
-                ["user_1", "B", "2020-01-01 00:01:00"],
-                ["user_1", "sep", "2020-01-01 00:02:00"],
-                # session 2: only A -> doesn't match
-                ["user_1", "A", "2020-01-01 00:03:00"],
-                ["user_1", "sep", "2020-01-01 00:04:00"],
-            ]
-        )
+        stream = self._windows(["A", "B"], ["A", "C"])
         res = stream.collapse_events(
-            separator="sep",
+            bounds=self.BOUNDS,
             name=[
                 {
                     "condition": {
@@ -738,29 +712,17 @@ class TestCollapseEventsGroupsCases:
                         "value": True,
                         "metric_args": {"events": ["A", "B"]},
                     },
-                    "name": "both_session",
+                    "name": "both",
                 },
-                "partial_session",
+                "not_both",
             ],
         )
-
-        assert events(res) == ["both_session", "partial_session"]
+        assert events(res) == ["both", "not_both"]
 
     def test_cases_has_any_event_metric(self):
-        """Cases with 'has_any_event' (OR semantics) name sessions containing
-        at least one of the listed events."""
-        stream = make_stream(
-            [
-                # session 1: has A -> matches
-                ["user_1", "A", "2020-01-01 00:00:00"],
-                ["user_1", "sep", "2020-01-01 00:01:00"],
-                # session 2: has neither A nor B -> doesn't match
-                ["user_1", "C", "2020-01-01 00:02:00"],
-                ["user_1", "sep", "2020-01-01 00:03:00"],
-            ]
-        )
+        stream = self._windows(["A", "X"], ["C", "D"])
         res = stream.collapse_events(
-            separator="sep",
+            bounds=self.BOUNDS,
             name=[
                 {
                     "condition": {
@@ -769,26 +731,19 @@ class TestCollapseEventsGroupsCases:
                         "value": True,
                         "metric_args": {"events": ["A", "B"]},
                     },
-                    "name": "matched_session",
+                    "name": "any_of_them",
                 },
-                "unmatched_session",
+                "none_of_them",
             ],
         )
-
-        assert events(res) == ["matched_session", "unmatched_session"]
+        assert events(res) == ["any_of_them", "none_of_them"]
 
     def test_cases_bulk_metric_forbidden_in_condition(self):
-        """has_event_bulk/event_count_bulk cannot appear in case conditions -
-        they produce multiple columns, not a single comparable value."""
-        stream = make_stream(
-            [
-                ["user_1", "A", "2020-01-01 00:00:00"],
-                ["user_1", "sep", "2020-01-01 00:01:00"],
-            ]
-        )
+        """A bulk metric produces several columns and cannot be compared."""
+        stream = self._windows(["A", "B"])
         with pytest.raises(PreprocessingConfigError):
             stream.collapse_events(
-                separator="sep",
+                bounds=self.BOUNDS,
                 name=[
                     {
                         "condition": {
@@ -802,45 +757,6 @@ class TestCollapseEventsGroupsCases:
                     "unmatched_session",
                 ],
             )
-
-
-# ---------------------------------------------------------------------------
-# Event groups — separator mode
-# ---------------------------------------------------------------------------
-
-
-class TestCollapseEventsGroupsSeparator:
-    def test_separator_basic(self):
-        """Events up to (and including) the separator are collapsed."""
-        stream = make_stream(
-            [
-                ["user_1", "A", "2020-01-01 00:00:00"],
-                ["user_1", "B", "2020-01-01 00:01:00"],
-                ["user_1", "sep", "2020-01-01 00:02:00"],
-                ["user_1", "C", "2020-01-01 00:03:00"],
-            ]
-        )
-        res = stream.collapse_events(separator="sep", name="session")
-        df = res.df
-
-        assert "session" in list(df["event"].astype(str))
-        assert "C" in list(df["event"].astype(str))
-
-    def test_separator_multiple_sessions(self):
-        """Multiple separator-delimited groups each collapse into one row."""
-        stream = make_stream(
-            [
-                ["user_1", "A", "2020-01-01 00:00:00"],
-                ["user_1", "sep", "2020-01-01 00:01:00"],
-                ["user_1", "B", "2020-01-01 00:02:00"],
-                ["user_1", "sep", "2020-01-01 00:03:00"],
-                ["user_1", "C", "2020-01-01 00:04:00"],
-            ]
-        )
-        res = stream.collapse_events(separator="sep", name="session")
-
-        assert events(res).count("session") == 2
-        assert "C" in events(res)
 
 
 # ---------------------------------------------------------------------------
@@ -947,14 +863,14 @@ class TestCollapseEventsAgg:
             [
                 ["user_1", "A", "2020-01-01 00:00:00", 10],
                 ["user_1", "B", "2020-01-01 00:01:00", 20],
-                ["user_1", "sep", "2020-01-01 00:02:00", 30],
+                ["user_1", "C", "2020-01-01 00:02:00", 30],
             ],
             columns=["user_id", "event", "timestamp", "score"],
         )
         schema = {**SCHEMA, "custom_cols": ["score"]}
         stream = Eventstream(df, schema)
 
-        res = stream.collapse_events(separator="sep", name="session")
+        res = stream.collapse_events(event_groups=["A", "B", "C"], name="session")
         df_res = res.df
         session_row = df_res[df_res["event"] == "session"]
         assert int(session_row["score"].iloc[0]) == 10

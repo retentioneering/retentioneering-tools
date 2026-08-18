@@ -55,7 +55,7 @@ stream.get_segment_levels()             # {segment_col: [values...]}
 | `add_clusters(name, features, method_args={"n_clusters": k}, ...)` | materialize clusters as a segment column | labels are strings `"cluster_0"...`; deterministic (seeded) |
 | `add_start_end_events()` | explicit `path_start`/`path_end` rows | idempotent; widgets add them implicitly |
 | `rename_events(mapping)` | collapse taxonomies (e.g. `"PLP: *"` families by explicit dict) | unknown keys raise |
-| `collapse_events(loops=True | event_groups= | group_col= | separator= | bounds=, name=)` | merge a run of events into one; `name` labels it (literal, `{"col": …}`, or cases) | count loops BEFORE collapsing if loops are your subject |
+| `collapse_events(loops=True | event_groups= | group_col= | bounds=, name=)` | merge a run of events into one; `name` labels it (literal, `{"col": …}`, or cases) | count loops BEFORE collapsing if loops are your subject |
 | `split_sessions(timeout="30m" | separator= | bounds={"start_event":…,"end_event":…})` | derive sessions | duration strings need units; column params use `session_col` naming |
 | `truncate_paths(start_anchor, end_anchor)` | window each path between two anchors | each anchor is an event name, a spec `{pattern, at, occurrence, offset}`, or a LIST of either (narrowest window wins). A list is how you get both "whichever comes first" and a keep-whole fallback: `end_event=["purchase", "path_end"]`. A bare name still DROPS paths missing the anchor |
 | `drop_events / drop_segment / edit_events / rename_segment_levels / sample_paths / to_daily_states / urls_to_events / add_events` | as named | `sample_paths(frac=, random_state=)` for stable subsamples |

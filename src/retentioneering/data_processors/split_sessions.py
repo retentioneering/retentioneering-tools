@@ -129,7 +129,7 @@ class SplitSessions(DataProcessor):
 
         group = self._as_group()
         session_ctes = build_session_ctes(
-            group, path_col, event_col, ts_col, subindex_col, separator_starts=True
+            group, path_col, event_col, ts_col, subindex_col
         )
 
         path_col_q = engine.quote_ident(path_col)

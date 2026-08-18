@@ -47,7 +47,7 @@ class TestCollapseEventsRepetitive:
             columns=["user_id", "event", "timestamp"],
         )
         stream = Eventstream(df)
-        res = stream.collapse_events(consecutive=True)
+        res = stream.collapse_events(loops=True)
 
         expected = Eventstream(
             pd.DataFrame(
@@ -76,7 +76,7 @@ class TestCollapseEventsRepetitive:
             columns=["user_id", "event", "timestamp"],
         )
         stream = Eventstream(df)
-        res = stream.collapse_events(consecutive=["A", "B"])
+        res = stream.collapse_events(loops=["A", "B"])
 
         expected = Eventstream(
             pd.DataFrame(
@@ -104,7 +104,7 @@ class TestCollapseEventsRepetitive:
             columns=["user_id", "event", "timestamp"],
         )
         stream = Eventstream(df)
-        res = stream.collapse_events(consecutive=["A"])
+        res = stream.collapse_events(loops=["A"])
 
         expected = Eventstream(
             pd.DataFrame(
@@ -135,7 +135,7 @@ class TestCollapseEventsRepetitive:
             columns=["user_id", "event", "timestamp"],
         )
         stream = Eventstream(df)
-        res = stream.collapse_events(consecutive=True)
+        res = stream.collapse_events(loops=True)
 
         assert events(res) == ["A", "B", "C"]
         # A and B are not collapsed rows; only the C-run is.
@@ -155,7 +155,7 @@ class TestCollapseEventsRepetitive:
         schema = {"path_cols": ["user_id", "session_id"], "custom_cols": ["score"]}
         stream = Eventstream(df, schema)
         res = stream.collapse_events(
-            consecutive=True, agg={"score": "max"}, path_col="session_id"
+            loops=True, agg={"score": "max"}, path_col="session_id"
         )
 
         expected = Eventstream(
@@ -248,7 +248,7 @@ class TestCollapseEventsValidation:
     def test_raises_multiple_modes(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError):
-            stream.collapse_events(consecutive=True, events=["A"], name="s")
+            stream.collapse_events(loops=True, event_groups=["A"], name="s")
 
     def test_raises_runs_col_not_found(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
@@ -265,34 +265,34 @@ class TestCollapseEventsValidation:
         composable ones."""
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError, match="cannot be combined"):
-            stream.collapse_events(consecutive=True, separator="sep", name="s")
+            stream.collapse_events(loops=True, separator="sep", name="s")
 
     def test_raises_timeout_is_not_a_mode(self):
         """Breaking on inactivity belongs to split_sessions; collapse_events
         collapses the session column it writes."""
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(TypeError):
-            stream.collapse_events(events=["A"], name="s", timeout="30m")
+            stream.collapse_events(event_groups=["A"], name="s", timeout="30m")
 
     def test_raises_unknown_name_dict_key(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError, match="exactly one key, 'col'"):
-            stream.collapse_events(events=["A"], name={"column": "kind"})
+            stream.collapse_events(event_groups=["A"], name={"column": "kind"})
 
     def test_raises_bad_name_type(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError, match="'name' must be"):
-            stream.collapse_events(events=["A"], name=42)
+            stream.collapse_events(event_groups=["A"], name=42)
 
     def test_raises_name_list_without_cases(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError, match="pass it directly"):
-            stream.collapse_events(events=["A"], name=["just_a_fallback"])
+            stream.collapse_events(event_groups=["A"], name=["just_a_fallback"])
 
     def test_raises_malformed_case(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError, match="'condition' and"):
-            stream.collapse_events(events=["A"], name=[{"name": "no_condition"}])
+            stream.collapse_events(event_groups=["A"], name=[{"name": "no_condition"}])
 
     def test_raises_name_col_not_found(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
@@ -316,7 +316,7 @@ class TestCollapseEventsValidation:
     def test_raises_empty_events(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError, match="exactly one mode"):
-            stream.collapse_events(events=[], name="session")
+            stream.collapse_events(event_groups=[], name="session")
 
     def test_raises_no_boundary_mode(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
@@ -326,7 +326,7 @@ class TestCollapseEventsValidation:
     def test_raises_multiple_boundary_modes(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError):
-            stream.collapse_events(events=["A"], separator="sep", name="session")
+            stream.collapse_events(event_groups=["A"], separator="sep", name="session")
 
     def test_raises_start_without_end(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
@@ -341,18 +341,18 @@ class TestCollapseEventsValidation:
     def test_raises_no_default_and_no_cases(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError):
-            stream.collapse_events(events=["A"])
+            stream.collapse_events(event_groups=["A"])
 
     def test_raises_group_name_with_path_delimiter(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError, match="add->cart"):
-            stream.collapse_events(events=["A"], name="add->cart")
+            stream.collapse_events(event_groups=["A"], name="add->cart")
 
     def test_raises_case_name_with_path_delimiter(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError, match="add->cart"):
             stream.collapse_events(
-                events=["A"],
+                event_groups=["A"],
                 name=[
                     {
                         "name": "add->cart",
@@ -531,7 +531,7 @@ class TestCollapseEventsGroupsEvents:
                 ["user_1", "C", "2020-01-01 00:03:00"],
             ]
         )
-        res = stream.collapse_events(events=["A", "B"], name="session")
+        res = stream.collapse_events(event_groups=["A", "B"], name="session")
 
         assert events(res) == ["session", "C"]
 
@@ -544,7 +544,7 @@ class TestCollapseEventsGroupsEvents:
                 ["user_1", "C", "2020-01-01 00:02:00"],
             ]
         )
-        res = stream.collapse_events(events=["A", "B"], name="session")
+        res = stream.collapse_events(event_groups=["A", "B"], name="session")
         df = res.df
 
         collapsed_rows = df[df["event"] == "session"]
@@ -559,7 +559,7 @@ class TestCollapseEventsGroupsEvents:
                 ["user_1", "Y", "2020-01-01 00:02:00"],
             ]
         )
-        res = stream.collapse_events(events=["A"], name="session")
+        res = stream.collapse_events(event_groups=["A"], name="session")
 
         assert "X" in events(res)
         assert "Y" in events(res)
@@ -575,7 +575,7 @@ class TestCollapseEventsGroupsEvents:
                 ["user_1", "A", "2020-01-01 00:04:00"],
             ]
         )
-        res = stream.collapse_events(events=["A"], name="session")
+        res = stream.collapse_events(event_groups=["A"], name="session")
         df = res.df
 
         assert list(df["event"].astype(str)).count("session") == 2
@@ -590,7 +590,7 @@ class TestCollapseEventsGroupsEvents:
                 ["user_1", "B", "2020-01-01 00:15:00"],
             ]
         )
-        res = stream.collapse_events(events=["A", "B"], name="session")
+        res = stream.collapse_events(event_groups=["A", "B"], name="session")
         df = res.df
 
         ts = pd.to_datetime(df.loc[df["event"] == "session", "timestamp"].iloc[0])
@@ -606,7 +606,7 @@ class TestCollapseEventsGroupsEvents:
                 ["user_2", "C", "2020-01-01 00:01:00"],
             ]
         )
-        res = stream.collapse_events(events=["A", "B"], name="session")
+        res = stream.collapse_events(event_groups=["A", "B"], name="session")
         df = res.df
 
         u1_events = list(df[df["user_id"] == "user_1"]["event"].astype(str))
@@ -904,9 +904,9 @@ class TestCollapseEventsChained:
                 ["user_1", "B", "2020-01-01 00:03:00"],
             ]
         )
-        res = stream.collapse_events(events=["A"], name="session_a").collapse_events(
-            events=["B"], name="session_b"
-        )
+        res = stream.collapse_events(
+            event_groups=["A"], name="session_a"
+        ).collapse_events(event_groups=["B"], name="session_b")
 
         result_events = events(res)
         assert "session_a" in result_events
@@ -935,7 +935,7 @@ class TestCollapseEventsAgg:
         stream = Eventstream(df, schema)
 
         res = stream.collapse_events(
-            events=["A"], name="session", agg={"score": "last"}
+            event_groups=["A"], name="session", agg={"score": "last"}
         )
         df_res = res.df
         session_row = df_res[df_res["event"] == "session"]
@@ -1022,7 +1022,7 @@ class TestCollapseEventsNaming:
         )
         assert events(res) == ["browsing_session", "buying_session", "browsing_session"]
 
-    def test_cases_name_a_consecutive_run(self):
+    def test_cases_name_a_loop(self):
         stream = make_stream(
             [
                 ["user_1", "search", "2020-01-01 00:00:00"],
@@ -1032,7 +1032,7 @@ class TestCollapseEventsNaming:
             ]
         )
         res = stream.collapse_events(
-            consecutive=True,
+            loops=True,
             name=[
                 {
                     "condition": {"op": ">", "metric": "length", "value": 2},
@@ -1050,9 +1050,7 @@ class TestCollapseEventsNaming:
                 ["user_1", "A", "2020-01-01 00:01:00"],
             ]
         )
-        assert events(stream.collapse_events(consecutive=True, name="merged")) == [
-            "merged"
-        ]
+        assert events(stream.collapse_events(loops=True, name="merged")) == ["merged"]
 
 
 class TestCollapseEventsInactivity:

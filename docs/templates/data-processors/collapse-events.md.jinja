@@ -11,22 +11,23 @@ for each below.
 ## Choosing the chunks
 
 Every mode below answers one question — *which rows belong together* — and
-exactly one of them may be given. `events`, `separator` and `bounds` cut the
+exactly one of them may be given. `event_groups`, `separator` and `bounds` cut the
 path into windows using the same vocabulary
 [Split Sessions](/docs/data-processors/split-sessions) uses, so a chunking that
-works there works here; `consecutive` and `group_col` group by runs of equal values
+works there works here; `loops` and `group_col` group by runs of equal values
 instead. What the merged event is *called* is a separate question, answered by
 `name` — see [Naming the merged event](#naming-the-merged-event) below.
 
-### consecutive
+### loops
 
-Collapses each run of the same event into one row, keeping the run's first
-timestamp.
+Collapses each **self-loop** — a run of the same event repeating — into one
+row, keeping the run's first timestamp. This is the `A → A` you see on a
+[Transition Graph](/docs/widgets/transition-graph).
 
 Before: `page_view → page_view → page_view → click → click → product_view`
 
 ```python
-stream.collapse_events(consecutive=True)
+stream.collapse_events(loops=True)
 ```
 
 After — every run collapses, regardless of which event it is:
@@ -34,7 +35,7 @@ After — every run collapses, regardless of which event it is:
 `page_view → click → product_view`
 
 ```python
-stream.collapse_events(consecutive=["page_view"])
+stream.collapse_events(loops=["page_view"])
 ```
 
 After — only `page_view` runs collapse; the two `click` events are left alone
@@ -53,7 +54,7 @@ Before: `home → payment_details → shipping_details → review_page → purch
 
 ```python
 stream.collapse_events(
-    events=["payment_details", "shipping_details", "review_page"],
+    event_groups=["payment_details", "shipping_details", "review_page"],
     name="checkout",
 )
 ```
@@ -142,7 +143,7 @@ operations behind one word.
 
 `name="checkout"` — every group the mode produced becomes an event with that
 name. Required for the window modes, which have no name of their own to fall
-back on. `consecutive` defaults to the repeated event's name, `group_col` to the
+back on. `loops` defaults to the repeated event's name, `group_col` to the
 value of the column it grouped on.
 
 ### Another column's value
@@ -218,8 +219,8 @@ so a later collapse can match an event name an earlier one created:
 ```python
 (
     stream
-    .collapse_events(events=["payment_details", "shipping_details"], name="checkout_details")
-    .collapse_events(events=["checkout_details", "review_page"], name="checkout")
+    .collapse_events(event_groups=["payment_details", "shipping_details"], name="checkout_details")
+    .collapse_events(event_groups=["checkout_details", "review_page"], name="checkout")
 )
 ```
 
@@ -242,7 +243,7 @@ Before — a `price` column alongside three consecutive `add_to_cart` events:
 | u1 | purchase | 00:00:20 | 50 |
 
 ```python
-stream.collapse_events(consecutive=True)  # no agg: price takes the first value
+stream.collapse_events(loops=True)  # no agg: price takes the first value
 ```
 
 | user_id | event | timestamp | price |
@@ -251,7 +252,7 @@ stream.collapse_events(consecutive=True)  # no agg: price takes the first value
 | u1 | purchase | 00:00:20 | 50 |
 
 ```python
-stream.collapse_events(consecutive=True, agg={"price": "max"})
+stream.collapse_events(loops=True, agg={"price": "max"})
 ```
 
 | user_id | event | timestamp | price |
@@ -260,7 +261,7 @@ stream.collapse_events(consecutive=True, agg={"price": "max"})
 | u1 | purchase | 00:00:20 | 50 |
 
 ```python
-stream.collapse_events(consecutive=True, agg={"price": "mean"})
+stream.collapse_events(loops=True, agg={"price": "mean"})
 ```
 
 | user_id | event | timestamp | price |

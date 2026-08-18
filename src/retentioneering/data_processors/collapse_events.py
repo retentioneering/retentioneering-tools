@@ -23,9 +23,9 @@ PROCESSOR_NAME = "collapse_events"
 BOUNDS_KEYS = ("start_event", "end_event")
 
 #: Modes that chunk a path by its events, sharing `split_sessions`' vocabulary.
-BOUNDARY_MODES = ("events", "separator", "bounds")
+BOUNDARY_MODES = ("event_groups", "separator", "bounds")
 #: Modes that chunk a path by runs of equal values.
-RUN_MODES = ("consecutive", "group_col")
+RUN_MODES = ("loops", "group_col")
 
 
 @dataclass
@@ -34,8 +34,8 @@ class CollapseEvents(DataProcessor):
     Merge a run of events into one, and give the result a name.
 
     Two decisions, two argument groups. *How to chunk the path* is one
-    mutually-exclusive mode — `consecutive` / `group_col` group adjacent rows
-    sharing a value, `events` / `separator` / `bounds` cut it into windows, the
+    mutually-exclusive mode — `loops` / `group_col` group adjacent rows
+    sharing a value, `event_groups` / `separator` / `bounds` cut it into windows, the
     same vocabulary `split_sessions` uses (they share `build_session_ctes`).
     Inactivity is deliberately not one of them: breaking on a time gap is
     `split_sessions(timeout=...)`, whose session column this processor then
@@ -45,8 +45,8 @@ class CollapseEvents(DataProcessor):
     own events.
     """
 
-    consecutive: bool | List[str] | None
-    events: List[str] | None
+    loops: bool | List[str] | None
+    event_groups: List[str] | None
     separator: List[str] | None
     start_event: List[str] | None
     end_event: List[str] | None
@@ -58,8 +58,8 @@ class CollapseEvents(DataProcessor):
 
     def __init__(
         self,
-        consecutive: bool | List[str] | None = None,
-        events: str | List[str] | None = None,
+        loops: bool | List[str] | None = None,
+        event_groups: str | List[str] | None = None,
         separator: str | List[str] | None = None,
         bounds: Dict[str, Any] | None = None,
         group_col: str | None = None,
@@ -68,8 +68,8 @@ class CollapseEvents(DataProcessor):
         path_col: str | None = None,
         event_col: str | None = None,
     ) -> None:
-        self.consecutive = consecutive
-        self.events = to_list(events) if events else None
+        self.loops = loops
+        self.event_groups = self._parse_event_groups(event_groups)
         self.separator = to_list(separator) if separator else None
         self.start_event, self.end_event = self._parse_bounds(bounds)
         self.group_col = group_col
@@ -83,6 +83,29 @@ class CollapseEvents(DataProcessor):
         self.cases, self.name_col, self.literal_name = self._parse_name(name)
 
     # ── modes ────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _parse_event_groups(value) -> List[str] | None:
+        """
+        Normalize `event_groups` to a list of event names.
+
+        5.1 spelled this parameter `event_groups` too, but as a list of *group
+        spec dicts* carrying their own boundary mode and name. That shape is
+        gone, and silently reading a dict as an event name would match nothing
+        — so say what happened instead.
+        """
+        if not value:
+            return None
+        names = to_list(value)
+        if any(not isinstance(n, str) for n in names):
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                "'event_groups' now takes event names — the events that form one "
+                "group — not group spec dicts. A spec's boundary mode is a "
+                "top-level argument now ('event_groups' / 'separator' / 'bounds') "
+                "and its label is 'name'.",
+            )
+        return names
 
     @staticmethod
     def _parse_bounds(bounds: Dict[str, Any] | None) -> Tuple[Any, Any]:
@@ -145,8 +168,8 @@ class CollapseEvents(DataProcessor):
         for m in RUN_MODES:
             if getattr(self, m) is not None:
                 return m
-        if self.events:
-            return "events"
+        if self.event_groups:
+            return "event_groups"
         if self.separator:
             return "separator"
         return "bounds"
@@ -154,8 +177,8 @@ class CollapseEvents(DataProcessor):
     def _as_group(self) -> dict:
         """The boundary spec in the shared `session_detection` shape."""
         g: Dict[str, Any] = {}
-        if self.events:
-            g["events"] = self.events
+        if self.event_groups:
+            g["events"] = self.event_groups
         if self.separator:
             g["separator"] = self.separator
         if self.start_event:
@@ -253,8 +276,8 @@ class CollapseEvents(DataProcessor):
         path_col = self.path_col or schema.path_col
         event_col = self.event_col or schema.event_col
 
-        if self.mode == "consecutive":
-            result = self._collapse_consecutive(df, schema, path_col, event_col)
+        if self.mode == "loops":
+            result = self._collapse_loops(df, schema, path_col, event_col)
         elif self.mode == "group_col":
             result = self._collapse_group_col(df, schema, path_col, event_col)
         else:
@@ -438,7 +461,7 @@ class CollapseEvents(DataProcessor):
 
     # ── builders ─────────────────────────────────────────────────────────────
 
-    def _collapse_consecutive(
+    def _collapse_loops(
         self,
         df: pd.DataFrame,
         schema: EventstreamSchema,
@@ -466,10 +489,10 @@ class CollapseEvents(DataProcessor):
         # window frame lumps tied peer rows into one group, silently merging
         # distinct consecutive events that share a timestamp. A precomputed
         # ROW_NUMBER (_rn) plus an explicit ROWS frame makes grouping deterministic.
-        if self.consecutive is True:
+        if self.loops is True:
             is_start_condition = f"LAG({event_col_q}) OVER (PARTITION BY {path_col_q} ORDER BY _rn) = {event_col_q}"
         else:
-            events_list = sql_list(to_list(self.consecutive))
+            events_list = sql_list(to_list(self.loops))
             is_start_condition = (
                 f"LAG({event_col_q}) OVER (PARTITION BY {path_col_q} ORDER BY _rn) = {event_col_q}"
                 f" AND {event_col_q} IN ({events_list})"
@@ -550,7 +573,7 @@ class CollapseEvents(DataProcessor):
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
                 f"'group_col' must differ from the event column '{event_col}'; to collapse "
-                f"repeats of the same event use consecutive=True",
+                f"repeats of the same event use loops=True",
             )
 
         explicit_cols = {path_col, event_col, event_type_col, ts_col, subindex_col, col}
@@ -647,7 +670,9 @@ class CollapseEvents(DataProcessor):
 
         # A window has no natural name of its own — `name` is required here, so
         # the default below is only ever reached through a cases fallback.
-        default = quote_literal(self.events[0] if self.events else "session")
+        default = quote_literal(
+            self.event_groups[0] if self.event_groups else "session"
+        )
         name_expr, metric_agg_chunk = self._name_sql(default, event_col, ts_col)
 
         session_ctes = build_session_ctes(

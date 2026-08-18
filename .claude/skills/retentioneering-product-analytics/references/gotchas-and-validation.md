@@ -13,7 +13,7 @@ caught them; validate against each before shipping numbers.
 | G2 | No order-only mode: `timestamp_col` is mandatory | for logs with click order but no clock: synthesize `base_date + order * 1s`; then durations/`time_median` are MEANINGLESS — never report them, only step counts |
 | G3 | `time_between` = first A to first B **globally**, not first-B-after-A | off-by-few on paths where B precedes A; compute strict semantics via `to_dataframe()` when it matters |
 | G4 | `funnel` is closed/ordered only | for presence-based ("did all of these happen, any order") use `has_all_events` via `get_metrics` |
-| G5 | Metric arg keys: single event → `event`, lists → `events` (only on `has_any_event`/`has_all_events`) | copy from api-map, not from memory; errors are loud and name the requirement |
+| G5 | Metric arg keys: single event → `event`, lists → `event_groups` (only on `has_any_event`/`has_all_events`) | copy from api-map, not from memory; errors are loud and name the requirement |
 | G6 | Cluster result may LACK `best_params` when silhouette is undefined for every candidate (degenerate/duplicate feature rows) | guard `res.get("best_params")`; treat as "no cluster structure" |
 | G7 | Cluster labels are strings `"cluster_0"...`; diff values must match segment levels exactly | check `get_segment_levels()` before writing `diff=(...)` |
 | G8 | Transition matrix may be integer-typed with NaN gaps | before matrix math: `.astype(float).fillna(0)` |

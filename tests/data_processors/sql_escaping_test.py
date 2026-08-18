@@ -300,7 +300,7 @@ class TestCollapseEventsMetricEscaping:
             ]
         )
 
-        res = stream.collapse_events(consecutive=["o'brien_page"])
+        res = stream.collapse_events(loops=["o'brien_page"])
 
         assert list(res.df["event"].astype(str)) == ["o'brien_page", "A"]
 

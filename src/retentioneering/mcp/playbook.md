@@ -210,7 +210,7 @@ behavioural.
 
 Confirm with the user, then call `update_base_stream` with one or more of:
 ```
-{"type": "collapse_events", "consecutive": true}       — removes A→A→A loops
+{"type": "collapse_events", "loops": true}       — removes A→A→A loops
 {"type": "filter_paths", "op": ">", "metric": "length", "value": 3}
 {"type": "filter_events", "drop": {"event": ["noise_event"]}}
 ```

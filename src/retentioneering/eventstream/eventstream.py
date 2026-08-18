@@ -674,7 +674,7 @@ class Eventstream:
               - `metric_args` (optional) — dict of extra arguments for the metric.
                 `has_event`/`event_count` take a single `event` string; for a
                 multi-event AND/OR condition use `has_all_events`/`has_any_event`
-                with an `events` list.
+                with an `event_groups` list.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         event_col : str, optional
@@ -991,8 +991,8 @@ class Eventstream:
     @_op
     def collapse_events(
         self,
-        consecutive=None,
-        events=None,
+        loops=None,
+        event_groups=None,
         separator=None,
         bounds=None,
         group_col=None,
@@ -1005,8 +1005,8 @@ class Eventstream:
         Merge a run of events into a single representative event.
 
         Two independent decisions. **How to chunk the path** is exactly one mode:
-        `consecutive` or `group_col` group adjacent rows sharing a value, while
-        `events`, `separator` and `bounds` cut the path into windows — the same
+        `loops` or `group_col` group adjacent rows sharing a value, while
+        `event_groups`, `separator` and `bounds` cut the path into windows — the same
         vocabulary `split_sessions` uses, so a chunking that works there works
         here. **How to name** the merged event is `name`, which is orthogonal to
         the mode.
@@ -1018,11 +1018,16 @@ class Eventstream:
 
         Parameters
         ----------
-        consecutive : bool or list of str, optional
-            Collapse runs of the same event into one. `True` collapses every
-            event; a list of event names collapses only those.
-        events : str or list of str, optional
-            Collapse any run of these events, wherever it occurs in the path.
+        loops : bool or list of str, optional
+            Collapse each self-loop — a run of the same event repeating — into
+            one row. `True` collapses every event's loops; a list of event names
+            collapses only those. This is the `A → A → A` on a transition graph.
+        event_groups : str or list of str, optional
+            Events that belong to one group: any run drawn from this set
+            collapses into a single event, wherever it occurs in the path. Unlike
+            `loops`, the run may mix the listed events —
+            `event_groups=["a", "b"]` turns `a, a, b, b` into one event, where
+            `loops=["a", "b"]` turns it into two.
         separator : str or list of str, optional
             Collapse every event up to and including the next separator event.
         bounds : dict, optional
@@ -1033,7 +1038,7 @@ class Eventstream:
             Not SQL's `GROUP BY`: a value that comes back later in the path
             starts a second event rather than joining the first across the gap.
             Must differ from the event column — for repeats of the same event
-            use `consecutive`.
+            use `loops`.
         name : str or dict or list, optional
             What the merged event is called. Three forms:
 
@@ -1048,7 +1053,7 @@ class Eventstream:
               `duration`, `length`, `time_between`, `active_days`.
 
             Required for the window modes, which have no natural name of their
-            own. `consecutive` defaults to the repeated event's name and `group_col`
+            own. `loops` defaults to the repeated event's name and `group_col`
             to the value of the column being grouped on.
         agg : dict, optional
             Aggregation rules for non-event columns when rows are merged, as a
@@ -1064,14 +1069,14 @@ class Eventstream:
         Examples
         --------
             # Collapse any run of the same event
-            stream.collapse_events(consecutive=True)
+            stream.collapse_events(loops=True)
 
             # Collapse only repeated product_view events
-            stream.collapse_events(consecutive=["product_view"])
+            stream.collapse_events(loops=["product_view"])
 
             # Merge checkout steps into a single "checkout" event
             stream.collapse_events(
-                events=["checkout_start", "checkout_step", "checkout_confirm"],
+                event_groups=["checkout_start", "checkout_step", "checkout_confirm"],
                 name="checkout",
             )
 
@@ -1092,8 +1097,8 @@ class Eventstream:
         from retentioneering.data_processors.collapse_events import CollapseEvents
 
         new_df, new_schema = CollapseEvents(
-            consecutive=consecutive,
-            events=events,
+            loops=loops,
+            event_groups=event_groups,
             separator=separator,
             bounds=bounds,
             group_col=group_col,

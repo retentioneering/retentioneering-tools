@@ -33,7 +33,7 @@ def _transition_graph_summary(
     result_raw: dict, context_events: set, edge_weight: str, top_n: int = 25
 ) -> dict:
     """Compact transition graph summary: top-N edges, context events prioritised."""
-    events = result_raw.get("events", [])
+    events = result_raw.get("event_groups", [])
     values = result_raw.get("values", [])
     is_diff = bool(result_raw.get("group1"))
     n = len(events)
@@ -55,8 +55,8 @@ def _transition_graph_summary(
         # Separate top increases / decreases; enrich with per-group values
         g1 = result_raw.get("group1", {})
         g2 = result_raw.get("group2", {})
-        g1_ev, g1_val = g1.get("events", events), g1.get("values", [])
-        g2_ev, g2_val = g2.get("events", events), g2.get("values", [])
+        g1_ev, g1_val = g1.get("event_groups", events), g1.get("values", [])
+        g2_ev, g2_val = g2.get("event_groups", events), g2.get("values", [])
 
         def _gval(ev_list: list, val_matrix: list, src: str, tgt: str):
             try:
@@ -107,7 +107,7 @@ def _step_matrix_summary(
         return {"note": "no data"}
 
     m = matrices[0]
-    events = m.get("events", [])
+    events = m.get("event_groups", [])
     columns = m.get("columns", [])
     values = m.get("values", [])
     is_diff = bool(m.get("group1"))
@@ -199,8 +199,8 @@ def _step_to_code(step: dict) -> str:
     kw = ", ".join(f"{k}={v!r}" for k, v in args.items())
 
     if t == "collapse_events":
-        if args.get("consecutive"):
-            return "stream.collapse_events(consecutive=True)"
+        if args.get("loops"):
+            return "stream.collapse_events(loops=True)"
     elif t == "filter_events":
         if args.get("keep"):
             return f"stream.filter_events(keep={args['keep']!r})"

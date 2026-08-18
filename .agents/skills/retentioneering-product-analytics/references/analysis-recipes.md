@@ -100,7 +100,7 @@ pogo = stream.get_metrics([{"metric": "matches_pattern",
                             "metric_args": {"pattern": "listing->product->listing"}}])
 ```
 
-Pitfalls (both are result-killers): (1) count loops BEFORE `collapse_events(consecutive=)`
+Pitfalls (both are result-killers): (1) count loops BEFORE `collapse_events(loops=)`
 — collapsing erases them; (2) naive "conversion of users with loop vs without" is
 confounded by exposure — longer paths have more loops AND more chances to convert;
 stratify by path-length quantiles before comparing.

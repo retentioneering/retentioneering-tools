@@ -11,8 +11,8 @@ for each below.
 ## Choosing the chunks
 
 Every mode below answers one question — *which rows belong together* — and
-exactly one of them may be given. `events`, `separator`, `bounds` and `timeout`
-cut the path into windows using the same vocabulary
+exactly one of them may be given. `events`, `separator` and `bounds` cut the
+path into windows using the same vocabulary
 [Split Sessions](/docs/data-processors/split-sessions) uses, so a chunking that
 works there works here; `consecutive` and `group_col` group by runs of equal values
 instead. What the merged event is *called* is a separate question, answered by
@@ -94,12 +94,6 @@ stream.collapse_events(
 
 After: `home → checkout → confirmation_page`
 
-### timeout
-
-Breaks a window on an inactivity gap. Combines with any of the three modes
-above, or stands alone as its own mode — `timeout="30m"` with no other
-boundary collapses each burst of activity separated by half an hour of silence.
-
 ### group_col
 
 Collapses each run of consecutive rows sharing the same value of a column.
@@ -122,6 +116,20 @@ Sessions are the same shape, since a session id is constant for a run of rows:
 `group_col="session_id"` gives one event per session. On its own that names each
 event after the session id, which is rarely what you want — pair it with `name`
 below.
+
+### Inactivity is two steps, not a mode
+
+Breaking on a time gap is [Split Sessions](/docs/data-processors/split-sessions)'
+job. It writes the boundary into a column, and `group_col` collapses that column:
+
+```python
+stream.split_sessions(timeout="30m").collapse_events(group_col="session_id", name="burst")
+```
+
+Written this way each step says what it does, and the intermediate session
+column stays available for everything else — a funnel per session, a metric,
+a diff. A `timeout` argument on this processor would have hidden the same two
+operations behind one word.
 
 ## Naming the merged event
 

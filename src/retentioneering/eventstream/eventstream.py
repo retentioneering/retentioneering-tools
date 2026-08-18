@@ -997,7 +997,6 @@ class Eventstream:
         bounds=None,
         group_col=None,
         name=None,
-        timeout=None,
         agg=None,
         path_col=None,
         event_col=None,
@@ -1006,11 +1005,16 @@ class Eventstream:
         Merge a run of events into a single representative event.
 
         Two independent decisions. **How to chunk the path** is exactly one mode:
-        `consecutive` or `group_col` group adjacent rows sharing a value, while `events`,
-        `separator`, `bounds` and `timeout` cut the path into windows — the same
+        `consecutive` or `group_col` group adjacent rows sharing a value, while
+        `events`, `separator` and `bounds` cut the path into windows — the same
         vocabulary `split_sessions` uses, so a chunking that works there works
         here. **How to name** the merged event is `name`, which is orthogonal to
         the mode.
+
+        Breaking on an inactivity gap is not a mode here: run
+        `split_sessions(timeout="30m")` first and collapse its session column
+        with `group_col`, which says in two readable steps what one combined
+        argument would have hidden.
 
         Parameters
         ----------
@@ -1046,10 +1050,6 @@ class Eventstream:
             Required for the window modes, which have no natural name of their
             own. `consecutive` defaults to the repeated event's name and `group_col`
             to the value of the column being grouped on.
-        timeout : str or pandas.Timedelta, optional
-            Also break a window on an inactivity gap of this length. Combines
-            with `events` / `separator` / `bounds`, or stands alone as its own
-            mode. Takes a duration string with an explicit unit (`"30m"`).
         agg : dict, optional
             Aggregation rules for non-event columns when rows are merged, as a
             `{column: agg_func}` dict. `agg_func` is one of `"first"` (default),
@@ -1098,7 +1098,6 @@ class Eventstream:
             bounds=bounds,
             group_col=group_col,
             name=name,
-            timeout=timeout,
             agg=agg,
             path_col=path_col,
             event_col=event_col,

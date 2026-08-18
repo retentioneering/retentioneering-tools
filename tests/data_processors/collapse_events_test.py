@@ -172,7 +172,7 @@ class TestCollapseEventsRepetitive:
 
 
 # ---------------------------------------------------------------------------
-# Boundary modes — events / separator / bounds / timeout
+# Boundary modes — events / separator / bounds
 # which was NOT ported to the library (it depends on FilterPaths).
 # ---------------------------------------------------------------------------
 
@@ -261,10 +261,18 @@ class TestCollapseEventsValidation:
             stream.collapse_events(group_col="event")
 
     def test_raises_run_mode_with_boundary_mode(self):
-        """Runs and windows are different ways to chunk, not composable ones."""
+        """Adjacency modes and windows are different ways to chunk, not
+        composable ones."""
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError, match="cannot be combined"):
-            stream.collapse_events(consecutive=True, timeout="30m")
+            stream.collapse_events(consecutive=True, separator="sep", name="s")
+
+    def test_raises_timeout_is_not_a_mode(self):
+        """Breaking on inactivity belongs to split_sessions; collapse_events
+        collapses the session column it writes."""
+        stream = make_stream([["user_1", "A", "2020-01-01"]])
+        with pytest.raises(TypeError):
+            stream.collapse_events(events=["A"], name="s", timeout="30m")
 
     def test_raises_unknown_name_dict_key(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
@@ -880,58 +888,6 @@ class TestCollapseEventsGroupsStartEnd:
 
 
 # ---------------------------------------------------------------------------
-# Event groups — timeout mode
-# ---------------------------------------------------------------------------
-
-
-class TestCollapseEventsGroupsTimeout:
-    def test_timeout_splits_events_session(self):
-        """A timeout add-on to events mode splits a session when the gap exceeds the timeout."""
-        stream = make_stream(
-            [
-                ["user_1", "A", "2020-01-01 00:00:00"],
-                ["user_1", "B", "2020-01-01 00:01:00"],  # within 60s
-                ["user_1", "A", "2020-01-01 01:00:00"],  # > 60s gap — new session
-                ["user_1", "B", "2020-01-01 01:01:00"],
-            ]
-        )
-        res = stream.collapse_events(events=["A", "B"], timeout="60s", name="session")
-
-        assert events(res).count("session") == 2
-
-    def test_timeout_no_split_when_within_window(self):
-        """No timeout split when all events are within the window."""
-        stream = make_stream(
-            [
-                ["user_1", "A", "2020-01-01 00:00:00"],
-                ["user_1", "B", "2020-01-01 00:00:30"],
-                ["user_1", "A", "2020-01-01 00:00:59"],
-            ]
-        )
-        res = stream.collapse_events(events=["A", "B"], timeout="60s", name="session")
-
-        assert events(res) == ["session"]
-
-    def test_timeout_multiple_users(self):
-        """Timeout is applied independently per user."""
-        stream = make_stream(
-            [
-                ["user_1", "A", "2020-01-01 00:00:00"],
-                ["user_1", "A", "2020-01-01 01:00:00"],  # gap > 60s — second session
-                ["user_2", "A", "2020-01-01 00:00:00"],
-                ["user_2", "A", "2020-01-01 00:00:30"],  # gap < 60s — same session
-            ]
-        )
-        res = stream.collapse_events(events=["A"], timeout="60s", name="session")
-        df = res.df
-
-        u1_sessions = list(df[df["user_id"] == "user_1"]["event"].astype(str))
-        u2_sessions = list(df[df["user_id"] == "user_2"]["event"].astype(str))
-        assert u1_sessions.count("session") == 2
-        assert u2_sessions.count("session") == 1
-
-
-# ---------------------------------------------------------------------------
 # Chained collapses
 # ---------------------------------------------------------------------------
 
@@ -1002,18 +958,6 @@ class TestCollapseEventsAgg:
         df_res = res.df
         session_row = df_res[df_res["event"] == "session"]
         assert int(session_row["score"].iloc[0]) == 10
-
-
-class TestEventGroupsTimeoutValidation:
-    def test_bare_number_timeout_in_group_raises(self):
-        stream = make_stream(
-            [
-                ["user_1", "A", "2020-01-01 00:00:00"],
-                ["user_1", "B", "2020-01-01 00:02:00"],
-            ]
-        )
-        with pytest.raises(PreprocessingConfigError):
-            stream.collapse_events(events=["A", "B"], timeout=60, name="session")
 
 
 # ---------------------------------------------------------------------------
@@ -1109,3 +1053,22 @@ class TestCollapseEventsNaming:
         assert events(stream.collapse_events(consecutive=True, name="merged")) == [
             "merged"
         ]
+
+
+class TestCollapseEventsInactivity:
+    def test_timeout_bursts_via_split_sessions(self):
+        """Inactivity is not a mode of this processor: `split_sessions` writes
+        the boundary into a column and `group_col` collapses it, which is the
+        documented replacement for the old per-group `timeout` key."""
+        stream = make_stream(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00"],
+                ["user_1", "B", "2020-01-01 00:01:00"],
+                ["user_1", "A", "2020-01-01 02:00:00"],  # > 30m gap — second burst
+                ["user_1", "B", "2020-01-01 02:01:00"],
+            ]
+        )
+        res = stream.split_sessions(timeout="30m").collapse_events(
+            group_col="session_id", name="burst"
+        )
+        assert events(res) == ["burst", "burst"]

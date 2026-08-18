@@ -12,7 +12,6 @@ from retentioneering.metrics.condition_ast import ast_to_sql, extract_metric_con
 from retentioneering.metrics.metric_builder import combined_metric_name
 from retentioneering.utils.session_detection import (
     build_session_ctes,
-    parse_timeout,
     sql_list,
     to_list,
 )
@@ -35,9 +34,12 @@ class CollapseEvents(DataProcessor):
     Merge a run of events into one, and give the result a name.
 
     Two decisions, two argument groups. *How to chunk the path* is one
-    mutually-exclusive mode — `consecutive` / `runs` group by runs of equal
-    values, `events` / `separator` / `bounds` / `timeout` cut it into windows,
-    the same vocabulary `split_sessions` uses (they share `build_session_ctes`).
+    mutually-exclusive mode — `consecutive` / `group_col` group adjacent rows
+    sharing a value, `events` / `separator` / `bounds` cut it into windows, the
+    same vocabulary `split_sessions` uses (they share `build_session_ctes`).
+    Inactivity is deliberately not one of them: breaking on a time gap is
+    `split_sessions(timeout=...)`, whose session column this processor then
+    collapses through `group_col`.
     *How to name the merged event* is `name`, orthogonal to all of them: a
     literal, another column's value, or conditions evaluated over the group's
     own events.
@@ -50,7 +52,6 @@ class CollapseEvents(DataProcessor):
     end_event: List[str] | None
     group_col: str | None
     name: Any
-    timeout_seconds: float | None
     agg: Dict[str, str]
     path_col: str | None
     event_col: str | None
@@ -63,7 +64,6 @@ class CollapseEvents(DataProcessor):
         bounds: Dict[str, Any] | None = None,
         group_col: str | None = None,
         name: Any = None,
-        timeout: "str | pd.Timedelta | None" = None,
         agg: Dict[str, str] | None = None,
         path_col: str | None = None,
         event_col: str | None = None,
@@ -74,13 +74,6 @@ class CollapseEvents(DataProcessor):
         self.start_event, self.end_event = self._parse_bounds(bounds)
         self.group_col = group_col
         self.name = name
-        if timeout is not None:
-            try:
-                self.timeout_seconds = parse_timeout(timeout)
-            except ValueError as exc:
-                raise PreprocessingConfigError(PROCESSOR_NAME, str(exc)) from exc
-        else:
-            self.timeout_seconds = None
         self.agg = agg or {}
         self.path_col = path_col
         self.event_col = event_col
@@ -123,31 +116,27 @@ class CollapseEvents(DataProcessor):
             for m in BOUNDARY_MODES
             if (self.start_event if m == "bounds" else getattr(self, m))
         ]
-        has_timeout = self.timeout_seconds is not None
-
         if len(boundary_modes) > 1:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
                 f"specify at most one boundary mode, got {boundary_modes}: "
                 f"{list(BOUNDARY_MODES)} are alternatives",
             )
-        if run_modes and (boundary_modes or has_timeout):
+        if run_modes and boundary_modes:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                f"{run_modes[0]!r} groups by runs of equal values and cannot be "
-                f"combined with the boundary modes "
-                f"{list(BOUNDARY_MODES) + ['timeout']}",
+                f"{run_modes[0]!r} groups adjacent rows sharing a value and cannot "
+                f"be combined with the boundary modes {list(BOUNDARY_MODES)}",
             )
         if len(run_modes) > 1:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
                 f"specify at most one of {list(RUN_MODES)}, got {run_modes}",
             )
-        if not run_modes and not boundary_modes and not has_timeout:
+        if not run_modes and not boundary_modes:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                f"provide exactly one mode: {list(RUN_MODES) + list(BOUNDARY_MODES)} "
-                f"or 'timeout'",
+                f"provide exactly one mode: {list(RUN_MODES) + list(BOUNDARY_MODES)}",
             )
 
     @property
@@ -160,9 +149,7 @@ class CollapseEvents(DataProcessor):
             return "events"
         if self.separator:
             return "separator"
-        if self.start_event:
-            return "bounds"
-        return "timeout"
+        return "bounds"
 
     def _as_group(self) -> dict:
         """The boundary spec in the shared `session_detection` shape."""
@@ -174,8 +161,6 @@ class CollapseEvents(DataProcessor):
         if self.start_event:
             g["start_event"] = self.start_event
             g["end_event"] = self.end_event
-        if self.timeout_seconds is not None:
-            g["timeout"] = self.timeout_seconds
         return g
 
     # ── naming ───────────────────────────────────────────────────────────────
@@ -190,7 +175,7 @@ class CollapseEvents(DataProcessor):
         a literal fallback are set at once.
         """
         if name is None:
-            if self.mode in BOUNDARY_MODES or self.mode == "timeout":
+            if self.mode in BOUNDARY_MODES:
                 raise PreprocessingConfigError(
                     PROCESSOR_NAME,
                     f"the {self.mode!r} mode needs a 'name' for the merged event: "

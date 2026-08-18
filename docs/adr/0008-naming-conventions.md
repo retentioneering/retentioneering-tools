@@ -82,7 +82,9 @@ The rules, in force for all future API additions:
    modes belong in the **signature**, not as keys of a config object — a list
    of specs (its old `event_groups`) hides them from `help()`, from the MCP
    docs and from mode validation, and buys nothing a chained call does not
-   already give. And a parameter that is *orthogonal* to the mode stays out of
+   already give. (It also hides *features*: that processor's `timeout` key
+   worked and was tested, yet appeared in no docstring for as long as it lived
+   inside the spec.) And a parameter that is *orthogonal* to the mode stays out of
    it: `collapse_events`' `name` answers "what is the merged event called",
    which every mode has to answer, so it is one argument beside them rather
    than a key repeated inside each.

@@ -11,7 +11,7 @@ description: >
   event sequences.
 license: Apache-2.0
 compatibility: >
-  Requires Python >= 3.11 and Retentioneering 5.x. Designed for local CSV,
+  Requires Python >= 3.10 and Retentioneering 5.x. Designed for local CSV,
   Parquet, and pandas event logs. Network access is not required for local
   analysis.
 metadata:

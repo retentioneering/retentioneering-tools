@@ -91,7 +91,7 @@ new `Eventstream`, the original is never modified:
 clean = (
     stream
     .filter_events(drop={"event": ["bot_ping"]})
-    .collapse_events(consecutive=True)
+    .collapse_events(loops=True)
     .split_sessions(timeout="30m")
 )
 clean.step_matrix(path_pattern="add_to_cart->.*->purchase")
@@ -143,7 +143,7 @@ Retentioneering-tools is open-source software licensed under the Apache License,
 Retentioneering is a community research laboratory dedicated to developing new analytics methodology and
 opensource tools.
 
-Copyright retentioneering-tools v.5.0 Maxim Godzi, Vladimir Kukushkin and Anatoly Zaytsev. Updates may include software developed by the Retentioneering community.
+Copyright retentioneering-tools v.5.0 Maxim Godzi, [Vladimir Kukushkin](https://www.linkedin.com/in/vladimir-kukushkin/) and Anatoly Zaytsev. Updates may include software developed by the Retentioneering community.
 
 You are free to use, modify, distribute, and build commercial products with Retentioneering-tools, subject to the terms of the Apache-2.0 license.
 

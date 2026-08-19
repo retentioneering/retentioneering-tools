@@ -10,7 +10,7 @@ description: >
   contribute, open an issue, or make a PR to retentioneering-tools.
 license: Apache-2.0
 compatibility: >
-  Requires a git checkout of retentioneering-tools, Python >= 3.11 with uv,
+  Requires a git checkout of retentioneering-tools, Python >= 3.10 with uv,
   and Node.js only when JS/widget code is touched. The gh CLI is optional
   but recommended for PR submission.
 metadata:
@@ -120,7 +120,7 @@ Read `references/repo-conventions.md` first. Non-negotiables:
 
 ```bash
 uv run pre-commit run --all-files      # ruff lint+format, gitleaks, hygiene
-uv run pytest tests/ -v                # full suite (CI runs 3.11–3.13)
+uv run pytest tests/ -v                # full suite (CI runs 3.10–3.13)
 uv run python docs/scripts/render_pages.py   # if docstrings changed
 ```
 

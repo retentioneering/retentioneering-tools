@@ -57,7 +57,7 @@ stream.get_segment_levels()             # {segment_col: [values...]}
 | `rename_events(mapping)` | collapse taxonomies (e.g. `"PLP: *"` families by explicit dict) | unknown keys raise |
 | `collapse_events(loops=True | event_groups= | group_col= | bounds=, name=)` | merge a run of events into one; `name` labels it (literal, `{"col": …}`, or cases) | count loops BEFORE collapsing if loops are your subject |
 | `split_sessions(timeout="30m" | separator= | bounds={"start_event":…,"end_event":…})` | derive sessions | duration strings need units; column params use `session_col` naming |
-| `truncate_paths(start_anchor, end_anchor)` | window each path between two anchors | each anchor is an event name, a spec `{pattern, at, occurrence, offset}`, or a LIST of either (narrowest window wins). A list is how you get both "whichever comes first" and a keep-whole fallback: `end_event=["purchase", "path_end"]`. A bare name still DROPS paths missing the anchor |
+| `truncate_paths(start_anchor, end_anchor)` | window each path between two anchors | each anchor is an event name, a spec `{pattern, at, occurrence, offset}`, or a LIST of either (narrowest window wins). A list is how you get both "whichever comes first" and a keep-whole fallback: `end_anchor=["purchase", "path_end"]`. A bare name still DROPS paths missing the anchor |
 | `drop_events / drop_segment / edit_events / rename_segment_levels / sample_paths / to_daily_states / urls_to_events / add_events` | as named | `sample_paths(frac=, random_state=)` for stable subsamples |
 
 ## 3. Metrics registry — one config format everywhere
@@ -80,7 +80,7 @@ stream.get_metrics([
 ```
 
 Argument-key convention (this exact split is version-verified):
-**single event → `event` (string); multiple events → `event_groups` (list) and only on
+**single event → `event` (string); multiple events → `events` (list) and only on
 `has_any_event` / `has_all_events`.** Wrong keys raise `InvalidMetricConfigError`
 naming the requirement.
 
@@ -171,7 +171,7 @@ came from a tab). `playbook("conversion_rate")` carries the procedure.
 
 ## 8. Environment notes
 
-- Requires Python ≥ 3.11. Backend is an embedded engine (DuckDB family) — millions of rows
+- Requires Python ≥ 3.10. Backend is an embedded engine (DuckDB family) — millions of rows
   run in seconds on a laptop; no network needed.
 - Interactive widgets from a *source checkout* need the JS bundle built (`make build`,
   Node required). pip-installed wheels ship the bundle.

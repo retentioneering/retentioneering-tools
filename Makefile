@@ -63,6 +63,14 @@ release:
 	       "rename '## [Unreleased]' to '## [$(VERSION)] - $$(date +%Y-%m-%d)' (and add a fresh" \
 	       "empty '## [Unreleased]' above it), then land that on master before releasing."; exit 1; \
 	fi
+	@# release.yml builds whatever pyproject.toml says, not what the tag says
+	@# (ADR-0011: no dynamic versioning). Without this check a tag pushed
+	@# ahead of the version bump republishes the *previous* version and the
+	@# run dies on PyPI's "File already exists".
+	@if ! grep -q '^version = "$(VERSION)"$$' pyproject.toml; then \
+	  echo "pyproject.toml says $$(grep -m1 '^version = ' pyproject.toml | cut -d'"' -f2), not $(VERSION)" \
+	       "-- bump it in the version-bump PR and land that on master before releasing."; exit 1; \
+	fi
 	git tag -a v$(VERSION) -m "Release v$(VERSION)"
 	git push origin v$(VERSION)
 	@echo "✓ Pushed tag v$(VERSION) -- release.yml will build and publish to PyPI."

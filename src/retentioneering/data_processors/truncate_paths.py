@@ -31,8 +31,6 @@ class TruncatePaths(DataProcessor):
         start anchor is dropped rather than yielding an inverted window.
     path_col : str, optional
         Path ID column name. If None, taken from schema.
-    event_col : str, optional
-        Event column name. If None, taken from schema.
     """
 
     def __init__(
@@ -40,12 +38,10 @@ class TruncatePaths(DataProcessor):
         start_anchor,
         end_anchor,
         path_col: str | None = None,
-        event_col: str | None = None,
     ) -> None:
         self.start_specs = self._parse(start_anchor, "start_anchor")
         self.end_specs = self._parse(end_anchor, "end_anchor")
         self.path_col = path_col
-        self.event_col = event_col
         super().__init__()
 
     @staticmethod
@@ -88,8 +84,6 @@ class TruncatePaths(DataProcessor):
         match. Inside `[^...]` an unknown name removes an *exclusion*, so the
         window silently opens in the wrong place instead of not opening.
         """
-        event_col = self.event_col or schema.event_col
-        available = df[event_col].unique().tolist()
         for param, specs in (
             ("start_anchor", self.start_specs),
             ("end_anchor", self.end_specs),
@@ -97,7 +91,10 @@ class TruncatePaths(DataProcessor):
             for spec in specs:
                 try:
                     anchors.validate_pattern_tokens(
-                        spec.pattern, available, param=param, check_literals=False
+                        spec.pattern,
+                        anchors.spec_vocabulary(df, schema, spec),
+                        param=param,
+                        check_literals=False,
                     )
                 except (InvalidParameterError, PatternSyntaxError) as exc:
                     raise PreprocessingConfigError(PROCESSOR_NAME, exc.message) from exc
@@ -128,7 +125,6 @@ class TruncatePaths(DataProcessor):
                 spec,
                 offset_side=side,
                 path_col=path_col,
-                event_col=self.event_col,
                 not_before=not_before,
             )
             for spec in specs
@@ -193,7 +189,7 @@ class TruncatePaths(DataProcessor):
             )
 
         # Restore categorical dtypes and remove unused categories
-        for col in schema.event_cols + schema.segment_cols:
+        for col in [schema.event_col] + schema.segment_cols:
             if col in result.columns:
                 result[col] = result[col].astype("category")
                 result[col] = result[col].cat.remove_unused_categories()

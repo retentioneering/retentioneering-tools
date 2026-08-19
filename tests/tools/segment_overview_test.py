@@ -31,7 +31,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -62,7 +62,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -94,7 +94,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -126,7 +126,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -151,7 +151,7 @@ class TestSegmentOverview:
                 )
 
         df = pd.DataFrame(rows, columns=["user_id", "event", "segment", "timestamp"])
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -181,7 +181,7 @@ class TestSegmentOverview:
                 )
 
         df = pd.DataFrame(rows, columns=["user_id", "event", "segment", "timestamp"])
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -215,7 +215,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -246,7 +246,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -284,7 +284,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "channel", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment", "channel"]}
+        schema = {"event_col": "event", "segment_cols": ["segment", "channel"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -331,7 +331,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "channel", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment", "channel"]}
+        schema = {"event_col": "event", "segment_cols": ["segment", "channel"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -368,7 +368,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -397,7 +397,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"]}
+        schema = {"event_col": "event"}
         stream = Eventstream(df, schema)
 
         with pytest.raises(
@@ -417,7 +417,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         with pytest.raises(ValueError, match="Unknown aggregation type"):
@@ -437,7 +437,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -463,7 +463,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -503,7 +503,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "country", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["country"]}
+        schema = {"event_col": "event", "segment_cols": ["country"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -535,7 +535,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "country", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["country"]}
+        schema = {"event_col": "event", "segment_cols": ["country"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -567,7 +567,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -597,7 +597,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -640,7 +640,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -681,7 +681,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -717,7 +717,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         explicit = stream.segment_overview_data(
@@ -762,7 +762,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -799,7 +799,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -834,7 +834,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -876,7 +876,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -912,7 +912,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -938,7 +938,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -965,7 +965,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(
@@ -992,7 +992,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = stream.segment_overview_data(segment_col="segment", metrics=[])
@@ -1011,7 +1011,7 @@ class TestSegmentOverview:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         with pytest.raises(InvalidMetricConfigError, match="AA"):
@@ -1037,7 +1037,7 @@ class TestMetricDistribution:
                 )
 
         df = pd.DataFrame(rows, columns=["user_id", "event", "segment", "timestamp"])
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = SegmentOverview(stream).get_metric_distribution(
@@ -1088,7 +1088,7 @@ class TestMetricDistribution:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = SegmentOverview(stream).get_metric_distribution(
@@ -1133,7 +1133,7 @@ class TestMetricDistribution:
                 )
 
         df = pd.DataFrame(rows, columns=["user_id", "event", "segment", "timestamp"])
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = SegmentOverview(stream).get_metric_distribution(
@@ -1177,7 +1177,7 @@ class TestMetricDistribution:
                 )
 
         df = pd.DataFrame(rows, columns=["user_id", "event", "segment", "timestamp"])
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = SegmentOverview(stream).get_metric_distribution(
@@ -1208,7 +1208,7 @@ class TestMetricDistribution:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = SegmentOverview(stream).get_metric_distribution(
@@ -1232,7 +1232,7 @@ class TestMetricDistribution:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = SegmentOverview(stream).get_metric_distribution(
@@ -1254,7 +1254,7 @@ class TestMetricDistribution:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         with pytest.raises(
@@ -1277,7 +1277,7 @@ class TestMetricDistribution:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         with pytest.raises(
@@ -1303,7 +1303,7 @@ class TestMetricDistribution:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = SegmentOverview(stream).get_metric_distribution(
@@ -1328,7 +1328,7 @@ class TestMetricDistribution:
                 rows.append([user, f"event_{j}", segment, f"2020-01-01 00:{j:02d}:00"])
 
         df = pd.DataFrame(rows, columns=["user_id", "event", "segment", "timestamp"])
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = SegmentOverview(stream).get_metric_distribution(
@@ -1351,7 +1351,7 @@ class TestMetricDistribution:
                     rows.append([user, f"event_{j}", seg, f"2020-01-01 00:{j:02d}:00"])
 
         df = pd.DataFrame(rows, columns=["user_id", "event", "segment", "timestamp"])
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = SegmentOverview(stream).get_metric_distribution(
@@ -1374,7 +1374,7 @@ class TestMetricDistribution:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         # This config produces 2 metrics: event_count_bulk_click and event_count_bulk_purchase
@@ -1401,7 +1401,7 @@ class TestMetricDistribution:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         # This config produces 2 metrics: has_event_bulk_click and has_event_bulk_purchase
@@ -1427,7 +1427,7 @@ class TestMetricDistribution:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         with pytest.raises(InvalidSegmentSelectionError, match="exactly one of"):
@@ -1446,7 +1446,7 @@ class TestMetricDistribution:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         with pytest.raises(InvalidSegmentSelectionError, match="exactly one of"):
@@ -1467,7 +1467,7 @@ class TestMetricDistribution:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         with pytest.raises(InvalidSegmentSelectionError, match="exactly two levels"):
@@ -1487,7 +1487,7 @@ class TestMetricDistribution:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         with pytest.raises(
@@ -1538,7 +1538,7 @@ class TestMetricDistribution:
                 )
 
         df = pd.DataFrame(rows, columns=["user_id", "event", "segment", "timestamp"])
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = SegmentOverview(stream).get_metric_distribution(
@@ -1565,7 +1565,7 @@ class TestMetricDistribution:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = SegmentOverview(stream).get_metric_distribution(
@@ -1595,7 +1595,7 @@ class TestMetricDistribution:
                 )
 
         df = pd.DataFrame(rows, columns=["user_id", "event", "segment", "timestamp"])
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = SegmentOverview(stream).get_metric_distribution(
@@ -1628,7 +1628,7 @@ class TestMetricDistribution:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = SegmentOverview(stream).get_metric_distribution(
@@ -1655,7 +1655,7 @@ class TestMetricDistribution:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
         result = SegmentOverview(stream).get_metric_distribution(
@@ -1701,7 +1701,7 @@ class TestLogScaleSharedZeroOffset:
             ],
             columns=["user_id", "event", "segment", "timestamp"],
         )
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         return SegmentOverview(Eventstream(df, schema))
 
     def test_identical_zeros_transform_equally_across_groups(self) -> None:

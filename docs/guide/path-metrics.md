@@ -38,6 +38,48 @@ overloading `events`:
   combine a list of events into one 0/1 result (AND/OR respectively) — these
   **can** be used in Filter Paths conditions.
 
+## Reading event names from another column
+
+Every metric above that takes event names — `event_count`, `has_event`, their
+`_bulk` flavours, `has_all_events`/`has_any_event`, `time_between`,
+`matches_pattern` — also accepts an optional `event_col` in its `metric_args`.
+It names the column those event names are matched against, defaulting to
+`schema.event_col`:
+
+```python
+# keep the paths that reached the checkout *screen*, whatever they clicked there
+stream.filter_paths({
+    "op": "=", "metric": "has_event", "value": True,
+    "metric_args": {"event": "checkout", "event_col": "screen"},
+})
+```
+
+The column is only **read**: the paths that survive keep every atomic event
+they had. The resulting metric column is qualified by the column it came from
+(`has_event_screen_checkout`), so the same event name read from two columns
+gives two metrics rather than one collision.
+
+Two things to know about a coarser column, since it holds **runs** of one value
+(`catalog, catalog, catalog, cart, ...`) rather than one row per visit:
+
+- `event_count` counts the *events on* a screen, not the *visits to* it — three
+  taps on the catalog are `3`, not `1`. If visits are what you mean, collapse
+  the runs first.
+- `matches_pattern` matches adjacent **rows**, not adjacent runs — a pattern
+  means the same thing whichever column it reads. A two-token pattern still
+  reads naturally, since two neighbouring runs are adjacent at their junction
+  (`catalog->cart` matches), but a three-token chain has a run in the middle
+  and so needs a gap: write `catalog->.*->checkout`, not
+  `catalog->cart->checkout`. `.*` already says "with anything in between",
+  which is exactly what a run is.
+
+The `_bulk` metrics must list their `events` when given an `event_col` — the
+wildcard resolves against the eventstream's own events, which say nothing about
+another column's values.
+
+`in_segment`/`in_segment_bulk` take no `event_col`: they match segment levels,
+not event names, and already name their column with `segment_name`.
+
 `in_segment`/`in_segment_bulk` split the same way over segment levels:
 `in_segment` names its levels explicitly (and stays usable in a Filter Paths
 condition), while `in_segment_bulk` is the shorthand that fans out over whole

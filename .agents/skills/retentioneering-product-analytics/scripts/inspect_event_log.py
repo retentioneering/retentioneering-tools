@@ -227,7 +227,7 @@ def main() -> int:
     print(f"""from retentioneering import Eventstream
 stream = Eventstream(df, schema={{
     "path_cols": ["{user_col}"],
-    "event_cols": ["{event_col}"],
+    "event_col": "{event_col}",
     "timestamp_col": "{ts_col}",
     "segment_cols": [{seg}],
 }})

@@ -311,8 +311,9 @@ def test_truncate_paths_path_end_sentinel_excludes_paths_missing_start(
     assert df[df["user_id"] == 3]["event"].tolist() == ["Z"]
 
 
-def test_truncate_paths_custom_columns():
-    """Test truncate_paths with custom path_col and event_col."""
+def test_truncate_paths_anchor_event_col():
+    """An anchor spec may match against a column other than the event column;
+    the events it cuts between stay atomic."""
     data = pd.DataFrame(
         {
             "user_id": [1, 1, 1, 1, 1, 1],
@@ -334,20 +335,22 @@ def test_truncate_paths_custom_columns():
 
     schema = {
         "path_cols": ["user_id", "session_id"],
-        "event_cols": ["event", "custom_event"],
+        "event_col": "event",
+        "custom_cols": ["custom_event"],
     }
 
     stream = Eventstream(data, schema)
     result = stream.truncate_paths(
-        start_anchor="B",
-        end_anchor="A",
+        start_anchor={"pattern": "B", "event_col": "custom_event"},
+        end_anchor={"pattern": "A", "event_col": "custom_event"},
         path_col="session_id",
-        event_col="custom_event",
     )
     df = result.df
 
-    events = df["custom_event"].tolist()
-    assert events == ["B", "C", "A"]
+    assert df["custom_event"].tolist() == ["B", "C", "A"]
+    # the stream is still described by its own event column, not the anchors'
+    assert df["event"].tolist() == ["X", "Y", "Z"]
+    assert result.schema.event_col == "event"
 
 
 # ── anchor specs, offsets and lists ──────────────────────────────────────────

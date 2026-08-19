@@ -8,7 +8,7 @@ from retentioneering.exceptions import PreprocessingConfigError
 
 SCHEMA = {
     "path_cols": ["user_id"],
-    "event_cols": ["event"],
+    "event_col": "event",
     "timestamp_col": "timestamp",
 }
 

@@ -80,7 +80,7 @@ The schema tells retentioneering which columns in your DataFrame correspond to p
 ```python
 stream = rete.Eventstream(df, schema={
     "path_cols": ["user_id"],
-    "event_cols": ["event"],
+    "event_col": "event",
     "timestamp_col": "timestamp",
     "segment_cols": ["country", "plan"],
 })
@@ -89,7 +89,7 @@ stream = rete.Eventstream(df, schema={
 | Field | Default | Description |
 |---|---|---|
 | `path_cols` | `["user_id"]` | Columns that identify a path, ordered **coarsest grain first** (e.g. `["user_id", "session_id"]`). The first column is the primary/default path ID and every later column must nest inside all earlier ones — validated against your data at construction time. `path_col` overrides passed to tools must be one of these columns. |
-| `event_cols` | `["event"]` | Columns that contain event names. The first column is the primary event column. |
+| `event_col` | `"event"` | The column that contains event names — exactly one. A coarser column (the screen or category an event belongs to) is a `custom_col`; to represent the stream at that grain use [`collapse_events(group_col=...)`](/docs/data-processors/collapse-events). To *match* against such a column without changing the stream, an anchor spec takes an `event_col`, and so does a path metric's `metric_args`. The pre-5.2 `event_cols` list still works with a single element and warns. |
 | `timestamp_col` | `"timestamp"` | The timestamp column. |
 | `segment_cols` | `[]` | Columns treated as segmentations, available in widgets and metrics. See [Key concepts](#key-concepts). |
 | `custom_cols` | `None` | Extra columns you may need for working with the eventstream. Left as `None`, every column not covered by the rest of the schema is included automatically. Set to a list — even `[]` — and only those columns (plus the ones already covered by the schema) are kept; anything else is dropped. |

@@ -550,7 +550,7 @@ def build_segmented_stream():
         columns=["user_id", "event", "segment", "channel", "timestamp"],
     )
     return Eventstream(
-        df, {"event_cols": ["event"], "segment_cols": ["segment", "channel"]}
+        df, {"event_col": "event", "segment_cols": ["segment", "channel"]}
     )
 
 
@@ -754,7 +754,7 @@ class TestInSegmentBulk:
             ],
             columns=["user_id", "event", "segment", "timestamp"],
         )
-        stream = Eventstream(df, {"event_cols": ["event"], "segment_cols": ["segment"]})
+        stream = Eventstream(df, {"event_col": "event", "segment_cols": ["segment"]})
 
         bulk = stream.get_metrics([{"metric": "in_segment_bulk"}])
         assert bulk.columns.tolist() == ["in_segment_bulk_segment_s1_any"]
@@ -876,3 +876,182 @@ class TestInSegmentUnknownArgs:
             "in_segment_segment_s1_event_share",
             "in_segment_bulk_channel_mobile_event_share",
         ]
+
+
+# ── metric_args event_col: reading event names from another column ────────────
+
+
+def build_screen_stream():
+    """A stream whose `screen` column is a coarser grain than its events: each
+    screen value spans a *run* of atomic events."""
+    df = pd.DataFrame(
+        {
+            "user_id": ["u1"] * 5 + ["u2"] * 3,
+            "event": [
+                "tap_a",
+                "open_cart",
+                "edit",
+                "pay",
+                "done",
+                "tap_z",
+                "scroll",
+                "tap_y",
+            ],
+            "screen": [
+                "catalog",
+                "cart",
+                "cart",
+                "checkout",
+                "checkout",
+                "catalog",
+                "catalog",
+                "catalog",
+            ],
+            "timestamp": list(pd.date_range("2024-01-01", periods=5, freq="1min"))
+            + list(pd.date_range("2024-01-02", periods=3, freq="1min")),
+        }
+    )
+    return Eventstream(df, {"event_col": "event", "custom_cols": ["screen"]})
+
+
+class TestMetricArgsEventCol:
+    def test_has_event_reads_the_named_column(self):
+        stream = build_screen_stream()
+        result = stream.get_metrics(
+            [
+                {
+                    "metric": "has_event",
+                    "metric_args": {"event": "cart", "event_col": "screen"},
+                }
+            ]
+        )
+        assert result["has_event_screen_cart"].tolist() == [1, 0]
+
+    def test_metric_name_is_qualified_by_its_column(self):
+        """The same event name read from two columns must not collide into one
+        column of the metrics frame."""
+        stream = build_screen_stream()
+        result = stream.get_metrics(
+            [
+                {"metric": "has_event", "metric_args": {"event": "pay"}},
+                {
+                    "metric": "has_event",
+                    "metric_args": {"event": "checkout", "event_col": "screen"},
+                },
+            ]
+        )
+        assert result.columns.tolist() == ["has_event_pay", "has_event_screen_checkout"]
+
+    def test_event_count_counts_rows_not_visits(self):
+        """A coarse column holds runs, so `event_count` counts the events *on* a
+        screen (3 for u2's catalog run), not the visits *to* it."""
+        stream = build_screen_stream()
+        result = stream.get_metrics(
+            [
+                {
+                    "metric": "event_count",
+                    "metric_args": {"event": "catalog", "event_col": "screen"},
+                }
+            ]
+        )
+        assert result["event_count_screen_catalog"].tolist() == [1, 3]
+
+    def _matches(self, stream, pattern):
+        result = stream.get_metrics(
+            [
+                {
+                    "metric": "matches_pattern",
+                    "metric_args": {"pattern": pattern, "event_col": "screen"},
+                }
+            ]
+        )
+        return result.iloc[:, 0].tolist()
+
+    def test_matches_pattern_adjacent_pair_spans_a_run_boundary(self):
+        """Two neighbouring runs *are* adjacent rows at their junction, so a
+        two-token pattern reads the way a screen-level funnel expects."""
+        stream = build_screen_stream()
+        assert self._matches(stream, "catalog->cart") == [True, False]
+        assert self._matches(stream, "cart->checkout") == [True, False]
+
+    def test_matches_pattern_chain_needs_a_gap_across_a_run(self):
+        """Adjacency is between *rows*, not runs, here as everywhere else — u1
+        went catalog -> cart -> checkout, but its cart run is two rows, so a
+        three-token chain finds no three consecutive rows and does not match.
+
+        This is the intended reading rather than a gap in the feature: a pattern
+        means the same thing whichever column it is matched against, and `.*`
+        already says "with anything in between", which is what a run is.
+        """
+        stream = build_screen_stream()
+        assert self._matches(stream, "catalog->cart->checkout") == [False, False]
+        assert self._matches(stream, "catalog->.*->checkout") == [True, False]
+
+    def test_filter_paths_keeps_the_atomic_events(self):
+        """The column is read to select paths, never written to: the surviving
+        path keeps its own events and the stream keeps its own grain."""
+        stream = build_screen_stream()
+        result = stream.filter_paths(
+            {
+                "op": "=",
+                "metric": "has_event",
+                "value": True,
+                "metric_args": {"event": "checkout", "event_col": "screen"},
+            }
+        )
+        assert result.df["user_id"].unique().tolist() == ["u1"]
+        assert result.df["event"].tolist() == [
+            "tap_a",
+            "open_cart",
+            "edit",
+            "pay",
+            "done",
+        ]
+        assert result.schema.event_col == "event"
+
+    def test_unknown_column_raises(self):
+        stream = build_screen_stream()
+        with pytest.raises(InvalidMetricConfigError, match="nope"):
+            stream.get_metrics(
+                [
+                    {
+                        "metric": "has_event",
+                        "metric_args": {"event": "cart", "event_col": "nope"},
+                    }
+                ]
+            )
+
+    def test_unknown_value_in_that_column_raises(self):
+        """Existence is checked against the named column's values, not the
+        eventstream's events."""
+        stream = build_screen_stream()
+        with pytest.raises(InvalidMetricConfigError, match="Available events"):
+            stream.get_metrics(
+                [
+                    {
+                        "metric": "has_event",
+                        "metric_args": {"event": "pay", "event_col": "screen"},
+                    }
+                ]
+            )
+
+    def test_bulk_wildcard_with_a_custom_column_raises(self):
+        """The wildcard resolves against the eventstream's own events, which say
+        nothing about another column's values."""
+        stream = build_screen_stream()
+        with pytest.raises(InvalidMetricConfigError, match="must list its 'events'"):
+            stream.get_metrics(
+                [{"metric": "has_event_bulk", "metric_args": {"event_col": "screen"}}]
+            )
+
+    def test_non_string_column_raises(self):
+        stream = build_screen_stream()
+        with pytest.raises(InvalidMetricConfigError, match="column name"):
+            stream.get_metrics(
+                [
+                    {
+                        "metric": "has_event",
+                        "metric_args": {"event": "cart", "event_col": 5},
+                    }
+                ]
+            )

@@ -89,7 +89,7 @@ class SamplePaths(DataProcessor):
 
         df = engine.run(query, df=df)
 
-        for col in schema.event_cols + schema.segment_cols:
+        for col in [schema.event_col] + schema.segment_cols:
             df[col] = df[col].astype("category")
             df[col] = df[col].cat.remove_unused_categories()
             df[col] = df[col].cat.as_unordered()

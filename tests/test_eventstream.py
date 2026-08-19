@@ -37,7 +37,7 @@ def test_schema_defaults(simple_df):
 
 def test_schema_custom_cols(simple_df):
     df = simple_df.rename(columns={"user_id": "session", "event": "action"})
-    es = Eventstream(df, {"path_cols": ["session"], "event_cols": ["action"]})
+    es = Eventstream(df, {"path_cols": ["session"], "event_col": "action"})
     assert es.schema.path_col == "session"
     assert es.schema.event_col == "action"
 

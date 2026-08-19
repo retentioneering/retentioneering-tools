@@ -53,7 +53,6 @@ class CollapseEvents(DataProcessor):
     name: Any
     agg: Dict[str, str]
     path_col: str | None
-    event_col: str | None
 
     def __init__(
         self,
@@ -64,7 +63,6 @@ class CollapseEvents(DataProcessor):
         name: Any = None,
         agg: Dict[str, str] | None = None,
         path_col: str | None = None,
-        event_col: str | None = None,
     ) -> None:
         self.loops = loops
         self.event_groups = self._parse_event_groups(event_groups)
@@ -73,7 +71,6 @@ class CollapseEvents(DataProcessor):
         self.name = name
         self.agg = agg or {}
         self.path_col = path_col
-        self.event_col = event_col
         super().__init__()
 
         self._validate_modes()
@@ -267,7 +264,7 @@ class CollapseEvents(DataProcessor):
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
         path_col = self.path_col or schema.path_col
-        event_col = self.event_col or schema.event_col
+        event_col = schema.event_col
 
         if self.mode == "loops":
             result = self._collapse_loops(df, schema, path_col, event_col)
@@ -276,7 +273,7 @@ class CollapseEvents(DataProcessor):
         else:
             result = self._collapse_boundary(df, schema, path_col, event_col)
 
-        for col in schema.event_cols + schema.segment_cols:
+        for col in [schema.event_col] + schema.segment_cols:
             if col in result.columns:
                 result[col] = result[col].astype("category")
                 result[col] = result[col].cat.remove_unused_categories()

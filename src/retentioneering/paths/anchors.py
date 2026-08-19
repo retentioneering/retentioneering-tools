@@ -98,6 +98,7 @@ __all__ = [
     "resolve_anchors",
     "resolve_bound",
     "resolve_positions",
+    "spec_vocabulary",
     "split_parts",
     "validate_pattern_tokens",
 ]
@@ -766,7 +767,9 @@ def resolve_anchors(
 
 # ── anchor specs: a pattern plus where in it, which occurrence, and an offset ──
 
-SPEC_KEYS = frozenset({"pattern", "at", "occurrence", "offset", "offset_side"})
+SPEC_KEYS = frozenset(
+    {"pattern", "at", "occurrence", "offset", "offset_side", "event_col"}
+)
 
 
 @dataclass(frozen=True)
@@ -780,6 +783,10 @@ class AnchorSpec:
     #: Which way a *time* offset rounds to a real event; ``None`` lets the
     #: caller decide (see :func:`resolve_positions`).
     offset_side: str | None = None
+    #: Column the pattern's tokens are matched against; ``None`` means
+    #: ``schema.event_col``. Only read — resolving an anchor locates rows, it
+    #: does not modify them.
+    event_col: str | None = None
 
     def ordinal(self) -> int:
         """`at` as a token ordinal; ``"start"``/``"end"`` are aliases for 0/-1."""
@@ -815,12 +822,17 @@ def parse_spec(value: object, *, param: str = "anchor") -> AnchorSpec:
     if "pattern" not in value:
         raise InvalidParameterError(param, value, ["an anchor spec with a 'pattern'"])
 
+    event_col = value.get("event_col")
+    if event_col is not None and not isinstance(event_col, str):
+        raise InvalidParameterError("event_col", event_col, ["a column name"])
+
     spec = AnchorSpec(
         pattern=normalize_pattern(value["pattern"], warn=False, param=param),
         at=value.get("at", "end"),
         occurrence=value.get("occurrence", "first"),
         offset=value.get("offset"),
         offset_side=value.get("offset_side"),
+        event_col=event_col,
     )
     if spec.occurrence not in OCCURRENCES:
         raise InvalidParameterError("occurrence", spec.occurrence, list(OCCURRENCES))
@@ -828,6 +840,19 @@ def parse_spec(value: object, *, param: str = "anchor") -> AnchorSpec:
         raise InvalidParameterError("offset_side", spec.offset_side, list(OFFSET_SIDES))
     spec.ordinal()  # validate `at` eagerly, before any query runs
     return spec
+
+
+def spec_vocabulary(
+    df: pd.DataFrame, schema: "EventstreamSchema", spec: AnchorSpec
+) -> list:
+    """
+    The event names `spec`'s pattern is matched against.
+
+    A spec naming its own `event_col` is validated against *that* column's
+    values, not the stream's events — otherwise every screen name would look
+    like an unknown event.
+    """
+    return df[spec.event_col or schema.event_col].unique().tolist()
 
 
 def parse_specs(value: object, *, param: str = "anchor") -> list[AnchorSpec]:
@@ -962,7 +987,6 @@ def resolve_positions(
     *,
     offset_side: str | None = None,
     path_col: str | None = None,
-    event_col: str | None = None,
     not_before: pd.DataFrame | None = None,
     not_before_part: int | None = None,
 ) -> pd.DataFrame:
@@ -1010,7 +1034,7 @@ def resolve_positions(
         spec.pattern,
         occurrence=spec.occurrence,
         path_col=path_col,
-        event_col=event_col,
+        event_col=spec.event_col,
         not_before=not_before,
         not_before_part=not_before_part,
     )
@@ -1045,7 +1069,6 @@ def resolve_bound(
     *,
     offset_side: str,
     path_col: str | None = None,
-    event_col: str | None = None,
     not_before: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """
@@ -1066,7 +1089,6 @@ def resolve_bound(
         spec,
         offset_side=offset_side,
         path_col=path_col,
-        event_col=event_col,
         not_before=not_before,
     )
     return positions[[path_col or schema.path_col, "bound"]]

@@ -21,17 +21,14 @@ class FilterPaths(DataProcessor):
 
     condition: Dict[str, Any]
     path_col: str | None
-    event_col: str | None
 
     def __init__(
         self,
         condition: Dict[str, Any],
         path_col: str | None,
-        event_col: str | None,
     ) -> None:
         self.condition = condition
         self.path_col = path_col
-        self.event_col = event_col
         super().__init__()
 
     def apply(self, df, schema) -> Tuple[pd.DataFrame, EventstreamSchema]:

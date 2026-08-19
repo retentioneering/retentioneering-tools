@@ -45,19 +45,19 @@ class RenameEvents(DataProcessor):
 
         df = df.copy()
 
-        for event_col in schema.event_cols:
-            existing = set(df[event_col].cat.categories.tolist())
-            unknown = set(self.mapping.keys()) - existing
-            if unknown:
-                raise PreprocessingConfigError(
-                    PROCESSOR_NAME,
-                    f"Unknown event names in 'mapping': {sorted(unknown)}. "
-                    f"Available events: {sorted(existing)}.",
-                )
+        event_col = schema.event_col
+        existing = set(df[event_col].cat.categories.tolist())
+        unknown = set(self.mapping.keys()) - existing
+        if unknown:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"Unknown event names in 'mapping': {sorted(unknown)}. "
+                f"Available events: {sorted(existing)}.",
+            )
 
-            series = df[event_col].astype(str).replace(self.mapping)
-            df[event_col] = series.astype("category")
-            df[event_col] = df[event_col].cat.remove_unused_categories()
-            df[event_col] = df[event_col].cat.as_unordered()
+        series = df[event_col].astype(str).replace(self.mapping)
+        df[event_col] = series.astype("category")
+        df[event_col] = df[event_col].cat.remove_unused_categories()
+        df[event_col] = df[event_col].cat.as_unordered()
 
         return df, schema

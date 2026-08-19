@@ -20,7 +20,7 @@ class TestFunnel:
             columns=["user_id", "event", "timestamp"],
         )
 
-        stream = Eventstream(df, {"event_cols": ["event"]})
+        stream = Eventstream(df, {"event_col": "event"})
         result = stream.funnel_data(steps=["A", "B", "C"])
 
         assert len(result["steps"]) == 3
@@ -60,7 +60,7 @@ class TestFunnel:
         ]
         df = pd.DataFrame(rows, columns=["user_id", "event", "timestamp"])
 
-        stream = Eventstream(df, {"event_cols": ["event"]})
+        stream = Eventstream(df, {"event_col": "event"})
         result = stream.funnel_data(steps=["basket", "shipping"])
 
         assert result["steps"][0]["unique_paths"] == 5
@@ -120,7 +120,7 @@ class TestFunnel:
             ],
             columns=["user_id", "event", "timestamp"],
         )
-        stream = Eventstream(df, {"event_cols": ["event"]})
+        stream = Eventstream(df, {"event_col": "event"})
         with pytest.raises(InvalidParameterError):
             stream.funnel_data(steps=["add_to_cart", "xxxxxxxx", "cart"])
 
@@ -138,7 +138,7 @@ class TestFunnel:
             columns=["user_id", "event", "timestamp"],
         )
 
-        stream = Eventstream(df, {"event_cols": ["event"]})
+        stream = Eventstream(df, {"event_col": "event"})
         result = stream.funnel_data(steps=["A", "B", "C"])
 
         assert result["steps"][0]["unique_paths"] == 2
@@ -161,7 +161,7 @@ class TestFunnel:
             columns=["user_id", "event", "timestamp"],
         )
 
-        stream = Eventstream(df, {"event_cols": ["event"]})
+        stream = Eventstream(df, {"event_col": "event"})
         result = stream.funnel_data(steps=["A"])
 
         assert len(result["steps"]) == 1
@@ -181,7 +181,7 @@ class TestFunnel:
             columns=["user_id", "event", "timestamp"],
         )
 
-        stream = Eventstream(df, {"event_cols": ["event"]})
+        stream = Eventstream(df, {"event_col": "event"})
         result = stream.funnel_data(steps=["A", "B", "C"])
 
         assert result["steps"][0]["unique_paths"] == 2
@@ -198,7 +198,7 @@ class TestFunnel:
             columns=["user_id", "event", "timestamp"],
         )
 
-        stream = Eventstream(df, {"event_cols": ["event"]})
+        stream = Eventstream(df, {"event_col": "event"})
         result = stream.funnel_data(steps=["A", "B", "C"])
 
         assert result["steps"][0]["unique_paths"] == 1
@@ -219,7 +219,7 @@ class TestFunnel:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        stream = Eventstream(df, {"event_cols": ["event"], "segment_cols": ["segment"]})
+        stream = Eventstream(df, {"event_col": "event", "segment_cols": ["segment"]})
         result = stream.funnel_data(
             steps=["A", "B", "C"], diff=("segment", "segment_1", "segment_2")
         )
@@ -262,7 +262,7 @@ class TestFunnel:
             columns=["user_id", "event", "segment", "timestamp"],
         )
 
-        stream = Eventstream(df, {"event_cols": ["event"], "segment_cols": ["segment"]})
+        stream = Eventstream(df, {"event_col": "event", "segment_cols": ["segment"]})
         result = stream.funnel_data(
             steps=["A", "B", "C"], diff=("segment", "segment_1", "<REST>")
         )
@@ -290,7 +290,7 @@ class TestFunnel:
             columns=["user_id", "event", "timestamp"],
         )
 
-        stream = Eventstream(df, {"event_cols": ["event"]})
+        stream = Eventstream(df, {"event_col": "event"})
         result = stream.funnel_data(steps=["A", "B"])
 
         assert result["steps"][0]["unique_paths"] == 1
@@ -316,7 +316,7 @@ class TestFunnel:
             columns=["user_id", "event", "timestamp"],
         )
 
-        stream = Eventstream(df, {"event_cols": ["event"]})
+        stream = Eventstream(df, {"event_col": "event"})
         result = stream.funnel_data(steps=["PLP", "PDP", "basket"])
 
         assert result["steps"][0]["unique_paths"] == 1
@@ -338,7 +338,7 @@ class TestFunnel:
             columns=["user_id", "event", "timestamp"],
         )
 
-        stream = Eventstream(df, {"event_cols": ["event"]})
+        stream = Eventstream(df, {"event_col": "event"})
         result = stream.funnel_data(steps=["catalog", "product", "catalog"])
 
         # user_1 completes catalog -> product -> catalog; user_2 has no
@@ -357,7 +357,7 @@ class TestFunnel:
             columns=["user_id", "event", "timestamp"],
         )
 
-        stream = Eventstream(df, {"event_cols": ["event"]})
+        stream = Eventstream(df, {"event_col": "event"})
         result = stream.funnel_data(steps=["A", "B"])
 
         assert result["steps"][0]["unique_paths"] == 1
@@ -367,6 +367,6 @@ class TestFunnel:
         df = pd.DataFrame(
             [["user_1", "A", "2020-01-01"]], columns=["user_id", "event", "timestamp"]
         )
-        stream = Eventstream(df, {"event_cols": ["event"]})
+        stream = Eventstream(df, {"event_col": "event"})
         result = stream.funnel_data(steps=[])
         assert result == {"steps": []}

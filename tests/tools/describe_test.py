@@ -17,7 +17,7 @@ class TestDescribe:
             ],
             columns=["user_id", "event", "segment", "timestamp"],
         )
-        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        schema = {"event_col": "event", "segment_cols": ["segment"]}
         return Eventstream(df, schema)
 
     def test_shape_and_schema(self) -> None:
@@ -96,7 +96,7 @@ class TestDescribe:
             columns=["user_id", "session_id", "event", "timestamp"],
         )
         schema = {
-            "event_cols": ["event"],
+            "event_col": "event",
             "path_cols": ["user_id", "session_id"],
         }
         stream = Eventstream(df, schema)
@@ -123,7 +123,7 @@ class TestDescribe:
             [["user_1", "A", "2020-01-01 00:00:00"]],
             columns=["user_id", "event", "timestamp"],
         )
-        result = Eventstream(df, {"event_cols": ["event"]}).describe()
+        result = Eventstream(df, {"event_col": "event"}).describe()
         assert result["segments"].empty
 
     def test_custom_percentiles(self) -> None:

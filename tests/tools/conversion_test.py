@@ -9,7 +9,7 @@ from retentioneering.exceptions import InvalidParameterError
 
 def _stream(rows) -> Eventstream:
     df = pd.DataFrame(rows, columns=["user_id", "event", "timestamp"])
-    return Eventstream(df, {"event_cols": ["event"]})
+    return Eventstream(df, {"event_col": "event"})
 
 
 def _row(result: pd.DataFrame, index: int = 0) -> dict:
@@ -208,7 +208,7 @@ class TestConversionRateSemantics:
             columns=["user_id", "session_id", "event", "timestamp"],
         )
         stream = Eventstream(
-            df, {"path_cols": ["user_id", "session_id"], "event_cols": ["event"]}
+            df, {"path_cols": ["user_id", "session_id"], "event_col": "event"}
         )
 
         assert _row(stream.get_conversion_rate("cart", "purchase"))["converted"] == 1

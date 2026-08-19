@@ -18,7 +18,7 @@ from retentioneering import Eventstream
 
 stream = Eventstream(df, schema={
     "path_cols":     ["user_id"],            # path identity; nesting allowed: ["user_id","session_id"]
-    "event_cols":    ["event"],
+    "event_col":     "event",
     "timestamp_col": "timestamp",            # REQUIRED; parseable datetimes (tz-aware OK)
     "segment_cols":  ["device", "country"],  # categorical labels usable in every diff/overview
     "custom_cols":   ["price"],              # carried along; visible to sql= modes

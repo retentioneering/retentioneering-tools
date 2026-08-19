@@ -118,20 +118,19 @@ class Eventstream:
             "cols": self._df.shape[1],
             "n_path_cols": len(self.schema.path_cols),
             "n_segment_cols": len(self.schema.segment_cols),
-            "n_event_cols": len(self.schema.event_cols),
         },
     )
     def _post_init(self):
         if self.preprocess:
             self._preprocess()
         else:
-            for col in self.schema.event_cols + self.schema.segment_cols:
+            for col in [self.schema.event_col] + self.schema.segment_cols:
                 self._df[col] = self._df[col].astype("category")
 
         schema = self.schema
         declared_cols = set(
             schema.path_cols
-            + schema.event_cols
+            + [schema.event_col]
             + [schema.timestamp_col]
             + schema.segment_cols
             + [schema.event_type, schema.index, schema.subindex]
@@ -178,18 +177,19 @@ class Eventstream:
         if len(schema.path_cols) > 1:
             _validate_path_cols_nesting(df, schema.path_cols)
 
-        for col in schema.event_cols + schema.segment_cols:
+        for col in [schema.event_col] + schema.segment_cols:
             df[col] = df[col].astype("category")
 
-        for col in schema.event_cols:
-            offenders = find_delimiter_collisions(df[col].cat.categories.tolist())
-            if offenders:
-                raise SchemaConfigError(
-                    f"Event name(s) {offenders} in column '{col}' contain '->', "
-                    f"which retentioneering uses as the path delimiter in "
-                    f"matches_pattern/step_matrix pattern matching. Rename these "
-                    f"events before creating the Eventstream."
-                )
+        offenders = find_delimiter_collisions(
+            df[schema.event_col].cat.categories.tolist()
+        )
+        if offenders:
+            raise SchemaConfigError(
+                f"Event name(s) {offenders} in column '{schema.event_col}' contain "
+                f"'->', which retentioneering uses as the path delimiter in "
+                f"matches_pattern/step_matrix pattern matching. Rename these "
+                f"events before creating the Eventstream."
+            )
 
         if schema.event_type not in df.columns:
             df[schema.event_type] = event_types.RAW_EVENT.type
@@ -314,8 +314,8 @@ class Eventstream:
         df2 = df2[df1.columns]
         return pd.DataFrame.equals(df1, df2)
 
-    def get_event_counts(self, event_col: str | None = None) -> dict[str, int]:
-        event_col = event_col or self.schema.event_col
+    def get_event_counts(self) -> dict[str, int]:
+        event_col = self.schema.event_col
         event_col_q = engine.quote_ident(event_col)
         query = f"SELECT {event_col_q}, COUNT(*) AS cnt FROM df GROUP BY {event_col_q}"
         return engine.run(query, df=self._df).set_index(event_col)["cnt"].to_dict()
@@ -340,7 +340,7 @@ class Eventstream:
                 "event_counts": counts,
                 "schema": {
                     "path_cols": sorted(s.path_cols),
-                    "event_cols": sorted(s.event_cols),
+                    "event_col": s.event_col,
                     "segment_cols": sorted(s.segment_cols),
                     "custom_cols": sorted(s.custom_cols),
                 },
@@ -477,7 +477,6 @@ class Eventstream:
         scaler: str | None = "minmax",
         nmf_components=None,
         path_col=None,
-        event_col=None,
     ) -> "Eventstream":
         """
         Cluster paths using ML and add a new segment column with `cluster_0`, `cluster_1`,
@@ -521,8 +520,6 @@ class Eventstream:
             When set, reduces features to this many NMF components before clustering.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
-        event_col : str, optional
-            Event column override; defaults to `schema.event_col`.
 
         Examples
         --------
@@ -552,7 +549,6 @@ class Eventstream:
             scaler=scaler,
             nmf_components=nmf_components,
             path_col=path_col,
-            event_col=event_col,
         ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
@@ -648,7 +644,6 @@ class Eventstream:
         self,
         condition: dict | list,
         path_col: str | None = None,
-        event_col: str | None = None,
     ) -> "Eventstream":
         """
         Keep only paths that satisfy a metric condition.
@@ -679,8 +674,6 @@ class Eventstream:
                 with an `event_groups` list.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
-        event_col : str, optional
-            Event column override; defaults to `schema.event_col`.
 
         Examples
         --------
@@ -705,7 +698,7 @@ class Eventstream:
         if isinstance(condition, list):
             condition = {"op": "and", "args": condition}
 
-        dp = FilterPaths(condition, path_col, event_col)
+        dp = FilterPaths(condition, path_col)
         path_col = path_col or self.schema.path_col
 
         # Extract metric configs
@@ -1000,7 +993,6 @@ class Eventstream:
         name=None,
         agg=None,
         path_col=None,
-        event_col=None,
     ) -> "Eventstream":
         """
         Merge a run of events into a single representative event.
@@ -1061,8 +1053,6 @@ class Eventstream:
             `{"price": "max"}`.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
-        event_col : str, optional
-            Event column override; defaults to `schema.event_col`.
 
         Examples
         --------
@@ -1102,7 +1092,6 @@ class Eventstream:
             name=name,
             agg=agg,
             path_col=path_col,
-            event_col=event_col,
         ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
@@ -1114,7 +1103,6 @@ class Eventstream:
         max_dormant_days: int = 30,
         agg=None,
         path_col=None,
-        event_col=None,
     ) -> "Eventstream":
         """
         Convert the eventstream into daily lifecycle-state events.
@@ -1146,8 +1134,6 @@ class Eventstream:
             Per-column aggregation overrides (e.g. `{"revenue": "sum"}`).
         path_col : str, optional
             Override the path ID column.
-        event_col : str, optional
-            Override the event column.
 
         Examples
         --------
@@ -1161,7 +1147,6 @@ class Eventstream:
             max_dormant_days=max_dormant_days,
             agg=agg,
             path_col=path_col,
-            event_col=event_col,
         ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
@@ -1343,7 +1328,6 @@ class Eventstream:
         bounds=None,
         timeout=None,
         path_col=None,
-        event_col=None,
     ) -> "Eventstream":
         """
         Split each path into sub-sessions and add session ID and index columns.
@@ -1374,8 +1358,6 @@ class Eventstream:
             avoid unit ambiguity.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
-        event_col : str, optional
-            Event column override; defaults to `schema.event_col`.
 
         Examples
         --------
@@ -1393,15 +1375,12 @@ class Eventstream:
             bounds=bounds,
             timeout=timeout,
             path_col=path_col,
-            event_col=event_col,
         ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
     @_tracked("dp_truncate_paths")
     @_op
-    def truncate_paths(
-        self, start_anchor, end_anchor, path_col=None, event_col=None
-    ) -> "Eventstream":
+    def truncate_paths(self, start_anchor, end_anchor, path_col=None) -> "Eventstream":
         """
         Trim each path to the window between two anchors (inclusive).
 
@@ -1441,6 +1420,12 @@ class Eventstream:
         - `offset_side` — which way a time `offset` rounds to a real event,
           `"start"` (forward) or `"end"` (backward). Defaults to the side of the
           window being resolved, which rounds inward; set it to widen instead.
+        - `event_col` — the column the pattern is matched against; defaults to
+          `schema.event_col`. Naming a coarser column (`"screen"`, `"category"`)
+          cuts the window at that grain while the events inside it stay atomic —
+          the column is only read, never written to. Note that such a column
+          usually holds *runs* of one value, so an anchor lands on the run's
+          first row.
 
         A **list** of anchors keeps the narrowest window they imply — the latest
         start, the earliest end. That expresses both "whichever comes first"
@@ -1457,8 +1442,6 @@ class Eventstream:
             Where the window closes.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
-        event_col : str, optional
-            Event column override; defaults to `schema.event_col`.
 
         Examples
         --------
@@ -1489,6 +1472,12 @@ class Eventstream:
                     "offset": "30m",
                 },
             )
+
+            # the visit to the cart screen, atomic events inside it kept as they are
+            stream.truncate_paths(
+                start_anchor={"pattern": "cart", "event_col": "screen"},
+                end_anchor={"pattern": "checkout", "event_col": "screen"},
+            )
         """
         from retentioneering.data_processors.truncate_paths import TruncatePaths
 
@@ -1496,7 +1485,6 @@ class Eventstream:
             start_anchor=start_anchor,
             end_anchor=end_anchor,
             path_col=path_col,
-            event_col=event_col,
         ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
@@ -2372,7 +2360,6 @@ class Eventstream:
         segment_col: str,
         metrics: list | None = None,
         path_col: str | None = None,
-        event_col: str | None = None,
     ) -> "pd.DataFrame":
         """
         Compute aggregated metrics across segment levels (headless).
@@ -2390,8 +2377,6 @@ class Eventstream:
             metric reference.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
-        event_col : str, optional
-            Event name column override; defaults to `schema.event_col`.
 
         Returns
         -------
@@ -2405,7 +2390,6 @@ class Eventstream:
             segment_col=segment_col,
             metrics=metrics or [],
             path_col=path_col,
-            event_col=event_col,
         )
 
     @_tracked("widget_cluster_analysis")
@@ -2530,7 +2514,6 @@ class Eventstream:
         nmf_components=None,
         overview_metrics: list | None = None,
         path_col: str | None = None,
-        event_col: str | None = None,
         select: dict | None = None,
     ) -> dict:
         """
@@ -2584,8 +2567,6 @@ class Eventstream:
             metric configs from the same [Path Metrics](/docs/path-metrics) registry.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
-        event_col : str, optional
-            Event name column override; defaults to `schema.event_col`.
         select : dict, optional
             Which grid point to interpret, given as the parameter values naming
             it — `{"n_clusters": 5}`, or `{"n_clusters": 5, "nmf_components": 3}`
@@ -2637,7 +2618,6 @@ class Eventstream:
             nmf_components=nmf_components,
             overview_metrics=overview_metrics,
             path_col=path_col,
-            event_col=event_col,
             select=select,
         )
 

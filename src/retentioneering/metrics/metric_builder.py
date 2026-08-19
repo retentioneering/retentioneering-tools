@@ -45,6 +45,16 @@ Supports metrics:
   Both flavours reject unknown metric_args keys (including each other's spelling
   of the level key, and the pre-5.0 'segment_value'): ignoring a key meant to
   name a level would read as "no level given", i.e. every level.
+
+Every metric that takes event names also takes an optional 'event_col' in its
+metric_args - the column those names are matched against, defaulting to
+schema.event_col. The column is only read, and the resulting metric column is
+qualified by it ('has_event_screen_checkout'). A coarser column holds runs of
+one value, so 'event_count' counts events on a screen rather than visits to it,
+and 'matches_pattern' needs a gap between tokens ('catalog->.*->checkout'). The
+_bulk flavours must list their 'events' when given one, since the wildcard
+resolves against the eventstream's own events. in_segment/in_segment_bulk take
+no 'event_col': they match segment levels, not event names.
 """
 
 from typing import Any, Dict, List, Set
@@ -98,6 +108,34 @@ IN_SEGMENT_BULK_ARGS = {"segment_name", "segment_levels", "mode", "threshold"}
 
 # Special synthetic events that don't need to exist in the eventstream
 SYNTHETIC_EVENTS = {EventTypes().PATH_START.name, EventTypes().PATH_END.name}
+
+
+def _normalize_event_col(metric_args: Dict[str, Any], metric_name: str) -> str | None:
+    """
+    Normalizes the optional 'event_col' metric_args key.
+
+    Names the column this metric's event names are matched against; ``None``
+    means `schema.event_col`. Only metrics that take event names accept it.
+
+    A coarser column (`"screen"`) usually holds runs of one value, so
+    `has_event` asks "was this screen ever visited" while `event_count` counts
+    the *events on* it, not the visits to it — collapse the runs first if visits
+    are what you mean.
+    """
+    event_col = metric_args.get("event_col")
+    if event_col is None:
+        return None
+    if not isinstance(event_col, str) or not event_col:
+        raise InvalidMetricConfigError(
+            f"'{metric_name}' metric 'event_col' must be a column name (string)"
+        )
+    return event_col
+
+
+def _prefix(event_col: str | None) -> str:
+    """Column qualifier for a metric name, so the same event name read from two
+    columns cannot produce two identically named metrics."""
+    return f"{event_col}_" if event_col else ""
 
 
 def _normalize_single_event(event: Any, metric_name: str) -> str:
@@ -317,7 +355,9 @@ def _normalize_in_segment_threshold(
     return threshold
 
 
-def combined_metric_name(metric: str, events: List[str]) -> str:
+def combined_metric_name(
+    metric: str, events: List[str], event_col: str | None = None
+) -> str:
     """Canonical column name for has_all_events/has_any_event: the one piece of
     metric-naming *logic* (as opposed to plain interpolation) shared across
     this module, data_processors/filter_paths.py, and
@@ -325,7 +365,7 @@ def combined_metric_name(metric: str, events: List[str]) -> str:
     single path-metrics registry (see ADR-0007) and the other two are equal
     consumers of it, not of each other."""
     joiner = "_and_" if metric == "has_all_events" else "_or_"
-    return f"{metric}_{joiner.join(events)}"
+    return f"{metric}_{_prefix(event_col)}{joiner.join(events)}"
 
 
 class MetricConfig:
@@ -423,26 +463,32 @@ class MetricConfig:
             }
         elif metric == "matches_pattern":
             pattern = _normalize_pattern(metric_args)
+            event_col = _normalize_event_col(metric_args, metric)
             return {
                 "type": "matches_pattern",
                 "pattern": pattern,
-                "metric_names": [f"matches_pattern_{pattern}"],
+                "event_col": event_col,
+                "metric_names": [f"matches_pattern_{_prefix(event_col)}{pattern}"],
                 "original": config_dict,
             }
         elif metric == "has_event":
             event = _normalize_single_event(metric_args.get("event"), "has_event")
+            event_col = _normalize_event_col(metric_args, metric)
             return {
                 "type": "has_event",
                 "event_names": [event],
-                "metric_names": [f"has_event_{event}"],
+                "event_col": event_col,
+                "metric_names": [f"has_event_{_prefix(event_col)}{event}"],
                 "original": config_dict,
             }
         elif metric == "event_count":
             event = _normalize_single_event(metric_args.get("event"), "event_count")
+            event_col = _normalize_event_col(metric_args, metric)
             return {
                 "type": "event_count",
                 "event_names": [event],
-                "metric_names": [f"event_count_{event}"],
+                "event_col": event_col,
+                "metric_names": [f"event_count_{_prefix(event_col)}{event}"],
                 "original": config_dict,
             }
         elif metric == "has_event_bulk":
@@ -454,12 +500,24 @@ class MetricConfig:
             # MetricBuilder will produce instead of staying None — callers that only
             # need the parsed shape (not the resolved column names) may omit
             # available_events.
-            if event_names is None and self.available_events is not None:
-                event_names = sorted(self.available_events)
+            event_col = _normalize_event_col(metric_args, "has_event_bulk")
+            if event_names is None:
+                if event_col is not None:
+                    raise InvalidMetricConfigError(
+                        f"'has_event_bulk' metric with a custom 'event_col' "
+                        f"({event_col!r}) must list its 'events': the wildcard "
+                        f"resolves against the eventstream's own events, which "
+                        f"say nothing about that column's values."
+                    )
+                if self.available_events is not None:
+                    event_names = sorted(self.available_events)
             return {
                 "type": "has_event_bulk",
                 "event_names": event_names,
-                "metric_names": [f"has_event_bulk_{e}" for e in event_names]
+                "event_col": event_col,
+                "metric_names": [
+                    f"has_event_bulk_{_prefix(event_col)}{e}" for e in event_names
+                ]
                 if event_names is not None
                 else None,
                 "original": config_dict,
@@ -468,31 +526,51 @@ class MetricConfig:
             event_names = _normalize_events_bulk(
                 metric_args.get("events"), "event_count_bulk"
             )
-            if event_names is None and self.available_events is not None:
-                event_names = sorted(self.available_events)
+            event_col = _normalize_event_col(metric_args, "event_count_bulk")
+            if event_names is None:
+                if event_col is not None:
+                    raise InvalidMetricConfigError(
+                        f"'event_count_bulk' metric with a custom 'event_col' "
+                        f"({event_col!r}) must list its 'events': the wildcard "
+                        f"resolves against the eventstream's own events, which "
+                        f"say nothing about that column's values."
+                    )
+                if self.available_events is not None:
+                    event_names = sorted(self.available_events)
             return {
                 "type": "event_count_bulk",
                 "event_names": event_names,
-                "metric_names": [f"event_count_bulk_{e}" for e in event_names]
+                "event_col": event_col,
+                "metric_names": [
+                    f"event_count_bulk_{_prefix(event_col)}{e}" for e in event_names
+                ]
                 if event_names is not None
                 else None,
                 "original": config_dict,
             }
         elif metric in ("has_all_events", "has_any_event"):
             events = _normalize_events_required(metric_args.get("events"), metric)
+            event_col = _normalize_event_col(metric_args, metric)
             return {
                 "type": metric,
                 "events": events,
-                "metric_names": [combined_metric_name(metric, events)],
+                "event_col": event_col,
+                "metric_names": [
+                    combined_metric_name(metric, events, event_col=event_col)
+                ],
                 "original": config_dict,
             }
         elif metric == "time_between":
             start_event, end_event = _normalize_time_between(metric_args)
+            event_col = _normalize_event_col(metric_args, metric)
             return {
                 "type": "time_from_to",
                 "start_event": start_event,
                 "end_event": end_event,
-                "metric_names": [f"time_from_{start_event}_to_{end_event}"],
+                "event_col": event_col,
+                "metric_names": [
+                    f"time_from_{_prefix(event_col)}{start_event}_to_{end_event}"
+                ],
                 "original": config_dict,
             }
         elif metric == "in_segment":
@@ -602,6 +680,16 @@ class MetricBuilder:
             )
 
         metric_args = metric.get("metric_args", {})
+
+        metric_event_col = _normalize_event_col(metric_args, metric_name)
+        if metric_event_col is not None:
+            if metric_event_col not in self.df.columns:
+                raise InvalidMetricConfigError(
+                    f"'{metric_name}' metric 'event_col' names column "
+                    f"'{metric_event_col}', which the eventstream does not have. "
+                    f"Available columns: {sorted(self.df.columns)}"
+                )
+            available_events = set(self.df[metric_event_col].unique().tolist())
 
         if metric_name in ("event_count", "has_event"):
             event = _normalize_single_event(metric_args.get("event"), metric_name)
@@ -799,6 +887,10 @@ class MetricBuilder:
     ) -> pd.DataFrame:
         """Builds specific metric according to configuration"""
 
+        # A metric carrying its own column is matched against that column; the
+        # argument is the stream's own event column, the default for the rest.
+        event_col = config.get("event_col") or event_col
+
         if config["type"] == "event_count":
             return self._build_event_count(config, path_col, event_col)
         elif config["type"] == "has_event":
@@ -881,7 +973,8 @@ class MetricBuilder:
     ) -> pd.DataFrame:
         """Builds the event count metric for a single event"""
         event_names = self._resolve_event_names(config, event_col)
-        return self._build_count_pivot(event_names, path_col, event_col, "event_count_")
+        prefix = f"event_count_{_prefix(config.get('event_col'))}"
+        return self._build_count_pivot(event_names, path_col, event_col, prefix)
 
     def _build_has(
         self, config: Dict[str, Any], path_col: str, event_col: str
@@ -897,9 +990,8 @@ class MetricBuilder:
     ) -> pd.DataFrame:
         """Builds event count metrics for one or more events, one column per event"""
         event_names = self._resolve_event_names(config, event_col)
-        return self._build_count_pivot(
-            event_names, path_col, event_col, "event_count_bulk_"
-        )
+        prefix = f"event_count_bulk_{_prefix(config.get('event_col'))}"
+        return self._build_count_pivot(event_names, path_col, event_col, prefix)
 
     def _build_has_bulk(
         self, config: Dict[str, Any], path_col: str, event_col: str
@@ -1062,7 +1154,11 @@ class MetricBuilder:
         pattern = anchors.normalize_pattern(pattern, warn=False, param="pattern")
 
         match = anchors.resolve_anchors(
-            self.df_with_start_end, self.schema, pattern, path_col=path_col
+            self.df_with_start_end,
+            self.schema,
+            pattern,
+            path_col=path_col,
+            event_col=event_col,
         )
         matched = match.paths()
 

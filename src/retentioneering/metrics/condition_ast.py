@@ -13,7 +13,10 @@ Both consumers are equal users of this module - neither owns it.
 from typing import Any, Dict, List, Set
 
 from retentioneering.exceptions import PreprocessingConfigError
-from retentioneering.metrics.metric_builder import combined_metric_name
+from retentioneering.metrics.metric_builder import (
+    _prefix,
+    combined_metric_name,
+)
 
 # Metrics that produce multiple columns and can never appear in a single
 # comparison/IN leaf condition, regardless of operator.
@@ -57,6 +60,10 @@ def build_metric_names(
           -> ["active_days"]
     """
     metric_args = metric_args or {}
+    # Mirrors `MetricBuilder`'s naming: a metric read from another column is a
+    # different column in the metrics frame, so the condition must ask for the
+    # qualified name too.
+    col = _prefix(metric_args.get("event_col"))
 
     if metric == "has_event":
         event = metric_args.get("event")
@@ -64,7 +71,7 @@ def build_metric_names(
             raise PreprocessingConfigError(
                 processor_name, "'has_event' metric requires 'event' in metric_args"
             )
-        return [f"has_event_{event}"]
+        return [f"has_event_{col}{event}"]
 
     elif metric == "event_count":
         event = metric_args.get("event")
@@ -72,7 +79,7 @@ def build_metric_names(
             raise PreprocessingConfigError(
                 processor_name, "'event_count' metric requires 'event' in metric_args"
             )
-        return [f"event_count_{event}"]
+        return [f"event_count_{col}{event}"]
 
     elif metric in ("has_event_bulk", "event_count_bulk"):
         raise PreprocessingConfigError(
@@ -98,7 +105,9 @@ def build_metric_names(
                 processor_name,
                 f"'{metric}' metric requires a non-empty 'events' list in metric_args",
             )
-        return [combined_metric_name(metric, events)]
+        return [
+            combined_metric_name(metric, events, event_col=metric_args.get("event_col"))
+        ]
 
     elif not metric_args:
         return [metric]
@@ -106,14 +115,14 @@ def build_metric_names(
     elif metric == "time_between":
         start_event = metric_args.get("start_event")
         end_event = metric_args.get("end_event")
-        return [f"time_from_{start_event}_to_{end_event}"]
+        return [f"time_from_{col}{start_event}_to_{end_event}"]
 
     elif metric == "active_days":
         return ["active_days"]
 
     elif metric == "matches_pattern":
         pattern = metric_args.get("pattern")
-        return [f"matches_pattern_{pattern}"]
+        return [f"matches_pattern_{col}{pattern}"]
 
     elif metric in {"length", "duration"}:
         return [metric]

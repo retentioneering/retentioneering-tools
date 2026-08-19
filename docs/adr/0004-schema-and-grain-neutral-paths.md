@@ -12,10 +12,25 @@ but that is an aggregate), *path* (graph theory, Amplitude Pathfinder, GA4).
 
 ## Decision
 
-- `EventstreamSchema` declares column roles: `path_cols`, `event_cols`,
+- `EventstreamSchema` declares column roles: `path_cols`, `event_col`,
   `timestamp_col`, `segment_cols`, `custom_cols`, plus technical columns
   (`event_type`, `index`, `subindex`) managed by the library. The first
-  element of `path_cols` / `event_cols` is the primary column.
+  element of `path_cols` is the primary path column.
+- **An eventstream has one event column.** Representing the stream at a
+  coarser grain — screens rather than taps — is `collapse_events(group_col=...)`,
+  which names each run of the coarser column after the value it is a run of.
+  5.2 replaced the `event_cols` list with a single `event_col` and removed the
+  per-method `event_col` override (both deprecated, the list still accepted
+  with one element).
+- **A coarser column may still be matched against, where it is only read.** An
+  anchor spec and a metric's `metric_args` each take an optional `event_col`,
+  so a question can name a screen — "cut the window where the cart screen
+  starts", "keep paths that reached the checkout screen" — while the stream
+  keeps its own events. A method that *writes* an event name
+  (`collapse_events`) or *consumes* the matched row (`split_sessions`, whose
+  separator and bounds rows are dropped) takes no such key in any form: over a
+  run-valued column the first names the result in the wrong column and the
+  second deletes whole runs.
 - **`path_cols` must be ordered coarsest-first: a strict nesting hierarchy.**
   Every value of `path_cols[i+1]` must belong to exactly one value of
   `path_cols[i]` — e.g. `["user_id", "session_id"]` is valid because every

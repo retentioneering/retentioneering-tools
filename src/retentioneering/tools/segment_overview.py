@@ -109,7 +109,6 @@ class SegmentOverview:
         segment_col: str,
         metrics: List[Dict[str, Any]],
         path_col: str | None = None,
-        event_col: str | None = None,
     ) -> pd.DataFrame:
         """
         Build segment overview DataFrame.
@@ -125,7 +124,6 @@ class SegmentOverview:
             segment_size and segment_share are always computed automatically.
 
             path_col: Path ID column (if None, taken from schema)
-            event_col: Event column (if None, taken from schema)
 
         Returns:
             DataFrame with:
@@ -134,7 +132,7 @@ class SegmentOverview:
                 - Values: aggregated metric values for each segment
         """
         path_col = path_col or self.eventstream.schema.path_col
-        event_col = event_col or self.eventstream.schema.event_col
+        event_col = self.eventstream.schema.event_col
         df = self.eventstream.df.copy()
 
         if segment_col not in df.columns:

@@ -123,7 +123,6 @@ class ClusterAnalysis:
         nmf_components: int | List[int] | None = None,
         overview_metrics: List[Dict[str, Any]] | None = None,
         path_col: str | None = None,
-        event_col: str | None = None,
         select: Dict[str, Any] | None = None,
     ) -> Dict[str, Any]:
         args = parse_method_args(method, method_args, error=ValueError)
@@ -148,7 +147,6 @@ class ClusterAnalysis:
                 )
 
         path_col = path_col or self.eventstream.schema.path_col
-        event_col = event_col or self.eventstream.schema.event_col
 
         # 1. Build feature matrix
         metric_builder = MetricBuilder(self.eventstream)
@@ -199,7 +197,6 @@ class ClusterAnalysis:
                     chosen["labels"],
                     metrics_df.index,
                     path_col,
-                    event_col,
                     overview_metrics or [],
                 )
                 result["overview_df"] = overview_df
@@ -251,7 +248,6 @@ class ClusterAnalysis:
             cluster_labels,
             metrics_df.index,
             path_col,
-            event_col,
             overview_metrics or [],
         )
 
@@ -486,7 +482,6 @@ class ClusterAnalysis:
         cluster_labels: np.ndarray,
         path_index: pd.Index,
         path_col: str,
-        event_col: str,
         overview_metrics: List[Dict[str, Any]],
     ) -> tuple[pd.DataFrame, pd.Series]:
         """Returns (overview_df, cluster_series) — cluster_series maps path id to
@@ -504,7 +499,6 @@ class ClusterAnalysis:
             segment_col=SEGMENT_COL,
             metrics=overview_metrics,
             path_col=path_col,
-            event_col=event_col,
         )
         return overview_df, cluster_series
 

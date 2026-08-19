@@ -161,12 +161,9 @@ def _adapt_params(op_type: str, params: dict) -> dict:
     if op_type == "filter_paths" and "condition" not in params:
         params = dict(params)
         path_col = params.pop("path_col", None)
-        event_col = params.pop("event_col", None)
         adapted = {"condition": params}
         if path_col is not None:
             adapted["path_col"] = path_col
-        if event_col is not None:
-            adapted["event_col"] = event_col
         return adapted
     return params
 

@@ -81,9 +81,9 @@ def load_data(
         (same filesystem as wherever serve() was invoked from).
     schema:
         Optional column mapping:
-          {"path_cols": [...], "event_cols": [...], "timestamp_col": "...",
+          {"path_cols": [...], "event_col": "...", "timestamp_col": "...",
            "segment_cols": [...]}
-        Defaults to path_cols=["user_id"], event_cols=["event"],
+        Defaults to path_cols=["user_id"], event_col="event",
         timestamp_col="timestamp" for any key left unspecified.
     context:
         Optional semantic layer — same shape as serve()'s context argument

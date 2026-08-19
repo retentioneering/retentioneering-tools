@@ -44,8 +44,6 @@ class ToDailyStates(DataProcessor):
         Extra column aggregation config passed to ``_session_agg_exprs``.
     path_col : str, optional
         Override the path ID column (default: ``schema.path_col``).
-    event_col : str, optional
-        Override the event column (default: ``schema.event_col``).
 
     Examples
     --------
@@ -62,7 +60,6 @@ class ToDailyStates(DataProcessor):
     max_dormant_days: int
     agg: Dict[str, str]
     path_col: str | None
-    event_col: str | None
 
     def __init__(
         self,
@@ -70,20 +67,18 @@ class ToDailyStates(DataProcessor):
         max_dormant_days: int = 30,
         agg: Dict[str, str] | None = None,
         path_col: str | None = None,
-        event_col: str | None = None,
     ) -> None:
         self.active_events = active_events or []
         self.max_dormant_days = max_dormant_days
         self.agg = agg or {}
         self.path_col = path_col
-        self.event_col = event_col
         super().__init__()
 
     def apply(
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
         path_col = self.path_col or schema.path_col
-        event_col = self.event_col or schema.event_col
+        event_col = schema.event_col
         timestamp_col = schema.timestamp_col
         event_type_col = schema.event_type
         collapsed_event_type = EventTypes().COLLAPSED_EVENT.type
@@ -223,7 +218,7 @@ class ToDailyStates(DataProcessor):
         """
         res = engine.run(query, df=df)
 
-        for col in schema.event_cols + schema.segment_cols:
+        for col in [schema.event_col] + schema.segment_cols:
             if col in res.columns:
                 res[col] = res[col].astype("category")
                 res[col] = res[col].cat.remove_unused_categories()

@@ -40,7 +40,6 @@ class AddClusters(DataProcessor):
         method_params: Parameters for the clustering algorithm
         eventstream: Eventstream instance (needed for MetricBuilder)
         path_col: Path ID column name (optional)
-        event_col: Event column name (optional)
     """
 
     name: str
@@ -51,7 +50,6 @@ class AddClusters(DataProcessor):
     nmf_components: int | None
     eventstream: Any
     path_col: str | None
-    event_col: str | None
 
     def __init__(
         self,
@@ -63,7 +61,6 @@ class AddClusters(DataProcessor):
         scaler: T_Scaler = "minmax",
         nmf_components: int | None = None,
         path_col: str | None = None,
-        event_col: str | None = None,
     ) -> None:
         """
         Initialize AddClusters processor.
@@ -86,7 +83,6 @@ class AddClusters(DataProcessor):
             scaler: Feature scaler - "minmax", "std", or None. Default is "minmax".
                      "standard" is accepted as a legacy alias of "std".
             path_col: Path ID column (if None, taken from schema)
-            event_col: Event column (if None, taken from schema)
         """
         self.eventstream = eventstream
         self.name = name
@@ -95,7 +91,6 @@ class AddClusters(DataProcessor):
         self.scaler = scaler
         self.nmf_components = nmf_components
         self.path_col = path_col
-        self.event_col = event_col
 
         self.method_params = parse_method_args(
             method,
@@ -136,7 +131,6 @@ class AddClusters(DataProcessor):
                 )
 
         path_col = self.path_col or schema.path_col
-        event_col = self.event_col or schema.event_col  # noqa: F841 - reserved for future use
 
         # Build features using MetricBuilder
         metric_builder = MetricBuilder(self.eventstream)

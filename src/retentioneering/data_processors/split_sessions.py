@@ -28,7 +28,6 @@ class SplitSessions(DataProcessor):
     end_event: List[str] | None
     timeout_seconds: float | None
     path_col: str | None
-    event_col: str | None
 
     def __init__(
         self,
@@ -38,7 +37,6 @@ class SplitSessions(DataProcessor):
         bounds: Dict[str, Any] | None = None,
         timeout: "str | pd.Timedelta | None" = None,
         path_col: str | None = None,
-        event_col: str | None = None,
     ) -> None:
         self.session_col = session_col
         self.session_index_col = session_index_col
@@ -54,7 +52,6 @@ class SplitSessions(DataProcessor):
         else:
             self.timeout_seconds = None
         self.path_col = path_col
-        self.event_col = event_col
         super().__init__()
 
         self._validate()
@@ -117,7 +114,7 @@ class SplitSessions(DataProcessor):
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
         path_col = self.path_col or schema.path_col
-        event_col = self.event_col or schema.event_col
+        event_col = schema.event_col
         ts_col = schema.timestamp_col
         subindex_col = schema.subindex
 

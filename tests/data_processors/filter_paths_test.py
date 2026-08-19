@@ -197,7 +197,7 @@ class TestFilterPathsAST:
         )
         schema = {
             "path_cols": ["user_id", "session_id"],
-            "event_cols": ["event"],
+            "event_col": "event",
             "timestamp_col": "timestamp",
         }
         stream = Eventstream(df, schema)
@@ -227,7 +227,7 @@ class TestFilterPathsAST:
         )
         schema = {
             "path_cols": ["user_id", "session_id"],
-            "event_cols": ["event"],
+            "event_col": "event",
             "timestamp_col": "timestamp",
         }
         stream = Eventstream(df, schema)

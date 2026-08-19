@@ -4,9 +4,12 @@
 ## How it works
 
 New events are marked `synthetic` and inserted at the same timestamp as the row
-that produced them, ordered immediately after it. Nothing is removed.
+that produced them, ordered immediately *before* it: a marker names the moment
+its source event opens. Nothing is removed. The one exception is `churn`, which
+closes a stretch of inactivity rather than opening anything — it carries its own
+`churn` event type and sorts *after* the last active event.
 
-### source_events
+### source_event
 
 One synthetic event per **occurrence** of any listed source event — not one per
 path. This is the usual way to give several equivalent events a single name you
@@ -18,18 +21,55 @@ Before:
 - u2: `browse → app_open`
 
 ```python
-stream.add_events("session_start", source_events=["login", "app_open"])
+stream.add_events("session_start", source_event=["login", "app_open"])
 ```
 
 After — u1 gets three `session_start` events, because it has three matching
-source events:
+source events, each sitting just before the event it marks:
 
-- u1: `login → session_start → browse → login → session_start → app_open → session_start`
-- u2: `browse → app_open → session_start`
+- u1: `session_start → login → browse → session_start → login → session_start → app_open`
+- u2: `browse → session_start → app_open`
+
+### anchor
+
+`source_event` marks an event *name*, wherever it occurs. `anchor` marks a
+**position** — the one place in the path a
+[path pattern](/docs/path-patterns) resolves to — and gives it a name. That is what
+makes the position usable everywhere else: a pattern can *describe* "the cart
+that checkout actually followed", but only an event name can be centred on by
+`step_matrix`, counted by a funnel, or filtered on.
+
+The spec is the one `truncate_paths` takes for `start_anchor` — `pattern`,
+`at`, `occurrence`, `offset`, `offset_side` — and one anchor per call, not a
+list.
+
+Before — u1 visits the cart twice, and only the second visit leads to checkout:
+
+- u1: `catalog → cart → catalog → cart → shipping_details`
+- u2: `cart → catalog`
+
+```python
+stream.add_events(
+    "checkout_cart",
+    anchor={"pattern": "cart->[^cart]*->shipping_details", "at": "start"},
+)
+```
+
+After — one marker, on the cart the pattern picked out. u2 never matches the
+pattern, so it gets no event at all:
+
+- u1: `catalog → cart → catalog → checkout_cart → cart → shipping_details`
+- u2: `cart → catalog`
+
+By default the anchor resolves once per path (`occurrence="first"`); pass
+`occurrence="all"` to mark every position it can occupy. `offset` moves the
+marker by a number of events or by a duration — `{"pattern": "purchase",
+"occurrence": "all", "offset": -3}` marks every purchase three events ahead of
+time.
 
 ### churn
 
-Marks the point where a path goes quiet: a synthetic event is inserted after
+Marks the point where a path goes quiet: a `churn` event is inserted after
 the last activity that is followed by a gap of at least `inactivity_days`.
 Reaching the end of the observation window counts as such a gap, so paths that
 simply stop also get the event.
@@ -63,9 +103,12 @@ Pass `active_events` to count only meaningful actions as activity — with
 `churn={"inactivity_days": 30, "active_events": ["purchase"]}` a user who keeps
 browsing but stops buying still churns.
 
+Churn markers are the one kind of added event that is not `synthetic`: filter
+them with `event_type == "churn"`.
+
 ### sql
 
-For anything the two modes above don't cover, `sql` takes a DuckDB `SELECT`
+For anything the three modes above don't cover, `sql` takes a DuckDB `SELECT`
 over the `eventstream` table alias returning rows in the eventstream schema;
 each returned row becomes one synthetic event.
 

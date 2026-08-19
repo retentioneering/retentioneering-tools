@@ -5,8 +5,8 @@ A "condition" is a tree of comparison leaves (`{"op", "metric", "metric_args",
 "value"}`) connected by `and`/`or`/`not` branch nodes, evaluated against
 precomputed metric columns (named per `metrics/metric_builder.py`'s naming
 convention). Two data processors need this: `filter_paths` (keep/drop whole
-paths matching a condition) and `collapse_events` (name a collapsed session
-based on a condition over the events within it, in `event_groups[].cases`).
+paths matching a condition) and `collapse_events` (name a collapsed window
+based on a condition over the events within it, in `name=[{"condition": ...}]`).
 Both consumers are equal users of this module - neither owns it.
 """
 

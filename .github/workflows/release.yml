@@ -45,6 +45,21 @@ jobs:
       - name: Build sdist and wheel
         run: uv build
 
+      # The build takes its version from pyproject.toml, not from the tag
+      # (ADR-0011: no dynamic versioning), so a tag pushed ahead of the version
+      # bump would silently rebuild the previous release. Catch that here
+      # rather than at `uv publish`, which fails with an opaque "File already
+      # exists" from PyPI. Assumes the tag is already a PEP 440-normalized
+      # version (`v5.2.0`, `v5.2.0rc1` -- not `v5.2.0-rc1`).
+      - name: Verify the built version matches the tag
+        run: |
+          set -e
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ ! -f "dist/retentioneering-${VERSION}-py3-none-any.whl" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} doesn't match pyproject.toml's version -- built $(ls dist/*.whl). Bump pyproject.toml to ${VERSION}, then re-tag."
+            exit 1
+          fi
+
       - name: Verify the wheel embeds the JS bundle
         run: |
           set -e

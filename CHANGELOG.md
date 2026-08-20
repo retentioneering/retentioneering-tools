@@ -5,6 +5,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Fixed
+
+- [Step Matrix](https://retentioneering.com/docs/widgets/step-matrix) / [Step Sankey](https://retentioneering.com/docs/widgets/step-sankey): a `step_window` wider than `max_steps` showed fewer steps than asked for and gave no hint why. The window only ever sliced columns that `max_steps` had already computed, so past the computed depth — 10 by default — dragging the sidebar slider or passing `step_window=15` simply stopped having an effect. Asking for a deeper window now deepens the data instead: `max_steps` becomes `step_window + 10` (headroom, so the next notch or two costs nothing) and the matrix is recomputed. From an argument the widened depth is applied before the first compute, so it still costs a single pass; from the sidebar it triggers one recompute. Narrowing the window never shrinks `max_steps`, keeping the widening free to undo. The sidebar slider is no longer capped at the computed depth either — in a static HTML export it still is, since there is no kernel there to recompute with
+
 ## [5.2.0] - 2026-08-19
 
 ### Added

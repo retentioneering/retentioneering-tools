@@ -75,3 +75,22 @@ def parse_diff(raw) -> list | None:
     except Exception:
         pass
     return None
+
+
+#: Extra steps computed beyond a requested `step_window`, so that widening the
+#: window by a notch or two costs nothing rather than a recompute per notch.
+STEP_WINDOW_HEADROOM = 10
+
+
+def max_steps_for_window(step_window: int, max_steps: int) -> int:
+    """`max_steps` wide enough to fill a `step_window`-column view.
+
+    `step_window` only slices columns that `max_steps` already computed, so a
+    window wider than the data silently shows fewer steps than asked for. When
+    that happens, grow `max_steps` past the window instead — see
+    `STEP_WINDOW_HEADROOM`. Never shrinks: a narrowed window keeps whatever
+    depth was already computed, so widening it back is instant.
+    """
+    if step_window > max_steps:
+        return step_window + STEP_WINDOW_HEADROOM
+    return max_steps

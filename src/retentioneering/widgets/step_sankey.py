@@ -4,6 +4,7 @@ import traitlets
 
 from retentioneering.exceptions import RetentioneeringError
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
+from retentioneering.widgets._utils import max_steps_for_window as _max_steps_for_window
 from retentioneering.widgets._utils import parse_diff as _parse_diff
 from retentioneering.widgets._utils import step_matrix_blocks as _step_matrix_blocks
 
@@ -111,6 +112,11 @@ class StepSankeyWidget(RetentioneeringWidget):
             }
         )
 
+        # A window wider than the computed depth would silently show fewer
+        # steps than asked for; widen the depth instead, before the first
+        # compute, so an argument-supplied window costs no extra pass.
+        self.max_steps = _max_steps_for_window(self.step_window, self.max_steps)
+
         self._recompute()
 
         self._initialized = True
@@ -119,6 +125,7 @@ class StepSankeyWidget(RetentioneeringWidget):
             names=["max_steps", "diff", "path_col", "path_pattern", "anchor"],
         )
         self.observe(self._on_positions_change, names=["node_positions"])
+        self.observe(self._on_step_window_change, names=["step_window"])
         self._start_state_autosave()
 
     def _anchor_spec(self):
@@ -149,6 +156,14 @@ class StepSankeyWidget(RetentioneeringWidget):
             self.anchor = ""
             return
         self._recompute()
+
+    def _on_step_window_change(self, _change):
+        """A window widened from the sidebar past the computed depth deepens
+        the data to match; the extra columns don't exist otherwise. Setting
+        `max_steps` is itself observed, which is what triggers the recompute."""
+        if not self._initialized:
+            return
+        self.max_steps = _max_steps_for_window(self.step_window, self.max_steps)
 
     def _on_positions_change(self, _change):
         if not self._initialized:

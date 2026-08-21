@@ -134,6 +134,15 @@ export function render({ host, el, isStatic = false }: RenderContext) {
       setPathIdCol(col); host.set("path_col", col);
     }, []);
 
+    // The slider fires per mouse-move; a window past `max_steps` now makes
+    // Python recompute deeper, so only the settled value is sent over.
+    const stepWindowTimer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+    const handleStepWindowChange = React.useCallback((w: number) => {
+      setStepWindow(w);
+      clearTimeout(stepWindowTimer.current);
+      stepWindowTimer.current = setTimeout(() => host.set("step_window", w), 250);
+    }, []);
+
     const handleToggleSidebar = React.useCallback(() => {
       setSidebarOpen((prev) => { const next = !prev; host.set("sidebar_open", next); return next; });
     }, []);
@@ -188,10 +197,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
             theme="light"
             stepWindow={stepWindow}
             maxSteps={maxSteps}
-            onStepWindowChange={(w) => {
-              setStepWindow(w);
-              host.set("step_window", w);
-            }}
+            onStepWindowChange={handleStepWindowChange}
             isStatic={isStatic}
           />
         )}

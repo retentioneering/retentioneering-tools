@@ -82,13 +82,12 @@ the winner.
 {% block data_params_note %}
 Data parameters change the computed result. They are the arguments of the
 widget's headless twin `stream.{{ headless_name }}()` — see
-[headless mode](#headless-mode) below — with one exception, which the twin
-accepts and this constructor does not:
+[headless mode](#headless-mode) below.
 
-- `nmf_components` — see [NMF](#nmf) below. It is *not* missing from the widget:
-  the sidebar has an NMF toggle and a component-count field, and the result
-  arrives as the H-matrix / W Cluster Means tabs. It is only unavailable as a
-  constructor argument, so set it in the sidebar or use the headless twin.
+`nmf_components` (see [NMF](#nmf) below) is both a constructor argument and a
+sidebar control: passing it turns the NMF toggle on and pre-fills the component
+count, so it is a starting point you can edit rather than a lock. The result
+arrives as the H-matrix / W Cluster Means tabs either way.
 
 `method` and its `method_args` are accepted here, but the sidebar only edits
 `n_clusters`: there is no control to switch the algorithm, and none for
@@ -99,8 +98,8 @@ constructor is the way to run hdbscan in the widget.
 {% block extra %}
 ### NMF
 
-Turning on **NMF** in the sidebar (or passing `nmf_components` to the headless
-twin) inserts a dimensionality-reduction step between scaling and clustering:
+Turning on **NMF** in the sidebar (or passing `nmf_components` to the widget or
+its headless twin) inserts a dimensionality-reduction step between scaling and clustering:
 the feature matrix is factorized into the requested number of non-negative
 components, and paths are clustered on those components instead of on the raw
 metrics. It is independent of the clustering algorithm — the usual pairing is

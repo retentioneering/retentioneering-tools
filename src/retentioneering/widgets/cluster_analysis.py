@@ -97,6 +97,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         method=_UNSET,
         method_args=_UNSET,
         scaler=_UNSET,
+        nmf_components=_UNSET,
         overview_metrics=_UNSET,
         path_col=_UNSET,
         height=_UNSET,
@@ -166,8 +167,19 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
             if isinstance(_nc, list)
             else (str(_nc) if _nc not in (None, "") else "3-8")
         )
-        self.nmf_enabled = False
-        self.nmf_components = ""
+        # NMF is a pipeline step, not a method argument, so it stays flat here
+        # too. The traitlets are the sidebar's protocol: a string for the field
+        # plus the toggle that decides whether the field is read at all.
+        _nmf = _as_n_clusters_str(
+            nmf_components if nmf_components is not _UNSET else ""
+        )
+        if _nmf and _parse_n_clusters(_nmf) is None:
+            raise ValueError(
+                f"nmf_components={nmf_components!r} is not a number, a list of "
+                'numbers, or a range string like "2-5"'
+            )
+        self.nmf_enabled = bool(_nmf)
+        self.nmf_components = _nmf
         _mc = overview_metrics if overview_metrics is not _UNSET else None
         if _mc is None:
             _mc = [{"metric": "event_count_bulk", "agg": "mean"}]
@@ -189,6 +201,8 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
                     ("method", method),
                     ("scaler", scaler),
                     ("n_clusters", method_args),
+                    ("nmf_components", nmf_components),
+                    ("nmf_enabled", nmf_components),
                     ("overview_metrics", overview_metrics),
                     ("path_col", path_col),
                     ("height", height),

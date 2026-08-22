@@ -509,6 +509,24 @@ class TestGridSelection:
         )
         assert "c" in saved.schema.segment_cols
 
+    def test__best_params_keeps_a_fixed_nmf_step(self, stream):
+        """`nmf_components` only becomes a grid coordinate when it is itself
+        searched, so a fixed value used to vanish from `best_params` — splatting
+        it into `add_clusters` then rebuilt a pipeline without the NMF step."""
+        res = stream.cluster_analysis_data(
+            features=self.FEATURES,
+            method_args={"n_clusters": [2, 3, 4]},
+            nmf_components=2,
+        )
+        assert res["best_params"]["nmf_components"] == 2
+        # Still a coordinate-free axis: the grid varies only n_clusters.
+        assert all("nmf_components" not in p for p in res["silhouette"]["params"])
+
+        saved = stream.add_clusters(
+            name="c", features=self.FEATURES, **res["best_params"]
+        )
+        assert "c" in saved.schema.segment_cols
+
     def test__method_args_of_the_other_method_raise(self, stream):
         with pytest.raises(ValueError, match="'kmeans' method"):
             stream.cluster_analysis_data(

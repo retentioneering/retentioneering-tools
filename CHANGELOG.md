@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Fixed
+
+- [`cluster_analysis(nmf_components=...)`](https://retentioneering.com/docs/widgets/cluster-analysis#nmf): the widget accepted NMF only from its sidebar toggle, so the one parameter its headless twin took and it did not was `nmf_components` — a run reproducible with `cluster_analysis_data`/`add_clusters` could not be opened in the widget, and a `features=`-driven call could not start from an NMF pipeline at all. It is now a constructor argument like `scaler` (a pipeline step, so flat rather than inside `method_args`): passing it turns the sidebar toggle on and pre-fills the component count, leaving both editable. A value that is not a number, a list of numbers, or a range string raises instead of quietly clustering without the NMF step
+
+- `cluster_analysis_data()["best_params"]` dropped a **fixed** `nmf_components` when some other parameter was searched — `nmf_components=2, method_args={"n_clusters": [2, 3, 4]}` returned a call that splats into `add_clusters` and rebuilds the pipeline without NMF, i.e. a different clustering than the one on screen. `nmf_components` only enters `silhouette["params"]` when it is itself a grid axis (a coordinate names what varied), so `best_params` now carries the fixed value back on its own
+
 ## [5.2.0] - 2026-08-19
 
 ### Added

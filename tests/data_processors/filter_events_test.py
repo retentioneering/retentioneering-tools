@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -290,3 +291,158 @@ class TestFilterEvents:
         expected = Eventstream(expected_df)
 
         assert res.equals(expected)
+
+
+class TestFilterEventsValueTables:
+    """`keep` and `drop` send their values as a small table, not as SQL text."""
+
+    @staticmethod
+    def _stream(n_paths: int) -> Eventstream:
+        df = pd.DataFrame(
+            {
+                "user_id": [f"user_{i}" for i in range(n_paths)],
+                "event": ["A"] * n_paths,
+                "timestamp": ["2020-01-01 00:00:00"] * n_paths,
+            }
+        )
+        return Eventstream(df)
+
+    @staticmethod
+    def _spy_on_engine(monkeypatch) -> list:
+        """Keeps the SQL text of every query the engine is asked to run."""
+        from retentioneering import engine
+
+        seen: list = []
+        real_run = engine.run
+
+        def spy(sql, /, **tables):
+            seen.append(sql)
+            return real_run(sql, **tables)
+
+        monkeypatch.setattr(engine, "run", spy)
+        return seen
+
+    def test__query_text_does_not_grow_with_value_count(self, monkeypatch) -> None:
+        """This is the point of the change. The query stays the same size,
+        however many values you filter on. Before, it grew with every value."""
+        lengths = []
+        for n_paths in (10, 2000):
+            stream = self._stream(n_paths)
+            keep_ids = [f"user_{i}" for i in range(n_paths)]
+            seen = self._spy_on_engine(monkeypatch)
+            stream.filter_events(keep={"user_id": keep_ids})
+            filter_queries = [q for q in seen if "_filter_values_0" in q]
+            assert len(filter_queries) == 1
+            lengths.append(len(filter_queries[0]))
+            # no id may show up in the query text itself
+            assert f"user_{n_paths - 1}" not in filter_queries[0]
+
+        assert lengths[0] == lengths[1]
+
+    def test__one_value_table_per_column(self, monkeypatch) -> None:
+        df = get_df()
+        stream = Eventstream(df, {"custom_cols": ["country"]})
+        seen = self._spy_on_engine(monkeypatch)
+
+        res = stream.filter_events(keep={"event": ["B"], "country": ["UK"]})
+
+        query = next(q for q in seen if "_filter_values_0" in q)
+        assert "_filter_values_1" in query
+        assert res.to_dataframe()["user_id"].tolist() == ["user_3", "user_3"]
+
+    def test__drop_with_a_missing_value_keeps_every_row(self) -> None:
+        """In SQL, `not in` over a list that holds a NULL gives back NULL and
+        not TRUE. So one missing value would drop every row. Missing values are
+        taken out before the table is built, so this cannot happen."""
+        df = get_df()
+        df.loc[0, "country"] = np.nan
+        stream = Eventstream(df, {"custom_cols": ["country"]})
+
+        res = stream.filter_events(drop={"country": [np.nan]})
+
+        assert len(res.to_dataframe()) == len(df)
+
+    def test__keep_and_drop_stay_complements_with_a_missing_value(self) -> None:
+        df = get_df()
+        df.loc[0, "country"] = np.nan
+        stream = Eventstream(df, {"custom_cols": ["country"]})
+
+        kept = stream.filter_events(keep={"country": [np.nan]}).to_dataframe()
+        dropped = stream.filter_events(drop={"country": [np.nan]}).to_dataframe()
+
+        # a missing value matches on neither side, so keep is empty and
+        # drop keeps everything
+        assert len(kept) == 0
+        assert len(kept) + len(dropped) == len(df)
+
+    def test__value_table_wins_over_a_name_left_in_the_catalog(self) -> None:
+        """A caller can leave a table behind with `sql=`, and it stays there for
+        the life of the process (see `engine.run`). The table we register for
+        this call must still win."""
+        from retentioneering import engine
+
+        root = engine._root()
+        root.execute("CREATE TABLE _filter_values_0 AS SELECT 'user_2' AS v")
+        try:
+            df = get_df()
+            stream = Eventstream(df, {"custom_cols": ["country"]})
+
+            res = stream.filter_events(keep={"event": ["A"]}).to_dataframe()
+
+            assert res["event"].tolist() == ["A", "A"]
+            assert res["user_id"].tolist() == ["user_1", "user_2"]
+        finally:
+            root.execute("DROP TABLE IF EXISTS _filter_values_0")
+
+    def test__values_needing_escaping_round_trip(self) -> None:
+        """We no longer put quotes around values by hand. Characters that used
+        to need escaping must still work."""
+        awkward = ["it's", 'say "hi"', "a,b;c", "naïve ünïcode", "x" * 300]
+        df = pd.DataFrame(
+            {
+                "user_id": [f"user_{i}" for i in range(len(awkward))],
+                "event": ["A"] * len(awkward),
+                "timestamp": ["2020-01-01 00:00:00"] * len(awkward),
+                "label": awkward,
+            }
+        )
+        stream = Eventstream(df, {"custom_cols": ["label"]})
+
+        res = stream.filter_events(keep={"label": awkward[:2]}).to_dataframe()
+
+        assert sorted(res["label"].tolist()) == sorted(awkward[:2])
+
+    def test__mixed_type_column_is_matched_as_text(self) -> None:
+        """A column can hold values of different python types. DuckDB reads such
+        a column as text, so the number 1 and the string "1" become the same
+        value, and so do True and "True". This test writes that behaviour down,
+        because pandas `isin` would not give the same answer."""
+        df = pd.DataFrame(
+            {
+                "user_id": ["user_1", "user_2", "user_3", "user_4"],
+                "event": ["A", "B", "C", "D"],
+                "timestamp": ["2020-01-01 00:00:00"] * 4,
+                "tag": pd.Series([1, "True", 3.5, True], dtype=object),
+            }
+        )
+        stream = Eventstream(df, {"custom_cols": ["tag"]})
+
+        res = stream.filter_events(keep={"tag": [1, "True"]}).to_dataframe()
+
+        # 1 matches the number 1. "True" matches both the string "True" and the
+        # boolean True, because written as text the two are the same.
+        assert res["tag"].tolist() == ["1", "True", "True"]
+
+    def test__integer_path_ids(self) -> None:
+        df = pd.DataFrame(
+            {
+                "user_id": [1, 2, 3],
+                "event": ["A", "B", "C"],
+                "timestamp": ["2020-01-01 00:00:00"] * 3,
+            }
+        )
+        stream = Eventstream(df)
+
+        res = stream.filter_events(keep={"user_id": [1, 3]}).to_dataframe()
+
+        assert res["user_id"].tolist() == [1, 3]

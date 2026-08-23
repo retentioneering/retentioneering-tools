@@ -440,6 +440,9 @@ class Eventstream:
             one of the listed values. Multiple columns combine with AND: a row is
             kept only if it matches every entry.
             Example: `{"event": ["purchase", "add_to_cart"]}`.
+            A missing value (`None`/`NaN`) in the list matches nothing, because
+            in SQL `= NULL` is never true. To select rows by their missing values,
+            use `func=` instead.
         drop : dict, optional
             Same `{column: values}` format, but removes the matching rows instead.
             Multiple columns combine with OR: a row is removed if it matches any

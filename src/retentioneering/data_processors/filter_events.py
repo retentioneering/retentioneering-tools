@@ -13,15 +13,6 @@ from retentioneering.exceptions import (
 PROCESSOR_NAME = "filter_events"
 
 
-def _sql_literal(value) -> str:
-    """Render a Python value as a safe DuckDB SQL literal."""
-    if isinstance(value, bool):
-        return "TRUE" if value else "FALSE"
-    if isinstance(value, (int, float)):
-        return str(value)
-    return "'" + str(value).replace("'", "''") + "'"
-
-
 def _validate_column_filter(arg_name: str, value: Dict) -> None:
     if not isinstance(value, dict) or not value:
         raise PreprocessingConfigError(
@@ -106,6 +97,9 @@ class FilterEvents(DataProcessor):
                         PROCESSOR_NAME, column, df.columns.tolist()
                     )
 
+            # This loop still walks every value in Python, exactly as before.
+            # The tables built below keep the ids out of the SQL text, not out
+            # of the process.
             for column, values in column_filter.items():
                 available_values = set(df[column].unique().tolist())
                 unknown = [v for v in values if v not in available_values]
@@ -117,10 +111,37 @@ class FilterEvents(DataProcessor):
                         )
                     raise PreprocessingConfigError(PROCESSOR_NAME, message)
 
+            # The values for each column go to DuckDB as a small table, instead
+            # of being written into the SQL text. Written inline, the query grew
+            # with the number of values: 200k path ids made about 8 MB of SQL.
+            # DuckDB then spent most of the query rewriting that huge expression,
+            # which is work that grows with the number of ids and says nothing
+            # about the data. Each table name is fixed to the position of its
+            # column, so it can never clash with `df`, or with a table a caller
+            # left behind through `sql=`. If a name does clash, the table we
+            # register here is the one that wins (see `engine.run`).
+            tables: Dict[str, pd.DataFrame] = {"df": df}
             conditions = []
-            for column, values in column_filter.items():
-                values_str = ", ".join(_sql_literal(v) for v in values)
-                conditions.append(f"{engine.quote_ident(column)} in ({values_str})")
+            for i, (column, values) in enumerate(column_filter.items()):
+                # Missing values are removed before the table is built, for two
+                # reasons. First, `not in` over a list that holds a NULL gives
+                # back NULL instead of TRUE, so one missing value would drop
+                # every row, and `drop` would stop being the opposite of `keep`.
+                # Second, a list of only missing values makes the table a DOUBLE
+                # column, and DuckDB will not compare that with a text column.
+                # We lose nothing by removing them, because `= NULL` is never
+                # true, so a missing value never matched anything anyway.
+                present = [v for v in values if not pd.isna(v)]
+                if not present:
+                    # Nothing in this column can match. So `keep` finds no rows,
+                    # and `drop`, which is the same test negated, keeps them all.
+                    conditions.append("false")
+                    continue
+                values_table = f"_filter_values_{i}"
+                tables[values_table] = pd.DataFrame({"v": pd.Series(present)})
+                conditions.append(
+                    f"{engine.quote_ident(column)} in (select v from {values_table})"
+                )
 
             if self.keep is not None:
                 # keep: a row must match every entry (AND)
@@ -140,7 +161,7 @@ class FilterEvents(DataProcessor):
                 where {where}
                 order by {order_by}
             """
-            df = engine.run(query, df=df)
+            df = engine.run(query, **tables)
 
         elif self.sql is not None:
             columns_old = df.columns

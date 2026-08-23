@@ -123,25 +123,28 @@ class FilterEvents(DataProcessor):
             tables: Dict[str, pd.DataFrame] = {"df": df}
             conditions = []
             for i, (column, values) in enumerate(column_filter.items()):
-                # Missing values are removed before the table is built, for two
-                # reasons. First, `not in` over a list that holds a NULL gives
-                # back NULL instead of TRUE, so one missing value would drop
-                # every row, and `drop` would stop being the opposite of `keep`.
-                # Second, a list of only missing values makes the table a DOUBLE
-                # column, and DuckDB will not compare that with a text column.
-                # We lose nothing by removing them, because `= NULL` is never
-                # true, so a missing value never matched anything anyway.
+                column_q = engine.quote_ident(column)
+                # A missing value is a value you can filter on, so `[np.nan]`
+                # means "the rows where this column has no value". It cannot go
+                # into the table, because SQL never matches NULL with `=`, and a
+                # list of only missing values would also make the table a DOUBLE
+                # column that DuckDB will not compare with text. So it becomes
+                # its own `is null` test instead.
                 present = [v for v in values if not pd.isna(v)]
-                if not present:
-                    # Nothing in this column can match. So `keep` finds no rows,
-                    # and `drop`, which is the same test negated, keeps them all.
-                    conditions.append("false")
-                    continue
-                values_table = f"_filter_values_{i}"
-                tables[values_table] = pd.DataFrame({"v": pd.Series(present)})
-                conditions.append(
-                    f"{engine.quote_ident(column)} in (select v from {values_table})"
-                )
+                parts = []
+                if present:
+                    values_table = f"_filter_values_{i}"
+                    tables[values_table] = pd.DataFrame({"v": pd.Series(present)})
+                    # `coalesce` is what keeps `drop` the exact opposite of
+                    # `keep`. For a row whose value is missing, `in` gives back
+                    # NULL and not FALSE, so `not (NULL)` would throw that row
+                    # away even though it never matched the list.
+                    parts.append(
+                        f"coalesce({column_q} in (select v from {values_table}), false)"
+                    )
+                if len(present) < len(values):
+                    parts.append(f"{column_q} is null")
+                conditions.append("(" + " or ".join(parts) + ")")
 
             if self.keep is not None:
                 # keep: a row must match every entry (AND)

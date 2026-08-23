@@ -350,30 +350,59 @@ class TestFilterEventsValueTables:
         assert "_filter_values_1" in query
         assert res.to_dataframe()["user_id"].tolist() == ["user_3", "user_3"]
 
-    def test__drop_with_a_missing_value_keeps_every_row(self) -> None:
-        """In SQL, `not in` over a list that holds a NULL gives back NULL and
-        not TRUE. So one missing value would drop every row. Missing values are
-        taken out before the table is built, so this cannot happen."""
+    @staticmethod
+    def _stream_with_a_gap() -> Eventstream:
+        """Six rows where the first one has no country."""
         df = get_df()
         df.loc[0, "country"] = np.nan
-        stream = Eventstream(df, {"custom_cols": ["country"]})
+        return Eventstream(df, {"custom_cols": ["country"]})
 
-        res = stream.filter_events(drop={"country": [np.nan]})
+    def test__keep_a_missing_value_selects_those_rows(self) -> None:
+        """`[np.nan]` means the rows where this column has no value."""
+        stream = self._stream_with_a_gap()
 
-        assert len(res.to_dataframe()) == len(df)
+        res = stream.filter_events(keep={"country": [np.nan]}).to_dataframe()
 
-    def test__keep_and_drop_stay_complements_with_a_missing_value(self) -> None:
-        df = get_df()
-        df.loc[0, "country"] = np.nan
-        stream = Eventstream(df, {"custom_cols": ["country"]})
+        assert len(res) == 1
+        assert res["country"].isna().all()
 
-        kept = stream.filter_events(keep={"country": [np.nan]}).to_dataframe()
-        dropped = stream.filter_events(drop={"country": [np.nan]}).to_dataframe()
+    def test__drop_a_missing_value_removes_those_rows(self) -> None:
+        stream = self._stream_with_a_gap()
 
-        # a missing value matches on neither side, so keep is empty and
-        # drop keeps everything
-        assert len(kept) == 0
-        assert len(kept) + len(dropped) == len(df)
+        res = stream.filter_events(drop={"country": [np.nan]}).to_dataframe()
+
+        assert len(res) == 5
+        assert not res["country"].isna().any()
+
+    def test__drop_a_real_value_keeps_the_rows_with_no_value(self) -> None:
+        """A row with no value never matched the list, so `drop` has to keep it.
+        In SQL `NULL in ('US')` gives back NULL, and without `coalesce` the
+        `not (...)` around it would throw that row away too."""
+        stream = self._stream_with_a_gap()
+
+        res = stream.filter_events(drop={"country": ["US"]}).to_dataframe()
+
+        assert res["country"].isna().sum() == 1
+        assert set(res["country"].dropna()) == {"UK"}
+
+    def test__keep_a_real_value_together_with_a_missing_one(self) -> None:
+        stream = self._stream_with_a_gap()
+
+        res = stream.filter_events(keep={"country": ["UK", np.nan]}).to_dataframe()
+
+        assert len(res) == 3
+        assert res["country"].isna().sum() == 1
+        assert set(res["country"].dropna()) == {"UK"}
+
+    def test__keep_and_drop_stay_opposites(self) -> None:
+        """Whatever the list holds, the two sides must add up to every row."""
+        stream = self._stream_with_a_gap()
+        total = len(stream.to_dataframe())
+
+        for values in ([np.nan], ["US"], ["UK"], ["US", np.nan], ["US", "UK"]):
+            kept = stream.filter_events(keep={"country": values}).to_dataframe()
+            dropped = stream.filter_events(drop={"country": values}).to_dataframe()
+            assert len(kept) + len(dropped) == total, values
 
     def test__value_table_wins_over_a_name_left_in_the_catalog(self) -> None:
         """A caller can leave a table behind with `sql=`, and it stays there for

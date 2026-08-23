@@ -864,6 +864,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
 
     // ── display state ──────────────────────────────────────────────────────
     const [stepWindow,   setStepWindow]   = React.useState<number>(() => (host.get("step_window") as number) || 3);
+    const [maxSteps,     setMaxSteps]     = React.useState<number>(() => (host.get("max_steps") as number) ?? 10);
     const [hiddenEvents, setHiddenEvents] = React.useState<Set<string>>(() => {
       const vis = parseJson<Record<string, { isHidden?: boolean }>>(host.get("event_visibility") || "{}", {});
       return new Set(Object.keys(vis).filter(ev => vis[ev]?.isHidden));
@@ -911,12 +912,19 @@ export function render({ host, el, isStatic = false }: RenderContext) {
       ["height",       () => setHeight((host.get("height") as number) ?? 600)],
       ["sidebar_open", () => setSidebarOpen((host.get("sidebar_open") as boolean) ?? true)],
       ["step_window",  () => setStepWindow((host.get("step_window") as number) || 3)],
+      ["max_steps",    () => setMaxSteps((host.get("max_steps") as number) ?? 10)],
       ["path_col",  () => setPathIdCol((host.get("path_col") as string) || "")],
       ["path_pattern", () => { const v = (host.get("path_pattern") as string) || ""; setPathPattern(v); setAppliedPathPattern(v); }],
       ["diff",         () => { const d = parseJson<string[]>(host.get("diff") || "[]", []); setDiffSeg(d[0]??null); setDiffV1(d[1]??null); setDiffV2(d[2]??null); }],
     ]);
 
     const setParam = (key: string, val: unknown) => { host.set(key, val); };
+
+    // Upper bound of the Step window control. A live widget may ask for a
+    // window deeper than what `max_steps` computed — Python widens `max_steps`
+    // and recomputes — so the current depth is a floor, not a ceiling. A static
+    // export has no kernel to ask, so there it is a ceiling.
+    const stepWindowMax = isStatic ? Math.max(1, maxSteps) : Math.max(20, maxSteps);
     // Debounced variant for slider-driven params that change many times per drag
     const paramTimers = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
     const setParamDebounced = (key: string, val: unknown, delay = 250) => {
@@ -924,33 +932,53 @@ export function render({ host, el, isStatic = false }: RenderContext) {
       paramTimers.current[key] = setTimeout(() => { host.set(key, val); }, delay);
     };
 
+    // Mirrors stepWindow for the imperative navigation API below, which runs
+    // outside the render cycle and so can't read the state variable itself.
+    const stepWindowRef = React.useRef(stepWindow);
+    React.useEffect(() => { stepWindowRef.current = stepWindow; }, [stepWindow]);
+    const maxStepsRef = React.useRef(maxSteps);
+    React.useEffect(() => { maxStepsRef.current = maxSteps; }, [maxSteps]);
+
     // Expose external navigation API for static HTML report links
     React.useEffect(() => {
       (el as any).__matrixApi = {
         scrollToCell: (eventName: string, step: number) => {
-          // Expand step_window if needed so the target column is visible
-          setStepWindow(prev => Math.max(prev, Math.abs(step)));
-          setTimeout(() => {
+          // Expand step_window if needed so the target column is visible. A
+          // live widget also tells Python, which deepens max_steps and
+          // recomputes when the target step lies past what was computed —
+          // hence the second, later attempt at finding the cell.
+          const next = Math.max(stepWindowRef.current, Math.abs(step));
+          const needsRecompute = !isStatic && next > maxStepsRef.current;
+          if (next !== stepWindowRef.current) {
+            stepWindowRef.current = next;
+            setStepWindow(next);
+            if (!isStatic) setParam("step_window", next);
+          }
+          const findAndHighlight = (): boolean => {
             const rows = el.querySelectorAll("tr[data-event]");
             for (let i = 0; i < rows.length; i++) {
               const row = rows[i] as HTMLElement;
-              if (row.dataset.event === eventName) {
-                const cell = row.querySelector(`td[data-step="${step}"]`) as HTMLElement | null;
-                if (cell) {
-                  cell.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
-                  const prev = cell.style.background;
-                  cell.style.background = "#fef3c7";
-                  setTimeout(() => { cell.style.background = prev; }, 900);
-                } else {
-                  row.scrollIntoView({ block: "nearest", behavior: "smooth" });
-                }
-                break;
+              if (row.dataset.event !== eventName) continue;
+              const cell = row.querySelector(`td[data-step="${step}"]`) as HTMLElement | null;
+              if (cell) {
+                cell.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+                const prev = cell.style.background;
+                cell.style.background = "#fef3c7";
+                setTimeout(() => { cell.style.background = prev; }, 900);
+                return true;
               }
+              row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+              return false;
             }
+            return false;
+          };
+          setTimeout(() => {
+            if (findAndHighlight() || !needsRecompute) return;
+            setTimeout(findAndHighlight, 1200);
           }, 150);
         },
       };
-    }, [setStepWindow]);
+    }, [setStepWindow, isStatic]);
 
     const applyDiff = () => {
       if (localDiffSeg && localDiffV1 && localDiffV2 && localDiffV1 !== localDiffV2) {
@@ -1147,11 +1175,11 @@ export function render({ host, el, isStatic = false }: RenderContext) {
               <SecHeader>Visibility Settings</SecHeader>
 
               <div style={{ marginBottom: 20 }}>
-                <FLabel tip="Steps visible on each side of the anchor column.">Step window</FLabel>
+                <FLabel tip="Steps visible on each side of the anchor column. Going past the computed depth recomputes the matrix deeper instead of stopping there.">Step window</FLabel>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ flex: 1 }}><SingleSlider min={1} max={20} value={stepWindow} onChange={w => { setStepWindow(w); setParamDebounced("step_window", w); }} /></div>
-                  <input type="number" min={1} max={20} value={stepWindow}
-                    onChange={e => { const w = Math.max(1, Math.min(20, parseInt(e.target.value) || 1)); setStepWindow(w); setParamDebounced("step_window", w); }}
+                  <div style={{ flex: 1 }}><SingleSlider min={1} max={stepWindowMax} value={stepWindow} onChange={w => { setStepWindow(w); setParamDebounced("step_window", w); }} /></div>
+                  <input type="number" min={1} max={stepWindowMax} value={stepWindow}
+                    onChange={e => { const w = Math.max(1, Math.min(stepWindowMax, parseInt(e.target.value) || 1)); setStepWindow(w); setParamDebounced("step_window", w); }}
                     style={{ width: 52, border: `1px solid ${SC.borderLight}`, borderRadius: 6, padding: "5px 8px", fontSize: 13, textAlign: "center", outline: "none", background: SC.bg, color: SC.text, boxShadow: "inset 0 1px 2px rgba(0,0,0,0.04)" }} />
                 </div>
               </div>

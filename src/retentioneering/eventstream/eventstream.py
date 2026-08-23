@@ -1891,7 +1891,10 @@ class Eventstream:
             single block and is mutually exclusive with `path_pattern`. See
             `step_sankey_data`.
         step_window : int, default 3
-            Number of step columns shown around each anchor.
+            Number of step columns shown around each anchor. Only slices what
+            `max_steps` computed, so a window wider than that — set here or in
+            the sidebar — raises `max_steps` to `step_window + 10` and
+            recomputes.
         diff : tuple or list, optional
             Draws a comparative chart for a pair of segments; see
             [Diff mode](/docs/widgets#diff-mode). `(segment_col, value1, value2)` or
@@ -1977,7 +1980,10 @@ class Eventstream:
             single block and is mutually exclusive with `path_pattern`. See
             `step_sankey_data`.
         step_window : int, default 3
-            Number of step columns shown around each anchor.
+            Number of step columns shown around each anchor. Only slices what
+            `max_steps` computed, so a window wider than that — set here or in
+            the sidebar — raises `max_steps` to `step_window + 10` and
+            recomputes.
         height : int, default 600
             Widget height in pixels.
         sidebar_open : bool, default True

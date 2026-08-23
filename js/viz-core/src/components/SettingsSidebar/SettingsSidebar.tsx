@@ -119,6 +119,11 @@ export const SettingsSidebar = observer(function SettingsSidebar({
   // needing every future consumer to remember an opt-out prop.
   const showFocusDimming = typeof (store as { focusDimStrength?: unknown }).focusDimStrength === "number";
   const isDiff = store.matrixType === "differential";
+  // Upper bound of the Step window control. Asking for a window deeper than
+  // `maxSteps` makes Python widen `max_steps` and recompute, so the computed
+  // depth is a floor here, not a ceiling — except in a static export, which
+  // has no kernel to ask.
+  const stepWindowMax = isStatic ? Math.max(1, maxSteps ?? 1) : Math.max(20, maxSteps ?? 1);
   const isTime = isTimeValueType(valuesType);
 
   // Local (pending) diff state — not applied until the user clicks Apply
@@ -297,7 +302,7 @@ export const SettingsSidebar = observer(function SettingsSidebar({
         {/* Step window — shown only for step sankey */}
         {maxSteps != null && stepWindow != null && onStepWindowChange && (
           <div style={{ marginBottom: 20 }}>
-            <FieldLabel tooltip="Number of steps to display around each anchor event. Decreasing this hides outer columns without recomputing.">
+            <FieldLabel tooltip="Number of steps to display around each anchor event. Decreasing this hides outer columns without recomputing; going past the computed depth recomputes deeper instead of stopping there.">
               Step window
             </FieldLabel>
             <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>
@@ -305,15 +310,15 @@ export const SettingsSidebar = observer(function SettingsSidebar({
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ flex: 1 }}>
-                <SingleSlider min={1} max={maxSteps} value={stepWindow} onChange={onStepWindowChange} />
+                <SingleSlider min={1} max={stepWindowMax} value={stepWindow} onChange={onStepWindowChange} />
               </div>
               <input
                 type="number"
                 min={1}
-                max={maxSteps}
+                max={stepWindowMax}
                 value={stepWindow}
                 onChange={e => {
-                  const v = Math.max(1, Math.min(maxSteps, parseInt(e.target.value) || 1));
+                  const v = Math.max(1, Math.min(stepWindowMax, parseInt(e.target.value) || 1));
                   onStepWindowChange(v);
                 }}
                 style={{

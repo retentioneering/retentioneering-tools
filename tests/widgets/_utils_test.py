@@ -1,6 +1,10 @@
 """Tests for widgets/_utils.py helpers."""
 
-from retentioneering.widgets._utils import parse_diff, pattern_edges
+from retentioneering.widgets._utils import (
+    max_steps_for_window,
+    parse_diff,
+    pattern_edges,
+)
 
 
 class TestParseDiff:
@@ -61,3 +65,18 @@ class TestPatternEdges:
 
     def test__a_sentinel_inside_a_class_is_not_the_part_boundary(self) -> None:
         assert pattern_edges("[path_start|home]->cart") == (False, False)
+
+
+class TestMaxStepsForWindow:
+    def test__window_within_the_computed_depth_changes_nothing(self) -> None:
+        assert max_steps_for_window(3, 10) == 10
+        assert max_steps_for_window(10, 10) == 10
+
+    def test__window_past_the_computed_depth_adds_headroom(self) -> None:
+        assert max_steps_for_window(15, 10) == 25
+        assert max_steps_for_window(11, 10) == 21
+
+    def test__never_shrinks(self) -> None:
+        """A narrowed window keeps the depth already computed, so widening it
+        back is free."""
+        assert max_steps_for_window(1, 25) == 25

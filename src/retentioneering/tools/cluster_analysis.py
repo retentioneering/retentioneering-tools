@@ -201,9 +201,17 @@ class ClusterAnalysis:
                 )
                 result["overview_df"] = overview_df
                 result["cluster_labels"] = cluster_labels
-                result["best_params"] = _as_call_params(
-                    method, scaler, chosen.get("params") or {}
-                )
+                # `nmf_components` is a grid coordinate only when it was itself
+                # searched; a fixed value never enters `params`, so it has to be
+                # put back here — `best_params` is documented as splattable into
+                # `add_clusters`, and dropping the NMF step would reproduce a
+                # different pipeline.
+                point = dict(chosen.get("params") or {})
+                if nmf_components is not None and not isinstance(
+                    nmf_components, (list, tuple)
+                ):
+                    point["nmf_components"] = nmf_components
+                result["best_params"] = _as_call_params(method, scaler, point)
                 if chosen.get("nmf_data") is not None:
                     nmf_data = chosen["nmf_data"]
                     nmf_data["W_cluster_means"] = self._compute_w_cluster_means(

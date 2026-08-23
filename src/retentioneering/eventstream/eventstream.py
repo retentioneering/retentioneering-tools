@@ -2405,6 +2405,7 @@ class Eventstream:
         method: str | None = None,
         method_args: dict | None = None,
         scaler: str | None = None,
+        nmf_components=None,
         overview_metrics: list | None = None,
         path_col: str | None = None,
         select: dict | None = None,
@@ -2450,6 +2451,14 @@ class Eventstream:
             - `"hdbscan"` — `min_cluster_size`, `cluster_selection_epsilon`.
         scaler : {"minmax", "std"}, optional
             Feature scaler applied before clustering; default `"minmax"`.
+        nmf_components : int or list of int, optional
+            Number of components for an optional NMF (non-negative matrix
+            factorization) step applied to the scaled features before
+            clustering; if omitted, NMF is skipped (the sidebar's "NMF
+            Decomposition" toggle starts off). Passing it turns the toggle on
+            and pre-fills the field, so it is a starting point you can edit
+            rather than a lock. A list triggers a silhouette-scored grid search
+            over the given values.
         overview_metrics : list of dict, optional
             Metrics shown in the overview heatmap after clustering (independent
             of `features`). If omitted, the sidebar starts pre-filled with a
@@ -2500,6 +2509,7 @@ class Eventstream:
             method=method if method is not None else _UNSET,
             method_args=method_args if method_args is not None else _UNSET,
             scaler=scaler if scaler is not None else _UNSET,
+            nmf_components=nmf_components if nmf_components is not None else _UNSET,
             overview_metrics=overview_metrics
             if overview_metrics is not None
             else _UNSET,

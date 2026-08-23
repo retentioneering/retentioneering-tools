@@ -3,6 +3,7 @@
 import json
 
 import pandas as pd
+import pytest
 
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.widgets.cluster_analysis import ClusterAnalysisWidget
@@ -277,3 +278,84 @@ class TestClusterAnalysisWidgetGridSelection:
         widget = _widget()
         widget.selected_params = json.dumps({"n_clusters": 4})
         assert "selected_params" in widget._persist_names
+
+
+class TestClusterAnalysisWidgetNmfComponents:
+    """`nmf_components` is a pipeline step every method accepts, so — like
+    `scaler` — it belongs in the widget's signature and not only in the sidebar
+    toggle. The widget used to expose it in the UI alone, which left
+    `cluster_analysis()` unable to open on an NMF run its headless twin
+    (`cluster_analysis_data`/`add_clusters`) could run."""
+
+    def test__parameter_turns_the_sidebar_toggle_on(self) -> None:
+        widget = _widget(nmf_components=2)
+
+        assert widget.nmf_enabled is True
+        assert widget.nmf_components == "2"
+        assert widget.error == ""
+
+    def test__omitting_it_leaves_nmf_off(self) -> None:
+        widget = _widget()
+
+        assert widget.nmf_enabled is False
+        assert widget.nmf_components == ""
+        assert "nmf" not in json.loads(widget.result)
+
+    def test__decomposition_reaches_the_result_and_chosen_params(self) -> None:
+        widget = _widget(nmf_components=2)
+
+        nmf = json.loads(widget.result)["nmf"]
+        assert len(nmf["H_matrix"]) == 2
+        assert nmf["W_cluster_means"]
+        assert json.loads(widget.chosen_params)["nmf_components"] == 2
+
+    def test__a_list_runs_a_grid_over_the_components(self) -> None:
+        widget = ClusterAnalysisWidget(
+            _grid_stream(),
+            features=FEATURES,
+            method_args={"n_clusters": 3},
+            nmf_components=[1, 2],
+        )
+
+        assert widget.nmf_components == "[1, 2]"
+        sil = json.loads(widget.result)["silhouette"]
+        assert [p["nmf_components"] for p in sil["params"]] == [1, 2]
+
+    def test__select_can_name_a_grid_point_by_its_components(self) -> None:
+        widget = ClusterAnalysisWidget(
+            _grid_stream(),
+            features=FEATURES,
+            method_args={"n_clusters": 3},
+            nmf_components=[1, 2],
+            select={"n_clusters": 3, "nmf_components": 1},
+        )
+
+        assert widget.error == ""
+        assert json.loads(widget.chosen_params)["nmf_components"] == 1
+
+    def test__eventstream_method_passes_it_through(self) -> None:
+        stream = _grid_stream()
+        widget = stream.cluster_analysis(
+            features=FEATURES, method_args={"n_clusters": 3}, nmf_components=2
+        )
+
+        assert widget.nmf_enabled is True
+        assert json.loads(widget.chosen_params)["nmf_components"] == 2
+
+    def test__an_unparsable_value_raises_instead_of_silently_skipping_nmf(
+        self,
+    ) -> None:
+        with pytest.raises(ValueError, match="nmf_components"):
+            _widget(nmf_components="two")
+
+    def test__explicit_argument_wins_over_saved_state(self, tmp_path) -> None:
+        path = tmp_path / "clusters.json"
+        first = _widget(nmf_components=2, state_file=str(path))
+        assert first.nmf_components == "2"
+
+        restored = _widget(state_file=str(path))
+        assert restored.nmf_enabled is True
+        assert restored.nmf_components == "2"
+
+        overridden = _widget(nmf_components=1, state_file=str(path))
+        assert overridden.nmf_components == "1"

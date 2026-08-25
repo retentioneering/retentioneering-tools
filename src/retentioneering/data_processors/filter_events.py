@@ -13,15 +13,6 @@ from retentioneering.exceptions import (
 PROCESSOR_NAME = "filter_events"
 
 
-def _sql_literal(value) -> str:
-    """Render a Python value as a safe DuckDB SQL literal."""
-    if isinstance(value, bool):
-        return "TRUE" if value else "FALSE"
-    if isinstance(value, (int, float)):
-        return str(value)
-    return "'" + str(value).replace("'", "''") + "'"
-
-
 def _validate_column_filter(arg_name: str, value: Dict) -> None:
     if not isinstance(value, dict) or not value:
         raise PreprocessingConfigError(
@@ -106,6 +97,9 @@ class FilterEvents(DataProcessor):
                         PROCESSOR_NAME, column, df.columns.tolist()
                     )
 
+            # This loop still walks every value in Python, exactly as before.
+            # The tables built below keep the ids out of the SQL text, not out
+            # of the process.
             for column, values in column_filter.items():
                 available_values = set(df[column].unique().tolist())
                 unknown = [v for v in values if v not in available_values]
@@ -117,10 +111,40 @@ class FilterEvents(DataProcessor):
                         )
                     raise PreprocessingConfigError(PROCESSOR_NAME, message)
 
+            # The values for each column go to DuckDB as a small table, instead
+            # of being written into the SQL text. Written inline, the query grew
+            # with the number of values: 200k path ids made about 8 MB of SQL.
+            # DuckDB then spent most of the query rewriting that huge expression,
+            # which is work that grows with the number of ids and says nothing
+            # about the data. Each table name is fixed to the position of its
+            # column, so it can never clash with `df`, or with a table a caller
+            # left behind through `sql=`. If a name does clash, the table we
+            # register here is the one that wins (see `engine.run`).
+            tables: Dict[str, pd.DataFrame] = {"df": df}
             conditions = []
-            for column, values in column_filter.items():
-                values_str = ", ".join(_sql_literal(v) for v in values)
-                conditions.append(f"{engine.quote_ident(column)} in ({values_str})")
+            for i, (column, values) in enumerate(column_filter.items()):
+                column_q = engine.quote_ident(column)
+                # A missing value is a value you can filter on, so `[np.nan]`
+                # means "the rows where this column has no value". It cannot go
+                # into the table, because SQL never matches NULL with `=`, and a
+                # list of only missing values would also make the table a DOUBLE
+                # column that DuckDB will not compare with text. So it becomes
+                # its own `is null` test instead.
+                present = [v for v in values if not pd.isna(v)]
+                parts = []
+                if present:
+                    values_table = f"_filter_values_{i}"
+                    tables[values_table] = pd.DataFrame({"v": pd.Series(present)})
+                    # `coalesce` is what keeps `drop` the exact opposite of
+                    # `keep`. For a row whose value is missing, `in` gives back
+                    # NULL and not FALSE, so `not (NULL)` would throw that row
+                    # away even though it never matched the list.
+                    parts.append(
+                        f"coalesce({column_q} in (select v from {values_table}), false)"
+                    )
+                if len(present) < len(values):
+                    parts.append(f"{column_q} is null")
+                conditions.append("(" + " or ".join(parts) + ")")
 
             if self.keep is not None:
                 # keep: a row must match every entry (AND)
@@ -140,7 +164,7 @@ class FilterEvents(DataProcessor):
                 where {where}
                 order by {order_by}
             """
-            df = engine.run(query, df=df)
+            df = engine.run(query, **tables)
 
         elif self.sql is not None:
             columns_old = df.columns

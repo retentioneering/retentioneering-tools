@@ -1418,8 +1418,9 @@ class Eventstream:
           to be a single position; it is for `add_events(anchor=...)`.
         - `offset` — move the anchor off the matched event: an int shifts it that
           many events, a duration string or `pd.Timedelta` (`"30m"`) shifts it in
-          time and then snaps to the nearest event *inside* the window. An offset
-          that runs past the path's own boundary clamps to it.
+          time and then snaps to the nearest event *inside* the window. Negative
+          values (`-2`, `"-30m"`) shift backwards, widening the window past the
+          anchor. An offset that runs past the path's own boundary clamps to it.
         - `offset_side` — which way a time `offset` rounds to a real event,
           `"start"` (forward) or `"end"` (backward). Defaults to the side of the
           window being resolved, which rounds inward; set it to widen instead.

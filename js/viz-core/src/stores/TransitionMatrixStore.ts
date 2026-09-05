@@ -26,6 +26,46 @@ interface MatrixBounds {
   max: number;
 }
 
+/**
+ * Add up every row and every column of one matrix, and the whole matrix, in a
+ * single walk over the cells.
+ *
+ * Only cells above zero are counted, which is what the share numbers have
+ * always done. The total of the matrix is the sum of all the row sums, so it
+ * falls out of the same walk and costs nothing extra.
+ *
+ * Please keep this as one walk. Asking for one index at a time reads the whole
+ * matrix again for each index, and the work then grows with the cube of the
+ * number of events. That is the problem this replaced.
+ */
+function rowColSumsAndTotal(vals: number[][]): { sums: number[]; total: number } {
+  const rows = vals.length;
+  let width = 0;
+  for (const row of vals) if (row && row.length > width) width = row.length;
+
+  const rowSums = new Array<number>(rows).fill(0);
+  const colSums = new Array<number>(width).fill(0);
+  for (let i = 0; i < rows; i++) {
+    const row = vals[i];
+    if (!row) continue;
+    for (let j = 0; j < row.length; j++) {
+      const v = row[j];
+      if (Number.isFinite(v) && v > 0) {
+        rowSums[i] += v;
+        colSums[j] += v;
+      }
+    }
+  }
+
+  let total = 0;
+  const sums = new Array<number>(rows);
+  for (let i = 0; i < rows; i++) {
+    total += rowSums[i];
+    sums[i] = rowSums[i] + (colSums[i] ?? 0);
+  }
+  return { sums, total };
+}
+
 export class TransitionMatrixStore {
   events = new Map<string, EventState>();
   values: number[][] = [];
@@ -38,6 +78,16 @@ export class TransitionMatrixStore {
   private _group2Values: number[][] | null = null;
   private _group1IndexById = new Map<string, number>();
   private _group2IndexById = new Map<string, number>();
+  // Sums for the two matrices above, worked out once in setData. Reading the
+  // share of one event is then two lookups, instead of a walk over both
+  // matrices every time.
+  //
+  // They sit next to those matrices on purpose. If you ever set the matrices
+  // somewhere new, you have to refresh these in the same place.
+  private _group1RowColSums: number[] = [];
+  private _group2RowColSums: number[] = [];
+  private _group1Total = 0;
+  private _group2Total = 0;
 
   heatmapType: HeatmapType = "overall";
   private _heatmapTypeSetByUser = false;
@@ -157,7 +207,14 @@ export class TransitionMatrixStore {
     return typeof v === "number" && Number.isFinite(v) ? v : null;
   }
 
-  /** Returns {group1Value, group2Value, diffValue} as proportions for a node in diff mode. */
+  /** How much of each group an event takes, and the gap between the two.
+   *
+   *  A share is (row sum plus column sum) divided by (2 * total of that
+   *  matrix). A positive diffValue means the event is more common in group 1
+   *  (red). A negative one means it is more common in group 2 (blue). All
+   *  three values are null outside diff mode, or when the event is missing.
+   *
+   *  setData works the sums out in advance, so this only reads two of them. */
   getNodeShareBreakdown(eventId: string): { group1Value: number | null; group2Value: number | null; diffValue: number | null } {
     const null3 = { group1Value: null, group2Value: null, diffValue: null };
     if (!this._group1Values || !this._group2Values) return null3;
@@ -165,50 +222,18 @@ export class TransitionMatrixStore {
     const idx2 = this._group2IndexById.get(eventId);
     if (idx1 == null || idx2 == null) return null3;
 
-    const rowColSum = (vals: number[][], idx: number): number => {
-      const row = vals[idx];
-      const rowS = row ? row.reduce((s, v) => s + (Number.isFinite(v) && v > 0 ? v : 0), 0) : 0;
-      const colS = vals.reduce((s, r) => { const v = r[idx]; return s + (Number.isFinite(v) && v > 0 ? v : 0); }, 0);
-      return rowS + colS;
-    };
-    const total = (vals: number[][]): number =>
-      vals.reduce((s, row) => s + row.reduce((a, v) => a + (Number.isFinite(v) && v > 0 ? v : 0), 0), 0);
-
-    const t1 = total(this._group1Values);
-    const t2 = total(this._group2Values);
+    const t1 = this._group1Total;
+    const t2 = this._group2Total;
     if (t1 === 0 || t2 === 0) return null3;
 
-    const share1 = rowColSum(this._group1Values, idx1) / (2 * t1);
-    const share2 = rowColSum(this._group2Values, idx2) / (2 * t2);
+    const share1 = (this._group1RowColSums[idx1] ?? 0) / (2 * t1);
+    const share2 = (this._group2RowColSums[idx2] ?? 0) / (2 * t2);
     return { group1Value: share1, group2Value: share2, diffValue: share1 - share2 };
   }
 
-  /** share_group1(E) − share_group2(E), where share = (rowSum + colSum) / (2 * totalMatrixSum).
-   *  Positive → event is proportionally more common in group 1 (red).
-   *  Negative → more common in group 2 (blue).
-   *  Returns null when not in differential mode or event is missing. */
+  /** The diffValue from getNodeShareBreakdown. Read that one for what it means. */
   getNodeShareDiff(eventId: string): number | null {
-    if (!this._group1Values || !this._group2Values) return null;
-    const idx1 = this._group1IndexById.get(eventId);
-    const idx2 = this._group2IndexById.get(eventId);
-    if (idx1 == null || idx2 == null) return null;
-
-    const rowColSum = (vals: number[][], idx: number): number => {
-      const row = vals[idx];
-      const rowS = row ? row.reduce((s, v) => s + (Number.isFinite(v) && v > 0 ? v : 0), 0) : 0;
-      const colS = vals.reduce((s, r) => { const v = r[idx]; return s + (Number.isFinite(v) && v > 0 ? v : 0); }, 0);
-      return rowS + colS;
-    };
-    const total = (vals: number[][]): number =>
-      vals.reduce((s, row) => s + row.reduce((a, v) => a + (Number.isFinite(v) && v > 0 ? v : 0), 0), 0);
-
-    const t1 = total(this._group1Values);
-    const t2 = total(this._group2Values);
-    if (t1 === 0 || t2 === 0) return null;
-
-    const share1 = rowColSum(this._group1Values, idx1) / (2 * t1);
-    const share2 = rowColSum(this._group2Values, idx2) / (2 * t2);
-    return share1 - share2;
+    return this.getNodeShareBreakdown(eventId).diffValue;
   }
 
   getDiffCellBreakdown(row: string, col: string) {
@@ -255,6 +280,18 @@ export class TransitionMatrixStore {
     this._eventIds.forEach((id, i) => this._indexById.set(id, i));
     this._group1Values = data.group1?.values ?? null;
     this._group2Values = data.group2?.values ?? null;
+    // Refresh the cached sums here, right where the matrices are set.
+    //
+    // We walk the plain arrays that came in, not the two fields just above.
+    // Both hold the same numbers, but the fields are watched by mobx, which
+    // wraps every row. Reading through that wrapper is a lot slower, and this
+    // walk touches every cell. Please do not swap these for the fields.
+    const g1Sums = data.group1?.values ? rowColSumsAndTotal(data.group1.values) : { sums: [], total: 0 };
+    const g2Sums = data.group2?.values ? rowColSumsAndTotal(data.group2.values) : { sums: [], total: 0 };
+    this._group1RowColSums = g1Sums.sums;
+    this._group1Total = g1Sums.total;
+    this._group2RowColSums = g2Sums.sums;
+    this._group2Total = g2Sums.total;
     this.transitionCounts = data.counts ?? null;
     this._group1IndexById.clear();
     data.group1?.events.forEach((id, i) => this._group1IndexById.set(id, i));

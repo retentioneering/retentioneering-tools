@@ -3223,7 +3223,7 @@ requires-dist = [
     { name = "jinja2", marker = "extra == 'dev'", specifier = ">=3.1" },
     { name = "jupyterlab", marker = "extra == 'dev'" },
     { name = "matplotlib", specifier = ">=3.5" },
-    { name = "mcp", extras = ["cli"], specifier = ">=1.28.0" },
+    { name = "mcp", extras = ["cli"], specifier = ">=1.28.0,<2" },
     { name = "notebook", marker = "extra == 'dev'" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "pandas", specifier = ">=2.2" },

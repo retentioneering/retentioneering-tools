@@ -164,6 +164,9 @@ server is `/docs/mcp-server`.
 
 - `.github/workflows/ci.yml` — on push/PR: `lint` job (pre-commit --all-files) + `test` job
   (matrix over Python 3.10-3.13, builds JS, runs pytest).
+- `.github/workflows/deps-latest.yml` — nightly + `workflow_dispatch`: installs with pip's own
+  resolution instead of `uv.lock`, then `pip check` + pytest. Does not block merges; a failure
+  opens an issue labelled `deps-latest`. Rationale is in the workflow's header comment.
 - `.github/workflows/release.yml` — on `v*` tag push (including PEP 440 `rc` tags, e.g.
   `v5.0.0rc1`): build JS, test, `uv build`, verify `widget.js` actually landed in the wheel,
   `uv publish` to real PyPI via OIDC trusted publishing (`environment: pypi`, no stored token),

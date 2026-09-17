@@ -1,0 +1,129 @@
+name: deps-latest
+
+# Install the way a user does — pip's own fresh resolution, not `uv.lock` — and
+# run the suite against whatever the specifiers in `pyproject.toml` actually
+# allow today.
+#
+# `ci.yml` cannot see this class of breakage: it installs from the lock into an
+# empty venv, so it tests one pinned resolution that no user ever receives.
+# The gap is not theoretical. 5.2.0 asked for `mcp[cli]>=1.28.0` with no upper
+# bound; mcp 2.x renamed the class the MCP server is built on and renamed its
+# HTTP dependencies. Every check in this repository stayed green for as long as
+# the lock said 1.28.1, while a fresh `pip install retentioneering` was picking
+# up 2.x and breaking. Only twelve of our thirteen direct dependencies have an
+# upper bound today, so the same shape can arrive from any of them.
+#
+# Scheduled rather than on pull requests: this job breaks because of someone
+# else's release, not because of our commit, so it has no business blocking a
+# merge. A failure opens an issue instead.
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  deps-latest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: js/package-lock.json
+
+      - name: Install JS dependencies
+        working-directory: js
+        run: npm ci
+
+      - name: Build JS
+        # `tests/widgets/` import the widget classes and `widgets/_base.py`
+        # resolves `widget.js` at import time, so the suite needs the bundle
+        # on disk even though it never renders anything.
+        run: |
+          npm run build --prefix js/viz-core
+          npm run build --prefix js/widget
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Seed a dated notebook environment
+        # A stand-in for where retentioneering actually lands: an environment
+        # that already had an analytics stack in it. The versions are pinned
+        # and deliberately dated — with today's latest of everything, nothing
+        # could be stranded, and stranding is the failure mode being tested.
+        # A package already installed and required by nothing we bring in is
+        # the one thing pip will not upgrade, and so the one thing that can be
+        # left behind with requirements no installed version satisfies.
+        #
+        # Each entry earns its place by pinning something we also depend on:
+        # seaborn and statsmodels (pandas, numpy, scipy), the jupyter trio
+        # (traitlets, ipywidgets), numba (a hard numpy upper bound), and
+        # httpx/httpcore/google-genai (the httpx family the original bug came
+        # from). A package with few pins of its own, however popular, only
+        # adds install time — it has nothing to be stranded by.
+        #
+        # This list is a sample, not a reproduction of any real environment.
+        # Refresh the pins when they stop resembling one.
+        run: |
+          pip install \
+            "httpx==0.27.2" "httpcore==1.0.5" "requests==2.32.3" \
+            "google-genai==1.2.0" \
+            "jupyterlab==4.2.5" "ipykernel==6.29.5" "notebook==7.2.2" \
+            "seaborn==0.13.2" "statsmodels==0.14.4" "numba==0.60.0" \
+            "openpyxl==3.1.5" "sqlalchemy==2.0.36"
+
+      - name: Sanity-check the seed
+        # Fail here, attributably, if the seed itself is inconsistent —
+        # otherwise a broken seed shows up as noise in the check below.
+        run: pip check
+
+      - name: Install with pip's fresh resolution (no uv.lock)
+        # Not `.[dev]`: the dev extra drags in jupyterlab, notebook and
+        # pre-commit, whose own drift would be reported as ours. pytest is all
+        # the suite needs.
+        run: pip install . "pytest>=8"
+
+      - name: Check for broken dependencies
+        run: pip check
+
+      - name: Show the resolved environment
+        if: always()
+        run: pip list
+
+      - name: Run tests
+        run: pytest tests/ -v
+
+      - name: Report a failure as an issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create deps-latest \
+            --color B60205 \
+            --description "Nightly dependency-drift run is failing" || true
+          existing=$(gh issue list --label deps-latest --state open --limit 1 \
+            --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "Still failing: $RUN_URL"
+            exit 0
+          fi
+          gh issue create \
+            --label deps-latest \
+            --title "Nightly dependency run is failing" \
+            --body "$(printf '%s\n' \
+              "The nightly \`deps-latest\` run installed the package with pip's own resolution, rather than from \`uv.lock\`, and it failed." \
+              "" \
+              "Run: $RUN_URL" \
+              "" \
+              "This means a dependency released something that our specifiers in \`pyproject.toml\` allow and that we do not work against — or that strands a package already installed alongside us. \`pip list\` is printed in the run, above the failure." \
+              "" \
+              "Fix by bounding the offending specifier, or by adapting to the new version. Merging is not blocked by this job.")"

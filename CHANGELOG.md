@@ -5,6 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+## [5.2.2] - 2026-09-17
+
+### Fixed
+
+- Installing in Google Colab no longer asks you to restart the session. 5.2.1 raised the `ipywidgets` floor to `>=8.0`; Colab ships 7.x and imports it while the kernel starts, so `pip install retentioneering` upgraded it and pip then required a restart before anything would work — on a fresh notebook, before you had typed a line. The floor is `>=7.7` now, which Colab's own version already satisfies, so nothing is upgraded and nothing has to be restarted
+
+- A correction to what the 5.2.1 entry below claims. It says the old `ipywidgets>=7.0` floor meant every widget method failed with `ModuleNotFoundError: No module named 'ipython_genutils'`. That holds only for 7.6.0 through 7.6.3, which do not list `ipython-genutils` among their dependencies, so nothing installs it; 7.6.5 and later — including the 7.7.x that Colab ships — do list it, and work. The version that surfaced the failure was chosen by resolving our declared floors at their minimum, which is not a resolution any user gets. So the defect was a floor that admitted those three releases, and `>=7.7` is the narrow fix for it; `>=8.0` was more than the problem called for and cost Colab users a restart for nothing
+
 ## [5.2.1] - 2026-09-17
 
 ### Changed

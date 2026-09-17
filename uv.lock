@@ -3209,7 +3209,7 @@ wheels = [
 
 [[package]]
 name = "retentioneering"
-version = "5.2.1"
+version = "5.2.2"
 source = { editable = "." }
 dependencies = [
     { name = "anywidget" },
@@ -3262,7 +3262,7 @@ requires-dist = [
     { name = "gensim", specifier = ">=4.3.3" },
     { name = "httpcore", specifier = ">=1.0.9" },
     { name = "ipykernel", marker = "extra == 'dev'" },
-    { name = "ipywidgets", specifier = ">=8.0" },
+    { name = "ipywidgets", specifier = ">=7.7" },
     { name = "jinja2", marker = "extra == 'dev'", specifier = ">=3.1" },
     { name = "jupyterlab", marker = "extra == 'dev'" },
     { name = "matplotlib", specifier = ">=3.5" },

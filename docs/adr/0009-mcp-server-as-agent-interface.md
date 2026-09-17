@@ -36,7 +36,7 @@ agent raw DataFrames wastes context and produces unverifiable analysis
 - Any Eventstream API rename must be propagated to `mcp/server.py`
   (tool docstrings, system instructions), `mcp/_agent_logic.py`
   (`_apply_preprocessors`), and `mcp/playbook.md` in the same change.
-- `mcp/server.py` is transport/protocol wiring only (FastMCP/SSE, `@mcp.tool()`
+- `mcp/server.py` is transport/protocol wiring only (MCPServer/SSE, `@mcp.tool()`
   registration). Every tool body lives in `mcp/tools.py` as a plain
   `(session, **params) -> dict` function — `server.py`'s `@mcp.tool()`
   closures are one-line adapters (`json.dumps(tools.foo(session, ...))`).

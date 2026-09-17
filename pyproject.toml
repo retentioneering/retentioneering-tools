@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "retentioneering"
-version = "5.2.0"
+version = "5.2.1"
 authors = [
   { name = "Retentioneering User Trajectory Analysis Lab", email = "retentioneering@gmail.com" },
 ]
@@ -72,14 +72,21 @@ dependencies = [
     "duckdb>=1.1",
     "anywidget>=0.9",
     "posthog>=3.0",
-    "ipywidgets>=7.0",
+    "ipywidgets>=8.0",
     "traitlets>=5.0",
     "pyarrow>=14.0",
     "scikit-learn>=1.3",
     "numpy>=1.26",
     "scipy>=1.11",
     "matplotlib>=3.5",
-    "mcp[cli]>=1.28.0,<2",
+    "mcp[cli]>=2.2,<3",
+    # Not imported anywhere — named here only so the resolver touches it.
+    # mcp 2.x depends on the renamed httpx2/httpcore2 distributions, so an
+    # older `httpcore` already present in the environment (Colab ships
+    # 1.0.5) is left behind unupgraded, pinned to h11<0.15, while h11 is
+    # bumped to >=0.16 for httpcore2 — a dangling conflict `pip check`
+    # reports. Naming httpcore gives pip a reason to upgrade that copy too.
+    "httpcore>=1.0.9",
     "gensim>=4.3.3",
 ]
 

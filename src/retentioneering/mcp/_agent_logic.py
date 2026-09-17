@@ -1,6 +1,6 @@
 """Transport-independent MCP agent logic: applying preprocessor steps,
 building compact tab summaries, validating analysis text, and rendering the
-report's "data sources" note. None of this touches FastMCP/SSE or session
+report's "data sources" note. None of this touches MCPServer/SSE or session
 state (see `_report_session.py` for that) — `server.py` is just a thin
 adapter wiring these functions up as `@mcp.tool()`s.
 """

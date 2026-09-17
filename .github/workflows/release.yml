@@ -96,4 +96,12 @@ jobs:
           name: ${{ github.ref_name }}
           body: ${{ steps.notes.outputs.notes }}
           prerelease: ${{ steps.notes.outputs.prerelease }}
-          files: dist/*
+          # Name the two distributions rather than globbing the directory:
+          # `uv build` drops a one-byte `.gitignore` into dist/, which `dist/*`
+          # picked up and attached to every release as "default.gitignore".
+          # Uploading it is pointless, and it makes three concurrent asset
+          # uploads out of two — v5.2.2 died on "Error creating asset temp dir"
+          # with the wheel left unattached and the release stuck as a draft.
+          files: |
+            dist/*.whl
+            dist/*.tar.gz

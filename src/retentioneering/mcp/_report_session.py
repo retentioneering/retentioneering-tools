@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import pathlib
 import tempfile
+import threading
 from typing import Any
 
 from retentioneering.mcp._agent_logic import _apply_preprocessors, _build_data_note
@@ -26,6 +27,11 @@ class ReportSession:
         self.context_events: set = set(self.context.get("events", {}).keys())
         self.base_preprocessors: list = []
         self.pending_tabs: list[dict] = []
+        # Held by `server.py`'s tool wrappers for the whole of each tool call,
+        # since mcp 2.x runs synchronous handlers on worker threads and two
+        # calls from one agent can otherwise interleave their writes here.
+        # Reentrant so a tool calling another session method can't deadlock.
+        self.lock = threading.RLock()
 
     def load_data(self, stream: Any, context: dict | None = None) -> Any:
         """Replace the base/active stream with *stream* — used by the

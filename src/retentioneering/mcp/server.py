@@ -7,10 +7,10 @@ Usage in a Jupyter notebook:
     serve(stream, context={"description": "...", "events": {...}})
     serve()  # data-agnostic: agent loads data itself via the load_data tool
 
-Transport/protocol wiring only (FastMCP/SSE, `@mcp.tool()` registration,
+Transport/protocol wiring only (MCPServer/SSE, `@mcp.tool()` registration,
 tracking-context tagging). Every tool is a one-line adapter over a function
 in `mcp/tools.py` (the actual report-building logic — plain, transport-
-independent `(session, **params) -> dict` functions, reusable outside FastMCP,
+independent `(session, **params) -> dict` functions, reusable outside the SDK,
 e.g. by the platform's Anthropic-SDK tool runner). Per-session state lives in
 `mcp/_report_session.py` (`ReportSession`), and the system prompt/playbook
 text in `mcp/_prompts.py`.
@@ -27,7 +27,7 @@ import socket
 import threading
 from functools import wraps
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from retentioneering._tracking import caller_context as _tracking_caller_context
 from retentioneering._tracking import track as _track
@@ -90,9 +90,9 @@ def serve(
         "mcp_serve", {"has_context": bool(context), "has_stream": stream is not None}
     )
     _check_port_available(port)
-    mcp = _build_server(stream, context or {}, port=port, notebook_dir=os.getcwd())
+    mcp = _build_server(stream, context or {}, notebook_dir=os.getcwd())
     thread = threading.Thread(
-        target=lambda: mcp.run(transport="sse"),
+        target=lambda: mcp.run(transport="sse", port=port),
         daemon=True,
     )
     thread.start()
@@ -131,29 +131,36 @@ def _check_port_available(port: int) -> None:
 def _build_server(
     stream: "Eventstream | None",
     context: dict,
-    port: int = 8765,
     notebook_dir: str = "",
-) -> FastMCP:
-    mcp = FastMCP(
+) -> MCPServer:
+    mcp = MCPServer(
         "retentioneering",
         instructions=_system_instructions(stream, context, notebook_dir=notebook_dir),
-        port=port,
     )
 
+    session = ReportSession(stream, context)
+
     def _tool():
-        """@mcp.tool() that sets caller='mcp' in the tracking context."""
+        """@mcp.tool() that sets caller='mcp' in the tracking context and holds
+        `session.lock` for the duration of the call.
+
+        The lock serializes tool calls. mcp 2.x runs synchronous handlers on
+        worker threads instead of inline on the event loop, so two calls from
+        the same agent can overlap — and every tool here reads or writes the
+        one `ReportSession` (active stream, pending tabs), with `export_report`
+        check-then-acting on `pending_tabs`. Running them one at a time is what
+        1.x did implicitly.
+        """
 
         def decorator(fn):
             @wraps(fn)
             def wrapper(*args, **kwargs):
-                with _tracking_caller_context("mcp"):
+                with session.lock, _tracking_caller_context("mcp"):
                     return fn(*args, **kwargs)
 
             return mcp.tool()(wrapper)
 
         return decorator
-
-    session = ReportSession(stream, context)
 
     @_tool()
     def load_data(

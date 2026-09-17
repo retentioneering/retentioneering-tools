@@ -1,7 +1,7 @@
 """Static text assembly for the MCP agent: the system prompt, the playbook
 (canonical analysis recipes, loaded from `playbook.md`), and the
 `describe_tool`/`playbook` tool reference indexes. Pure string/markdown
-building — no numeric logic (see `_agent_logic.py` for that) and no FastMCP/
+building — no numeric logic (see `_agent_logic.py` for that) and no MCPServer/
 transport concerns (see `server.py`).
 """
 

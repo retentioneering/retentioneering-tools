@@ -1,6 +1,6 @@
 """MCP agent tools as plain, transport-independent functions.
 
-Each function here is `(session, **params) -> dict` — no FastMCP, no JSON
+Each function here is `(session, **params) -> dict` — no MCPServer, no JSON
 serialization, no closure over server-lifetime state. `server.py` wraps each
 one as a thin `@mcp.tool()` adapter (`json.dumps(tools.foo(session, ...))`)
 for the notebook flow; any other caller (e.g. the platform's chat assistant,
@@ -12,7 +12,7 @@ touch `session`'s public protocol (`active_stream`, `context_events`,
 `update_base_stream()`, `reset_base_stream()`, `add_tab()`, `pending_tabs`,
 `package()`), so any object shaped like `ReportSession` works.
 
-Docstrings here are the ones FastMCP quotes as tool descriptions for the
+Docstrings here are the ones MCPServer quotes as tool descriptions for the
 notebook/MCP-client flow (see ADR-0009) — the platform's own `@beta_tool`
 adapters in `apps/api/app/assistant.py` write their own Google-style
 docstrings rather than reusing these numpy-style ones verbatim.

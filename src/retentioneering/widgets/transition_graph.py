@@ -66,6 +66,11 @@ class TransitionGraphWidget(RetentioneeringWidget):
     height = traitlets.Int(500).tag(sync=True)
     sidebar_open = traitlets.Bool(True).tag(sync=True)
     node_positions = traitlets.Unicode("{}").tag(sync=True)
+    # JSON GraphLayoutResponse ({"result": {event: {x, y}}, "error"?: str}),
+    # computed at construction so the first paint never waits on the
+    # kernel. "" means "not computed": JS then asks via the graph_layout
+    # compute tool. Not persisted — it is derived from the data.
+    graph_layout = traitlets.Unicode("").tag(sync=True)
     event_visibility = traitlets.Unicode("{}").tag(sync=True)
     # "" (default: per-node top-k auto mode)
     # | "[min, max]"              — manual edge weight range, normalized 0..1
@@ -209,6 +214,13 @@ class TransitionGraphWidget(RetentioneeringWidget):
         )
 
         self._recompute()
+
+        # Ship the semantic layout with the initial state instead of letting
+        # JS request it on mount. That request is a comm message queued
+        # behind every execute_request already sent, so under "Run all" the
+        # graph sat on its "Updating graph..." spinner until the whole
+        # notebook finished (and in Colab, reportedly, for good).
+        self.graph_layout = json.dumps(self._compute_graph_layout({}))
 
         self._initialized = True
         self.observe(self._on_params_change, names=["edge_weight", "diff", "path_col"])

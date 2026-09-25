@@ -9,7 +9,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
-- [Transition Graph](https://retentioneering.com/docs/widgets/transition-graph) no longer sits on its "Updating graph..." spinner after "Run all". The graph asked the kernel for its node layout only once it was on screen, and that request waits in the same queue as the cells, so under "Run all" it was answered only after the whole notebook had finished; in Google Colab the spinner could stay for good. The layout is now computed together with the graph and arrives with it, so the graph is drawn right away no matter what the kernel is busy with. Running cells one by one looks exactly as before
+- [Transition Graph](https://retentioneering.com/docs/widgets/transition-graph) no longer sits on its "Updating graph..." spinner after "Run all". The graph asked the kernel for its node layout only once it was on screen, and that request waits in the same queue as the cells, so under "Run all" it was answered only after the whole notebook had finished, which in a long notebook meant many minutes of spinners. The layout is now computed together with the graph and arrives with it, so the graph is drawn right away no matter what the kernel is busy with. Running cells one by one looks exactly as before
 
 ## [5.2.2] - 2026-09-17
 

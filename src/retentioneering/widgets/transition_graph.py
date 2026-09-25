@@ -219,7 +219,7 @@ class TransitionGraphWidget(RetentioneeringWidget):
         # JS request it on mount. That request is a comm message queued
         # behind every execute_request already sent, so under "Run all" the
         # graph sat on its "Updating graph..." spinner until the whole
-        # notebook finished (and in Colab, reportedly, for good).
+        # notebook finished.
         self.graph_layout = json.dumps(self._compute_graph_layout({}))
 
         self._initialized = True

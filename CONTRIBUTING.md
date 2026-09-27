@@ -57,6 +57,8 @@ print(rete.datasets.load_ecom().describe())
 uv run pytest tests/ -v                                   # full test suite
 uv run pytest tests/data_processors/add_events_test.py -v # single file
 uv run pytest tests/data_processors/add_events_test.py::test_name -v
+uv run --with playwright python -m playwright install chromium
+uv run --with playwright pytest tests/browser -v          # rendered widgets; run make build first
 
 uv run pre-commit run --all-files    # lint + format + hygiene, same as CI's lint job
 
@@ -109,10 +111,12 @@ tests/              # pytest suite: eventstream, data processors, headless tools
 
 ## Tests
 
-- The suite covers `Eventstream`, data processors, headless tools, and the
-  MCP server. Widget *rendering* is not covered — `vite build` plus the docs
-  demo generation (which constructs real widgets) are the JS correctness
-  signals.
+- The regular suite covers `Eventstream`, data processors, headless tools,
+  and the MCP server. Optional Playwright tests under `tests/browser/` also
+  render exported widgets in Chromium and check browser errors; these skip
+  when Playwright is absent. Build the JS first, then use the commands above.
+  CI runs the browser tests on Python 3.12. `vite build` and the docs demo
+  generation remain additional JS checks.
 - New behavior needs tests. Prefer behavior-based assertions over pinning
   engine-dependent values (e.g. don't hardcode which rows a random sample
   picks — assert counts, integrity, and reproducibility instead).

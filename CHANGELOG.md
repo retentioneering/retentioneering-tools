@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Fixed
+
+- Transition Graph no longer raises `Cannot read properties of null (reading 'isHeadless')`
+  during initial rendering when a graph rebuild destroys an instance before its
+  scheduled viewport fit runs. Deferred fit and resize callbacks now check that
+  their graph is still the active, live instance before using it.
+
 ## [5.2.3] - 2026-09-25
 
 ### Fixed

@@ -821,7 +821,9 @@ export const TransitionGraph = observer(function TransitionGraph({
         });
 
         // Fit after auto-layout completes
-        requestAnimationFrame(() => cy.fit(undefined, FIT_PADDING));
+        requestAnimationFrame(() => {
+          if (cyRef.current === cy && !cy.destroyed()) cy.fit(undefined, FIT_PADDING);
+        });
       });
 
       // fcose runs synchronously with animate:false; the seeded PRNG is what
@@ -1782,7 +1784,9 @@ export const TransitionGraph = observer(function TransitionGraph({
       if (savedViewport) {
         cy.viewport({ zoom: savedViewport.zoom, pan: { ...savedViewport.pan } });
       } else {
-        requestAnimationFrame(() => cy.fit(undefined, FIT_PADDING));
+        requestAnimationFrame(() => {
+          if (cyRef.current === cy && !cy.destroyed()) cy.fit(undefined, FIT_PADDING);
+        });
       }
     }
 
@@ -2069,7 +2073,7 @@ export const TransitionGraph = observer(function TransitionGraph({
       }
 
       resizeRafRef.current = requestAnimationFrame(() => {
-        cy.resize();
+        if (cyRef.current === cy && !cy.destroyed()) cy.resize();
       });
     });
 

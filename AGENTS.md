@@ -52,9 +52,12 @@ uv build                   # sdist + wheel; requires `make build` to have run fi
                             # it's gitignored)
 ```
 
-Widget tests (anywidget rendering) aren't part of the suite — `tests/` covers `Eventstream`,
-data processors, and headless `tools/` only. JS has no test suite, only `vite build` as a
-correctness signal (plus docs demo generation, which constructs real widgets).
+The regular Python suite covers widget construction but not browser rendering.
+Optional `tests/browser/` Playwright tests render static exports in Chromium; they
+skip when Playwright is absent. After `make build`, install Chromium with
+`uv run --with playwright python -m playwright install chromium` and run
+`uv run --with playwright pytest tests/browser -v`. CI runs these on Python 3.12.
+`vite build` and docs demo generation remain additional JS correctness signals.
 
 ## Architecture
 

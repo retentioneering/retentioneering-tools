@@ -51,3 +51,11 @@ jobs:
 
       - name: Run tests
         run: uv run pytest tests/ -v
+
+      - name: Install Chromium for widget rendering tests
+        if: matrix.python-version == '3.12'
+        run: uv run --with playwright python -m playwright install --with-deps chromium
+
+      - name: Run widget rendering tests
+        if: matrix.python-version == '3.12'
+        run: uv run --with playwright pytest tests/browser -v

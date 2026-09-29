@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Transition Graph no longer raises `Cannot read properties of null (reading 'isHeadless')`
+  during initial rendering when a graph rebuild destroys an instance before its
+  scheduled viewport fit runs. Deferred fit and resize callbacks now check that
+  their graph is still the active, live instance before using it.
 - The [MCP server](https://retentioneering.com/docs/mcp-server)'s `add_transition_graph` and `add_step_matrix` tools once again tell the agent what the tab shows. The tab itself always rendered correctly, but the summary returned alongside it — the only part of the result the agent reads — came back empty (`{"n_events": 0, "top_edges": []}`), with and without `diff`, because it still looked for the widgets' result under a key they had since renamed from `event_groups` to `events`. An agent writing a report was therefore interpreting graphs and step matrices it had never seen. Both summaries read the current keys now. A step matrix with a `path_pattern` has one block per pattern segment, each with its own step axis, and the summary used to cover only the first; it now returns a `blocks` list with one entry per segment, in pattern order. Tests now run both tools on the bundled ecom dataset and fail on an empty summary, so a future rename of these keys breaks the build instead of silently leaving the agent without data
 
 ## [5.2.3] - 2026-09-25

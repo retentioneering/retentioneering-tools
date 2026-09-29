@@ -1,7 +1,6 @@
 [![Rete logo](https://raw.githubusercontent.com/retentioneering/pics/master/pics/logo_long_black.png)](https://github.com/retentioneering/retentioneering-tools)
 [![PyPI version](https://img.shields.io/pypi/v/retentioneering)](https://pypi.org/project/retentioneering/)
 [![Python version](https://img.shields.io/pypi/pyversions/retentioneering)](https://pypi.org/project/retentioneering/)
-[![CI](https://github.com/retentioneering/retentioneering-tools/actions/workflows/ci.yml/badge.svg)](https://github.com/retentioneering/retentioneering-tools/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 [![Downloads](https://static.pepy.tech/badge/retentioneering/month)](https://pepy.tech/project/retentioneering)
 [![Discord](https://img.shields.io/badge/server-on%20discord-blue)](https://discord.com/invite/hBnuQABEV2)
@@ -9,10 +8,8 @@
 
 **A code-first alternative to Amplitude or Mixpanel for user behavior analysis in Python, without uploading your data to a third-party service.**
 
-<a href="https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/notebooks/retentioneering_5_tour.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab" height="32"></a>
-
 <p align="center">
-  <img src=".github/readme/transition-graph.gif" alt="A transition graph: from all user paths at once to the path to purchase, then to what happens after the payment step" width="820">
+  <img src=".github/readme/transition-graph.gif" alt="A transition graph in a notebook: from all user paths to the path to purchase, then a comparison of two periods switched on in the sidebar, and a click on the payment step to see what changed there" width="820">
 </p>
 
 Retentioneering turns a raw event log into interactive maps of how users move through your product. You work in a Jupyter notebook, and the data stays on your machine.
@@ -23,7 +20,7 @@ Retentioneering turns a raw event log into interactive maps of how users move th
 - **[Behavioral clustering](https://retentioneering.com/docs/widgets/cluster-analysis)**: split paths into types of behavior and see what makes each type different.
 - **[AI agents](https://retentioneering.com/docs/agent-skills)**: Claude, Codex and other agents can run the analysis for you and hand back an interactive report.
 
-**Try it without installing anything:** the [tour notebook](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/notebooks/retentioneering_5_tour.ipynb) runs in Google Colab on a bundled demo dataset.
+<a href="https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/notebooks/retentioneering_5_tour.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab" height="22"></a> **Try it without installing anything:** the [tour notebook](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/notebooks/retentioneering_5_tour.ipynb) runs in Google Colab on a bundled demo dataset.
 
 ## Install
 

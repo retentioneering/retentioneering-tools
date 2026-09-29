@@ -162,7 +162,7 @@ There are two ways to hand the work to an agent:
 - **[Agent skills](https://retentioneering.com/docs/agent-skills)**. Point Claude Code, Codex or Cursor at a skill from this repo and it writes and runs Retentioneering code against your files, following a tested workflow: inspect the log, pick a recipe, run it, check the result.
 - **[MCP server](https://retentioneering.com/docs/mcp-server)** (beta). Start it from a notebook with `rete.mcp.serve(stream)`, connect your agent, and ask questions in plain words. The agent builds an interactive HTML report where every number links to the chart it came from, so you can check it instead of taking it on trust.
 
-<img src=".github/readme/agent-report.png" alt="An HTML report written by an agent: charts in tabs on the left, the text on the right, numbers in the text link to the charts" width="720">
+<img src=".github/readme/agent-report.gif" alt="An HTML report written by an agent: clicking a transition in the text opens the chart tab and highlights that edge on the graph" width="760">
 
 Agents that write code with the library can also read the docs directly: they're available as [`llms.txt`](https://retentioneering.com/llms.txt) and through a [documentation MCP server](https://retentioneering.com/docs/mcp-server#documentation-mcp-server).
 

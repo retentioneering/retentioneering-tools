@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-fancy-pypi-readme>=24"]
 build-backend = "hatchling.build"
 
 [project]
@@ -9,7 +9,7 @@ authors = [
   { name = "Retentioneering User Trajectory Analysis Lab", email = "retentioneering@gmail.com" },
 ]
 description = "Open-source Python toolkit, MCP server, and agent skills for reproducible product and quantitative UX analytics on clickstream and event logs: multiscale interactive user-flow graphs, customer journeys and user flow analysis, behavioral segmentation, A/B tests, process mining, and Markov models"
-readme = "README.md"
+dynamic = ["readme"]
 requires-python = ">=3.10"
 license = "Apache-2.0"
 keywords = [
@@ -112,6 +112,23 @@ artifacts = [
     "src/retentioneering/static/*.js",
     "src/retentioneering/static/*.css",
 ]
+
+# PyPI renders the README without the repository around it, so relative image
+# paths and links (which GitHub resolves on any branch) are rewritten to
+# absolute master URLs at build time.
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+content-type = "text/markdown"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "README.md"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = 'src="(?!https?://)([^"]+)"'
+replacement = 'src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/\1"'
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '\]\((?!https?://|#)([^)]+)\)'
+replacement = '](https://github.com/retentioneering/retentioneering-tools/blob/master/\1)'
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/retentioneering"]

@@ -1,33 +1,27 @@
-<p align="center">
-  <a href="https://github.com/retentioneering/retentioneering-tools"><img src="https://raw.githubusercontent.com/retentioneering/pics/master/pics/logo_long_black.png" alt="Retentioneering" width="420"></a>
-</p>
+[![Rete logo](https://raw.githubusercontent.com/retentioneering/pics/master/pics/logo_long_black.png)](https://github.com/retentioneering/retentioneering-tools)
+[![PyPI version](https://img.shields.io/pypi/v/retentioneering)](https://pypi.org/project/retentioneering/)
+[![Python version](https://img.shields.io/pypi/pyversions/retentioneering)](https://pypi.org/project/retentioneering/)
+[![CI](https://github.com/retentioneering/retentioneering-tools/actions/workflows/ci.yml/badge.svg)](https://github.com/retentioneering/retentioneering-tools/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+[![Downloads](https://static.pepy.tech/badge/retentioneering/month)](https://pepy.tech/project/retentioneering)
+[![Discord](https://img.shields.io/badge/server-on%20discord-blue)](https://discord.com/invite/hBnuQABEV2)
+[![Telegram](https://img.shields.io/badge/chat-on%20telegram-blue)](https://t.me/retentioneering_support)
+
+**A code-first alternative to Amplitude or Mixpanel for user behavior analysis in Python, without uploading your data to a third-party service.**
+
+<a href="https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/notebooks/retentioneering_5_tour.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab" height="32"></a>
 
 <p align="center">
-  <b>User behavior analysis in Python.</b><br>
-  Think code-first Amplitude or Mixpanel, without uploading your data to a third-party service.
+  <img src=".github/readme/transition-graph.gif" alt="A transition graph: from all user paths at once to the path to purchase, then to what happens after the payment step" width="820">
 </p>
 
-<p align="center">
-  <a href="https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/notebooks/retentioneering_5_tour.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a>
-  <a href="https://pypi.org/project/retentioneering/"><img src="https://img.shields.io/pypi/v/retentioneering" alt="PyPI version"></a>
-  <a href="https://pypi.org/project/retentioneering/"><img src="https://img.shields.io/pypi/pyversions/retentioneering" alt="Python versions"></a>
-  <a href="https://github.com/retentioneering/retentioneering-tools/actions/workflows/ci.yml"><img src="https://github.com/retentioneering/retentioneering-tools/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="License: Apache 2.0"></a>
-  <a href="https://pepy.tech/project/retentioneering"><img src="https://static.pepy.tech/badge/retentioneering/month" alt="Downloads"></a>
-  <a href="https://discord.com/invite/hBnuQABEV2"><img src="https://img.shields.io/badge/chat-discord-5865F2" alt="Discord"></a>
-</p>
+Retentioneering turns a raw event log into interactive maps of how users move through your product. You work in a Jupyter notebook, and the data stays on your machine.
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/transition-graph.gif" alt="A transition graph: from all user paths at once to the path to purchase, then to what happens after the payment step" width="820">
-</p>
-
-Retentioneering takes a plain event log (who did what, and when) and shows how people actually move through your product: the routes that end in a purchase, the loops, the dead ends, and where two groups of users part ways. You work in a Jupyter notebook, the charts are interactive, and the data stays on your machine.
-
-- **Interactive widgets built for user paths**: transition graph, step matrix, step Sankey, funnel, cluster analysis.
-- **Group comparison**: put two groups of paths side by side and the widgets highlight where their behavior differs.
-- **Path patterns**: a small regex-like language for finding, filtering and slicing sequences of events.
-- **Behavioral clustering**: split paths into types of behavior and see what makes each type different.
-- **AI agents**: Claude, Codex and other agents can run the analysis for you and hand back an interactive report.
+- **[Interactive widgets](https://retentioneering.com/docs/widgets) built for user paths**: [transition graph](https://retentioneering.com/docs/widgets/transition-graph), [step matrix](https://retentioneering.com/docs/widgets/step-matrix), [step Sankey](https://retentioneering.com/docs/widgets/step-sankey), [funnel](https://retentioneering.com/docs/widgets/funnel), [cluster analysis](https://retentioneering.com/docs/widgets/cluster-analysis).
+- **[Group comparison](https://retentioneering.com/docs/widgets#diff-mode)**: put two groups of paths side by side and the widgets highlight where their behavior differs.
+- **[Path patterns](https://retentioneering.com/docs/path-patterns)**: a small regex-like language for finding, filtering and slicing sequences of events.
+- **[Behavioral clustering](https://retentioneering.com/docs/widgets/cluster-analysis)**: split paths into types of behavior and see what makes each type different.
+- **[AI agents](https://retentioneering.com/docs/agent-skills)**: Claude, Codex and other agents can run the analysis for you and hand back an interactive report.
 
 **Try it without installing anything:** the [tour notebook](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/notebooks/retentioneering_5_tour.ipynb) runs in Google Colab on a bundled demo dataset.
 
@@ -37,11 +31,11 @@ Retentioneering takes a plain event log (who did what, and when) and shows how p
 pip install retentioneering
 ```
 
-Python 3.10 to 3.13. Widgets render in Jupyter, JupyterLab, VS Code, Cursor and Google Colab. In a notebook cell, use `%pip install retentioneering`.
+Python 3.10 to 3.13. Widgets render in Jupyter, JupyterLab, VS Code, Cursor and Google Colab. In a notebook cell, use `%pip install retentioneering`. More in the [installation guide](https://retentioneering.com/docs/installation).
 
 ## Quick start
 
-All you need is a table with three columns: a user id, an event name and a timestamp. If your columns are named differently, pass a [schema](https://retentioneering.com/docs/eventstream).
+All you need is a table with three columns: a user id, an event name and a timestamp. If your columns are named differently, pass a [schema](https://retentioneering.com/docs/eventstream#schema).
 
 ```python
 import pandas as pd
@@ -60,7 +54,7 @@ ecom = rete.datasets.load_ecom()
 ecom.funnel(steps=["catalog", "add_to_cart", "purchase"])
 ```
 
-Every data processor returns a new `Eventstream`, so cleaning steps chain and the original stays untouched:
+Every [data processor](https://retentioneering.com/docs/data-processors) returns a new `Eventstream`, so cleaning steps chain and the original stays untouched:
 
 ```python
 clean = (
@@ -71,11 +65,13 @@ clean = (
 )
 ```
 
-And every widget has a headless twin that returns plain data, if you'd rather work with a DataFrame:
+And every widget has a [headless twin](https://retentioneering.com/docs/widgets#headless-mode) that returns plain data, if you'd rather work with a DataFrame:
 
 ```python
 matrix = stream.transition_graph_data(edge_weight="proba_out")  # DataFrame
 ```
+
+The [quick start guide](https://retentioneering.com/docs/quick-start) walks through the rest.
 
 ## What you can do with it
 
@@ -83,22 +79,22 @@ The examples below run on the demo dataset, `stream = rete.datasets.load_ecom()`
 
 ### Find out why a metric moved
 
-Pick the dates when something went wrong, turn them into a segment, and compare those paths with the usual ones. Red edges happen more often during the drop, blue ones less often.
+Pick the dates when something went wrong, turn them into a [segment](https://retentioneering.com/docs/segments), and compare those paths with the usual ones in [diff mode](https://retentioneering.com/docs/widgets#diff-mode). Red edges happen more often during the drop, blue ones less often.
 
 ```python
 drop = stream.add_segment("drop", time_range=("2024-05-19", "2024-06-07"))
 drop.transition_graph(diff=["drop", "inside", "outside"])
 ```
 
-<img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/diff-graph.png" alt="Transition graph in diff mode: during the drop, users go from payment details to a payment error and then to support chat instead of completing the purchase" width="720">
+<img src=".github/readme/diff-graph.png" alt="Transition graph in diff mode: during the drop, users go from payment details to a payment error and then to support chat instead of completing the purchase" width="720">
 
-Here the answer is on the screen: fewer people get from payment details to purchase, and a new route shows up, payment error followed by support chat.
+Here the answer is on the screen: fewer users get from payment details to purchase, and a new route shows up, payment error followed by support chat.
 
-The same comparison works for any two groups. Segments can be columns you already have (country, platform) or something you define on the fly: users who reached checkout and never bought vs. those who did, a user's first week vs. the rest of their life, one acquisition channel vs. all others.
+The same comparison works for any two groups. Segments can be columns you already have (country, platform) or something you define on the fly with [`add_segment`](https://retentioneering.com/docs/data-processors/add-segment): users who reached checkout and never bought vs. those who did, a user's first week vs. the rest of their life, one acquisition channel vs. all others.
 
 ### Look inside A/B test results
 
-A test finishes and the headline metric went up, down or nowhere. The next question is always why, and it comes back after every test you run. Treat the variant as a segment and compare the two groups step by step: which funnel step changed, which detours appeared, what the treatment group does instead of converting.
+A test finishes and the headline metric went up, down or nowhere. The next question is always why, and it comes back after every test you run. Treat the variant as a [segment](https://retentioneering.com/docs/segments) and compare the two groups step by step: which funnel step changed, which detours appeared, what the treatment group does instead of converting.
 
 ```python
 stream = rete.Eventstream(df, {"segment_cols": ["variant"]})
@@ -108,15 +104,15 @@ stream.funnel(steps=["catalog", "add_to_cart", "cart", "shipping_details", "purc
 stream.transition_graph(diff=ab)
 ```
 
-<img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/funnel-diff.png" alt="Funnel widget in diff mode comparing two groups step by step" width="620">
+<img src=".github/readme/funnel-diff.png" alt="Funnel widget in diff mode comparing two groups step by step" width="620">
 
 <sub>The demo dataset has no experiment in it, so the picture compares mobile and desktop. With a real test you'd put the variant column there.</sub>
 
-There's no special A/B test machinery in the library. You get the same graph, funnel and step views, pointed at two groups of users, and you can rerun the same notebook every time a new test ends.
+There's no special A/B test machinery in the library. You get the same [funnel](https://retentioneering.com/docs/widgets/funnel), graph and step views, pointed at two groups of users, and you can rerun the same notebook every time a new test ends.
 
 ### Describe the paths you care about with patterns
 
-Patterns look like regular expressions, with events instead of characters:
+[Path patterns](https://retentioneering.com/docs/path-patterns) look like regular expressions, with events instead of characters:
 
 | Pattern | Matches |
 |---|---|
@@ -124,7 +120,7 @@ Patterns look like regular expressions, with events instead of characters:
 | `cart->[^shipping_details\|support_chat]*->path_end` | opened the cart, then left without starting checkout or asking support |
 | `[search\|catalog]->product_view` | came to a product page from search or from the catalog |
 
-The same syntax works across the library. Filter whole paths:
+The same syntax works across the library. Filter whole paths with [`filter_paths`](https://retentioneering.com/docs/data-processors/filter-paths):
 
 ```python
 abandoned = stream.filter_paths(
@@ -133,7 +129,7 @@ abandoned = stream.filter_paths(
 )
 ```
 
-Cut each path down to the part you're interested in, say from a failed payment to the support chat that followed it:
+Cut each path down to the part you're interested in with [`truncate_paths`](https://retentioneering.com/docs/data-processors/truncate-paths), say from a failed payment to the support chat that followed it:
 
 ```python
 after_error = stream.truncate_paths(
@@ -142,27 +138,25 @@ after_error = stream.truncate_paths(
 )
 ```
 
-Or zoom in on the neighborhood of each funnel step. Step Matrix and Step Sankey show a couple of steps before and after every anchor in the pattern and fold everything in between into a gap:
+Or zoom in on the neighborhood of each funnel step. [Step Matrix](https://retentioneering.com/docs/widgets/step-matrix) and [Step Sankey](https://retentioneering.com/docs/widgets/step-sankey) show a couple of steps before and after every anchor in the pattern and fold everything in between into a gap:
 
 ```python
 stream.step_matrix(path_pattern="shipping_details->.*->payment_details", step_window=2)
 ```
 
-<img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/path-pattern-matrix.png" alt="Step matrix anchored on two funnel events, two steps before and after each" width="620">
-
-The full syntax is on the [Path Patterns](https://retentioneering.com/docs/path-patterns) page.
+<img src=".github/readme/path-pattern-matrix.png" alt="Step matrix anchored on two funnel events, two steps before and after each" width="620">
 
 ### Split users into behavior types
 
-Cluster Analysis groups paths by what people did and shows what sets each group apart. Why did users churn? Cluster their paths and look at what each group actually did before leaving.
+[Cluster Analysis](https://retentioneering.com/docs/widgets/cluster-analysis) groups paths by what users did and shows what sets each group apart. Why did users churn? Cluster their paths and look at what each group actually did before leaving.
 
 ```python
 stream.cluster_analysis(features=[{"metric": "length"}, {"metric": "event_count_bulk"}])
 ```
 
-<img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/cluster-analysis.png" alt="Cluster analysis heatmap: one column per cluster, one row per event, color shows where a cluster stands out" width="520">
+<img src=".github/readme/cluster-analysis.png" alt="Cluster analysis heatmap: one column per cluster, one row per event, color shows where a cluster stands out" width="520">
 
-Once the clusters make sense, `add_clusters` turns them into a segment column, and you can compare them like any other group.
+Clusters are built from [path metrics](https://retentioneering.com/docs/path-metrics). Once they make sense, [`add_clusters`](https://retentioneering.com/docs/data-processors/add-clusters) turns them into a segment column, and you can compare them like any other group.
 
 ### Let an AI agent do the analysis
 
@@ -171,13 +165,13 @@ There are two ways to hand the work to an agent:
 - **[Agent skills](https://retentioneering.com/docs/agent-skills)**. Point Claude Code, Codex or Cursor at a skill from this repo and it writes and runs Retentioneering code against your files, following a tested workflow: inspect the log, pick a recipe, run it, check the result.
 - **[MCP server](https://retentioneering.com/docs/mcp-server)** (beta). Start it from a notebook with `rete.mcp.serve(stream)`, connect your agent, and ask questions in plain words. The agent builds an interactive HTML report where every number links to the chart it came from, so you can check it instead of taking it on trust.
 
-<img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/agent-report.png" alt="An HTML report written by an agent: the text on the left, charts in tabs on the right, numbers in the text link to the charts" width="720">
+<img src=".github/readme/agent-report.png" alt="An HTML report written by an agent: charts in tabs on the left, the text on the right, numbers in the text link to the charts" width="720">
 
 Agents that write code with the library can also read the docs directly: they're available as [`llms.txt`](https://retentioneering.com/llms.txt) and through a [documentation MCP server](https://retentioneering.com/docs/mcp-server#documentation-mcp-server).
 
 ## Documentation
 
-Everything is at **[retentioneering.com/docs](https://retentioneering.com/docs/)**: guides, the full API reference, and live widget demos.
+Everything is at **[retentioneering.com/docs](https://retentioneering.com/docs/)**: guides, the full API reference, [recipes](https://retentioneering.com/docs/recipes) and live widget demos.
 
 Coming from 3.x? Version 5 is a rewrite with a new API. See the [migration guide](https://retentioneering.com/docs/migration-from-3x) and the [changelog](CHANGELOG.md). The old engine is on the [`3.x` branch](https://github.com/retentioneering/retentioneering-tools/tree/3.x).
 
@@ -187,7 +181,7 @@ The analysis runs where your notebook runs. There's no hosted service, and your 
 
 ## Community and contributing
 
-Questions and ideas are welcome on [Discord](https://discord.com/invite/hBnuQABEV2) and in [GitHub issues](https://github.com/retentioneering/retentioneering-tools/issues). There's also a [Telegram chat](https://t.me/retentioneering_support), mostly in Russian.
+Questions and ideas are welcome on [Discord](https://discord.com/invite/hBnuQABEV2), in the [Telegram chat](https://t.me/retentioneering_support) and in [GitHub issues](https://github.com/retentioneering/retentioneering-tools/issues).
 
 We'd love help with anything: bug reports, docs, examples, new widgets, new agent skills, analysis recipes. [CONTRIBUTING.md](CONTRIBUTING.md) explains how to set up the project locally. If you're not sure where to start, look for issues labelled [good first issue](https://github.com/retentioneering/retentioneering-tools/labels/good%20first%20issue). You can also reach us at retentioneering@gmail.com.
 

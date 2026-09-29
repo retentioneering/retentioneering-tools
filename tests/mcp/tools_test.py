@@ -9,7 +9,9 @@ helpers; nothing previously exercised `ReportSession`/tool-function wiring.
 import json
 
 import pandas as pd
+import pytest
 
+from retentioneering.datasets import load_ecom
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.mcp import tools
 from retentioneering.mcp._report_session import ReportSession
@@ -323,3 +325,82 @@ class TestAddWidgetsAndExportReport:
         assert len(result["tabs"]) == 1
         assert result["tabs"][0]["label"] == "Overall Flow"
         assert session.pending_tabs == []
+
+
+@pytest.fixture(scope="module")
+def ecom() -> Eventstream:
+    return load_ecom()
+
+
+class TestWidgetSummaries:
+    """The summary each widget tool returns is the agent's only view of the
+    result — it never sees the rendered tab. These run on the bundled ecom
+    dataset so that renaming a key in a widget's `result` JSON breaks a test
+    instead of silently returning an empty summary."""
+
+    DIFF = ["platform", "mobile", "desktop"]
+
+    @pytest.fixture()
+    def session(self, ecom: Eventstream) -> ReportSession:
+        return ReportSession(ecom, {"events": {"purchase": "Completed purchase"}})
+
+    def test__transition_graph_summary_has_top_edges(
+        self, session: ReportSession
+    ) -> None:
+        result = tools.add_transition_graph(
+            session, label="Flow", path_col="session_id"
+        )
+
+        assert result["n_events"] > 0
+        assert result["top_edges"]
+        edge = result["top_edges"][0]
+        assert {"from", "to", "weight"} <= edge.keys()
+        # The context event is prioritised to the top of the list.
+        assert "purchase" in (edge["from"], edge["to"])
+
+    def test__transition_graph_diff_summary_has_both_directions(
+        self, session: ReportSession
+    ) -> None:
+        result = tools.add_transition_graph(
+            session, label="Flow diff", path_col="session_id", diff=self.DIFF
+        )
+
+        assert result["n_events"] > 0
+        assert result["top_increases"]
+        assert result["top_decreases"]
+        edge = result["top_increases"][0]
+        assert {"from", "to", "diff", "g1", "g2"} <= edge.keys()
+
+    def test__step_matrix_summary_has_steps(self, session: ReportSession) -> None:
+        result = tools.add_step_matrix(session, label="Steps", max_steps=5)
+
+        assert result["n_events"] > 0
+        assert result["steps"] == [0, 1, 2, 3, 4, 5]
+        assert all(result["top_events_per_step"][str(s)] for s in result["steps"])
+        assert "purchase" in result["context_event_rows"]
+
+    def test__step_matrix_diff_summary_has_steps(self, session: ReportSession) -> None:
+        result = tools.add_step_matrix(
+            session, label="Steps diff", max_steps=5, diff=self.DIFF
+        )
+
+        assert result["n_events"] > 0
+        assert result["top_events_per_step"]["1"]
+        assert "g2 − g1" in result["note"]
+
+    @pytest.mark.parametrize("diff", [None, DIFF])
+    def test__step_matrix_path_pattern_summary_has_a_block_per_segment(
+        self, session: ReportSession, diff: list | None
+    ) -> None:
+        result = tools.add_step_matrix(
+            session,
+            label="Checkout tail",
+            path_pattern="payment_details->.*->path_end",
+            diff=diff,
+        )
+
+        assert result["n_events"] > 0
+        assert len(result["blocks"]) == 2
+        for block in result["blocks"]:
+            assert block["steps"]
+            assert any(block["top_events_per_step"].values())

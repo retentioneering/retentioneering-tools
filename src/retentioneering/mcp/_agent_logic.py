@@ -33,7 +33,7 @@ def _transition_graph_summary(
     result_raw: dict, context_events: set, edge_weight: str, top_n: int = 25
 ) -> dict:
     """Compact transition graph summary: top-N edges, context events prioritised."""
-    events = result_raw.get("event_groups", [])
+    events = result_raw.get("events", [])
     values = result_raw.get("values", [])
     is_diff = bool(result_raw.get("group1"))
     n = len(events)
@@ -55,8 +55,8 @@ def _transition_graph_summary(
         # Separate top increases / decreases; enrich with per-group values
         g1 = result_raw.get("group1", {})
         g2 = result_raw.get("group2", {})
-        g1_ev, g1_val = g1.get("event_groups", events), g1.get("values", [])
-        g2_ev, g2_val = g2.get("event_groups", events), g2.get("values", [])
+        g1_ev, g1_val = g1.get("events", events), g1.get("values", [])
+        g2_ev, g2_val = g2.get("events", events), g2.get("values", [])
 
         def _gval(ev_list: list, val_matrix: list, src: str, tgt: str):
             try:
@@ -101,19 +101,49 @@ def _transition_graph_summary(
 def _step_matrix_summary(
     result_raw: dict, context_events: set, top_per_step: int = 5
 ) -> dict:
-    """Compact step matrix: top events per step + full rows for context events."""
+    """Compact step matrix: top events per step + full rows for context events.
+
+    A `path_pattern` yields one matrix block per pattern segment, each with its
+    own step axis; those are summarised as a `blocks` list in pattern order.
+    """
     matrices = result_raw.get("matrices", [])
     if not matrices:
         return {"note": "no data"}
 
-    m = matrices[0]
-    events = m.get("event_groups", [])
+    blocks = [
+        _step_matrix_block_summary(m, context_events, top_per_step) for m in matrices
+    ]
+    blocks = [b for b in blocks if b is not None]
+    if not blocks:
+        return {"n_events": 0}
+
+    result: dict = {"n_events": max(b.pop("n_events") for b in blocks)}
+    if len(blocks) == 1:
+        result.update(blocks[0])
+    else:
+        result["blocks"] = blocks
+    note = f"Top {top_per_step} events per step shown."
+    if len(blocks) > 1:
+        note += (
+            f" {len(blocks)} blocks, one per path_pattern segment in pattern order;"
+            " each block's steps are relative to its own anchor."
+        )
+    if bool(matrices[0].get("group1")):
+        note += " Values are differences (g2 − g1)."
+    result["note"] = note + " Full matrix in tab."
+    return result
+
+
+def _step_matrix_block_summary(
+    m: dict, context_events: set, top_per_step: int
+) -> dict | None:
+    """Summarise one step matrix block; None if it holds no data."""
+    events = m.get("events", [])
     columns = m.get("columns", [])
     values = m.get("values", [])
-    is_diff = bool(m.get("group1"))
 
     if not events or not columns:
-        return {"n_events": 0}
+        return None
 
     by_step: dict = {}
     for ci, col in enumerate(columns):
@@ -136,25 +166,19 @@ def _step_matrix_summary(
             row = {
                 str(col): round(values[ri][ci], 4)
                 for ci, col in enumerate(columns)
-                if ri < len(values)
-                and ci < len(values[ri])
-                and values[ri][ci] is not None
+                if ci < len(values[ri]) and values[ri][ci] is not None
             }
             if row:
                 ctx_rows[ev] = row
 
-    result: dict = {
+    block: dict = {
         "n_events": len(events),
         "steps": columns,
         "top_events_per_step": by_step,
     }
     if ctx_rows:
-        result["context_event_rows"] = ctx_rows
-    note = f"Top {top_per_step} events per step shown."
-    if is_diff:
-        note += " Values are differences (g2 − g1)."
-    result["note"] = note + " Full matrix in tab."
-    return result
+        block["context_event_rows"] = ctx_rows
+    return block
 
 
 def _segment_overview_summary(result_raw: dict, context_events: set) -> dict:

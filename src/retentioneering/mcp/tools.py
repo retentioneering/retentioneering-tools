@@ -344,7 +344,8 @@ def add_step_matrix(
 
     Returns
     -------
-    tab_id, matrices list, event_counts.
+    tab_id, label, and a summary: top events per step (a `blocks` list, one per
+    segment, when path_pattern is set), plus full rows for context events.
 
     local_preprocessors: same as in add_transition_graph.
     """

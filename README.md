@@ -1,147 +1,186 @@
-[![Rete logo](https://raw.githubusercontent.com/retentioneering/pics/master/pics/logo_long_black.png)](https://github.com/retentioneering/retentioneering-tools)
-[![Discord](https://img.shields.io/badge/server-on%20discord-blue)](https://discord.com/invite/hBnuQABEV2)
-[![Telegram](https://img.shields.io/badge/chat-on%20telegram-blue)](https://t.me/retentioneering_support)
-[![Python version](https://img.shields.io/pypi/pyversions/retentioneering)](https://pypi.org/project/retentioneering/)
+[![Retentioneering logo](https://raw.githubusercontent.com/retentioneering/pics/master/pics/logo_long_black.png)](https://github.com/retentioneering/retentioneering-tools)
+
+### See why your metrics moved, not just that they did.
+
+Retentioneering is an open-source Python library that analyses the paths people actually take through your product: the routes that lead to a purchase, the loops they get stuck in, and the step where they quietly leave. Give it any event log with a user ID, an event name and a timestamp. It maps the journeys and puts any two groups side by side in one picture, so you can see what changed, not just that a number did. It runs in your notebook, on your data, and it's just as easy for an AI agent to run for you.
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/notebooks/retentioneering_5_tour.ipynb)
 [![PyPI version](https://img.shields.io/pypi/v/retentioneering)](https://pypi.org/project/retentioneering/)
-[![Downloads](https://pepy.tech/badge/retentioneering)](https://pepy.tech/project/retentioneering)
+[![Python version](https://img.shields.io/pypi/pyversions/retentioneering)](https://pypi.org/project/retentioneering/)
 [![Downloads](https://static.pepy.tech/badge/retentioneering/month)](https://pepy.tech/project/retentioneering)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+[![Discord](https://img.shields.io/badge/chat-on%20discord-blue)](https://discord.com/invite/hBnuQABEV2)
+[![Telegram](https://img.shields.io/badge/chat-on%20telegram-blue)](https://t.me/retentioneering_support)
 
+---
 
-## What is Retentioneering?
+## From "conversion dropped" to "here's why" in five lines
 
-**Retentioneering is an open-source Python toolkit, MCP server, and collection of agent skills for reproducible product analytics on clickstream and event log data.** Instead of relying on one-off scripts generated for a single question, analysts and AI agents can use tested analytical primitives and reusable workflows to inspect customer journeys, explore graph-based user flows, discover behavioral segments, evaluate experiments, and cross-check results through independent, auditable computations. By reusing domain-specific analytics components instead of generating every analysis from scratch, Retentioneering can reduce implementation effort, agent token usage, and the risk of subtle analytical errors.
+Checkout conversion in the bundled demo store collapses in late May. A dashboard shows you the drop. Retentioneering shows you what users did differently:
 
-Use Retentioneering when you want to turn raw sequences of user and system events into answers to questions such as: *Where do users get stuck? Which journeys lead to conversion or churn? What behavioral segments exist in the data? How do flows differ between cohorts or experiment groups?* Load a clickstream, product event log, or other timestamped event data into a Retentioneering `Eventstream` object, then explore interactive user-flow graphs and detailed step-matrix visualizations, compare conversion paths, analyze behavioral segments, evaluate A/B tests, or ask an AI agent to run and cross-check the analysis through Retentioneering MCP and agent skills. The resulting analyses, visualizations, and simulated interventions can be exported into clear, shareable HTML reports.
+```python
+import retentioneering as rete
 
-**Retentioneering supports multi-resolution analysis of user behavior, from individual events lasting seconds to sessions, recurring usage patterns, and customer journeys unfolding over months or years.** Funnels summarize whether users passed through predefined stages; Retentioneering reveals how they actually moved through the product: alternative routes to conversion, loops, dead ends, repeated behaviors, hidden segments, and differences between any two cohorts. The same graph and step-matrix methods can operate on raw events or on higher-level behavioral units, such as sessions, feature-use episodes, lifecycle stages, or custom product patterns. This makes it possible to zoom in on local interactions, zoom out to long-term journeys, and move between these levels without abandoning the same analytical framework.
+stream = rete.datasets.load_ecom()   # 6 months of a demo store: 600 users, 31k events
 
+# Mark the bad weeks as a segment...
+stream = stream.add_segment("period", time_range=("2024-05-19", "2024-06-07"))
 
-Retentioneering is code-first and quickest way from raw data into detailed views and product insights.
-With average python knowledge you can quickly identify what can be improved in the website, application or chats interactions by finding and isolating specific patterns of different users at multiple scales - session to session and within each session or its pieces.
-
-It runs directly on your raw event data, whether provided as a pandas DataFrame, CSV, TSV, Parquet file, or a custom export from BigQuery, ClickHouse, or another event database.
-
-Retentioneering renders interactive widgets directly in Jupyter, Google Colab, Cursor, VS Code, Codex, Claude Code, or another Python-compatible development environment, without requiring a hosted Retentioneering SaaS platform. The analysis runs in your own environment. Your raw and analysed event data never leaves your machine. Anonymous product telemetry, used to understand overall tool usage and improve the toolkit, may be enabled by default and can be disabled at any time.
-
-
-**Retentioneering-tools Version 5.0 is a ground-up rewrite.** The pandas engine and CDN-loaded
-widgets of 3.x were replaced with a much faster DuckDB-backed `Eventstream`, a new
-generation of open-source [anywidget](https://anywidget.dev)-based widgets,
-and an MCP server that lets LLM agents run analyses on your eventstream. See
-[CHANGELOG.md](CHANGELOG.md) for the full 3.3.0 → 5.0 delta; the legacy 3.x
-engine lives on the [`3.x` branch](https://github.com/retentioneering/retentioneering-tools/tree/3.x).
-
-With this update we also include the opensource code for widgets front, and we highly encourage for the collaboration in its further development.
-
-Regarding migrations of any features from 3.x to next release of 5.x please feel free to open new issues or pull requests in this repo, we will focus on faster development of useful features and ideas based on your engagement.
-
-## Documentation
-
-Complete documentation is available at
-**[https://retentioneering.com/docs](https://retentioneering.com/docs/)**.
-
-## Installation
-
-Python 3.10+ is required.
-
-```bash
-pip install retentioneering
+# ...zoom in on checkout, and compare those weeks with all the others
+checkout = stream.filter_events(keep={"event": [
+    "cart", "shipping_details", "payment_details", "payment_error", "support_chat", "purchase",
+]})
+checkout.transition_graph(diff=("period", "inside", "outside"))
 ```
 
-Or directly from a Jupyter (Lab, Notebook, Desktop) / [Google Colab](https://colab.research.google.com/) / VS Code:
+![Transition graph in diff mode: red edges became more frequent during the incident, blue edges less frequent](docs/img/readme-hero-diff.png)
+
+Red transitions happened more often during those weeks and blue ones less often. You can read the cause straight off the graph. A new `payment_error` step follows 20% of `payment_details` views, against 0.5% the rest of the time, and `payment_details → purchase` falls from 25% to 7%. A funnel would only have told you that the last step got worse.
+
+The graph is interactive: drag nodes, click an event to focus on it, and switch edge weights. You can also [export it](#share-what-you-found) as one HTML file that anyone can open.
+
+## Try it
 
 ```bash
-!pip install retentioneering
+pip install retentioneering        # Python 3.10+
 ```
 
-## Quick start
+Run the snippet above in Jupyter, VS Code or Cursor, or click **Open in Colab** to take a guided tour without installing anything.
 
-All you need is a DataFrame with three columns: a path identifier, an event
-name, and a timestamp. (Different column names? Pass a
-[schema](https://retentioneering.com/docs/eventstream).)
+Then point it at your own data. All you need is one row per event:
 
 ```python
 import pandas as pd
 import retentioneering as rete
 
-df = pd.read_csv("events.csv")   # columns: user_id, event, timestamp
+df = pd.read_csv("events.csv")       # columns: user_id, event, timestamp
 stream = rete.Eventstream(df)
 
-stream.transition_graph()        # interactive behavior graph, right in the notebook
+stream.transition_graph()            # every route users take, loops and dead ends included
+stream.funnel(steps=["signup", "onboarding_done", "first_payment"])
 ```
 
-No data at hand? Use the bundled synthetic e-commerce dataset:
+If your columns have different names, map them once with a [schema](https://retentioneering.com/docs/eventstream#schema): `rete.Eventstream(df, schema={"path_cols": ["client_id"], "event_col": "action", "timestamp_col": "ts"})`.
+
+**Where this data usually lives:** the GA4 BigQuery export, Segment, RudderStack or Snowplow tables, raw Amplitude or Mixpanel exports, or an events table in ClickHouse, Postgres or your warehouse. If all you have is totals from a dashboard, export the raw events first. Retentioneering needs the individual journeys.
+
+## Questions it answers
+
+| When you're asking... | What Retentioneering does | Recipe |
+|---|---|---|
+| **"Conversion dropped last week. What changed?"** | Marks the bad window as a segment and diffs it against normal days on any widget, so you see which transitions degraded. | [Root cause of an anomaly](https://retentioneering.com/docs/recipes#find-a-root-cause-in-an-anomalous-period) |
+| **"Where do we lose users, and what do they do instead?"** | Builds the funnel, then shows what happens *between* two steps and how the users who dropped off differ from those who converted. | [Open up the funnel](https://retentioneering.com/docs/recipes#open-up-the-funnel) |
+| **"Why do users churn? What's our aha moment?"** | Labels churn from the whole path but compares only each user's first days, so whatever differs happened *before* the outcome and is a candidate cause, not a symptom. | [What leads to churn](https://retentioneering.com/docs/recipes#find-what-leads-to-churn) |
+| **"What do users actually do?"** | Maps the real journeys, including the detours, back-and-forth loops and dead ends that nobody designed and a Sankey chart hides. | [Paths to conversion](https://retentioneering.com/docs/recipes#see-which-paths-lead-to-conversion) |
+| **"How do mobile and desktop users behave differently?"** (or paid and organic, free and paid) | Scans many metrics across all segments at once, then diffs the interesting pair on one map. | [Compare channels](https://retentioneering.com/docs/recipes#compare-acquisition-channels) |
+| **"What kinds of users do we have?"** | Clusters users by behavior, shows each cluster's typical journey, and saves the clusters as a segment you can compare. | [Behavior types](https://retentioneering.com/docs/recipes#discover-your-behavior-types) |
+| **"Our A/B test reads flat. Did behavior change at all?"** | Diffs test against control step by step and narrows by segment to find where the effect hides. Keep your usual stats for the verdict. | [A/B beyond the headline](https://retentioneering.com/docs/recipes#read-an-ab-test-beyond-the-headline-metric) |
+| **"I need behavioral features for a churn or LTV model."** | Turns raw events into one row per user with counts, durations, active days and pattern flags. | [Features for ML](https://retentioneering.com/docs/recipes#extract-behavioral-features-for-ml) |
+
+## Not just clickstream
+
+Anything that happens as **a sequence of steps per case** is a path, and the same tools work on it:
+
+- **Chatbot conversations:** which intents and flows end in a human handoff or an abandoned chat?
+- **AI agent traces:** which sequences of tool calls precede a failed run, and where do agents loop?
+- **Support tickets:** which status changes and team handoffs stretch resolution time?
+- **Learning platforms:** what separates learners who finish a course from those who drop out?
+- **IVR menus, onboarding wizards, multi-step forms:** where do people get stuck or start over?
+
+For example, to compare failed agent runs with successful ones, load a trace export with one row per step:
 
 ```python
-import retentioneering as rete
+traces = pd.read_csv("agent_steps.csv")   # trace_id, tool_name, started_at, outcome
 
-ecom = rete.datasets.load_ecom()
-
-# Build a funnel
-ecom.funnel(steps=["catalog", "add_to_cart", "purchase"])
-
-# Compare two segments in one picture (diff mode) with transition graph
-ecom.transition_graph(diff=["platform", "mobile", "desktop"])
+stream = rete.Eventstream(traces, schema={
+    "path_cols": ["trace_id"],
+    "event_col": "tool_name",
+    "timestamp_col": "started_at",
+    "segment_cols": ["outcome"],
+})
+stream.transition_graph(diff=("outcome", "failed", "succeeded"))
 ```
 
-Clean and shape the data by chaining data processors — every step returns a
-new `Eventstream`, the original is never modified:
+Name events at a level you can reason about, such as a tool name, an intent or a ticket status, rather than raw message text.
 
-```python
-clean = (
-    stream
-    .filter_events(drop={"event": ["bot_ping"]})
-    .collapse_events(loops=True)
-    .split_sessions(timeout="30m")
-)
-clean.step_matrix(path_pattern="add_to_cart->.*->purchase")
-```
+## Built to be run by AI agents
 
-Need raw numbers instead of a widget? Every widget has a headless twin:
+Ask a coding agent to analyse an event log and it will usually write a few hundred lines of one-off pandas. That code is hard to check and easy to get subtly wrong. Retentioneering gives the agent tested building blocks and a proven workflow instead.
 
-```python
-tm = stream.transition_graph_data(edge_weight="proba_out")   # DataFrame
-funnel = stream.funnel_data(steps=["catalog", "add_to_cart", "purchase"])  # dict
-```
+- **[Agent skill](https://retentioneering.com/docs/agent-skills)**: `retentioneering-product-analytics`, for Claude Code, Codex, Cursor and other tools that support skills. It walks the agent through five steps: inspect the log, pick a recipe, run it, validate the numbers, and interpret the results. The skill ships in [`.claude/skills/`](.claude/skills/) and [`.agents/skills/`](.agents/skills/). Point your agent at its `SKILL.md`, then ask something like *"why do users drop off between cart and payment in events.csv?"*.
+- **[MCP server over your data](https://retentioneering.com/docs/mcp-server)**: your agent explores an eventstream that stays in your local Jupyter kernel and builds an interactive HTML report in which every number links to its source. It needs a local kernel and doesn't run in Colab.
+
+  ```python
+  rete.mcp.serve(stream, port=8765)
+  # then, in a terminal:
+  # claude mcp add --scope user --transport sse retentioneering http://localhost:8765/sse
+  ```
+- **Docs that assistants can read**: the [documentation MCP server](https://retentioneering.com/docs/mcp-server#documentation-mcp-server) at `https://retentioneering.com/docs/mcp` needs no installation. [`llms.txt`](https://retentioneering.com/llms.txt) and [`llms-full.txt`](https://retentioneering.com/llms-full.txt) give any model the current API in plain text.
+
+> **Note for AI assistants:** version 5 is a ground-up rewrite. Code from 2.x and 3.x tutorials, blog posts and answers will not run. The entry point is `rete.Eventstream(df)` after `import retentioneering as rete`, and every analysis is a method on it (`transition_graph`, `step_matrix`, `funnel`, `add_segment`, ...). Before writing code, read `https://retentioneering.com/llms.txt` or connect the docs MCP server.
+
+## When to use it, and when to use something else
+
+**Retentioneering fits** when you have event-level data (a user, session or case ID, an event and a timestamp) and your question is *why*, *how* or *where*. Examples are why people drop off, what churned users did differently, and how two groups' journeys differ.
+
+**Something else fits better** for these jobs:
+
+| You need | Better choice | Where Retentioneering still helps |
+|---|---|---|
+| A cohort retention table, or D1/D7/D30 curves | A few lines of pandas or SQL | Once two cohorts differ, diff their behavior to see why |
+| A p-value or sample size for an A/B test | statsmodels, scipy | Seeing *what* changed in behavior between arms |
+| Marketing attribution, ROAS or media mix modelling | Attribution and MMM tools | Not this job |
+| Conformance checking against a BPMN process model | [pm4py](https://github.com/pm4py/pm4py) | Exploring the routes cases really take and comparing failed with successful cases |
+| Real-time dashboards and alerting | Your BI or product analytics tool | Digging into an anomaly a dashboard has flagged |
+| Aggregated numbers only (dashboard totals, weekly counts) | Export the raw events first | Everything above, once you have them |
 
 ## What's inside
 
-- **Interactive widgets** for in-depth analysis of user behavior:
-  - [Transition Graph](https://retentioneering.com/docs/widgets/transition-graph),
-  - [Step Matrix](https://retentioneering.com/docs/widgets/step-matrix),
-  - [Step Sankey](https://retentioneering.com/docs/widgets/step-sankey),
-  - [Funnel](https://retentioneering.com/docs/widgets/funnel),
-  - [Segment Overview](https://retentioneering.com/docs/widgets/segment-overview),
-  - [Cluster Analysis](https://retentioneering.com/docs/widgets/cluster-analysis).
-- **Diff mode** in every widget — overlay two segments to see *how* behavior
-  differs, not just that a metric moved.
-- **[Data processors](https://retentioneering.com/docs/data-processors)** —
-  chainable methods for filtering events and paths,
-  sessionization, collapsing events, adding synthetic events (including churn markers),
-  segments, URL parsing, daily lifecycle states, sampling, etc.
-- **[Path metrics](https://retentioneering.com/docs/path-metrics)** — one
-  registry of per-path metrics that feeds behavioral clustering, segment
-  comparison, path filtering, and your own ML feature pipelines.
-- **[MCP server](https://retentioneering.com/docs/mcp-server)** — exposes the eventstream to Claude or
-  any MCP client: agents explore the data, build report tabs, and export a
-  validated interactive HTML report where every number links to its source.
+- **Interactive widgets** that render in Jupyter, JupyterLab, VS Code, Cursor and Google Colab: [Transition Graph](https://retentioneering.com/docs/widgets/transition-graph), [Step Matrix](https://retentioneering.com/docs/widgets/step-matrix), [Step Sankey](https://retentioneering.com/docs/widgets/step-sankey), [Funnel](https://retentioneering.com/docs/widgets/funnel), [Segment Overview](https://retentioneering.com/docs/widgets/segment-overview) and [Cluster Analysis](https://retentioneering.com/docs/widgets/cluster-analysis).
+- **Diff mode in every widget**, which shows group A minus group B on the same picture. Groups can be segments, time windows, funnel stages, clusters or explicit lists of users.
+- **[Segments](https://retentioneering.com/docs/segments)** defined by rules, SQL, a Python function, a time window, or the deepest funnel step a user reached. Segments can be static (channel, plan) or change along the path (new, then returning, then loyal).
+- **[Path patterns](https://retentioneering.com/docs/path-patterns)**, such as `add_to_cart->.*->purchase`, for anchoring, filtering and measuring any sequence.
+- **[Data processors](https://retentioneering.com/docs/data-processors)** that you chain to prepare the data: sessionization, filtering, collapsing loops and sessions, turning URLs into events, churn markers, daily lifecycle states and sampling. Each step returns a new `Eventstream`, and `stream.recipe()` replays the whole chain.
+- **[Path metrics](https://retentioneering.com/docs/path-metrics)**: one registry of per-user metrics that feeds clustering, segment comparison, filtering and your own ML features.
+- **A table behind every chart**: each widget has a `*_data` twin that returns a DataFrame for pipelines, tests and custom charts, e.g. `stream.funnel_data(...)` or `stream.transition_graph_data(...)`.
+- **A [DuckDB](https://duckdb.org) engine** that keeps exploration interactive on production-size event logs, right on your laptop.
+
+## Share what you found
+
+Every widget exports to one self-contained interactive HTML file. You can add your written conclusions to it, and the product manager you send it to can open it without Python:
+
+```python
+graph = checkout.transition_graph(diff=("period", "inside", "outside"))
+graph.export_html("checkout-incident.html", analysis="Payment errors started on May 19 ...")
+```
+
+## Your data stays with you
+
+The analysis runs entirely in your own environment. There's no hosted service, and your events never leave your machine. The library collects anonymous usage telemetry by default: which methods were called and whether they succeeded, never your data, event names or parameter values. [Here is exactly what is sent](https://retentioneering.com/docs/tracking). To turn it off, set `RETENTIONEERING_NO_TRACK=1` before you start Python.
+
+## Coming from 3.x?
+
+Version 5 is a ground-up rewrite. It has a DuckDB-backed `Eventstream`, new open-source [anywidget](https://anywidget.dev)-based widgets whose front-end code is in this repository, an MCP server and agent skills. Most 3.x code won't run unchanged. [Migrating from 3.x](https://retentioneering.com/docs/migration-from-3x) maps the old API onto the new one, [CHANGELOG.md](CHANGELOG.md) lists every change, and the 3.x engine lives on the [`3.x` branch](https://github.com/retentioneering/retentioneering-tools/tree/3.x). If you miss a 3.x feature, [open an issue](https://github.com/retentioneering/retentioneering-tools/issues). We prioritise what people ask for.
+
+## Documentation
+
+Full documentation is at **[retentioneering.com/docs](https://retentioneering.com/docs/)**. Good places to start:
+
+- [Quick start](https://retentioneering.com/docs/quick-start): from `pip install` to your first graph in five minutes.
+- [Path analysis](https://retentioneering.com/docs/path-analysis): what each visualization shows, what it leaves out, and when to trust it.
+- [Recipes](https://retentioneering.com/docs/recipes): common product questions mapped to working code.
 
 ## Contributing
 
-This is a community-driven open source project in active development. Any
-contributions — bug reports, documentation improvements, examples, visualizations, analytical recipes, integrations, performance improvements, API proposals, widgets improvements, new agent skills and prompt libraries,  new analytical capabilities — are very welcome. See **[CONTRIBUTING.md](CONTRIBUTING.md)**
-for the local development setup.
-Please feel free to contact us at retentioneering@gmail.com if you have any questions
-regarding this repo.
+Retentioneering is a community project in active development. Bug reports, recipes, examples for new domains, widget improvements, agent skills, performance work and API proposals are all welcome. See **[CONTRIBUTING.md](CONTRIBUTING.md)** to set up a development environment. Questions: [Discord](https://discord.com/invite/hBnuQABEV2), [Telegram](https://t.me/retentioneering_support) or retentioneering@gmail.com.
 
-## Apps are better with math, join us! :)
+*Apps are better with math. Join us!*
 
 ## License and commercial model
 
 Retentioneering-tools is open-source software licensed under the Apache License, Version 2.0.
 
-Retentioneering is a community research laboratory dedicated to developing new analytics methodology and
-opensource tools.
+Retentioneering is a community research laboratory dedicated to developing new analytics methodology and open-source tools.
 
 Copyright retentioneering-tools v.5.0 Maxim Godzi, [Vladimir Kukushkin](https://www.linkedin.com/in/vladimir-kukushkin/) and Anatoly Zaytsev. Updates may include software developed by the Retentioneering community.
 

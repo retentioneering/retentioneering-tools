@@ -9,8 +9,8 @@ Retentioneering is an open-source Python library for **understanding user behavi
 [![Discord](https://img.shields.io/badge/chat-Discord-5865F2)](https://discord.com/invite/hBnuQABEV2)
 [![Telegram](https://img.shields.io/badge/chat-Telegram-26A5E4)](https://t.me/retentioneering_support)
 
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/docs/readme-discovery/notebooks/readme_quickstart.ipynb)
-**[Try the guided quick start](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/docs/readme-discovery/notebooks/readme_quickstart.ipynb)** — sample data included, no local setup.
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/316641f996a8283a234951d32345c21e30ba8fe9/notebooks/readme_quickstart.ipynb)
+**[Try the guided quick start](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/316641f996a8283a234951d32345c21e30ba8fe9/notebooks/readme_quickstart.ipynb)** — sample data included, no local setup.
 
 [Run Python](#try-it-in-python) · [Find your question](#what-would-you-like-to-understand) · [Use an AI agent](#work-with-an-ai-agent) · [Docs](https://retentioneering.com/docs/)
 
@@ -50,7 +50,7 @@ stream.transition_graph(path_col="session_id")
 
 **Click an event to focus on its connections.** Open the settings panel to change the view. Each path here is one session; switch to `path_col="user_id"` to explore a user's history across visits.
 
-For a guided walkthrough, **[open the tour in Colab](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/notebooks/retentioneering_5_tour.ipynb)**. It includes the highlighted route shown in the GIF.
+For a guided walkthrough, **[open the tour in Colab](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/316641f996a8283a234951d32345c21e30ba8fe9/notebooks/retentioneering_5_tour.ipynb)**. It includes the highlighted route shown in the GIF.
 
 ## What would you like to understand?
 
@@ -249,7 +249,7 @@ Choose consistent IDs and a reliable event order. Declare session IDs as an addi
 
 A path can also be an **agent run, support ticket or learning session**. Name its steps at a useful level—tool calls, intents, status changes—and compare outcomes with the same methods.
 
-**Try a complete agent-run example:** [open in Colab](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/docs/readme-discovery/notebooks/agent_path_analysis.ipynb) or [view the notebook](notebooks/agent_path_analysis.ipynb). It includes synthetic runs that succeed directly, recover after an error, or end after repeated retries. Inspect the graph, count complete retry patterns, and compare the tables behind the chart.
+**Try a complete agent-run example:** [open in Colab](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/316641f996a8283a234951d32345c21e30ba8fe9/notebooks/agent_path_analysis.ipynb) or [view the notebook](notebooks/agent_path_analysis.ipynb). It includes synthetic runs that succeed directly, recover after an error, or end after repeated retries. Inspect the graph, count complete retry patterns, and compare the tables behind the chart.
 
 The input is deliberately simple:
 

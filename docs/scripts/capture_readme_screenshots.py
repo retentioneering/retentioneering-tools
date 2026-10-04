@@ -90,8 +90,12 @@ def capture():
             "abandoned-sankey",
             "visit-graph",
         ):
+            # A narrower frame enlarges text in the README, but graphs fit their
+            # whole layout into it (shrinking labels) and wide Sankeys overflow.
+            narrow = name in ("funnel", "error-sankey")
             page = browser.new_page(
-                viewport={"width": 820, "height": 760}, device_scale_factor=2
+                viewport={"width": 600 if narrow else 820, "height": 760},
+                device_scale_factor=3 if narrow else 2,
             )
             page.goto((BUILD / f"{name}.html").as_uri())
             page.wait_for_function(

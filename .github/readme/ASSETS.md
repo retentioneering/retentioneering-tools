@@ -11,7 +11,7 @@ a real business outcome.
 Their PNG companions are the final frames, provided for readers who prefer a
 static view. The graph recording is 13.38 seconds long. It demonstrates a saved
 path view, comparison settings and node focus; the
-[existing tour](../../notebooks/retentioneering_5_tour.ipynb) covers this workflow.
+[tour notebook](../../notebooks/retentioneering_5_tour.ipynb) opens on the same saved view.
 
 The preserved graph clip uses baseline minus incident in its sidebar, while the
 new README comparison example uses incident minus baseline. The sign and color

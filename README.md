@@ -8,9 +8,9 @@ Retentioneering is an open-source Python library for **understanding user behavi
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Discord](https://img.shields.io/badge/chat-Discord-5865F2)](https://discord.com/invite/hBnuQABEV2)
 [![Telegram](https://img.shields.io/badge/chat-Telegram-26A5E4)](https://t.me/retentioneering_support)
-[![Try in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/316641f996a8283a234951d32345c21e30ba8fe9/notebooks/retentioneering_5_tour.ipynb)
+[![Try in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/e95d44cda4cc5ac29f148b47470c31b08a240854/notebooks/retentioneering_5_tour.ipynb)
 
-**[Run every example below in Google Colab](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/316641f996a8283a234951d32345c21e30ba8fe9/notebooks/retentioneering_5_tour.ipynb)** – sample data included, nothing to install.
+**[Run every example below in Google Colab](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/e95d44cda4cc5ac29f148b47470c31b08a240854/notebooks/retentioneering_5_tour.ipynb)** – sample data included, nothing to install.
 
 [Quick start](#quick-start) · [Use cases](#common-use-cases) · [Use an AI agent](#work-with-an-ai-agent) · [Docs](https://retentioneering.com/docs/)
 
@@ -257,7 +257,7 @@ stream = rete.Eventstream(ga4, schema={
 
 ## Explore agent runs, conversations and other event sequences
 
-A path doesn't have to be a user journey. Treat each agent run as a path and its internal steps – tool calls, retries, errors, validations – as events, then use the same tools to see where runs loop, recover or fail, and how successful runs differ from failed ones. See the [agent-run example notebook](notebooks/agent_path_analysis.ipynb) ([open in Colab](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/316641f996a8283a234951d32345c21e30ba8fe9/notebooks/agent_path_analysis.ipynb)) for a synthetic walkthrough.
+A path doesn't have to be a user journey. Treat each agent run as a path and its internal steps – tool calls, retries, errors, validations – as events, then use the same tools to see where runs loop, recover or fail, and how successful runs differ from failed ones. See the [agent-run example notebook](notebooks/agent_path_analysis.ipynb) ([open in Colab](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/e95d44cda4cc5ac29f148b47470c31b08a240854/notebooks/agent_path_analysis.ipynb)) for a synthetic walkthrough.
 
 [![Paths of synthetic agent runs, comparing failed runs with successful ones. Red emphasizes the repeated tool:error and retry cycle.](.github/readme/agent-paths.png)](notebooks/agent_path_analysis.ipynb)
 

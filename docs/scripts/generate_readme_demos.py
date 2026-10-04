@@ -33,11 +33,10 @@ def main():
     clusters = stream.cluster_analysis(
         features=[{"metric": "event_count_bulk"}],
         method_args={"n_clusters": "3-5"},
-        path_col="session_id",
         sidebar_open=False,
         height=680,
     )
-    clusters.export_html(out / "cluster-analysis.html", title="Session behavior types")
+    clusters.export_html(out / "cluster-analysis.html", title="User behavior types")
     # Execute the maintained, self-contained notebook rather than duplicating its fixture.
     notebook = out.parents[2] / "notebooks" / "agent_path_analysis.ipynb"
     cells = json.loads(notebook.read_text())["cells"]

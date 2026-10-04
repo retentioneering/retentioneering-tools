@@ -31,7 +31,7 @@ Use the links to inspect evidence, then validate the analytical conclusion.
   session may contain a purchase outside that ordered funnel; it is not a
   blanket non-buyer label.
 - `cluster-analysis.gif` / `.png`: event-count features, candidate cluster counts
-  3–5, session grain. The GIF switches between the overview and silhouette tabs.
+  3–5, user grain. The GIF switches between the overview and silhouette tabs.
   Recomputing features, selecting another partition and saving clusters require
   the live notebook. The metric column is widened through the widget's resize
   handle so labels remain readable.
@@ -39,6 +39,13 @@ Use the links to inspect evidence, then validate the analytical conclusion.
   [agent_path_analysis.ipynb](../../notebooks/agent_path_analysis.ipynb). It uses
   average transitions per run, failed minus succeeded. The data includes six
   failed and ten successful runs; complete retry patterns are checked separately.
+- `kpi-diff.png`, `funnel.png`, `error-sankey.png`, `abandoned-sankey.png`,
+  `visit-graph.png`: static screenshots for the use-case blocks of the README,
+  produced by the code shown in each block. `kpi-diff.png` focuses the
+  `payment_details` node through the graph's search, as the README suggests.
+  `visit-graph.png` names the four session clusters by their event profile
+  (`browsing`, `quick_visit`, `purchase_visit`, `promo_visit`); KMeans uses a
+  fixed seed, so the numbering is stable for a given scikit-learn version.
 
 The matrix and cluster animations hold actual browser states for two seconds per
 frame. No chart values are drawn or edited by hand. Their static PNGs show the
@@ -66,6 +73,13 @@ The recorder also accepts `PLAYWRIGHT_PACKAGE` (module path), `CHROME_PATH`
 (browser executable) and `FFMPEG` (executable path). Exports, captured frames and
 browser-check results are written to `docs/build/readme/`; final media goes here.
 The recorder fails on browser errors or unexpected external requests.
+
+The use-case screenshots come from a separate Python script (Playwright for
+Python; set `CHROME_PATH` to use an installed Chrome):
+
+```bash
+RETENTIONEERING_NO_TRACK=1 uv run --with playwright python docs/scripts/capture_readme_screenshots.py
+```
 
 To regenerate the two preserved PNG posters with Pillow:
 

@@ -10,22 +10,22 @@ Retentioneering is an open-source Python library for **understanding user behavi
 [![Telegram](https://img.shields.io/badge/chat-Telegram-26A5E4)](https://t.me/retentioneering_support)
 [![Try in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/e95d44cda4cc5ac29f148b47470c31b08a240854/notebooks/retentioneering_5_tour.ipynb)
 
-**[Run every example below in Google Colab](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/e95d44cda4cc5ac29f148b47470c31b08a240854/notebooks/retentioneering_5_tour.ipynb)** – sample data included, nothing to install.
+[Run a demo notebook in Google Colab](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/e95d44cda4cc5ac29f148b47470c31b08a240854/notebooks/retentioneering_5_tour.ipynb) – no need to install the library locally, sample data included.
 
 [Quick start](#quick-start) · [Use cases](#common-use-cases) · [Use an AI agent](#work-with-an-ai-agent) · [Docs](https://retentioneering.com/docs/)
 
-<a href="https://retentioneering.com/docs/widgets/transition-graph"><img src=".github/readme/transition-graph.gif" width="820" alt="Interactive graph of a synthetic store: highlight the path to purchase, compare two periods in the settings panel, then click the payment step to focus on its connections."></a>
+<a href="https://retentioneering.com/docs/widgets/transition-graph"><img src=".github/readme/transition-graph.gif" width="820" alt="Interactive graph of a synthetic store: highlight the path to purchase, go back to the full graph, compare two periods in the settings panel, click the payment step to focus on its connections, then open its ego view and follow the paths from step to step."></a>
 
 *A demo of the interactive features of the [transition graph](https://retentioneering.com/docs/widgets/transition-graph) widget. You can highlight a route, compare path groups, focus on the step you want to investigate.*
 
 ## Is it for you?
 
-Use Retentioneering when you have a question about **the sequence of actions** like these:
+Use Retentioneering when you have a question about *the sequence of actions* like these:
 
-- **A metric changed.** Where did journeys change and move the metric?
-- **Users stop before reaching a goal.** What do they do instead and how do successful paths differ?
-- **You want to understand engagement.** What behavior types are represented, and how does usage evolve across visits?
-- **You need to investigate a flow.** Where do checkout, onboarding, support or agent runs loop, branch or stall?
+- A metric changed. Where did journeys change and move the metric?
+- Users stop before reaching a goal. What do they do instead and how do successful paths differ?
+- You want to understand engagement. What behavior types are represented, and how does usage evolve across visits?
+- You need to investigate a flow. Where do checkout, onboarding, support or agent runs loop, branch or stall?
 
 Bring an event-level export from your analytics platform, warehouse or application logs. All you need is a **user, session or case ID; an event name; and a timestamp**.
 

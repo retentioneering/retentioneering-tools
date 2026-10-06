@@ -6,14 +6,23 @@ a real business outcome.
 
 ## Preserved recordings
 
-`transition-graph.gif` and `agent-report.gif` are copied unchanged from
+`agent-report.gif` is copied unchanged from
 [`docs/readme-refresh` at e0c572b](https://github.com/retentioneering/retentioneering-tools/tree/e0c572b800312884de9b9a243d0f1663a1a37c56/.github/readme).
+`transition-graph.gif` was re-recorded from the same scene (retentioneering
+5.2.3 from PyPI, live widget in JupyterLab, since comparison needs a kernel).
 Their PNG companions are the final frames, provided for readers who prefer a
-static view. The graph recording is 13.38 seconds long. It demonstrates a saved
-path view, comparison settings and node focus; the
+static view. The graph recording is 24.5 seconds long. It selects the saved
+path view, returns to Default so the comparison colors are not hidden behind
+the path focus, turns on comparison in the sidebar, focuses the payment step,
+opens its ego view and follows three neighbors (payment error, support chat,
+back to payment details). The
 [tour notebook](../../notebooks/retentioneering_5_tour.ipynb) opens on the same saved view.
+The cursor and click rings are drawn over the captured frames; the route
+statistics badge that the path view shows is hidden in the capture, because
+its `P(route) 0.00%` for that exact contiguous route reads as an error out of
+context. Nothing else in the widget is changed.
 
-The preserved graph clip uses baseline minus incident in its sidebar, while the
+The graph clip uses baseline minus incident in its sidebar, while the
 new README comparison example uses incident minus baseline. The sign and color
 therefore reverse. The README describes each recording as an interface tour and
 states the comparison direction beside the executable example; do not transfer

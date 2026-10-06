@@ -1,12 +1,14 @@
-"""Static screenshots for the README "What would you like to understand?" section.
+"""Static screenshots for the README: the use-case blocks and the agent-runs graph.
 
-Exports each use-case widget from the bundled ecom dataset, then captures it in
-headless Chromium. Run from the repository root after `make build`:
+Exports each use-case widget from the bundled ecom dataset, and the graph that
+notebooks/agent_path_analysis.ipynb exports, then captures them in headless
+Chromium. Run from the repository root after `make build`:
     RETENTIONEERING_NO_TRACK=1 uv run --with playwright python docs/scripts/capture_readme_screenshots.py
 Set CHROME_PATH to use an installed Chrome instead of Playwright's Chromium.
 Exports go to docs/build/readme/ (gitignored); PNGs go to .github/readme/.
 """
 
+import json
 import os
 from pathlib import Path
 
@@ -82,6 +84,23 @@ def export_widgets():
     visits.transition_graph(sidebar_open=False, height=560).export_html(
         BUILD / "visit-graph.html", title="Session types across visits"
     )
+    export_agent_runs()
+
+
+def export_agent_runs():
+    """Run the agent-run notebook rather than duplicating its fixture; it
+    exports its comparison graph as agent-runs.html into the working directory."""
+    notebook = REPO / "notebooks" / "agent_path_analysis.ipynb"
+    namespace = {}
+    previous_dir = Path.cwd()
+    try:
+        os.chdir(BUILD)
+        for cell in json.loads(notebook.read_text())["cells"]:
+            source = "".join(cell["source"])
+            if cell["cell_type"] == "code" and not source.startswith("%pip"):
+                exec(compile(source, str(notebook), "exec"), namespace)
+    finally:
+        os.chdir(previous_dir)
 
 
 def capture():
@@ -99,15 +118,18 @@ def capture():
             "last-error-sankey",
             "abandoned-sankey",
             "visit-graph",
+            "agent-paths",
         ):
             # A narrower frame enlarges text in the README, but graphs fit their
             # whole layout into it (shrinking labels) and wide Sankeys overflow.
             narrow = name in ("funnel", "error-sankey", "last-error-sankey")
+            width = 600 if narrow else 960 if name == "agent-paths" else 820
             page = browser.new_page(
-                viewport={"width": 600 if narrow else 820, "height": 760},
+                viewport={"width": width, "height": 760},
                 device_scale_factor=3 if narrow else 2,
             )
-            page.goto((BUILD / f"{name}.html").as_uri())
+            html = "agent-runs" if name == "agent-paths" else name
+            page.goto((BUILD / f"{html}.html").as_uri())
             page.wait_for_function(
                 "document.querySelector('#retentioneering-root')?.textContent.length > 10"
             )

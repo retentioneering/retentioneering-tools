@@ -54,7 +54,7 @@ stream.transition_graph()
 
 Below are a few examples of how you can apply retentioneering tools to approach common analytical problems on the [bundled e-commerce demo dataset](https://retentioneering.com/docs/eventstream#sample-dataset). The code chunks assume `stream = rete.datasets.load_ecom()`.
 
-<details open>
+<details>
 <summary>A key metric dropped. Where did journeys change and cause it?</summary>
 <br>
 
@@ -155,7 +155,7 @@ abandoned.step_sankey(path_pattern="cart", path_col="session_id", step_window=3)
 The [filter_paths](https://retentioneering.com/docs/data-processors/filter-paths) data processor can filter paths according to a [path metric](https://retentioneering.com/docs/path-metrics) value, such as length, duration, event count, etc. In our case we use the `matches_pattern` metric that checks if a path matches the [regex-like pattern](https://retentioneering.com/docs/path-patterns) `cart->[^shipping_details|support_chat]*->path_end`.
 </details>
 
-<details>
+<details open>
 <summary>How does product usage differ between users? What behavioral patterns are represented?</summary>
 <br>
 

@@ -14,9 +14,9 @@ Retentioneering is an open-source Python library for **understanding user behavi
 
 [Quick start](#quick-start) · [Use cases](#common-use-cases) · [Use an AI agent](#work-with-an-ai-agent) · [Docs](https://retentioneering.com/docs/)
 
-<a href="https://retentioneering.com/docs/widgets/transition-graph"><img src=".github/readme/transition-graph.gif" width="820" alt="A demo of the interactive features of the transition graph widget. You can highlight a route, compare path groups, focus on the step you want to investigate, explore transition in/out probabilities in ego view."></a>
+<a href="https://retentioneering.com/docs/widgets/transition-graph"><img src=".github/readme/transition-graph.gif" width="820" alt="A demo of the interactive features of the transition graph widget. You can highlight a route, compare path groups, focus on the step you want to investigate, and explore incoming and outgoing transition probabilities in the ego view."></a>
 
-*A demo of the interactive features of the [transition graph](https://retentioneering.com/docs/widgets/transition-graph) widget. You can highlight a route, compare path groups, focus on the step you want to investigate, explore transition in/out probabilities in ego view.*
+*A demo of the interactive features of the [transition graph](https://retentioneering.com/docs/widgets/transition-graph) widget. You can highlight a route, compare path groups, focus on the step you want to investigate, and explore incoming and outgoing transition probabilities in the ego view.*
 
 ## Is it for you?
 
@@ -32,7 +32,6 @@ Bring an event-level export from your analytics platform, warehouse or applicati
 ## Quick start
 
 Python: 3.10 - 3.13.
-
 
 Environment: Jupyter (Jupyter Notebook, JupyterLab, JupyterLab Desktop), VS Code, Cursor, Google Colab.
 
@@ -59,7 +58,7 @@ Below are a few examples of how you can apply retentioneering tools to approach 
 <summary>A key metric dropped. Where did journeys change and cause it?</summary>
 <br>
 
-Create a binary segment that [cuts and splits the paths into two parts by date](https://retentioneering.com/docs/data-processors/add-segment#time_range--inside-vs-outside-a-window) – `inside` and `outside` the affected period – then compare user behavior across these parts with the [transition graph widget](https://retentioneering.com/docs/widgets/transition-graph#diff-mode).
+Create a binary segment that [cuts each path at the boundaries of the affected period](https://retentioneering.com/docs/data-processors/add-segment#time_range--inside-vs-outside-a-window): its events inside the period are labelled `inside`, the rest `outside`, so one path can contribute to both parts. Then compare user behavior across these parts with the [transition graph widget](https://retentioneering.com/docs/widgets/transition-graph#diff-mode).
 
 ```python
 periods = stream.add_segment("period", time_range=("2024-05-19", "2024-06-07"))
@@ -70,14 +69,14 @@ periods.transition_graph(diff=("period", "inside", "outside"))
 
 Click a node (e.g. `payment_details`) to inspect the routes that pass this node. With this comparison configuration, red means a higher next-step probability inside the period; blue means lower. This locates a behavioral difference to investigate.
 
-Note that the segment we have created is not static meaning that a single path can belong to multiple segment levels. This gives more flexibility to diff mode: you can compare not only common attributes like mobile VS desktop, acquisition channels, or experiment groups, but dynamic features as well: first session VS the others, weekends VS weekdays, etc.
+Letting a path contribute to multiple levels of a segment gives more flexibility to diff mode: you can compare not only common attributes like mobile vs. desktop, acquisition channels, or experiment groups, but dynamic features as well: first session vs. the others, weekends vs. weekdays, etc.
 </details>
 
 <details>
 <summary>Where do users leave the funnel and what do they do instead?</summary>
 <br>
 
-Count sessions (not entire paths) that complete the steps in order with the [funnel widget](https://retentioneering.com/docs/widgets/funnel):
+Count sessions that complete the steps in order – rather than whole user journeys (`path_col="session_id"`) – with the [funnel widget](https://retentioneering.com/docs/widgets/funnel):
 
 ```python
 steps = ["cart", "shipping_details", "purchase"]
@@ -102,14 +101,14 @@ Then compare sessions that stopped at the shipping stage of this funnel with tho
 
 <a href="https://retentioneering.com/docs/widgets/step-matrix"><img src=".github/readme/step-matrix-funnel.gif" width="820" alt="A Step Matrix aligned on cart and shipping_details compares shipping-stage and completed-funnel sessions: hovering cells shows each group's values, and the arrow buttons sort rows by preceding or following steps."></a>
 
-The `path_pattern="cart->.*->shipping_details"` argument of the step matrix breaks down the diagram into two parts: around `cart` and around `shipping_details`. You can inspect these surroundings and compare sessions that reached `shipping_details` but not purchase with those that completed the funnel.
+The `path_pattern="cart->.*->shipping_details"` argument of the step matrix breaks down the diagram into two parts: around `cart` and around `shipping_details`. You can inspect these surroundings and compare sessions that reached `shipping_details` but not `purchase` with those that completed the funnel.
 </details>
 
 <details>
 <summary>What leads to, or follows, an error or another key event?</summary>
 <br>
 
-Instead of using traditional tree-like diagrams for path exploration, you can use [Step Sankey](https://retentioneering.com/docs/widgets/step-sankey) which essentially is another representation of the [Step matrix](https://retentioneering.com/docs/widgets/step-matrix). In this example, we align all the paths by the `payment_error` event and display the two steps on either side of it:
+Instead of using traditional tree-like diagrams for path exploration, you can use [Step Sankey](https://retentioneering.com/docs/widgets/step-sankey), which shows the same numbers as a [Step Matrix](https://retentioneering.com/docs/widgets/step-matrix), drawn as flows. In this example, we align all the paths by the `payment_error` event and display the two steps on either side of it:
 
 ```python
 stream.step_sankey(
@@ -153,14 +152,14 @@ abandoned.step_sankey(path_pattern="cart", path_col="session_id", step_window=3)
 
 <a href="https://retentioneering.com/docs/widgets/step-sankey"><img src=".github/readme/abandoned-sankey.png" width="760" alt="Step Sankey of abandoned-cart sessions aligned on cart: most sessions end within three steps after it."></a>
 
-The [filter_paths](https://retentioneering.com/docs/data-processors/filter-paths) data processor can filter paths according to a [path metric](https://retentioneering.com/docs/path-metrics) value, such length, duration, event count, etc. In our case we use the `matches_pattern` metric that checks if a path matches the [regex-like pattern](https://retentioneering.com/docs/path-patterns) `cart->[^shipping_details|support_chat]*->path_end`.
+The [filter_paths](https://retentioneering.com/docs/data-processors/filter-paths) data processor can filter paths according to a [path metric](https://retentioneering.com/docs/path-metrics) value, such as length, duration, event count, etc. In our case we use the `matches_pattern` metric that checks if a path matches the [regex-like pattern](https://retentioneering.com/docs/path-patterns) `cart->[^shipping_details|support_chat]*->path_end`.
 </details>
 
 <details>
 <summary>How does product usage differ between users? What behavioral patterns are represented?</summary>
 <br>
 
-If you conduct cluster analysis manually, the easiest way is to start with a bare call of the [Cluster Analysis widget](https://retentioneering.com/docs/widgets/cluster-analysis) and set everything up in its sidebar:
+To explore clusters interactively, start with a bare call of the [Cluster Analysis widget](https://retentioneering.com/docs/widgets/cluster-analysis) and set everything up in its sidebar:
 
 ```python
 stream.cluster_analysis()
@@ -168,7 +167,7 @@ stream.cluster_analysis()
 
 <a href="https://retentioneering.com/docs/widgets/cluster-analysis"><img src=".github/readme/cluster-analysis.gif" width="820" alt="Starting from a bare cluster_analysis() call: features, the cluster range and overview metrics are set in the sidebar, Apply runs the grid, another partition is picked on the Silhouette tab, clusters are renamed in the header and saved as a segment."></a>
 
-Here users are clustered by [`event_count_bulk`](https://retentioneering.com/docs/path-metrics), which expands into one count per event type, over a grid of 3 to 8 clusters scored by the [silhouette metric](https://en.wikipedia.org/wiki/Silhouette_(clustering)). The heatmap compares mean metric values across clusters (blue for lower values, red for higher). Overview [metrics](https://retentioneering.com/docs/path-metrics) such as `length` or `in_segment_bulk` describe the clusters with an extended set of metrics not changing the feature space. Pick another partition on the **Silhouette** tab if you are not satisfied with the silhouette-best split. Once you find an optimal clustering, rename clusters in the header, click **Save Clusters** as a [segment](https://retentioneering.com/docs/segments).
+Here users are clustered by [`event_count_bulk`](https://retentioneering.com/docs/path-metrics), which expands into one count per event type, over a grid of 3 to 8 clusters scored by the [silhouette metric](https://en.wikipedia.org/wiki/Silhouette_(clustering)). The heatmap compares mean metric values across clusters (blue for lower values, red for higher). Overview [metrics](https://retentioneering.com/docs/path-metrics) such as `length` or `in_segment_bulk` describe the clusters without changing the features used for clustering. Pick another partition on the **Silhouette** tab if you are not satisfied with the silhouette-best split. Once you find an optimal split, label the clusters in the header, click **Save Clusters** and save them as a [segment](https://retentioneering.com/docs/segments).
 
 The same configuration can also be passed directly:
 
@@ -218,7 +217,7 @@ stream.cluster_analysis(
     path_col="session_id"
 )
 ```
-Suppose 4 clusters look best. [add_clusters](https://retentioneering.com/docs/data-processors/add-clusters) reproduces that split as the `session_type` segment – the same result as Save clusters in the widget. Then we can collapse sessions and treat them as single events with the [collapse_events](https://retentioneering.com/docs/data-processors/collapse-events) data processor and visualize the session flow with any widget, such as the transition graph:
+Suppose 4 clusters look best. [add_clusters](https://retentioneering.com/docs/data-processors/add-clusters) reproduces that split as the `session_type` segment – the same result as Save Clusters in the widget. Then we can collapse sessions and treat them as single events with the [collapse_events](https://retentioneering.com/docs/data-processors/collapse-events) data processor and visualize the session flow with any widget, such as the transition graph:
 
 ```python
 visits = (
@@ -338,7 +337,7 @@ For example:
 
 ## Telemetry
 
-Anonymous usage telemetry is enabled by default. Sensitive data like event names, identifiers, path contents and parameter values is NEVER sent; see [what is collected](https://retentioneering.com/docs/tracking). Set `RETENTIONEERING_NO_TRACK=1` before starting Python to disable it.
+Anonymous usage telemetry is enabled by default. Sensitive data like event names, identifiers, path contents and parameter values is **never** sent; see [what is collected](https://retentioneering.com/docs/tracking). Set `RETENTIONEERING_NO_TRACK=1` before starting Python to disable it.
 
 ## Documentation and community
 

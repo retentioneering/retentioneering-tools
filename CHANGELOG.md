@@ -7,6 +7,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- [Step Sankey](https://retentioneering.com/docs/widgets/step-sankey) now draws `anchor=` correctly. The data was always right, but the diagram took its layout only from `path_pattern`, so with an anchor spec the centre block was labelled `path_start` and no ribbons led into it from the left — `step_sankey(anchor="payment_error")` looked like a diagram of session starts. The widget now centres the block on the anchored event (`at` and `occurrence` included), shows `step_window` columns on both sides, and for an anchor with an `offset`, where step 0 is no longer one fixed event, draws step 0 as an ordinary column. `path_pattern` diagrams are unchanged
 - Transition Graph no longer raises `Cannot read properties of null (reading 'isHeadless')`
   during initial rendering when a graph rebuild destroys an instance before its
   scheduled viewport fit runs. Deferred fit and resize callbacks now check that

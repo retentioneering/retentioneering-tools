@@ -30,12 +30,21 @@ def export_widgets():
         steps=steps, path_col="session_id", sidebar_open=False, height=380
     ).export_html(BUILD / "funnel.html", title="Cart to purchase")
     stream.step_sankey(
-        path_pattern="payment_error",
+        anchor="payment_error",
         step_window=2,
         path_col="session_id",
         sidebar_open=False,
         height=480,
     ).export_html(BUILD / "error-sankey.html", title="Around payment_error")
+    stream.step_sankey(
+        anchor={"pattern": "payment_error", "occurrence": "last"},
+        step_window=2,
+        path_col="session_id",
+        sidebar_open=False,
+        height=480,
+    ).export_html(
+        BUILD / "last-error-sankey.html", title="Around the last payment_error"
+    )
     abandoned = stream.filter_paths(
         {
             "metric": "matches_pattern",
@@ -87,12 +96,13 @@ def capture():
             "kpi-diff",
             "funnel",
             "error-sankey",
+            "last-error-sankey",
             "abandoned-sankey",
             "visit-graph",
         ):
             # A narrower frame enlarges text in the README, but graphs fit their
             # whole layout into it (shrinking labels) and wide Sankeys overflow.
-            narrow = name in ("funnel", "error-sankey")
+            narrow = name in ("funnel", "error-sankey", "last-error-sankey")
             page = browser.new_page(
                 viewport={"width": 600 if narrow else 820, "height": 760},
                 device_scale_factor=3 if narrow else 2,

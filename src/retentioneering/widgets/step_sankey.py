@@ -261,7 +261,11 @@ class StepSankeyWidget(RetentioneeringWidget):
         except Exception:
             event_counts = {}
 
-        return {"matrices": matrices, "event_counts": event_counts}
+        return {
+            "matrices": matrices,
+            "event_counts": event_counts,
+            "anchor_event": _anchor_event(None if path_pattern else anchor),
+        }
 
     # ── HTML export (export_html/render_static: see RetentioneeringWidget) ────
 
@@ -289,6 +293,25 @@ class StepSankeyWidget(RetentioneeringWidget):
             if sidebar_open is not None
             else self.sidebar_open,
         }
+
+
+def _anchor_event(anchor):
+    """The event every path sits on at step 0 when the widget is in anchor mode.
+
+    The frontend lays a Step Sankey out from pattern tokens and has no other
+    way to know what an anchor spec centres on, so it is resolved here with the
+    same token logic the computation uses. ``None`` outside anchor mode; ``""``
+    when an offset moves step 0 off the matched event, so no one event sits
+    there.
+    """
+    if anchor is None:
+        return None
+    from retentioneering.paths import anchors
+
+    spec = anchors.parse_spec(anchor, param="anchor")
+    if spec.offset:
+        return ""
+    return anchors.literal_tokens(spec.pattern)[spec.ordinal()]
 
 
 def _df_to_matrix(df) -> dict:

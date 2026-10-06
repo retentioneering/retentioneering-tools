@@ -14,6 +14,10 @@ const COLUMN_GAP = 40;
 export interface StepSankeyProps {
   store: StepMatrixStore;
   pathPattern?: string;
+  /** Anchor mode (the widget's `anchor=` spec, no `pathPattern`): the event
+   *  every path sits on at step 0, resolved by Python. `""` when step 0 is not
+   *  one fixed event (an offset anchor); `null`/omitted outside anchor mode. */
+  anchorEvent?: string | null;
   onPatternChange?: (pattern: string) => void;
   maxSteps?: number;
   /** Frontend-only: how many variable columns to show around each anchor.
@@ -41,6 +45,7 @@ const DEFAULT_DISPLAY_PATTERN = "path_start->.*->path_end";
 export const StepSankey = observer(({
   store,
   pathPattern = "",
+  anchorEvent = null,
   onPatternChange,
   maxSteps = 3,
   stepWindow: stepWindowProp,
@@ -60,8 +65,10 @@ export const StepSankey = observer(({
   const stepWindow = (stepWindowProp && stepWindowProp > 0) ? stepWindowProp : maxSteps;
 
   // displayPattern is used only for rendering the matrix layout.
-  // When no real pattern is set we fall back to the default two-block view.
-  const displayPattern = pathPattern || DEFAULT_DISPLAY_PATTERN;
+  // An anchor spec renders one block centred on its event, laid out like a
+  // one-event pattern; with neither we fall back to the default two-block view.
+  const anchorMode = !pathPattern && anchorEvent != null;
+  const displayPattern = pathPattern || (anchorMode ? anchorEvent! : DEFAULT_DISPLAY_PATTERN);
 
   // PatternStore uses only the REAL pattern (empty = no anchors yet).
   // This prevents the fallback path_end from leaking into user edits.
@@ -157,6 +164,9 @@ export const StepSankey = observer(({
     if (patternAnchors[matrixIdx]) {
       return patternAnchors[matrixIdx];
     }
+
+    // An offset anchor has no fixed event at step 0.
+    if (anchorMode) return undefined;
 
     // Fallback: heuristic based on matrix index (should rarely be reached if pattern matches data)
     return matrixIdx === 0 ? "path_start" : "path_end";
@@ -266,7 +276,11 @@ export const StepSankey = observer(({
       const isLastSegment = matrixIndex === patternSegments.length - 1;
       const isMiddleSegment = !isFirstSegment && !isLastSegment;
 
-      if (isLastSegment && patternSegments.length > 1) {
+      if (anchorMode) {
+        // A single position: step 0 plus stepWindow columns on each side,
+        // whether or not step 0 is one fixed event (an offset anchor).
+        return { matrixIndex, columns: sorted.filter((col) => Math.abs(col) <= stepWindow) };
+      } else if (isLastSegment && patternSegments.length > 1) {
         // End-aligned: fixed events are at -(numFixedEvents-1), ..., -1, 0
         const firstFixedCol = -(numFixedEvents - 1);
         const lastFixedCol = 0;
@@ -306,7 +320,7 @@ export const StepSankey = observer(({
         return { matrixIndex, columns: filtered };
       }
     });
-  }, [store.matrices, stepWindow, patternSegments]);
+  }, [store.matrices, stepWindow, patternSegments, anchorMode]);
 
   // Measure block heights
   React.useEffect(() => {
@@ -449,7 +463,8 @@ export const StepSankey = observer(({
 
                   // Build menu props for fixed nodes so users can edit the pattern
                   const buildMenuProps = () => {
-                    if (!fixedId || !onPatternChange) return undefined;
+                    // Pattern edits address PatternStore tokens; an anchor spec has none.
+                    if (!fixedId || !onPatternChange || anchorMode) return undefined;
                     const isPathStart = fixedId === "path_start";
                     const isPathEnd   = fixedId === "path_end";
                     const allEvents = store.allEventIds;

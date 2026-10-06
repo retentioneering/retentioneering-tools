@@ -45,6 +45,12 @@ export function render({ host, el, isStatic = false }: RenderContext) {
   }
   syncResultToStore();
 
+  // Anchor mode: the step-0 event Python resolved from the `anchor` spec.
+  function readAnchorEvent(): string | null {
+    const d = parseJson<{ anchor_event?: string | null }>((host.get("result") as string) || "{}", {});
+    return d?.anchor_event ?? null;
+  }
+
   // Restore the Event count filter. setPopulationRange marks the filter as
   // user-customized, so applyEventCounts won't overwrite it on later syncs.
   {
@@ -55,6 +61,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
   function App() {
     const [maxSteps, setMaxSteps]         = React.useState<number>(() => (host.get("max_steps") as number) ?? 10);
     const [pathPattern, setPathPattern]   = React.useState<string>(() => (host.get("path_pattern") as string) || "");
+    const [anchorEvent, setAnchorEvent]   = React.useState<string | null>(readAnchorEvent);
     // Initialize diff from host immediately so isDiff is correct on first render
     const [diffSegment, setDiffSegment] = React.useState<string | null>(() => {
       const d = parseJson<string[]>(host.get("diff") || "[]", []);
@@ -103,7 +110,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
     }, []);
 
     useHostSubscriptions(host, [
-      ["result",         () => syncResultToStore()],
+      ["result",         () => { syncResultToStore(); setAnchorEvent(readAnchorEvent()); }],
       ["is_loading",     () => setIsLoading((host.get("is_loading") as boolean) ?? false)],
       ["max_steps",      () => setMaxSteps((host.get("max_steps") as number) ?? 10)],
       ["path_pattern",   () => setPathPattern((host.get("path_pattern") as string) || "")],
@@ -161,6 +168,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
                 maxSteps={maxSteps}
                 stepWindow={stepWindow}
                 pathPattern={pathPattern}
+                anchorEvent={anchorEvent}
                 onPatternChange={isStatic ? undefined : (p) => {
                   setPathPattern(p);
                   host.set("path_pattern", p);

@@ -17,6 +17,52 @@ export function parseJson<T>(raw: unknown, fallback: T): T {
   try { return JSON.parse(raw as string) as T; } catch { return fallback; }
 }
 
+// ── Link focus on table cells ────────────────────────────────────────────────
+
+const FOCUS_RING = "2px solid #f59e0b";
+const FOCUS_FLASH = "#fde68a";
+
+type FocusState = { restore: () => void };
+
+/** Mark the cells an external link points at (a report's analysis text,
+ *  `scrollToEvent`). A heatmap already colours every cell, so a short pale
+ *  flash alone is easy to miss: the cells get an amber ring that stays until
+ *  the next link focus or a click inside `root`, plus a brief stronger flash
+ *  to draw the eye. Styles are set on the DOM nodes directly — React only
+ *  rewrites the properties it renders, so a re-render keeps the ring. */
+export function focusCells(root: HTMLElement, cells: HTMLElement[]) {
+  clearCellFocus(root);
+  if (!cells.length) return;
+  const saved = cells.map(c => ({
+    c, outline: c.style.outline, offset: c.style.outlineOffset, bg: c.style.background,
+  }));
+  for (const c of cells) {
+    c.style.outline = FOCUS_RING;
+    c.style.outlineOffset = "-2px";
+    c.style.background = FOCUS_FLASH;
+  }
+  const flash = setTimeout(() => saved.forEach(s => { s.c.style.background = s.bg; }), 700);
+  const onDown = () => clearCellFocus(root);
+  root.addEventListener("mousedown", onDown, true);
+  (root as HTMLElement & { __cellFocus?: FocusState }).__cellFocus = {
+    restore: () => {
+      clearTimeout(flash);
+      root.removeEventListener("mousedown", onDown, true);
+      saved.forEach(s => {
+        s.c.style.outline = s.outline;
+        s.c.style.outlineOffset = s.offset;
+        s.c.style.background = s.bg;
+      });
+    },
+  };
+}
+
+export function clearCellFocus(root: HTMLElement) {
+  const holder = root as HTMLElement & { __cellFocus?: FocusState };
+  holder.__cellFocus?.restore();
+  holder.__cellFocus = undefined;
+}
+
 /** Shape every widget entry file's `render()` receives — see main.tsx. */
 export interface RenderContext {
   host: WidgetHost;

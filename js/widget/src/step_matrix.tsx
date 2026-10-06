@@ -1,7 +1,7 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { createPortal } from "react-dom";
-import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes, useHostSubscriptions, type RenderContext } from "./widget-utils";
+import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes, useHostSubscriptions, focusCells, type RenderContext } from "./widget-utils";
 import { resolveDiffLabels, RangeSlider, SingleSlider } from "@retentioneering/viz-core";
 
 // ── types ──────────────────────────────────────────────────────────────────
@@ -962,9 +962,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
               const cell = row.querySelector(`td[data-step="${step}"]`) as HTMLElement | null;
               if (cell) {
                 cell.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
-                const prev = cell.style.background;
-                cell.style.background = "#fef3c7";
-                setTimeout(() => { cell.style.background = prev; }, 900);
+                focusCells(el, [cell]);
                 return true;
               }
               row.scrollIntoView({ block: "nearest", behavior: "smooth" });

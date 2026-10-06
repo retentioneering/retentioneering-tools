@@ -6,7 +6,7 @@
  */
 import * as React from "react";
 import { createRoot } from "react-dom/client";
-import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes, useHostSubscriptions, type RenderContext } from "./widget-utils";
+import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes, useHostSubscriptions, focusCells, type RenderContext } from "./widget-utils";
 import { MetricRow, validateMetricCfg } from "./metric_config_row";
 import {
   SegmentOverviewData, SegmentOverviewTable,
@@ -317,13 +317,6 @@ export function render({ host, el, isStatic = false }: RenderContext) {
         }
         return null;
       };
-      const flashBg = (node: HTMLElement, delay = 0) => {
-        setTimeout(() => {
-          const prev = node.style.background;
-          node.style.background = "#fef3c7";
-          setTimeout(() => { node.style.background = prev; }, 1000);
-        }, delay);
-      };
       // Scroll after two animation frames so the panel is fully visible
       const raf2 = (fn: () => void) => requestAnimationFrame(() => requestAnimationFrame(fn));
 
@@ -335,26 +328,25 @@ export function render({ host, el, isStatic = false }: RenderContext) {
             const cell = row.querySelector(`td[data-segment="${segment}"]`) as HTMLElement | null;
             if (cell) {
               cell.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
-              flashBg(cell, 200);
+              focusCells(el, [cell]);
             }
           });
         },
         focusAny: (name: string) => {
           raf2(() => {
-            // Try segment column — flash all cells + header simultaneously for a column effect
+            // Try segment column — mark all its cells and the header together
             const colCells = Array.from(el.querySelectorAll(`td[data-segment="${name}"]`)) as HTMLElement[];
             if (colCells.length) {
               const th = el.querySelector(`th[data-segment="${name}"]`) as HTMLElement | null;
               if (th) th.scrollIntoView({ behavior: "smooth", inline: "center" });
-              colCells.forEach(c => flashBg(c, 200));
-              if (th) flashBg(th, 200);
+              focusCells(el, th ? [th, ...colCells] : colCells);
               return;
             }
             // Fall back to metric row (exact match or prefix, e.g. "has_purchase" → "has_purchase_mean")
             const row = findMetricRow(el, name);
             if (row) {
               row.scrollIntoView({ block: "nearest", behavior: "smooth" });
-              (Array.from(row.querySelectorAll("td")) as HTMLElement[]).forEach(c => flashBg(c, 200));
+              focusCells(el, Array.from(row.querySelectorAll("td")) as HTMLElement[]);
             }
           });
         },

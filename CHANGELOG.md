@@ -5,6 +5,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Changed
+
+- Links in an MCP report's analysis text now leave a visible mark on [Step Matrix](https://retentioneering.com/docs/widgets/step-matrix) and [Segment Overview](https://retentioneering.com/docs/widgets/segment-overview) cells. A link used to tint its cell pale yellow for about a second, which on a heatmap was hard to tell apart from the cells around it, so a reader clicking `[Tab:event@step]` or `[Tab:metric@segment]` often could not see which number the text meant. The cell now flashes a stronger yellow and keeps an amber outline until the next link into the same widget or a click inside it; a segment column link outlines the whole column. Transition graph links are unchanged
+
 ### Fixed
 
 - [Step Sankey](https://retentioneering.com/docs/widgets/step-sankey) now draws `anchor=` correctly. The data was always right, but the diagram took its layout only from `path_pattern`, so with an anchor spec the centre block was labelled `path_start` and no ribbons led into it from the left — `step_sankey(anchor="payment_error")` looked like a diagram of session starts. The widget now centres the block on the anchored event (`at` and `occurrence` included), shows `step_window` columns on both sides, and for an anchor with an `offset`, where step 0 is no longer one fixed event, draws step 0 as an ordinary column. `path_pattern` diagrams are unchanged

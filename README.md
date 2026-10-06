@@ -187,7 +187,7 @@ stream.cluster_analysis(
 And the partition saved in the GIF above – four clusters, renamed – becomes a segment column with [add_clusters](https://retentioneering.com/docs/data-processors/add-clusters) and [rename_segment_levels](https://retentioneering.com/docs/data-processors/rename-segment-levels):
 
 ```python
-users = (
+user_types = (
     stream
         .add_clusters(
             "user_type", features=[{"metric": "event_count_bulk"}],
@@ -318,9 +318,9 @@ For example:
 
 > Use Retentioneering to investigate where sessions in events.csv stall between cart and purchase. Check the schema and event order first. Compare sessions that purchased with those that stopped, keep non-purchasing sessions, and show the counts behind the main differences. Return the runnable analysis and an interactive HTML report.
 
-**Prefer an MCP connection?** The [data MCP server](https://retentioneering.com/docs/mcp-server) (beta) exposes an Eventstream to a compatible agent from a local Python environment. Its report workflow links findings to the charts and elements they refer to:
+**Prefer an MCP connection?** The [data MCP server](https://retentioneering.com/docs/mcp-server) (beta) exposes an Eventstream to a compatible agent from a local Python environment. Its report collects several tools in tabs and links every number in the text to the element it comes from – a graph edge, a step matrix cell or a segment overview cell:
 
-<a href="https://retentioneering.com/docs/mcp-server"><img src=".github/readme/agent-report.gif" width="820" alt="An agent-generated report beside an interactive graph. Clicking a reference in the report selects the corresponding chart and highlights a transition."></a>
+<a href="https://retentioneering.com/docs/mcp-server"><img src=".github/readme/agent-report.gif" width="820" alt="A report with three tabs beside its analysis text. Clicking links in the text switches tabs and highlights segment overview cells, transition graph edges and step matrix cells."></a>
 
 <details>
 <summary><b>For AI assistants: current API and execution guidance</b></summary>

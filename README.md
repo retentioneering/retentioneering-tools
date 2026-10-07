@@ -5,7 +5,7 @@ Retentioneering is an open-source Python library for **understanding user behavi
 [![PyPI](https://img.shields.io/pypi/v/retentioneering)](https://pypi.org/project/retentioneering/)
 [![Python](https://img.shields.io/pypi/pyversions/retentioneering)](https://pypi.org/project/retentioneering/)
 [![Downloads](https://static.pepy.tech/badge/retentioneering)](https://pepy.tech/project/retentioneering)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/retentioneering/retentioneering-tools/blob/master/LICENSE)
 [![Discord](https://img.shields.io/badge/chat-Discord-5865F2)](https://discord.com/invite/hBnuQABEV2)
 [![Telegram](https://img.shields.io/badge/chat-Telegram-26A5E4)](https://t.me/retentioneering_support)
 [![Try in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/1b9a64440a6b57d7fe8d9910727cf34b78301bdf/notebooks/retentioneering_5_tour.ipynb)
@@ -14,7 +14,7 @@ Retentioneering is an open-source Python library for **understanding user behavi
 
 [Quick start](#quick-start) · [Use cases](#common-use-cases) · [Use an AI agent](#work-with-an-ai-agent) · [Docs](https://retentioneering.com/docs/)
 
-<a href="https://retentioneering.com/docs/widgets/transition-graph"><img src=".github/readme/transition-graph.gif" width="820" alt="A demo of the interactive features of the transition graph widget. You can highlight a route, compare path groups, focus on the step you want to investigate, and explore incoming and outgoing transition probabilities in the ego view."></a>
+<a href="https://retentioneering.com/docs/widgets/transition-graph"><img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/transition-graph.gif" width="820" alt="A demo of the interactive features of the transition graph widget. You can highlight a route, compare path groups, focus on the step you want to investigate, and explore incoming and outgoing transition probabilities in the ego view."></a>
 
 *A demo of the interactive features of the [transition graph](https://retentioneering.com/docs/widgets/transition-graph) widget. You can highlight a route, compare path groups, focus on the step you want to investigate, and explore incoming and outgoing transition probabilities in the ego view.*
 
@@ -65,7 +65,7 @@ periods = stream.add_segment("period", time_range=("2024-05-19", "2024-06-07"))
 periods.transition_graph(diff=("period", "inside", "outside"))
 ```
 
-<a href="https://retentioneering.com/docs/widgets/transition-graph#diff-mode"><img src=".github/readme/kpi-diff.png" width="760" alt="Transition graph in diff mode focused on payment_details: inside the window, transitions to payment_error and support_chat rise while the transition to purchase falls."></a>
+<a href="https://retentioneering.com/docs/widgets/transition-graph#diff-mode"><img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/kpi-diff.png" width="760" alt="Transition graph in diff mode focused on payment_details: inside the window, transitions to payment_error and support_chat rise while the transition to purchase falls."></a>
 
 Click a node (e.g. `payment_details`) to inspect the routes that pass this node. With this comparison configuration, red means a higher next-step probability inside the period; blue means lower. This locates a behavioral difference to investigate.
 
@@ -83,7 +83,7 @@ steps = ["cart", "shipping_details", "purchase"]
 stream.funnel(steps=steps, path_col="session_id")
 ```
 
-<a href="https://retentioneering.com/docs/widgets/funnel"><img src=".github/readme/funnel.png" width="760" alt="Funnel of sessions from cart to shipping_details to purchase: 28.3%, 14.2% and 4.8% of 3,605 sessions."></a>
+<a href="https://retentioneering.com/docs/widgets/funnel"><img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/funnel.png" width="760" alt="Funnel of sessions from cart to shipping_details to purchase: 28.3%, 14.2% and 4.8% of 3,605 sessions."></a>
 
 Then compare sessions that stopped at the shipping stage of this funnel with those that completed it using the [step matrix widget](https://retentioneering.com/docs/widgets/step-matrix) in diff mode:
 
@@ -99,7 +99,7 @@ Then compare sessions that stopped at the shipping stage of this funnel with tho
 )
 ```
 
-<a href="https://retentioneering.com/docs/widgets/step-matrix"><img src=".github/readme/step-matrix-funnel.gif" width="820" alt="A Step Matrix aligned on cart and shipping_details compares shipping-stage and completed-funnel sessions: hovering cells shows each group's values, and the arrow buttons sort rows by preceding or following steps."></a>
+<a href="https://retentioneering.com/docs/widgets/step-matrix"><img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/step-matrix-funnel.gif" width="820" alt="A Step Matrix aligned on cart and shipping_details compares shipping-stage and completed-funnel sessions: hovering cells shows each group's values, and the arrow buttons sort rows by preceding or following steps."></a>
 
 The `path_pattern="cart->.*->shipping_details"` argument of the step matrix breaks down the diagram into two parts: around `cart` and around `shipping_details`. You can inspect these surroundings and compare sessions that reached `shipping_details` but not `purchase` with those that completed the funnel.
 </details>
@@ -117,7 +117,7 @@ stream.step_sankey(
 )
 ```
 
-<a href="https://retentioneering.com/docs/widgets/step-sankey"><img src=".github/readme/error-sankey.png" width="760" alt="Step Sankey centred on payment_error, showing the two steps before and after it; support_chat and path_end are the most common next steps."></a>
+<a href="https://retentioneering.com/docs/widgets/step-sankey"><img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/error-sankey.png" width="760" alt="Step Sankey centred on payment_error, showing the two steps before and after it; support_chat and path_end are the most common next steps."></a>
 
 A plain event name anchors each path on its first occurrence. An [anchor spec](https://retentioneering.com/docs/data-processors/truncate-paths#anchoring-on-a-sequence-not-just-an-event) chooses the position more precisely: which occurrence to use, which event of a [pattern](https://retentioneering.com/docs/path-patterns) to center on (`at`), or how far to shift from it (`offset`). For example, align sessions on their *last* payment error to see whether users recover after it or give up:
 
@@ -128,7 +128,7 @@ stream.step_sankey(
 )
 ```
 
-<a href="https://retentioneering.com/docs/widgets/step-sankey"><img src=".github/readme/last-error-sankey.png" width="760" alt="Step Sankey centred on each session's last payment_error: path_end is the most common next step and takes 35% of the step after it."></a>
+<a href="https://retentioneering.com/docs/widgets/step-sankey"><img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/last-error-sankey.png" width="760" alt="Step Sankey centred on each session's last payment_error: path_end is the most common next step and takes 35% of the step after it."></a>
 
 After the last error, sessions end more often than after the first one: `path_end` takes 19% of the next step instead of 14%, and 35% two steps later instead of 26%.
 </details>
@@ -150,7 +150,7 @@ abandoned = stream.filter_paths(
 abandoned.step_sankey(path_pattern="cart", path_col="session_id", step_window=3)
 ```
 
-<a href="https://retentioneering.com/docs/widgets/step-sankey"><img src=".github/readme/abandoned-sankey.png" width="760" alt="Step Sankey of abandoned-cart sessions aligned on cart: most sessions end within three steps after it."></a>
+<a href="https://retentioneering.com/docs/widgets/step-sankey"><img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/abandoned-sankey.png" width="760" alt="Step Sankey of abandoned-cart sessions aligned on cart: most sessions end within three steps after it."></a>
 
 The [filter_paths](https://retentioneering.com/docs/data-processors/filter-paths) data processor can filter paths according to a [path metric](https://retentioneering.com/docs/path-metrics) value, such as length, duration, event count, etc. In our case we use the `matches_pattern` metric that checks if a path matches the [regex-like pattern](https://retentioneering.com/docs/path-patterns) `cart->[^shipping_details|support_chat]*->path_end`.
 </details>
@@ -165,7 +165,7 @@ To explore clusters interactively, start with a bare call of the [Cluster Analys
 stream.cluster_analysis()
 ```
 
-<a href="https://retentioneering.com/docs/widgets/cluster-analysis"><img src=".github/readme/cluster-analysis.gif" width="820" alt="Starting from a bare cluster_analysis() call: features, the cluster range and overview metrics are set in the sidebar, Apply runs the grid, another partition is picked on the Silhouette tab, clusters are renamed in the header and saved as a segment."></a>
+<a href="https://retentioneering.com/docs/widgets/cluster-analysis"><img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/cluster-analysis.gif" width="820" alt="Starting from a bare cluster_analysis() call: features, the cluster range and overview metrics are set in the sidebar, Apply runs the grid, another partition is picked on the Silhouette tab, clusters are renamed in the header and saved as a segment."></a>
 
 Here users are clustered by [`event_count_bulk`](https://retentioneering.com/docs/path-metrics), which expands into one count per event type, over a grid of 3 to 8 clusters scored by the [silhouette metric](https://en.wikipedia.org/wiki/Silhouette_(clustering)). The heatmap compares mean metric values across clusters (blue for lower values, red for higher). Overview [metrics](https://retentioneering.com/docs/path-metrics) such as `length` or `in_segment_bulk` describe the clusters without changing the features used for clustering. Pick another partition on the **Silhouette** tab if you are not satisfied with the silhouette-best split. Once you find an optimal split, label the clusters in the header, click **Save Clusters** and save them as a [segment](https://retentioneering.com/docs/segments).
 
@@ -237,7 +237,7 @@ visits = (
 visits.transition_graph()
 ```
 
-<a href="https://retentioneering.com/docs/data-processors/collapse-events"><img src=".github/readme/visit-graph.png" width="760" alt="Transition graph of users' visits, where each session is collapsed into its behavioral cluster."></a>
+<a href="https://retentioneering.com/docs/data-processors/collapse-events"><img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/visit-graph.png" width="760" alt="Transition graph of users' visits, where each session is collapsed into its behavioral cluster."></a>
 </details>
 
 See [more analysis recipes](https://retentioneering.com/docs/recipes) in the docs.
@@ -299,9 +299,9 @@ stream = rete.Eventstream(ga4, schema={
 
 ## Explore agent runs, conversations and other event sequences
 
-A path doesn't have to be a user journey. Treat each agent run as a path and its internal steps – tool calls, retries, errors, validations – as events, then use the same tools to see where runs loop, recover or fail, and how successful runs differ from failed ones. See the [agent-run example notebook](notebooks/agent_path_analysis.ipynb) ([open in Colab](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/1b9a64440a6b57d7fe8d9910727cf34b78301bdf/notebooks/agent_path_analysis.ipynb)) for a synthetic walkthrough.
+A path doesn't have to be a user journey. Treat each agent run as a path and its internal steps – tool calls, retries, errors, validations – as events, then use the same tools to see where runs loop, recover or fail, and how successful runs differ from failed ones. See the [agent-run example notebook](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/agent_path_analysis.ipynb) ([open in Colab](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/1b9a64440a6b57d7fe8d9910727cf34b78301bdf/notebooks/agent_path_analysis.ipynb)) for a synthetic walkthrough.
 
-[![Paths of synthetic agent runs, comparing failed runs with successful ones. Red emphasizes the repeated tool:error and retry cycle.](.github/readme/agent-paths.png)](notebooks/agent_path_analysis.ipynb)
+[![Paths of synthetic agent runs, comparing failed runs with successful ones. Red emphasizes the repeated tool:error and retry cycle.](https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/agent-paths.png)](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/agent_path_analysis.ipynb)
 
 The same approach works for other processes: decide what one path is and which steps become its events. For example:
 
@@ -311,7 +311,7 @@ The same approach works for other processes: decide what one path is and which s
 
 ## Work with an AI agent
 
-Give your coding agent the [product-analytics skill](.agents/skills/retentioneering-product-analytics/SKILL.md) and an event file. The skill guides it through inspecting the log, choosing a recipe, running the analysis and checking the result. See [skill setup](https://retentioneering.com/docs/agent-skills) for supported workflows.
+Give your coding agent the [product-analytics skill](https://github.com/retentioneering/retentioneering-tools/blob/master/.agents/skills/retentioneering-product-analytics/SKILL.md) and an event file. The skill guides it through inspecting the log, choosing a recipe, running the analysis and checking the result. See [skill setup](https://retentioneering.com/docs/agent-skills) for supported workflows.
 
 For example:
 
@@ -319,7 +319,7 @@ For example:
 
 **Prefer an MCP connection?** The [data MCP server](https://retentioneering.com/docs/mcp-server) (beta) exposes an Eventstream to a compatible agent from a local Python environment. Its report collects several tools in tabs and links every number in the text to the element it comes from – a graph edge, a step matrix cell or a segment overview cell:
 
-<a href="https://retentioneering.com/docs/mcp-server"><img src=".github/readme/agent-report.gif" width="820" alt="A report with three tabs beside its analysis text. Clicking links in the text switches tabs and highlights segment overview cells, transition graph edges and step matrix cells."></a>
+<a href="https://retentioneering.com/docs/mcp-server"><img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/agent-report.gif" width="820" alt="A report with three tabs beside its analysis text. Clicking links in the text switches tabs and highlights segment overview cells, transition graph edges and step matrix cells."></a>
 
 <details>
 <summary><b>For AI assistants: current API and execution guidance</b></summary>
@@ -345,7 +345,7 @@ Anonymous usage telemetry is enabled by default. Sensitive data like event names
 
 Using a 3.x example? Version 5 rewrites the API. See the [migration guide](https://retentioneering.com/docs/migration-from-3x); legacy `Sequences`, `Cohorts`, `StatTests` and the visual Preprocessing Graph remain on the [3.x branch](https://github.com/retentioneering/retentioneering-tools/tree/3.x).
 
-Bring a question, a useful recipe or a small reproducible example to [GitHub issues](https://github.com/retentioneering/retentioneering-tools/issues), [Discord](https://discord.com/invite/hBnuQABEV2) or [Telegram](https://t.me/retentioneering_support). Contributions to methods, widgets, examples and agent workflows are welcome – see [CONTRIBUTING.md](CONTRIBUTING.md).
+Bring a question, a useful recipe or a small reproducible example to [GitHub issues](https://github.com/retentioneering/retentioneering-tools/issues), [Discord](https://discord.com/invite/hBnuQABEV2) or [Telegram](https://t.me/retentioneering_support). Contributions to methods, widgets, examples and agent workflows are welcome – see [CONTRIBUTING.md](https://github.com/retentioneering/retentioneering-tools/blob/master/CONTRIBUTING.md).
 
 *Apps are better with math. Join us!*
 
@@ -359,10 +359,10 @@ Copyright retentioneering-tools v.5.0 [Maxim Godzi](https://www.linkedin.com/in/
 
 You are free to use, modify, distribute, and build commercial products with Retentioneering-tools, subject to the terms of the Apache-2.0 license.
 
-Other Retentioneering libraries, packages and managed execution services, enterprise integrations, premium diagnostic workflows, and hosted collaboration features are separate proprietary products and are governed by their respective commercial terms. Additional details are provided in [COMMERCIAL.md](COMMERCIAL.md).
+Other Retentioneering libraries, packages and managed execution services, enterprise integrations, premium diagnostic workflows, and hosted collaboration features are separate proprietary products and are governed by their respective commercial terms. Additional details are provided in [COMMERCIAL.md](https://github.com/retentioneering/retentioneering-tools/blob/master/COMMERCIAL.md).
 
 The Apache-2.0 license applies only to the source code and assets distributed in this repository. It does not grant rights to use the Retentioneering name, logo, trademarks, hosted services, proprietary cloud infrastructure, or commercial content that is not distributed in this repository.
 
-We welcome contributions from individuals and organizations. Contributions to Retentioneering-tools are accepted under the contribution terms described in [CONTRIBUTING.md](CONTRIBUTING.md#contribution-terms).
+We welcome contributions from individuals and organizations. Contributions to Retentioneering-tools are accepted under the contribution terms described in [CONTRIBUTING.md](https://github.com/retentioneering/retentioneering-tools/blob/master/CONTRIBUTING.md#contribution-terms).
 
 Our goal is to keep the core analytical language and ecosystem open, extensible, and useful for independent analysts, researchers, startups, and enterprise teams, while funding long-term maintenance through optional commercial products and services.

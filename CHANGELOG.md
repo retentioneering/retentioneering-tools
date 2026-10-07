@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+## [5.2.4] - 2026-10-07
+
 ### Changed
 
 - Links in an MCP report's analysis text now leave a visible mark on [Step Matrix](https://retentioneering.com/docs/widgets/step-matrix) and [Segment Overview](https://retentioneering.com/docs/widgets/segment-overview) cells. A link used to tint its cell pale yellow for about a second, which on a heatmap was hard to tell apart from the cells around it, so a reader clicking `[Tab:event@step]` or `[Tab:metric@segment]` often could not see which number the text meant. The cell now flashes a stronger yellow and keeps an amber outline until the next link into the same widget or a click inside it; a segment column link outlines the whole column. Transition graph links are unchanged

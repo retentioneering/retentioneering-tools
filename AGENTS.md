@@ -163,6 +163,17 @@ page under `docs/guide/` must be added to the `GUIDES` list in `render_pages.py`
 fails; note that `/docs/mcp` is that endpoint, while the *guide about* the library's own MCP
 server is `/docs/mcp-server`.
 
+### Public notebooks and the README
+
+`notebooks/retentioneering_5_tour.ipynb` runs the README use-case code, and
+`notebooks/agent_path_analysis.ipynb` backs its agent-runs section; change them
+together with the README. Their Colab links point at `master`, but the notebooks
+`%pip install` the latest PyPI release, so on `master` they must run against that
+release: a notebook or README example that needs unreleased API lands with the
+release that ships it, or after it. The README is also the PyPI description, so its
+images and file links are absolute GitHub URLs — PyPI does not resolve relative
+paths. `.github/readme/ASSETS.md` maps each README image to the script that makes it.
+
 ### CI/CD (ADR-0011)
 
 - `.github/workflows/ci.yml` — on push/PR: `lint` job (pre-commit --all-files) + `test` job

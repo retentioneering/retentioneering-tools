@@ -101,7 +101,9 @@ The step matrix and report recorders fail on browser errors.
 
 The two public notebooks are self-contained and committed without outputs; run their
 cells in order to reproduce the analyses. The tour runs the README use-case code.
-Colab links in the README and in the tour pin a tested repository revision, so the
-examples keep working when a PR branch is deleted. After a merge, repin them to a
-commit on `master`; a squash merge drops the pinned commit from history. The
-relative notebook links lead to the current checkout.
+Colab links in the README and in the tour point at `master`, while the notebooks
+install the latest release from PyPI. So a notebook on `master` must run against
+that release: a notebook change that needs unreleased API lands with the release
+that ships it, or after it. The README uses absolute GitHub URLs for its media and
+files because it is also the package description on PyPI, which does not resolve
+relative paths.

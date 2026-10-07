@@ -1,86 +1,107 @@
-# README demonstrations
+# README media
 
-The README uses real Retentioneering widgets. The datasets are synthetic teaching
-fixtures, and the recordings are examples of interaction rather than evidence of
-a real business outcome.
+Every image in the README is a real Retentioneering widget rendered in a browser.
+The datasets are synthetic teaching fixtures (the bundled e-commerce store and the
+agent-run fixture in `notebooks/agent_path_analysis.ipynb`), and the recordings show
+how the interface works rather than evidence of a real business outcome.
 
-## Preserved recordings
+## Where each file comes from
 
-`transition-graph.gif` and `agent-report.gif` are copied unchanged from
-[`docs/readme-refresh` at e0c572b](https://github.com/retentioneering/retentioneering-tools/tree/e0c572b800312884de9b9a243d0f1663a1a37c56/.github/readme).
-Their PNG companions are the final frames, provided for readers who prefer a
-static view. The graph recording is 13.38 seconds long. It demonstrates a saved
-path view, comparison settings and node focus; the
-[existing tour](../../notebooks/retentioneering_5_tour.ipynb) covers this workflow.
+| File | README section | Made by |
+|---|---|---|
+| `transition-graph.gif` | header | recorded by hand in JupyterLab, no script (see below) |
+| `kpi-diff.png`, `funnel.png`, `error-sankey.png`, `last-error-sankey.png`, `abandoned-sankey.png`, `visit-graph.png` | Common use cases | `docs/scripts/capture_readme_screenshots.py` |
+| `agent-paths.png` | Explore agent runs | `docs/scripts/capture_readme_screenshots.py` |
+| `step-matrix-funnel.gif` | use case 2 | `docs/scripts/record_readme_step_matrix.py` |
+| `cluster-analysis.gif` | use case 5 | `docs/scripts/record_readme_cluster_analysis.py` |
+| `agent-report.gif` | Work with an AI agent | `docs/scripts/record_readme_agent_report.py` |
 
-The preserved graph clip uses baseline minus incident in its sidebar, while the
-new README comparison example uses incident minus baseline. The sign and color
-therefore reverse. The README describes each recording as an interface tour and
-states the comparison direction beside the executable example; do not transfer
-a color interpretation between them without checking the group order.
+The screenshots run the code shown next to them in the README; the scripts hold the
+same calls, so update both together.
 
-The report clip demonstrates links from a finding to a chart element. Its
-authored causal interpretation is not independently established by those links.
-Use the links to inspect evidence, then validate the analytical conclusion.
+## What the recordings show
 
-## New widget recordings and images
+Frames are actual browser states. No chart value is drawn or edited by hand. Frame
+durations are chosen for reading, so pauses are longer than in real time, and a
+drawn cursor is overlaid where an interaction is shown. Height, sidebar and frame
+width are set for presentation only.
 
-- `step-matrix.gif` / `.png`: sessions grouped by their deepest completed step in
-  the ordered cart → shipping → purchase funnel, aligned on shipping. The GIF
-  hovers purchase and path-end cells to expose group values. A shipping-stage
-  session may contain a purchase outside that ordered funnel; it is not a
-  blanket non-buyer label.
-- `cluster-analysis.gif` / `.png`: event-count features, candidate cluster counts
-  3–5, session grain. The GIF switches between the overview and silhouette tabs.
-  Recomputing features, selecting another partition and saving clusters require
-  the live notebook. The metric column is widened through the widget's resize
-  handle so labels remain readable.
-- `agent-paths.png`: the graph exported by
-  [agent_path_analysis.ipynb](../../notebooks/agent_path_analysis.ipynb). It uses
-  average transitions per run, failed minus succeeded. The data includes six
-  failed and ten successful runs; complete retry patterns are checked separately.
-
-The matrix and cluster animations hold actual browser states for two seconds per
-frame. No chart values are drawn or edited by hand. Their static PNGs show the
-initial state. Height and sidebar settings are adjusted only for presentation.
+- **`transition-graph.gif`** (about 24 s). Recorded from a live widget in JupyterLab
+  with retentioneering 5.2.3, since turning on comparison needs a kernel. It selects
+  the saved path-to-purchase view, returns to Default so the comparison colors are
+  not hidden behind the path focus, turns on comparison in the sidebar, focuses the
+  payment step, opens its ego view and follows three neighbors (payment error,
+  support chat, back to payment details). The
+  [tour notebook](../../notebooks/retentioneering_5_tour.ipynb) opens on the same
+  saved view. Cursor and click rings are drawn over the frames, and the route
+  statistics badge of the path view is hidden, because its `P(route) 0.00%` for that
+  exact contiguous route reads as an error out of context.
+  The clip compares baseline minus incident, while the first README use case
+  compares incident minus baseline, so the signs and colors are reversed between
+  them. Check the group order before carrying a color reading from one to the other.
+- **`kpi-diff.png`** focuses `payment_details` through the graph's search, the node
+  the README tells readers to click.
+- **`step-matrix-funnel.gif`**: sessions grouped by their deepest completed step of
+  the ordered cart → shipping → purchase funnel, aligned on `cart` and
+  `shipping_details`. It hovers cells to show each group's values, then sorts rows by
+  following and by preceding steps. A shipping-stage session may contain a purchase
+  outside that ordered funnel; the group is not a blanket non-buyer label. The frame
+  is wide enough that hover tooltips stay inside it, and the page gets the
+  sans-serif font a notebook would give the widget.
+- **`cluster-analysis.gif`**: recorded in a JupyterLab that the script starts itself,
+  because Apply and switching partitions recompute in Python. It starts from a bare
+  `cluster_analysis()` call and goes through the sidebar, Apply, the Silhouette tab,
+  renaming in the header and Save Clusters. Native `<select>` popups do not appear in
+  headless screenshots, so a list with the same options is drawn over the real field
+  while a value is picked; the value itself is set on the real field. The overview
+  table is scrolled through its own container. The cluster names (`browsers`,
+  `researchers`, `buyers`, `light_users`) describe each cluster's event profile.
+- **`visit-graph.png`** names the four session clusters by their event profile
+  (`browsing`, `quick_visit`, `purchase_visit`, `promo_visit`). KMeans uses a fixed
+  seed, so the numbering is stable for a given scikit-learn version, here and in the
+  cluster recording.
+- **`agent-paths.png`**: the graph that `agent_path_analysis.ipynb` exports, average
+  transitions per run, failed minus succeeded. The fixture has six failed and ten
+  successful runs; complete retry patterns are checked separately in the notebook.
+- **`agent-report.gif`**: a three-tab report (transition graph, step matrix, segment
+  overview) built with the MCP server's own tool functions and exported to HTML.
+  Links in its text focus graph edges, step matrix cells and segment overview cells.
+  The analysis text is written for this demo; every number in it is read from the
+  tabs, and the script fails unless `check_analysis` passes. The links locate the
+  evidence for a statement; they do not establish its cause. The GIF palette is
+  sampled from every frame plus a band of the focus-ring color, otherwise the thin
+  amber outline is merged into the cell colors.
 
 ## Reproduce
 
-Use Python 3.10–3.13 and the repository's [development setup](../../CONTRIBUTING.md).
-Build the widget JavaScript before exporting from a source checkout:
+Use Python 3.10–3.13 and the repository's [development setup](../../CONTRIBUTING.md),
+then build the widget JavaScript:
 
 ```bash
 make install-dev
 make build
-RETENTIONEERING_NO_TRACK=1 uv run python docs/scripts/generate_readme_demos.py
 ```
 
-Then install Playwright and its browser in your chosen Node environment, and make
-`ffmpeg` available. From the repository root:
+The scripts drive a browser through Playwright for Python, which `uv run --with
+playwright` provides. Set `CHROME_PATH` to use an installed Chrome instead of
+Playwright's Chromium (otherwise install it once with
+`uv run --with playwright python -m playwright install chromium`).
 
 ```bash
-node docs/scripts/record_readme_demos.cjs
+RETENTIONEERING_NO_TRACK=1 uv run --with playwright python docs/scripts/capture_readme_screenshots.py
+RETENTIONEERING_NO_TRACK=1 uv run --with playwright python docs/scripts/record_readme_step_matrix.py
+RETENTIONEERING_NO_TRACK=1 uv run --with playwright python docs/scripts/record_readme_cluster_analysis.py
+RETENTIONEERING_NO_TRACK=1 uv run --with playwright python docs/scripts/record_readme_agent_report.py
 ```
 
-The recorder also accepts `PLAYWRIGHT_PACKAGE` (module path), `CHROME_PATH`
-(browser executable) and `FFMPEG` (executable path). Exports, captured frames and
-browser-check results are written to `docs/build/readme/`; final media goes here.
-The recorder fails on browser errors or unexpected external requests.
+Widget exports go to `docs/build/readme/` (gitignored); final media is written here.
+The step matrix and report recorders fail on browser errors.
 
-To regenerate the two preserved PNG posters with Pillow:
+## Notebooks and Colab links
 
-```python
-from pathlib import Path
-from PIL import Image
-
-assets = Path(".github/readme")
-for name in ("transition-graph", "agent-report"):
-    with Image.open(assets / f"{name}.gif") as animation:
-        animation.seek(animation.n_frames - 1)
-        animation.convert("RGB").save(assets / f"{name}.png", optimize=True)
-```
-
-The two public notebooks are self-contained and intentionally committed without
-executed outputs. Run the cells in order to reproduce the analyses. Colab links
-in the README pin a tested repository revision so the examples survive deletion
-of a PR branch. The relative notebook links lead to the current checkout.
+The two public notebooks are self-contained and committed without outputs; run their
+cells in order to reproduce the analyses. The tour runs the README use-case code.
+Colab links in the README and in the tour pin a tested repository revision, so the
+examples keep working when a PR branch is deleted. After a merge, repin them to a
+commit on `master`; a squash merge drops the pinned commit from history. The
+relative notebook links lead to the current checkout.

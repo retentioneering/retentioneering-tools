@@ -12,7 +12,7 @@ import { anywidgetHost, type AnyWidgetModel } from "./AnywidgetHost";
 import { staticHost } from "./StaticHost";
 export { restHost } from "./RestHost";
 export { reactiveHost } from "./ReactiveHost";
-import type { RenderContext } from "./widget-utils";
+import { focusCells, type RenderContext } from "./widget-utils";
 import { render as renderTransitionGraph }  from "./index";
 import { render as renderStepSankey }       from "./step_sankey";
 import { render as renderStepMatrix }       from "./step_matrix";
@@ -172,19 +172,13 @@ export function scrollToEvent(eventRef: string, el: HTMLElement) {
         const cell = row.querySelector(`td[data-step="${step}"]`) as HTMLElement | null;
         if (cell) {
           cell.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
-          const prev = cell.style.background;
-          cell.style.background = "#fef3c7";
-          setTimeout(() => { cell.style.background = prev; }, 900);
+          focusCells(el, [cell]);
           return;
         }
       }
       row.scrollIntoView({ block: "nearest", behavior: "smooth" });
       const td = row.querySelector("td") as HTMLElement | null;
-      if (td) {
-        const prev = td.style.background;
-        td.style.background = "#fef3c7";
-        setTimeout(() => { td.style.background = prev; }, 900);
-      }
+      if (td) focusCells(el, [td]);
       break;
     }
   }

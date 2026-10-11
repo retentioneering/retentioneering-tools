@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Changed
+
+- Agent analytics references now use the current multi-event argument key and
+  clarify observation cutoffs, completer timing, non-converter retention and the
+  assumptions behind observational lift and Markov scenarios.
+
 ## [5.2.4] - 2026-10-07
 
 ### Changed

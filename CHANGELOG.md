@@ -5,6 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Fixed
+
+- Funnels and `add_segment(funnel_events=...)` now compare the full event position
+  `(index, subindex)`. A synthetic marker immediately before its source event used
+  to share the same `index`, so `marker -> purchase` incorrectly reported zero
+  completions and assigned only the marker as the deepest stage. Path boundary
+  events were affected too. Matching remains strictly ordered: one occurrence
+  cannot satisfy repeated steps, and reversing the pair does not count as a
+  conversion.
+
 ## [5.2.4] - 2026-10-07
 
 ### Changed

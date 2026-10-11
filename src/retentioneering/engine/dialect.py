@@ -16,12 +16,23 @@ aggregation, regex matching) as plain string-returning functions.
 from __future__ import annotations
 
 __all__ = [
+    "event_position",
     "epoch",
     "interval_seconds",
     "path_agg",
     "path_agg_ordered",
     "regexp_match",
 ]
+
+
+def event_position(index_expr: str, subindex_expr: str) -> str:
+    """Comparable DuckDB row value for a full event position.
+
+    MIN and comparisons on the row are lexicographic: compare index first,
+    then subindex. Keep the pair intact when selecting an earliest match.
+    Expressions must already contain any required identifier quoting.
+    """
+    return f"ROW({index_expr}, {subindex_expr})"
 
 
 def interval_seconds(seconds: float) -> str:

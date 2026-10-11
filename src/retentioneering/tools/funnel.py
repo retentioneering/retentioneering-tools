@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from retentioneering import engine
+from retentioneering.engine.dialect import event_position
 from retentioneering.exceptions import InvalidParameterError
 from retentioneering.tools.types import T_Diff
 from retentioneering.utils.sql_quoting import quote_literal
@@ -70,16 +71,21 @@ class Funnel:
         path_col_q = engine.quote_ident(path_col)
         event_col_q = engine.quote_ident(event_col)
         index_col_q = engine.quote_ident(index_col)
+        subindex_col_q = engine.quote_ident(self.eventstream.schema.subindex)
+        position = event_position(index_col_q, subindex_col_q)
+        joined_position = event_position(f"df.{index_col_q}", f"df.{subindex_col_q}")
 
         # Sequential funnel semantics: a path reaches step k iff there
-        # exist event indices i1 < i2 < ... < ik with event(i_j) = steps[j].
+        # exist positions p1 < p2 < ... < pk with event(p_j) = steps[j].
+        # A position is (index, subindex): synthetic markers can share their
+        # source event's index, but still precede it in the stream's order.
         # Chained CTEs: step_k holds, per path, the earliest occurrence of
         # steps[k-1] that comes strictly after the path's step_{k-1} match.
         # This correctly handles repeated events and duplicate step names.
         #
         # path_cols is validated (coarsest-first, strictly nested) at
         # Eventstream construction time, and path_col is restricted to
-        # schema.path_cols above, so comparing index_col directly is
+        # schema.path_cols above, so comparing full event positions is
         # correct at any accepted grain (see ADR-0004).
         ctes = []
         for step_num, step_event in enumerate(steps, start=1):
@@ -87,7 +93,7 @@ class Funnel:
             if step_num == 1:
                 ctes.append(
                     f"step_1 AS ("
-                    f"SELECT {path_col_q} AS path_id, MIN({index_col_q}) AS idx "
+                    f"SELECT {path_col_q} AS path_id, MIN({position}) AS idx "
                     f"FROM df "
                     f"WHERE {event_col_q} = {ev} "
                     f"GROUP BY {path_col_q}"
@@ -97,10 +103,10 @@ class Funnel:
                 prev = f"step_{step_num - 1}"
                 ctes.append(
                     f"step_{step_num} AS ("
-                    f"SELECT df.{path_col_q} AS path_id, MIN(df.{index_col_q}) AS idx "
+                    f"SELECT df.{path_col_q} AS path_id, MIN({joined_position}) AS idx "
                     f"FROM df "
                     f"JOIN {prev} ON df.{path_col_q} = {prev}.path_id "
-                    f"WHERE df.{event_col_q} = {ev} AND df.{index_col_q} > {prev}.idx "
+                    f"WHERE df.{event_col_q} = {ev} AND {joined_position} > {prev}.idx "
                     f"GROUP BY df.{path_col_q}"
                     f")"
                 )

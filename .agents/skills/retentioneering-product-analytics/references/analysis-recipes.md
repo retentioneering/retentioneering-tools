@@ -82,7 +82,7 @@ labeled = stream.add_clusters(name="behavior", features=FEATURES,
 ```
 
 Read: conversion spread ACROSS clusters (from overview) is the finding; cluster profiles
-name the personas. Pitfalls: outcome events in `features` produce silhouette≈0.9
+name the personas. Pitfalls: for prediction or intervention targeting, define an observation cutoff before the outcome and compute ALL features, including length/duration, only within that window; excluding the named outcome alone does not prevent post-outcome leakage. Outcome events in `features` produce silhouette≈0.9
 "clusters" that merely restate the funnel — impressive and useless. Inspect the
 silhouette curve yourself: a best-K at the range boundary or a >90/10 split means the
 clustering is weak regardless of `best_params`; on degenerate data `best_params` may be
@@ -114,8 +114,7 @@ tb = stream.get_metrics([{"metric": "time_between",
 # completers' timing; for a survival view add censored paths (reached basket, no checkout)
 ```
 
-Read: median/quantiles of completion → after which delay organic completion is <5% —
-that is when a nudge fires. Pitfalls: `time_between` = first A to first B globally in the
+Read: median/quantiles describe timing among observed completers. They do not establish the probability of future completion among users still waiting. Estimate that probability with an explicitly defined at-risk population and censoring-aware analysis before proposing a timing threshold; test a nudge experimentally. Pitfalls: `time_between` = first A to first B globally in the
 path, not "first B after A" — for strict semantics compute from `to_dataframe()`; account
 for right-censoring near the end of the log window.
 
@@ -143,13 +142,10 @@ counts = sub.transition_graph_data(edge_weight="count").astype(float).fillna(0)
 ```
 
 Non-negotiables learned in the field: (1) build the chain on the RELEVANT SUB-POPULATION
-(paths containing the anchor, `truncate_paths` to first anchor→outcome) — a chain over
+(paths containing the anchor, cut from the first anchor to the outcome OR a common observation endpoint, retaining non-converters). A bare outcome anchor drops non-converters; use a fallback such as `end_anchor=["purchase", "path_end"]` and verify the retained denominator. A log ending is not proof of permanent abandonment: define the horizon and handle censoring before assigning absorbing outcomes. A chain over
 the full log averages transition rows over unrelated users and badly distorts absorption;
 (2) validation gate — base-chain absorption must reproduce the observed conversion before
-any scenario is trusted; (3) plug-in absorption equals the training-set rate by
-construction, so the model's value is in scenario DELTAS, not level forecasts;
-(4) rerouted users converting like organic ones is an upper-bound assumption — present a
-sensitivity grid (25/50/100% of the empirical rate).
+any scenario is trusted; diagnose discrepancies rather than assuming equality by construction. (3) Scenario deltas are conditional model outputs, not causal forecasts of a shipped change. (4) Rerouted users converting like organic ones is an unverified transport assumption, not a guaranteed upper bound — present a sensitivity grid (for example 25/50/100% of the empirical rate) and name its assumptions.
 
 ## R10 · Package results for stakeholders
 

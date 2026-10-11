@@ -114,7 +114,7 @@ data parameters. Common widget params: `diff=`, `path_col=`, `height=`, `sidebar
 **Headless-only, no widget:** `get_conversion_rate(start_anchor, end_anchor, within=None, path_col=None)`
 → DataFrame, one row per (start, end) pair: `paths_with_start` (the denominator), `converted`,
 `conversion_rate`, `base_rate` (share of ALL paths where the target occurs at all) and `lift`
-(= rate / base_rate; **< 1 means the start event makes the outcome LESS likely**). Report the
+(= rate / base_rate; **< 1 means the outcome is less frequent among paths meeting the start condition than in the base population; this is an association, not a causal effect**). Report the
 denominator and the lift, never the rate alone. Both sides take event names or `truncate_paths`
 anchor specs (`path_start` / `path_end` are ordinary names — `end_anchor="path_end", within=1`
 is an exit rate); a LIST on either side FANS OUT into separate questions, one row per

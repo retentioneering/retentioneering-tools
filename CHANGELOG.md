@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Fixed
+
+- The agent skill's event-log profiler now writes an actionable zero-count profile
+  for empty exports instead of raising IndexError. Warning output uses an ASCII
+  marker so redirected Windows consoles can display it.
+
 ## [5.2.4] - 2026-10-07
 
 ### Changed

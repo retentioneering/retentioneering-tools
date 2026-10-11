@@ -132,7 +132,12 @@ def main() -> int:
         },
     }
 
-    if user_col and event_col:
+    if df.empty:
+        problems.append("event log contains no rows — provide a non-empty export")
+        profile["n_paths"] = 0
+        profile["n_event_types"] = 0
+
+    if user_col and event_col and not df.empty:
         nulls_user = int(df[user_col].isna().sum())
         nulls_event = int(df[event_col].isna().sum())
         profile["n_paths"] = int(df[user_col].nunique(dropna=True))
@@ -220,7 +225,7 @@ def main() -> int:
         f"segments={segment_cols}"
     )
     for p in problems:
-        print(f"  ⚠ {p}")
+        print(f"  WARNING: {p}")
     print(f"\nprofile written: {out_path}\n")
     print("suggested schema:\n")
     seg = ", ".join(f'"{c}"' for c in segment_cols)
@@ -232,7 +237,7 @@ stream = Eventstream(df, schema={{
     "segment_cols": [{seg}],
 }})
 stream.describe()""")
-    return 1 if (not user_col or not event_col or not ts_ok) else 0
+    return 1 if (df.empty or not user_col or not event_col or not ts_ok) else 0
 
 
 if __name__ == "__main__":

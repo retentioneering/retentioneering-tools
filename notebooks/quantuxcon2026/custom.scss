@@ -1,0 +1,337 @@
+/*-- scss:defaults --*/
+$presentation-font-size-root: 34px;
+$code-block-font-size: 0.62em;
+$presentation-heading-font-weight: 600;
+
+// Retentioneering widget palette (js/viz-core, js/widget):
+$rete-yellow: hsl(45, 93%, 58%); // --retentioneering-yellow: Apply buttons, graph nodes
+$rete-orange: hsl(25, 95%, 53%); // step matrix / Sankey heat cells (peach at low alpha)
+$rete-blue: #3b82f6;             // diff mode, second group
+$rete-red: #ef4444;              // diff mode, first group
+$rete-graphite: #4b5563;         // graph edges
+$rete-ink: #111827;              // widget text
+
+// Roles in the deck:
+$highlight: $rete-yellow;  // "look here": active steps, tags, current item
+$accent-1: $rete-blue;     // two-way contrasts: first category
+$accent-2: $rete-orange;   // two-way contrasts: second category
+$link-color: $rete-blue;
+
+// Height of the area below a slide title, for illustrations that center
+// themselves in it (slide height 760 minus title and footer).
+$slide-body-height: 600px;
+
+/*-- scss:rules --*/
+
+// ══ Theme: applies to every slide ═════════════════════════════════════════
+
+// Section slides (`# Heading`): graphite background (deck.html applies it,
+// reveal draws backgrounds from an attribute), white title, yellow underline.
+:root {
+  --section-bg: #{$rete-ink};
+}
+
+.reveal section.level1 h1 {
+  color: #fff;
+}
+
+.reveal section.level1 h1::after {
+  content: "";
+  display: block;
+  width: 2.5em;
+  height: 0.12em;
+  margin-top: 0.3em;
+  background: $highlight;
+}
+
+// Workflow roadmap line; deck.html turns it into pills, **bold** steps are "on".
+.reveal p.map {
+  display: flex;
+  gap: 0.4em;
+  font-size: 0.6em;
+  margin-bottom: 0.6em;
+
+  span {
+    padding: 0.15em 0.6em;
+    border-radius: 999px;
+    border: 1px solid #d4d4d8;
+    color: #71717a;
+  }
+
+  span.on {
+    background: $highlight;
+    border-color: $highlight;
+    color: #1c1917;
+    font-weight: 600;
+  }
+}
+
+// `## Slide` + `### Question`: a centered question slide.
+.reveal .question-slide h2 {
+  font-size: 0.9em;
+  color: #78716c;
+}
+
+.reveal .question-slide h3 {
+  font-size: 1.3em;
+  line-height: 1.25;
+  margin-top: 0.6em;
+}
+
+// `> blockquote`: a takeaway box.
+.reveal blockquote {
+  width: auto;
+  margin: 0.5em 0;
+  border-left: 6px solid $highlight;
+  padding: 0.3em 0.8em;
+  background: rgba($rete-orange, 0.08);
+  box-shadow: none;
+  font-size: 0.8em;
+  font-style: normal;
+}
+
+.reveal .slide-number {
+  font-size: 0.45em;
+}
+
+.reveal table {
+  font-size: 0.6em;
+}
+
+// Source line under a figure, e.g. `<small>After …</small>`.
+.reveal small {
+  color: #a8a29e;
+  font-size: 0.45em;
+}
+
+// ══ Slide illustrations ═══════════════════════════════════════════════════
+// Each block is scoped to its slide's `slide-…` class, set by deck.html (see
+// SLIDES there), so nothing here leaks onto other slides.
+
+// ── Slide: About us ── people cards in a row ───────────────────────────────
+.reveal section.slide-about-us .people {
+  display: flex;
+  gap: 2em;
+  margin-top: 0.5em;
+
+  .person {
+    flex: 1;
+    font-size: 0.7em;
+  }
+
+  h3 {
+    margin: 0.4em 0 0.3em;
+  }
+
+  p:has(> img) {
+    margin: 0;
+  }
+
+  img {
+    width: 180px;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 50%;
+    margin: 0;
+  }
+}
+
+// ── Slide: UX research ── 2×2 matrix of method cards ───────────────────────
+.reveal section.slide-ux-research .matrix {
+  display: grid;
+  grid-template-columns: 8.5em repeat(var(--cols), 1fr);
+  gap: 0.7em 1em;
+  margin-top: 0.6em;
+  font-size: 0.72em;
+
+  .col-1 {
+    --accent: #{$accent-1};
+  }
+
+  .col-2 {
+    --accent: #{$accent-2};
+  }
+
+  small {
+    display: block;
+    margin-top: 0.2em;
+    color: #78716c;
+    font-size: 0.8em;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .matrix-col {
+    text-align: center;
+    color: var(--accent);
+    font-size: 0.85em;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .matrix-row {
+    align-self: center;
+    text-align: right;
+    color: #44403c;
+    font-size: 0.85em;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .matrix-cell {
+    padding: 0.6em 0.9em;
+    border-radius: 16px;
+    background: #fff;
+    // Outline as a shadow ring, not a border: Firefox draws a rounded border
+    // in segments and the seams show up as hairlines when the slide is scaled.
+    box-shadow:
+      0 0 0 1px #e7e5e4,
+      0 6px 20px rgba(28, 25, 23, 0.07);
+  }
+
+  ul {
+    display: block;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: block;
+    padding: 0.2em 0;
+    color: #44403c;
+  }
+
+  // `Text ← note`: the note as a tag, styled like the widgets' Apply button.
+  .tag {
+    margin-left: 0.6em;
+    padding: 0.1em 0.6em;
+    border-radius: 999px;
+    background: $highlight;
+    color: $rete-ink;
+    font-size: 0.65em;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    vertical-align: 0.15em;
+  }
+}
+
+// ── Slide: Event-log data ── frames around column groups ───────────────────
+.reveal section.slide-event-log-data .columns-wrap {
+  --required: #{$accent-1};
+  --optional: #{$accent-2};
+  position: relative;
+  // Center the table vertically below the title; the bottom padding makes
+  // room for the frame labels, so table + labels sit in the middle together.
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: $slide-body-height;
+  padding-bottom: 1.2em;
+  box-sizing: border-box;
+
+  table {
+    font-size: 0.55em;
+  }
+
+  th,
+  td {
+    padding: 0.45em 1em;
+    white-space: nowrap;
+  }
+
+  // One frame per group, positioned over its columns by deck.html.
+  .frame {
+    --gc: var(--required);
+    position: absolute;
+    box-sizing: border-box;
+    border: 3px solid var(--gc);
+    pointer-events: none;
+  }
+
+  .frame.optional {
+    --gc: var(--optional);
+    border-style: dashed;
+  }
+
+  // Optional column inside a required group.
+  .frame-inner {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    box-sizing: border-box;
+    border: 3px dashed var(--gc);
+  }
+
+  .frame-label {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    padding-top: 0.3em;
+    color: var(--gc);
+    font-size: 0.6em;
+    text-align: center;
+    white-space: nowrap;
+  }
+}
+
+// ── Slide: Why event-log analysis is challenging ── stepper ───────────
+// Items on the left stay visible and take the accent color while current; the
+// sub-lists share one grid cell on the right and show one at a time. The
+// stepper fills the slide below the title and centers itself both ways.
+.reveal section.slide-challenges .stepper {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  align-content: center;
+  justify-content: center;
+  gap: 3em;
+  height: $slide-body-height;
+
+  > ol {
+    margin: 0;
+  }
+
+  .stepper-item.fragment {
+    opacity: 1;
+    visibility: inherit;
+    font-size: 1.15em;
+    line-height: 1.6;
+  }
+
+  // A highlighter-style background, not a bolder weight: that would widen
+  // the column and shift the details.
+  .stepper-item {
+    padding: 0 0.3em;
+    border-radius: 6px;
+    transition: background-color 0.3s;
+  }
+
+  .stepper-item.current-fragment {
+    background: $highlight;
+  }
+
+  .stepper-details {
+    display: grid;
+
+    > ul,
+    > ol {
+      // All sub-lists share one cell, as tall as the tallest; center each in it.
+      grid-area: 1 / 1;
+      align-self: center;
+      margin: 0;
+      padding: 0 0 0 1.1em;
+      font-size: 0.9em;
+      line-height: 1.6;
+    }
+
+    > ul {
+      list-style: disc;
+    }
+  }
+}

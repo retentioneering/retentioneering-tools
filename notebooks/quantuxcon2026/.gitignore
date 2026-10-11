@@ -1,0 +1,7 @@
+# Quarto render output
+slides.html
+_build_slides.ipynb
+_build_slides.ipynb.tmp
+_build_slides_files/
+slides_files/
+.quarto/

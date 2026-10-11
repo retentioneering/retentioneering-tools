@@ -1,0 +1,272 @@
+<script>
+// Custom slide logic, kept out of slides.ipynb so the notebook's markdown stays
+// plain (no Quarto attribute syntax). Colors and sizes live in custom.scss.
+//
+// Theme conventions, applied to every slide:
+//   # Heading                    → section slide, background from --section-bg
+//   ## Slide + ### Question      → centered question slide
+//   Question · Shape events · …  → workflow roadmap, **bold** steps highlighted
+//   > blockquote                 → takeaway box (pure CSS, see custom.scss)
+//
+// Slide illustrations, applied only to the slide they are registered for in
+// SLIDES below (by the id Quarto derives from the slide title). Each one adds
+// a `slide-…` class to its slide, which custom.scss scopes its styles to.
+(function () {
+  var SLIDES = {
+    "about-us": { cls: "slide-about-us", build: buildAboutUsCards },
+    "ux-research": { cls: "slide-ux-research", build: buildUxResearchMatrix },
+    "event-log-data": { cls: "slide-event-log-data", build: buildEventLogColumnGroups },
+    "why-event-log-analysis-is-challenging": { cls: "slide-challenges", build: buildChallengesStepper },
+  };
+
+  var ROADMAP = "Question · Shape events · Look · Compare · Check · Claim";
+
+  // ── Slide: About us ────────────────────────────────────────────────────────
+  // `### Name` + photo + list, repeated → one card per person, in a row.
+  function buildAboutUsCards(slide) {
+    var row = document.createElement("div");
+    row.className = "people";
+    var card = null;
+    Array.prototype.slice.call(slide.children).forEach(function (el) {
+      if (el.tagName === "H3") {
+        card = document.createElement("div");
+        card.className = "person";
+        row.appendChild(card);
+      }
+      if (card && !el.matches("aside")) card.appendChild(el);
+    });
+    slide.appendChild(row);
+  }
+
+  // ── Slide: UX research ─────────────────────────────────────────────────────
+  // The table becomes a matrix of method cards: column and row headers are the
+  // axes (`Axis: hint`), each body cell a card of comma-separated items. An item
+  // `Text ← note` gets the note as a tag, shown on the next click.
+  function buildUxResearchMatrix(slide) {
+    var table = slide.querySelector("table");
+    var head = table.querySelectorAll("thead th");
+
+    function axisLabel(cls, text) {
+      var div = document.createElement("div");
+      var i = text.indexOf(":");
+      div.className = cls;
+      div.textContent = (i < 0 ? text : text.slice(0, i)).trim();
+      if (i >= 0) {
+        var hint = document.createElement("small");
+        hint.textContent = text.slice(i + 1).trim();
+        div.appendChild(hint);
+      }
+      return div;
+    }
+
+    function addTag(li) {
+      var parts = li.innerHTML.split("←");
+      if (parts.length < 2) return;
+      li.innerHTML = parts[0].trim() + ' <span class="tag fragment"></span>';
+      li.lastChild.textContent = parts.slice(1).join("←").trim();
+    }
+
+    var matrix = document.createElement("div");
+    matrix.className = "matrix";
+    matrix.style.setProperty("--cols", head.length - 1);
+    matrix.appendChild(document.createElement("div"));
+    for (var c = 1; c < head.length; c++) {
+      matrix.appendChild(axisLabel("matrix-col col-" + c, head[c].textContent));
+    }
+    table.querySelectorAll("tbody tr").forEach(function (tr) {
+      var cells = tr.children;
+      matrix.appendChild(axisLabel("matrix-row", cells[0].textContent));
+      for (var c = 1; c < cells.length; c++) {
+        var card = document.createElement("div");
+        card.className = "matrix-cell col-" + c;
+        var ul = document.createElement("ul");
+        cells[c].innerHTML.split(",").forEach(function (item) {
+          var li = document.createElement("li");
+          li.innerHTML = item.trim();
+          ul.appendChild(li);
+          addTag(li);
+        });
+        card.appendChild(ul);
+        matrix.appendChild(card);
+      }
+    });
+    table.replaceWith(matrix);
+  }
+
+  // ── Slide: Event-log data ──────────────────────────────────────────────────
+  // The list under the table, `- label: col, *col*`, becomes frames around
+  // those columns with the label underneath, one frame per click. *Italic*
+  // columns are optional: a group of only optional columns is framed dashed in
+  // the "optional" color, an optional column inside a required group gets an
+  // inner dashed frame.
+  function buildEventLogColumnGroups(slide) {
+    var table = slide.querySelector("table");
+    var list = table.nextElementSibling;
+    var headers = Array.prototype.map.call(table.querySelectorAll("thead th"), function (th) {
+      return th.textContent.trim();
+    });
+
+    var wrap = document.createElement("div");
+    wrap.className = "columns-wrap";
+    table.replaceWith(wrap);
+    wrap.appendChild(table);
+
+    Array.prototype.forEach.call(list.children, function (li) {
+      var i = li.textContent.indexOf(":");
+      var cols = li.innerHTML.slice(li.innerHTML.indexOf(":") + 1).split(",").map(function (html) {
+        var tmp = document.createElement("span");
+        tmp.innerHTML = html;
+        return { index: headers.indexOf(tmp.textContent.trim()), optional: /<em>/.test(html) };
+      }).filter(function (c) {
+        return c.index >= 0;
+      });
+      if (i < 0 || !cols.length) return;
+      var idx = cols.map(function (c) { return c.index; });
+      var optionalGroup = cols.every(function (c) { return c.optional; });
+
+      var frame = document.createElement("div");
+      frame.className = "frame fragment" + (optionalGroup ? " optional" : "");
+      frame.dataset.first = Math.min.apply(null, idx);
+      frame.dataset.last = Math.max.apply(null, idx);
+      var label = document.createElement("div");
+      label.className = "frame-label";
+      label.textContent = li.textContent.slice(0, i).trim();
+      frame.appendChild(label);
+      cols.forEach(function (c) {
+        if (!c.optional || optionalGroup) return;
+        var inner = document.createElement("div");
+        inner.className = "frame-inner";
+        inner.dataset.col = c.index;
+        frame.appendChild(inner);
+      });
+      wrap.appendChild(frame);
+    });
+    list.remove();
+  }
+
+  // Position the frames over their columns. Uses offset* (layout pixels, not
+  // affected by reveal's scaling), so it only works on a displayed slide: run
+  // on every slide change and resize.
+  function layoutEventLogColumnGroups(slide) {
+    if (!slide || !slide.classList.contains("slide-event-log-data")) return;
+    var wrap = slide.querySelector(".columns-wrap");
+    var table = wrap.querySelector("table");
+    var head = table.querySelectorAll("thead th");
+    var body = table.querySelector("tbody");
+    var top = table.offsetTop;
+    var height = body.offsetTop + body.offsetHeight;
+    var x = function (i) { return table.offsetLeft + head[i].offsetLeft; };
+    var w = function (i) { return head[i].offsetWidth; };
+    // Frames are inset by GAP so neighbouring ones don't touch; inner frames
+    // by INNER from their column's edges.
+    var GAP = 4, INNER = 6;
+    wrap.querySelectorAll(".frame").forEach(function (frame) {
+      var first = +frame.dataset.first, last = +frame.dataset.last;
+      var left = x(first) + GAP;
+      frame.style.left = left + "px";
+      frame.style.top = top + "px";
+      frame.style.width = x(last) + w(last) - GAP - left + "px";
+      frame.style.height = height + "px";
+      frame.querySelectorAll(".frame-inner").forEach(function (inner) {
+        var c = +inner.dataset.col;
+        inner.style.left = x(c) + INNER - left - 3 + "px";
+        inner.style.width = w(c) - 2 * INNER + "px";
+      });
+    });
+  }
+
+  // ── Slide: Why event-log data analysis is challenging ─────────────────────
+  // The numbered list becomes a stepper: items on the left, their sub-lists
+  // stacked on the right. Item k and sub-list k share a fragment index, so each
+  // click highlights the next item (only while current) and swaps in its
+  // sub-list.
+  function buildChallengesStepper(slide) {
+    var ol = slide.querySelector(":scope > ol");
+    var stepper = document.createElement("div");
+    stepper.className = "stepper";
+    var details = document.createElement("div");
+    details.className = "stepper-details";
+    Array.prototype.forEach.call(ol.children, function (li, i) {
+      var sub = li.querySelector(":scope > ul, :scope > ol");
+      li.classList.add("fragment", "stepper-item");
+      li.dataset.fragmentIndex = i;
+      if (!sub) return;
+      sub.classList.add("fragment", "current-visible");
+      sub.dataset.fragmentIndex = i;
+      details.appendChild(sub);
+    });
+    ol.replaceWith(stepper);
+    stepper.appendChild(ol);
+    stepper.appendChild(details);
+  }
+
+  // ── Theme conventions ──────────────────────────────────────────────────────
+  function applyThemeConventions() {
+    var sectionBg = getComputedStyle(document.documentElement).getPropertyValue("--section-bg").trim();
+    document.querySelectorAll(".reveal .slides section.level1").forEach(function (s) {
+      if (sectionBg) s.setAttribute("data-background-color", sectionBg);
+    });
+
+    document.querySelectorAll(".reveal .slides section.level2").forEach(function (s) {
+      if (SLIDES[s.id]) return;
+      if (s.querySelector(":scope > h3")) s.classList.add("center", "question-slide");
+    });
+
+    document.querySelectorAll(".reveal .slides section.level2 > p").forEach(function (p) {
+      if (p.textContent.trim() !== ROADMAP) return;
+      p.classList.add("map");
+      p.innerHTML = ROADMAP.split(" · ").map(function (step) {
+        var on = Array.prototype.some.call(p.querySelectorAll("strong"), function (b) {
+          return b.textContent.trim() === step;
+        });
+        return '<span class="' + (on ? "on" : "") + '">' + step + "</span>";
+      }).join("");
+    });
+  }
+
+  function applySlideIllustrations() {
+    Object.keys(SLIDES).forEach(function (id) {
+      var slide = document.getElementById(id);
+      if (!slide) {
+        console.warn("deck.html: no slide with id '" + id + "' (was its title renamed?)");
+        return;
+      }
+      slide.classList.add(SLIDES[id].cls);
+      SLIDES[id].build(slide);
+    });
+  }
+
+  // Static widgets are iframes that lay themselves out once, on load. Reveal
+  // loads every slide up front, so a widget on a slide (or fragment) that isn't
+  // on screen yet fits its graph to the wrong viewport. Reload each widget the
+  // first time it actually becomes visible.
+  function refitWidgets(slide) {
+    if (!slide) return;
+    slide.querySelectorAll("iframe[srcdoc]").forEach(function (f) {
+      if (f.dataset.refitted || f.closest(".fragment:not(.visible)")) return;
+      f.dataset.refitted = "1";
+      f.srcdoc = f.srcdoc;
+    });
+  }
+
+  function onReady() {
+    applySlideIllustrations();
+    applyThemeConventions();
+    Reveal.sync();
+    Reveal.layout();
+    refitWidgets(Reveal.getCurrentSlide());
+    layoutEventLogColumnGroups(Reveal.getCurrentSlide());
+  }
+
+  if (Reveal.isReady()) onReady(); else Reveal.on("ready", onReady);
+  Reveal.on("slidechanged", function (e) {
+    refitWidgets(e.currentSlide);
+    layoutEventLogColumnGroups(e.currentSlide);
+  });
+  Reveal.on("fragmentshown", function () { refitWidgets(Reveal.getCurrentSlide()); });
+  Reveal.on("resize", function () { layoutEventLogColumnGroups(Reveal.getCurrentSlide()); });
+  if (document.fonts) {
+    document.fonts.ready.then(function () { layoutEventLogColumnGroups(Reveal.getCurrentSlide()); });
+  }
+})();
+</script>

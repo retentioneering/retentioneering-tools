@@ -7,7 +7,6 @@ Processors can be chained:
 ```python
 stream = (
     rete.datasets.load_ecom()
-    .add_start_end_events()
     .filter_events(drop={"event": ["checkout_bug"]})
     .rename_events({"wishlist_add": "add_to_wishlist"})
 )
@@ -32,7 +31,7 @@ This is deliberate. A typo in an event name would otherwise turn into a filter t
 ### Adding events
 
 - [`add_events`](/docs/data-processors/add-events) — insert synthetic events derived from existing events or a SQL query.
-- [`add_start_end_events`](/docs/data-processors/add-start-end-events) — prepend a `path_start` and append a `path_end` synthetic event to each path.
+- [`add_start_end_events`](/docs/data-processors/add-start-end-events) — *deprecated*: tools add `path_start`/`path_end` themselves for their own `path_col`.
 
 ### Renaming, editing & merging events
 

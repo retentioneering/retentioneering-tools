@@ -1,6 +1,14 @@
 import numpy as np
 import pandas as pd
+import pytest
+
 from retentioneering.eventstream.eventstream import Eventstream
+
+# The method is deprecated (see path_boundaries_test.py for the warning itself);
+# these tests pin its behaviour for as long as it ships.
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:add_start_end_events\\(\\) is deprecated:FutureWarning"
+)
 
 
 class TestAddStartEndEvents:

@@ -31,11 +31,19 @@ single-event path gets both at the same moment:
 | u2 | home | 10:00 |
 | u2 | `path_end` | 10:00 |
 
-You rarely need to call this yourself: `transition_graph`, `step_matrix` and
-`step_sankey` add the markers on the fly, each using its own `path_col`. Calling
-it upfront freezes one definition of a path into the data, which then quietly
-mislabels the boundaries if a widget is later given a different `path_col` — for
-example after [`split_sessions`](/docs/data-processors/split-sessions), where
-per-user markers would sit in the middle of most sessions.
+## Deprecated
+
+Don't call this before analysis. `transition_graph`, `step_matrix`,
+`step_sankey` and the boundary-aware metrics and patterns add the markers on
+the fly, each for the `path_col` it is given. Calling it upfront freezes one
+definition of a path into the data — per-user markers would sit in the middle
+of most sessions after [`split_sessions`](/docs/data-processors/split-sessions)
+— so those tools raise `PathBoundariesPresentError` on an eventstream that
+already contains `path_start`/`path_end`. Drop the call and pass `path_col` to
+the tool instead:
+
+```python
+stream.transition_graph(path_col="session_id")
+```
 
 {% endblock %}

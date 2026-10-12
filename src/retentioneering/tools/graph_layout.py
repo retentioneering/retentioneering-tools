@@ -142,7 +142,7 @@ class GraphLayout:
         index_col_q = engine.quote_ident(schema.index)
         subindex_col_q = engine.quote_ident(schema.subindex)
 
-        df = self.eventstream.add_start_end_events(path_col=path_col).df
+        df = self.eventstream._with_path_boundaries(path_col=path_col).df
         # Ordered list aggregation: ordering inside a subquery is not
         # guaranteed to survive GROUP BY. The cast sidesteps categorical
         # columns coming back as category codes. The outer ORDER BY pins the

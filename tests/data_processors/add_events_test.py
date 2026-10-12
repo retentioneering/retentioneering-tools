@@ -305,7 +305,7 @@ class TestAddEventsByChurn:
         res = (
             Eventstream(self.get_churn_df())
             .add_events(name="churn", churn={"inactivity_days": 30})
-            .add_start_end_events()
+            ._build_start_end_events()
         )
 
         churn_rows = res.df[res.df["event"] == "churn"]

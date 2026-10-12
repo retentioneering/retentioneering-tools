@@ -31,7 +31,8 @@ class StepMatrix:
     ) -> Tuple[pd.DataFrame, ...]:
         path_col = path_col or self.eventstream.schema.path_col
 
-        if self.eventstream.is_empty():
+        regular = anchor is None and path_pattern is None
+        if self.eventstream.is_empty(exclude_start_end=not regular):
             raise EmptyEventstreamError(
                 "Cannot calculate step matrix for empty eventstream"
             )
@@ -116,7 +117,9 @@ class StepMatrix:
         return aligned1, aligned2
 
     def _process_diff_matrix(self, max_steps, diff, path_col):
-        stream1, stream2 = self.eventstream._split_two(diff, path_col=path_col)
+        stream1, stream2 = self.eventstream._split_two(
+            diff, path_col=path_col, exclude_start_end=False
+        )
         sms1 = StepMatrix(stream1).fit(max_steps=max_steps, path_col=path_col)
         sms2 = StepMatrix(stream2).fit(max_steps=max_steps, path_col=path_col)
         sms1, sms2 = self._align_matrices(list(sms1), list(sms2))
@@ -127,10 +130,20 @@ class StepMatrix:
         event_col = self.eventstream.schema.event_col
         index_col = self.eventstream.schema.index
         subindex_col = self.eventstream.schema.subindex
-        path_start = EventTypes().PATH_START.name
-        path_end = EventTypes().PATH_END.name
+        event_types = EventTypes()
+        path_start = event_types.PATH_START.name
+        path_end = event_types.PATH_END.name
 
         df = self.eventstream.df
+        # Boundaries are represented by the matrix itself, not by numbered steps.
+        # Count paths first: a path containing only boundaries still contributes
+        # to the denominator and is already finished at step 1.
+        total_paths = df[path_col].nunique()
+        df = df.loc[
+            ~df[self.eventstream.schema.event_type].isin(
+                [event_types.PATH_START.type, event_types.PATH_END.type]
+            )
+        ]
         path_col_q = engine.quote_ident(path_col)
         event_col_q = engine.quote_ident(event_col)
         index_col_q = engine.quote_ident(index_col)
@@ -159,7 +172,6 @@ class StepMatrix:
         )
 
         sm = sm.reindex(columns=range(max_steps + 1)).fillna(0)
-        total_paths = int(sm[1].sum())
         sm.loc[path_start, 0] = total_paths
         sm.loc[path_start, 1:] = 0
         sm.loc[path_end, :] = pd.Series(total_paths, index=sm.columns) - sm.sum()

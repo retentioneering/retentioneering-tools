@@ -1504,7 +1504,9 @@ class Eventstream:
             func=lambda df: df[segment_col].isin(real_values) | df[segment_col].isna()
         )
 
-    def _split_two(self, split, path_col: str | None = None):
+    def _split_two(
+        self, split, path_col: str | None = None, *, exclude_start_end: bool = True
+    ):
         from retentioneering.exceptions import (
             EmptyEventstreamError,
             DiffConfigError,
@@ -1577,9 +1579,9 @@ class Eventstream:
             s2 = self.filter_events(keep={path_col: list(ids2)})
         else:
             raise DiffConfigError("diff must be (seg, v1, v2) or (ids1, ids2)")
-        if s1.is_empty():
+        if s1.is_empty(exclude_start_end=exclude_start_end):
             raise EmptyEventstreamError("first diff group is empty")
-        if s2.is_empty():
+        if s2.is_empty(exclude_start_end=exclude_start_end):
             raise EmptyEventstreamError("second diff group is empty")
         return s1, s2
 
@@ -1725,6 +1727,11 @@ class Eventstream:
 
         Both widgets render the same underlying data — Step Matrix as a heatmap,
         Step Sankey as a flow diagram.
+
+        Without an anchor or pattern, technical path boundaries do not occupy
+        steps. Paths containing only boundaries count as finished from step 1,
+        including when an entire diff group contains only boundaries. A stream
+        with no rows still raises EmptyEventstreamError.
 
         Parameters
         ----------

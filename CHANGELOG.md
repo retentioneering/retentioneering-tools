@@ -7,6 +7,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Regular Step Matrix and Step Sankey calculations no longer count explicit
+  path boundary events as numbered steps. Adding start/end events previously
+  shifted real events and could make column totals fall below 100%. Boundary
+  types are excluded before numbering, while paths containing only boundaries
+  remain in the normalization denominator. An entire boundary-only stream or
+  diff group now counts as finished from step 1 instead of raising an empty
+  stream error. Streams with no rows still raise. Anchor and pattern
+  calculations are unchanged.
+
 - Funnels and `add_segment(funnel_events=...)` now compare the full event position
   `(index, subindex)`. A synthetic marker immediately before its source event used
   to share the same `index`, so `marker -> purchase` incorrectly reported zero

@@ -136,3 +136,22 @@ class InvalidSegmentSelectionError(MetricDistributionError):
 class WidgetExportError(RetentioneeringError):
     def __init__(self, message: str):
         super().__init__(message, "WIDGET_EXPORT_ERROR")
+
+
+class PathBoundariesPresentError(RetentioneeringError):
+    """The eventstream already holds `path_start`/`path_end` rows.
+
+    Tools place path boundaries themselves, for the `path_col` they are given.
+    Boundaries baked into the data beforehand follow whatever grain they were
+    built for, which is silently wrong as soon as the tool uses another one.
+    """
+
+    def __init__(self):
+        super().__init__(
+            "Eventstream already contains path_start/path_end events, most likely "
+            "from the deprecated add_start_end_events(). Tools add path boundaries "
+            "themselves for the path_col they are given — remove the "
+            "add_start_end_events() call (or filter out events with event_type "
+            "'path_start'/'path_end') and pass path_col to the tool instead.",
+            "PATH_BOUNDARIES_PRESENT",
+        )

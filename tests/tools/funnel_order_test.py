@@ -64,7 +64,7 @@ def test_funnel_counts_boundaries_sharing_the_raw_event_index():
             [("u1", "purchase", "2026-01-01")],
             columns=["user_id", "event", "timestamp"],
         )
-    ).add_start_end_events()
+    )._build_start_end_events()
     steps = ["path_start", "purchase", "path_end"]
     result = stream.funnel_data(steps)
     assert [step["unique_paths"] for step in result["steps"]] == [1, 1, 1]

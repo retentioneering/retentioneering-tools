@@ -509,6 +509,29 @@ $slide-body-height: 600px;
     margin-left: 1em;
   }
 
+  // path_start / path_end (toy.py): a grey circle with a white ▸ / ■.
+  .bead.terminal {
+    background: #a8a29e;
+  }
+
+  .bead.terminal::after {
+    content: "";
+    display: block;
+  }
+
+  .bead.terminal.start::after {
+    margin-left: 0.12em;
+    border-left: 0.42em solid #fff;
+    border-top: 0.27em solid transparent;
+    border-bottom: 0.27em solid transparent;
+  }
+
+  .bead.terminal.end::after {
+    width: 0.4em;
+    height: 0.4em;
+    background: #fff;
+  }
+
   .bead + .bead::before {
     content: "";
     position: absolute;
@@ -671,25 +694,39 @@ $slide-body-height: 600px;
   }
 }
 
-// ── Slide: Why not a sunburst? ── two sunbursts side by side ──────────────
-.reveal section.slide-sunburst .sunburst-pair {
-  display: flex;
-  justify-content: center;
-  gap: 3em;
+// ── Slide: Why not tree-based diagrams? ── tree, sunburst and icicle on ecom
+.reveal section.slide-sunburst {
+  .branching {
+    display: flex;
+    justify-content: center;
+    gap: 2.5em;
+    margin-top: 0.3em;
 
-  figure {
-    margin: 0;
+    figure {
+      margin: 0;
+      text-align: center;
+    }
+
+    svg {
+      width: 330px;
+      height: 330px;
+    }
+
+    figcaption {
+      color: $rete-graphite;
+      font-family: $font-family-monospace;
+      font-size: 0.55em;
+    }
+  }
+
+  .branching-note {
+    margin: 0.4em 0;
+    font-size: 0.7em;
     text-align: center;
   }
 
-  svg {
-    width: 360px;
-    height: 360px;
-  }
-
-  figcaption {
-    color: #78716c;
-    font-size: 0.55em;
+  > blockquote {
+    font-size: 0.65em;
   }
 }
 
@@ -867,11 +904,10 @@ $slide-body-height: 600px;
     align-items: center;
   }
 
-  // path_start / path_end: small grey dots, like the graph's own nodes.
+  // path_start / path_end: 1em circles (the frame geometry assumes 1em).
   .bead.terminal {
     width: 1em;
     height: 1em;
-    background: #d6d3d1;
   }
 
   .spot-frame,
@@ -1048,4 +1084,156 @@ $slide-body-height: 600px;
     padding: 0.2em 0;
     break-inside: avoid;
   }
+}
+
+// ── Slides: Step matrix: count events at each step, Tree vs. step matrix ──
+// Left: the paths laid out by step (or the trajectory tree); right: the step
+// matrix. A click frames one step in both (deck.html, toy.py).
+.reveal section.slide-step-matrix {
+  .step-layout {
+    @include beads;
+    display: grid;
+    grid-template-columns: auto auto;
+    justify-content: center;
+    align-items: center;
+    gap: 3em;
+    margin-top: 0.6em;
+    font-size: 0.62em;
+  }
+
+  .columns-wrap {
+    @include column-frames;
+    --required: #{$rete-ink};
+    padding: 0.3em;
+  }
+
+  // path_start / path_end: a smaller circle than an event bead.
+  .bead.terminal {
+    width: 1.25em;
+    height: 1.25em;
+  }
+
+  // A path without the anchor event drops out of a centered matrix.
+  .step-paths tr.dropped-row td {
+    opacity: 0.45;
+    background: linear-gradient($rete-red, $rete-red) center / 100% 3px no-repeat;
+  }
+
+  table {
+    margin: 0;
+    font-size: 1em;
+    border-collapse: collapse;
+  }
+
+  th {
+    font-weight: 400;
+    color: $rete-graphite;
+    text-align: center;
+  }
+
+  // Paths by step: fixed-width cells; a linked cell draws the connector from
+  // the previous step's bead (it starts half a cell to the left).
+  .step-paths {
+    td,
+    th {
+      width: 2.6em;
+      padding: 0.25em 0;
+      text-align: center;
+      border: none;
+    }
+
+    td.step-cell {
+      position: relative;
+    }
+
+    td.linked::before {
+      content: "";
+      position: absolute;
+      left: -50%;
+      width: 100%;
+      top: 50%;
+      border-top: 2px solid $rete-graphite;
+      z-index: 0;
+    }
+
+    .bead {
+      position: relative;
+      z-index: 1;
+    }
+
+    // A path that is over keeps counting as path_end.
+    td.ended .bead {
+      opacity: 0.45;
+    }
+  }
+
+  // The matrix: cells tinted with the widget's heatmap orange.
+  .step-matrix {
+    td,
+    th {
+      width: 2.8em;
+      padding: 0.35em 0;
+      text-align: center;
+    }
+
+    td {
+      background: rgba(249, 115, 22, var(--heat, 0));
+      color: $rete-ink;
+    }
+
+    th.event-cell {
+      width: 2.4em;
+    }
+  }
+
+  // The trajectory tree.
+  .prefix-tree {
+    .step-col.spot {
+      fill: none;
+      stroke: $rete-ink;
+      stroke-width: 3;
+    }
+
+    .edge {
+      fill: none;
+      stroke: $rete-graphite;
+      stroke-width: 1.5;
+    }
+
+    .terminal {
+      fill: #a8a29e;
+    }
+
+    .terminal-mark {
+      fill: #fff;
+    }
+
+    .step {
+      fill: $rete-graphite;
+      font-size: 15px;
+      text-anchor: middle;
+    }
+
+    .label {
+      fill: $rete-ink;
+      font-size: 16px;
+      font-weight: 700;
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+
+    .count {
+      fill: $rete-ink;
+      font-size: 15px;
+      font-weight: 600;
+      dominant-baseline: central;
+    }
+  }
+}
+
+// ── Slide: Step matrix: one row per event (live demo) ── one-line intro ───
+// Small enough to stay on one line, so the widget below fits on the slide.
+.reveal section.slide-step-matrix-demo > p {
+  margin: 0.2em 0;
+  font-size: 0.65em;
 }

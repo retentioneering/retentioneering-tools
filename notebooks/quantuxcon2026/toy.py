@@ -8,7 +8,6 @@ graph, step matrix, step Sankey.
 from __future__ import annotations
 
 import math
-import random
 from collections import Counter
 
 import pandas as pd
@@ -46,43 +45,6 @@ def toy_events() -> pd.DataFrame:
                 }
             )
     return pd.DataFrame(rows)
-
-
-def realistic_paths(n: int = 300, seed: int = 7) -> list[list[str]]:
-    """Paths that look like a real product: a dozen event types, several
-    intents, and the noise from the slide (extra steps, repeats, reordering)."""
-    rng = random.Random(seed)
-    intents = [
-        ["home", "catalog", "product", "cart", "checkout"],
-        ["search", "product", "cart", "checkout"],
-        ["promo", "product", "cart"],
-        ["home", "search", "product"],
-        ["account", "orders", "support"],
-    ]
-    extra = [
-        "home",
-        "search",
-        "catalog",
-        "product",
-        "promo",
-        "wishlist",
-        "reviews",
-        "compare",
-    ]
-    paths = []
-    for _ in range(n):
-        path = list(rng.choice(intents))
-        for _ in range(rng.randint(0, 3)):
-            kind = rng.random()
-            i = rng.randrange(len(path))
-            if kind < 0.5:
-                path.insert(i, rng.choice(extra))  # extra step
-            elif kind < 0.8:
-                path.insert(i, path[i])  # repeat
-            elif i + 1 < len(path):
-                path[i], path[i + 1] = path[i + 1], path[i]  # different order
-        paths.append(path)
-    return paths
 
 
 # ── Sunburst ────────────────────────────────────────────────────────────────
@@ -181,16 +143,6 @@ def sunburst_svg(
     draw((), 0.0, 2 * math.pi)
     parts.append("</svg>")
     return "".join(parts)
-
-
-def sunburst_pair(left: str, left_caption: str, right: str, right_caption: str) -> str:
-    """Two sunbursts side by side with captions."""
-    return (
-        '<div class="sunburst-pair">'
-        f"<figure>{left}<figcaption>{left_caption}</figcaption></figure>"
-        f"<figure>{right}<figcaption>{right_caption}</figcaption></figure>"
-        "</div>"
-    )
 
 
 # ── Path beads ──────────────────────────────────────────────────────────────
@@ -493,7 +445,7 @@ def edge_weights_figure(
         if (src, dst) in zip(names, names[1:]):
             frames.append(frag(step["unique_paths"], "row-ring"))
         beads = "".join(
-            f'<span class="bead terminal" title="{t}"></span>'
+            f'<span class="bead terminal {TERMINAL_CLASS[t]}" title="{t}"></span>'
             if t in (START, END)
             else f'<span class="bead" style="--bead: {colors[t]}">{t}</span>'
             for t in tokens
@@ -610,4 +562,330 @@ def funnel_figure(stream, steps: list[str]) -> str:
         f'<div class="path-beads">{"".join(rows)}</div>'
         f'<div class="funnel-bars">{"".join(bars)}</div>'
         "</div>"
+    )
+
+
+# ── Step matrix and the trajectory tree ─────────────────────────────────────
+
+START, END = "path_start", "path_end"
+# path_start / path_end: small grey circles with a white ▸ / ■ drawn by CSS
+# (class "start" / "end") or, in the tree SVG, as a triangle / square.
+TERMINAL_CLASS = {START: "start", END: "end"}
+
+
+def _paths(stream) -> list[list[str]]:
+    schema = stream.schema
+    df = stream.df.sort_values([schema.path_col, schema.index])
+    return [
+        list(events[schema.event_col].astype(str))
+        for _, events in df.groupby(schema.path_col, sort=True)
+    ]
+
+
+def _token(name: str, colors: dict[str, str]) -> str:
+    """An event as a bead; path_start / path_end as small grey circles marked
+    ▸ and ■, so the two can't be confused."""
+    if name in (START, END):
+        return (
+            f'<span class="bead terminal {TERMINAL_CLASS[name]}" title="{name}"></span>'
+        )
+    return f'<span class="bead" style="--bead: {colors[name]}">{name}</span>'
+
+
+def step_paths_table(
+    stream, steps: int, spotlight=(), pattern: str | None = None
+) -> str:
+    """The paths laid out by step, the way the step matrix counts them.
+
+    Without `pattern`: column 0 is path_start, column k the k-th event, and
+    once a path is over every later column holds path_end. With `pattern` (an
+    event name): every path is shifted so its first occurrence of that event
+    sits in column 0, columns run from -steps to +steps, and path_start fills
+    the columns before the path begins; a path without the event drops out of
+    the matrix and is shown crossed out at the bottom. A cell is `linked` when
+    it and the previous column both hold the real path, so CSS can draw the
+    connector; repeated path_start / path_end cells are `ended` (faded)."""
+    colors = event_colors(e for p in _paths(stream) for e in p)
+    cols = list(range(-steps, steps + 1)) if pattern else list(range(steps + 1))
+    head = "".join(f"<th>{k}</th>" for k in cols)
+    rows, dropped = [], []
+    for names in _paths(stream):
+        if pattern and pattern not in names:
+            beads = "".join(f"<td>{_token(e, colors)}</td>" for e in names)
+            pad = "<td></td>" * (len(cols) - len(names))
+            dropped.append(f'<tr class="dropped-row">{beads}{pad}</tr>')
+            continue
+        offset = names.index(pattern) if pattern else -1  # column 0 ↔ names[offset]
+        cells = []
+        for k in cols:
+            i = offset + k  # index into names; -1 is path_start, len is path_end
+            name = START if i < 0 else names[i] if i < len(names) else END
+            real = -1 <= i <= len(names)
+            prev_real = -1 <= i - 1 <= len(names)
+            linked = " linked" if real and prev_real and k != cols[0] else ""
+            ended = "" if real else " ended"
+            cells.append(
+                f'<td class="step-cell{linked}{ended}">{_token(name, colors)}</td>'
+            )
+        rows.append(f"<tr>{''.join(cells)}</tr>")
+    spot = ",".join(map(str, spotlight))
+    return (
+        f'<table class="step-paths" data-spotlight="{spot}">'
+        f"<thead><tr>{head}</tr></thead><tbody>{''.join(rows + dropped)}</tbody></table>"
+    )
+
+
+def step_matrix_table(
+    stream, steps: int, spotlight=(), pattern: str | None = None
+) -> str:
+    """`step_matrix_data` as a table (centered on `pattern` if given), cells
+    tinted like the widget's heatmap (its orange, alpha = the share)."""
+    data = stream.step_matrix_data(max_steps=steps, path_pattern=pattern)
+    if isinstance(data, tuple):  # one block per anchor event; one anchor here
+        data = data[0]
+    colors = event_colors(e for p in _paths(stream) for e in p)
+    head = "".join(f"<th>{k}</th>" for k in data.columns)
+    rows = []
+    for event, values in data.iterrows():
+        cells = "".join(
+            f'<td style="--heat: {v:.2f}">{v:.2g}</td>' if v > 0.005 else "<td>·</td>"
+            for v in values
+        )
+        rows.append(
+            f'<tr><th class="event-cell">{_token(str(event), colors)}</th>{cells}</tr>'
+        )
+    spot = ",".join(map(str, spotlight))
+    return (
+        f'<table class="step-matrix" data-spotlight="{spot}">'
+        f"<thead><tr><th></th>{head}</tr></thead><tbody>{''.join(rows)}</tbody></table>"
+    )
+
+
+def prefix_tree_svg(stream, steps: int, spotlight=(), size=(600, 470)) -> str:
+    """The trajectory tree of the paths as SVG: identical beginnings share a
+    branch, every node carries the number of paths through it. Nodes of one
+    step sit in one column; `spotlight` steps get a black frame around their
+    column on their own click (reveal.js fragment k). path_start and path_end
+    are small grey circles marked ▸ and ■."""
+    paths = _paths(stream)
+    colors = event_colors(e for p in paths for e in p)
+    tree: dict[tuple, int] = {}
+    for names in paths:
+        tokens = list(names) + [END]
+        for d in range(1, len(tokens) + 1):
+            prefix = tuple(tokens[:d])
+            tree[prefix] = tree.get(prefix, 0) + 1
+
+    # Leaves in depth-first order get one row each; inner nodes sit at the
+    # mean row of their leaves.
+    def children(prefix):
+        return sorted(
+            (
+                p
+                for p in tree
+                if len(p) == len(prefix) + 1 and p[: len(prefix)] == prefix
+            ),
+            key=lambda p: (-tree[p], p[-1]),
+        )
+
+    rows: dict[tuple, float] = {}
+    order: list[tuple] = []
+
+    def place(prefix):
+        kids = children(prefix)
+        if not kids:
+            rows[prefix] = len(order)
+            order.append(prefix)
+        else:
+            for kid in kids:
+                place(kid)
+            rows[prefix] = sum(rows[k] for k in kids) / len(kids)
+
+    place(())
+    width, height = size
+    top = 24  # room for the step numbers
+    col_w = width / (steps + 1)
+    row_h = (height - top) / max(len(order), 1)
+    r = min(col_w, row_h) * 0.36
+
+    def xy(prefix):
+        return (len(prefix) + 0.5) * col_w, top + (rows[prefix] + 0.5) * row_h
+
+    parts = [
+        f'<svg class="prefix-tree" viewBox="0 0 {width} {height}" width="{width}" height="{height}" '
+        'font-family="Source Sans Pro, sans-serif">'
+    ]
+    for k in range(steps + 1):
+        parts.append(
+            f'<text class="step" x="{(k + 0.5) * col_w:.1f}" y="12">{k}</text>'
+        )
+    for idx, k in enumerate(spotlight):
+        x = k * col_w + 3
+        parts.append(
+            f'<rect class="step-col spot fragment current-visible" data-fragment-index="{idx}" '
+            f'x="{x:.1f}" y="{top - 4}" width="{col_w - 6:.1f}" height="{height - top + 2}" rx="8"/>'
+        )
+    for prefix in tree:
+        (x1, y1), (x2, y2) = xy(prefix[:-1]), xy(prefix)
+        xm = (x1 + x2) / 2
+        parts.append(
+            f'<path class="edge" d="M{x1:.1f},{y1:.1f} H{xm:.1f} V{y2:.1f} H{x2:.1f}"/>'
+        )
+
+    def terminal(x, y, name):
+        rc = r * 0.65
+        if name == START:  # ▸
+            a = rc * 0.45
+            mark = (
+                f'<polygon class="terminal-mark" points="{x - a * 0.6:.1f},{y - a:.1f} '
+                f'{x - a * 0.6:.1f},{y + a:.1f} {x + a:.1f},{y:.1f}"/>'
+            )
+        else:  # ■
+            a = rc * 0.4
+            mark = f'<rect class="terminal-mark" x="{x - a:.1f}" y="{y - a:.1f}" width="{2 * a:.1f}" height="{2 * a:.1f}"/>'
+        return (
+            f'<circle class="terminal" cx="{x:.1f}" cy="{y:.1f}" r="{rc:.1f}"/>{mark}'
+        )
+
+    x0, y0 = xy(())
+    parts.append(terminal(x0, y0, START))
+    for prefix, n in tree.items():
+        x, y = xy(prefix)
+        name = prefix[-1]
+        # The count sits above-right of the node, clear of the outgoing branch.
+        if name == END:
+            parts.append(terminal(x, y, END))
+            parts.append(
+                f'<text class="count" x="{x + r * 0.8:.1f}" y="{y - r * 0.7:.1f}">{n}</text>'
+            )
+            continue
+        parts.append(
+            f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r:.1f}" fill="{colors[name]}"/>'
+        )
+        parts.append(f'<text class="label" x="{x:.1f}" y="{y:.1f}">{name}</text>')
+        parts.append(
+            f'<text class="count" x="{x + r * 0.9:.1f}" y="{y - r * 0.9:.1f}">{n}</text>'
+        )
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def step_layout(left: str, right: str) -> str:
+    return f'<div class="step-layout"><div>{left}</div><div>{right}</div></div>'
+
+
+# ── Trees on a real dataset ─────────────────────────────────────────────────
+
+
+def _prefix_tree(paths: list[list[str]], depth: int) -> dict[tuple, int]:
+    """{prefix: number of paths starting with it}, for prefixes up to `depth`."""
+    tree: dict[tuple, int] = {}
+    for path in paths:
+        for d in range(1, min(depth, len(path)) + 1):
+            tree[tuple(path[:d])] = tree.get(tuple(path[:d]), 0) + 1
+    return tree
+
+
+def _children(tree: dict[tuple, int], prefix: tuple) -> list[tuple]:
+    return sorted(
+        (p for p in tree if len(p) == len(prefix) + 1 and p[: len(prefix)] == prefix),
+        key=lambda p: (-tree[p], p[-1]),
+    )
+
+
+def icicle_svg(paths: list[list[str]], depth: int, size=(360, 360), colors=None) -> str:
+    """An icicle: the sunburst unrolled. Column k is step k, each rectangle a
+    path prefix, its height the share of paths that start with it."""
+    tree = _prefix_tree(paths, depth)
+    colors = colors or event_colors(e for p in paths for e in p[:depth])
+    width, height = size
+    col_w = width / depth
+    parts = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="{width}" height="{height}">'
+    ]
+
+    def draw(prefix: tuple, y0: float, y1: float):
+        total = tree[prefix] if prefix else len(paths)
+        y = y0
+        for child in _children(tree, prefix):
+            h = (y1 - y0) * tree[child] / total
+            x = (len(child) - 1) * col_w
+            parts.append(
+                f'<rect x="{x:.1f}" y="{y:.2f}" width="{col_w - 1:.1f}" height="{max(h - 0.4, 0.1):.2f}" '
+                f'fill="{colors[child[-1]]}"/>'
+            )
+            if len(child) < depth:
+                draw(child, y, y + h)
+            y += h
+
+    draw((), 0.0, float(height))
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def tree_svg(paths: list[list[str]], depth: int, size=(360, 360), colors=None) -> str:
+    """A node-link trajectory tree: one leaf row per distinct prefix, so on a
+    real dataset it fans out into a near-solid wedge."""
+    tree = _prefix_tree(paths, depth)
+    colors = colors or event_colors(e for p in paths for e in p[:depth])
+    width, height = size
+    col_w = (width - 8) / depth
+    rows: dict[tuple, float] = {}
+    leaves: list[tuple] = []
+
+    def place(prefix):
+        kids = _children(tree, prefix)
+        if not kids:
+            rows[prefix] = len(leaves)
+            leaves.append(prefix)
+            return
+        for kid in kids:
+            place(kid)
+        rows[prefix] = sum(rows[k] for k in kids) / len(kids)
+
+    place(())
+    row_h = height / max(len(leaves), 1)
+
+    def xy(prefix):
+        return 4 + len(prefix) * col_w, (rows[prefix] + 0.5) * row_h
+
+    parts = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="{width}" height="{height}">'
+    ]
+    for prefix in tree:
+        (x1, y1), (x2, y2) = xy(prefix[:-1]), xy(prefix)
+        parts.append(
+            f'<line x1="{x1:.1f}" y1="{y1:.2f}" x2="{x2:.1f}" y2="{y2:.2f}" '
+            f'stroke="{colors[prefix[-1]]}" stroke-width="0.6" stroke-opacity="0.8"/>'
+        )
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def branching_figure(stream, depth: int = 5) -> str:
+    """Tree, sunburst and icicle of the first `depth` steps of every path in
+    `stream`, side by side, with the numbers that make the point: how many
+    distinct branches the tree has, against how many events there are."""
+    paths = _paths(stream)
+    colors = event_colors(e for p in paths for e in p[:depth])
+    size = (330, 330)
+    n_paths = len(paths)
+    n_events = stream.df[stream.schema.event_col].nunique()
+    branches = len({tuple(p[:depth]) for p in paths})
+    figures = [
+        ("tree", tree_svg(paths, depth, size, colors)),
+        (
+            "sunburst",
+            sunburst_svg(paths, depth=depth, size=size[0], labels=False, colors=colors),
+        ),
+        ("icicle", icicle_svg(paths, depth, size, colors)),
+    ]
+    cells = "".join(
+        f"<figure>{svg}<figcaption>{name}</figcaption></figure>"
+        for name, svg in figures
+    )
+    return (
+        f'<div class="branching">{cells}</div>'
+        f'<p class="branching-note">{n_paths} paths, {n_events} event types: after {depth} steps '
+        f"the tree has <strong>{branches}</strong> distinct branches.</p>"
     )

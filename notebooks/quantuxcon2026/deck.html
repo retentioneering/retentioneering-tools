@@ -28,6 +28,10 @@
     "transition-graph-count-adjacent-pairs": { cls: "slide-pairs", build: buildPairsLayout },
     "edge-weights": { cls: "slide-edge-weights" },
     "interactive-features-live-demo": { cls: "slide-live-demo" },
+    "step-matrix-count-events-at-each-step": { cls: "slide-step-matrix", build: buildStepSpotlight },
+    "tree-vs.-step-matrix": { cls: "slide-step-matrix", build: buildStepSpotlight },
+    "step-matrix-centered-on-an-event": { cls: "slide-step-matrix", build: buildStepSpotlight },
+    "step-matrix-one-row-per-event-live-demo": { cls: "slide-step-matrix-demo" },
     "filter_events-drop-events": { cls: "slide-path-beads", build: buildPathBeadsStep },
     "filter_events-any-sql-condition": { cls: "slide-path-beads", build: buildPathBeadsStep },
     "filter_paths-keep-whole-paths": { cls: "slide-path-beads slide-filter-paths", build: buildFilterPathsSteps },
@@ -36,7 +40,7 @@
     "anchors-a-list-means-whichever-comes-first": { cls: "slide-path-beads", build: buildPathBeadsStep },
     "path-metrics-one-number-per-path": { cls: "slide-path-metrics" },
     "path-patterns-regex-over-events": { cls: "slide-path-patterns", build: buildPathPatternsColumns },
-    "why-not-a-sunburst": { cls: "slide-sunburst" },
+    "why-not-tree-based-diagrams": { cls: "slide-sunburst" },
   };
 
   var ROADMAP = "Question · Shape events · Look · Compare · Check · Claim";
@@ -323,6 +327,26 @@
     column.className = "pairs-graph";
     column.appendChild(iframe.closest(".cell-output-display") || iframe);
     layout.appendChild(column);
+  }
+
+  // ── Slides: Step matrix: count events at each step, Tree vs. step matrix ──
+  // Tables made by toy.py carry `data-spotlight="1,2,3"`: the steps that get a
+  // click each. The k-th listed step gets a column frame (the shared column
+  // frame machinery) shown only on click k; the tree SVG sets up its own.
+  function buildStepSpotlight(slide) {
+    slide.querySelectorAll("table[data-spotlight]").forEach(function (table) {
+      var steps = table.dataset.spotlight.split(",").filter(Boolean);
+      if (!steps.length) return;
+      var headers = tableHeaders(table);
+      var wrap = wrapForColumnFrames(table);
+      steps.forEach(function (step, k) {
+        var index = headers.indexOf(step.trim());
+        if (index < 0) return;
+        var frame = addColumnFrame(wrap, [{ index: index, optional: false }], "");
+        frame.classList.add("current-visible");
+        frame.dataset.fragmentIndex = k;
+      });
+    });
   }
 
   // ── Slide: Chaining data processors ────────────────────────────────────────

@@ -16,7 +16,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 QUARTO="${QUARTO:-$(command -v quarto || echo /Applications/quarto/bin/quarto)}"
-export QUARTO_PYTHON="${QUARTO_PYTHON:-../../.venv/bin/python}"
+export QUARTO_PYTHON="${QUARTO_PYTHON:-../../../.venv/bin/python}"
 BUILD=_build_slides.ipynb
 WATCHED=(slides.ipynb deck.html custom.scss toy.py)
 

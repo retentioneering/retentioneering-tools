@@ -41,6 +41,9 @@ jobs:
           npm run build --prefix js/viz-core
           npm run build --prefix js/widget
 
+      - name: Run JS tests
+        run: npm test --prefix js/widget
+
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:

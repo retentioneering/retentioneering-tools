@@ -38,6 +38,7 @@ uv run pytest tests/ -v                          # full test suite
 uv run pytest tests/data_processors/add_events_test.py -v          # single file
 uv run pytest tests/data_processors/add_events_test.py::test_name -v   # single test
 # or: make test            # full suite only
+npm test --prefix js/widget                      # JS unit tests (node:test via esbuild)
 
 uv run pre-commit run --all-files    # ruff (lint+format) + gitleaks + hygiene hooks
 uv run pre-commit install            # one-time, makes hooks run automatically on `git commit`

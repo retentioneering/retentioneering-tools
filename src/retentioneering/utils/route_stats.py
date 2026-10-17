@@ -78,7 +78,7 @@ def route_stats(
     # The graph always renders path_start/path_end, so routes may
     # include them — match against the same boundary-enriched stream
     # the transition matrix uses.
-    df = eventstream.add_start_end_events(path_col=path_col).df
+    df = eventstream._with_path_boundaries(path_col=path_col).df
 
     steps = len(nodes) - 1
     lead_events = ",\n                ".join(

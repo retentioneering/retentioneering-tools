@@ -53,7 +53,7 @@ stream.get_segment_levels()             # {segment_col: [values...]}
 | `filter_paths(condition)` | keep whole paths by metric condition tree | leaves `{"op","metric","value","metric_args"}`; branches `and/or/not`; top-level list = AND; raises `EmptyEventstreamError` when nothing survives |
 | `add_segment(name, rules=/func=/sql=/funnel_events=/time_range=/metric_bins=)` | add a segment column | `funnel_events` labels each path by the furthest step reached IN ORDER (closed funnel); non-reachers get `"out_of_funnel"`. `metric_bins={"metric":..., "edges"|"quantiles":..., "segment_levels":[...]}` bins paths by a per-path metric — cut points are INTERIOR, so N points give N+1 bins |
 | `add_clusters(name, features, method_args={"n_clusters": k}, ...)` | materialize clusters as a segment column | labels are strings `"cluster_0"...`; deterministic (seeded) |
-| `add_start_end_events()` | explicit `path_start`/`path_end` rows | idempotent; widgets add them implicitly |
+| `add_start_end_events()` | **deprecated** — explicit `path_start`/`path_end` rows | don't call it: tools add boundaries for their own `path_col` and raise `PathBoundariesPresentError` if the data already has them |
 | `rename_events(mapping)` | collapse taxonomies (e.g. `"PLP: *"` families by explicit dict) | unknown keys raise |
 | `collapse_events(loops=True | event_groups= | group_col= | bounds=, name=)` | merge a run of events into one; `name` labels it (literal, `{"col": …}`, or cases) | count loops BEFORE collapsing if loops are your subject |
 | `split_sessions(timeout="30m" | separator= | bounds={"start_event":…,"end_event":…})` | derive sessions | duration strings need units; column params use `session_col` naming |

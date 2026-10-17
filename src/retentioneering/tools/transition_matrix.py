@@ -66,9 +66,11 @@ class TransitionMatrix:
             raise EmptyEventstreamError(
                 "Cannot calculate transition matrix for empty eventstream"
             )
+        # Checked before the diff split too, so a comparison fails up front.
+        self.eventstream._require_no_path_boundaries()
 
         if diff is None:
-            df = self.eventstream.add_start_end_events(path_col=path_col).df
+            df = self.eventstream._with_path_boundaries(path_col=path_col).df
             event_types = EventTypes()
             tm = pd.DataFrame()
 

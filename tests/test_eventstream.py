@@ -175,7 +175,8 @@ def test_path_col_preserves_numeric_dtype():
 
 def test_add_start_end_events(simple_df):
     es = Eventstream(simple_df)
-    with_se = es.add_start_end_events()
+    with pytest.warns(FutureWarning, match="add_start_end_events"):
+        with_se = es.add_start_end_events()
     event_types = set(with_se.df["event_type"].unique())
     assert "path_start" in event_types
     assert "path_end" in event_types
@@ -216,7 +217,7 @@ def test_transition_graph_data_proba_in(simple_df):
 
 def test_to_dataframe_excludes_start_end(simple_df):
     es = Eventstream(simple_df)
-    with_se = es.add_start_end_events()
+    with_se = es._build_start_end_events()
     df = with_se.to_dataframe(exclude_start_end=True)
     assert "path_start" not in df["event"].values
     assert "path_end" not in df["event"].values

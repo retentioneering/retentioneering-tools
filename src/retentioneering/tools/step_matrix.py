@@ -35,6 +35,9 @@ class StepMatrix:
             raise EmptyEventstreamError(
                 "Cannot calculate step matrix for empty eventstream"
             )
+        # The regular matrix places path_start/path_end itself rather than via
+        # _with_path_boundaries, so it has to refuse baked-in ones explicitly.
+        self.eventstream._require_no_path_boundaries()
 
         if path_col not in self.eventstream.schema.path_cols:
             raise InvalidParameterError(
@@ -187,7 +190,7 @@ class StepMatrix:
         Steps are numbered within a path, so positions found before filtering
         stay valid after it.
         """
-        stream = self.eventstream.add_start_end_events(path_col=path_col)
+        stream = self.eventstream._with_path_boundaries(path_col=path_col)
         match = anchors.resolve_anchors(
             stream.df, stream.schema, path_pattern, path_col=path_col
         )
@@ -302,7 +305,7 @@ class StepMatrix:
             param="anchor",
         )
         positions = anchors.resolve_positions(
-            self.eventstream.add_start_end_events(path_col=path_col).df,
+            self.eventstream._with_path_boundaries(path_col=path_col).df,
             self.eventstream.schema,
             spec,
             path_col=path_col,
@@ -317,7 +320,7 @@ class StepMatrix:
         centres = positions.set_index(path_col)["step"]
         stream = self.eventstream.filter_events(
             keep={path_col: centres.index.tolist()}
-        ).add_start_end_events(path_col=path_col)
+        )._with_path_boundaries(path_col=path_col)
         # An anchor sitting on `path_end` has nothing to its right, exactly as a
         # pattern part ending there does.
         steps_right = 0 if self._anchor_token(spec) == path_end else max_steps
@@ -357,7 +360,7 @@ class StepMatrix:
 
         try:
             stream, match = self._resolve_pattern(path_pattern, path_col)
-            stream = stream.add_start_end_events(path_col=path_col)
+            stream = stream._with_path_boundaries(path_col=path_col)
         except PatternNoMatchError:
             raise
         except _Empty:

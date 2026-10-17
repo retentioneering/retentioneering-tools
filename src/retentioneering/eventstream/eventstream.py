@@ -1,5 +1,6 @@
 import inspect
 import json
+import warnings
 from dataclasses import asdict
 from functools import cached_property
 
@@ -1601,7 +1602,7 @@ class Eventstream:
         path_pattern = anchors.normalize_pattern(
             path_pattern, stacklevel=stacklevel, param="path_pattern"
         )
-        stream = self.add_start_end_events(path_col=path_col)
+        stream = self._with_path_boundaries(path_col=path_col)
         anchors.validate_pattern_tokens(
             path_pattern,
             stream.df[stream.schema.event_col].unique().tolist(),
@@ -1621,14 +1622,15 @@ class Eventstream:
         """
         Prepend a `path_start` and append a `path_end` synthetic event to each path.
 
-        Idempotent: a path that already starts or ends with these events is left
-        unchanged on that side.
+        **Deprecated** and will be removed in a future release. Tools that show
+        path boundaries (`transition_graph`, `step_matrix`, `step_sankey`,
+        boundary-aware metrics and patterns) add them themselves, for the
+        `path_col` they are given, and raise `PathBoundariesPresentError` on an
+        eventstream that already contains them. Pass `path_col` to the tool
+        instead.
 
-        You normally don't need to call this directly — `transition_graph`,
-        `step_matrix`, and `step_sankey` insert `path_start`/`path_end` themselves,
-        each using its own `path_col`. Calling this upfront bakes in one
-        specific path definition and can produce misleading boundaries if a
-        widget is later given a different `path_col`.
+        Existing `path_start`/`path_end` rows are rebuilt for `path_col`, so
+        calling it twice does not duplicate them.
 
         Parameters
         ----------
@@ -1639,6 +1641,16 @@ class Eventstream:
         --------
             stream.add_start_end_events()
         """
+        warnings.warn(
+            "add_start_end_events() is deprecated and will be removed in a future "
+            "release. Tools add path_start/path_end themselves for the path_col "
+            "they are given, and refuse an eventstream that already contains them.",
+            FutureWarning,
+            stacklevel=4,  # caller -> _tracked -> _op -> here
+        )
+        return self._build_start_end_events(path_col)
+
+    def _build_start_end_events(self, path_col: str | None = None) -> "Eventstream":
         from retentioneering.data_processors.add_start_end_events import (
             AddStartEndEvents,
         )
@@ -1646,6 +1658,28 @@ class Eventstream:
         dp = AddStartEndEvents(path_col)
         new_df, new_schema = dp.apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
+
+    def _require_no_path_boundaries(self) -> None:
+        """Raise if the data already holds `path_start`/`path_end` rows.
+
+        Matched by event_type, so renamed boundaries are caught too. Every tool
+        that places boundaries itself calls this first: rows baked in for one
+        `path_col` would otherwise be rebuilt, or worse counted, under another.
+        """
+        from retentioneering.exceptions import PathBoundariesPresentError
+
+        boundary_types = [EventTypes().PATH_START.type, EventTypes().PATH_END.type]
+        if self._df[self.schema.event_type].isin(boundary_types).any():
+            raise PathBoundariesPresentError()
+
+    def _with_path_boundaries(self, path_col: str | None = None) -> "Eventstream":
+        """Internal: this eventstream with `path_start`/`path_end` for `path_col`.
+
+        The one way tools obtain boundaries; refuses data that already has them
+        (see `_require_no_path_boundaries`).
+        """
+        self._require_no_path_boundaries()
+        return self._build_start_end_events(path_col)
 
     @_tracked("headless_transition_graph")
     def transition_graph_data(

@@ -88,6 +88,35 @@ def parse_n_clusters(value):
         return None
 
 
+def normalize_grid_param(name: str, value) -> int | List[int] | None:
+    """Parse and validate `n_clusters` / `nmf_components` the same way.
+
+    Accepts `None`, a positive int, a non-empty list/tuple of positive ints, or
+    any string form `parse_n_clusters` understands. Anything else raises a
+    `ValueError` naming `name`, so a typo never silently falls back to a
+    default or leaks a scikit-learn message about its own parameter names.
+    """
+    if value is None:
+        return None
+    parsed = parse_n_clusters(value) if isinstance(value, str) else value
+
+    def _positive_int(v) -> bool:
+        return isinstance(v, (int, np.integer)) and not isinstance(v, bool) and v >= 1
+
+    if _positive_int(parsed):
+        return int(parsed)
+    if (
+        isinstance(parsed, (list, tuple))
+        and len(parsed) > 0
+        and all(_positive_int(v) for v in parsed)
+    ):
+        return [int(v) for v in parsed]
+    raise ValueError(
+        f"{name}={value!r} is not a positive int, a non-empty list of positive "
+        'ints, or a string like "3", "3-8", "3,5,7" or "[3,5,7]"'
+    )
+
+
 def _as_call_params(
     method: str, scaler: T_Scaler, params: Dict[str, Any]
 ) -> Dict[str, Any]:
@@ -132,30 +161,10 @@ class ClusterAnalysis:
 
         if n_clusters is None and method == "kmeans":
             n_clusters = "3-8"
-        n_clusters = parse_n_clusters(n_clusters)
-
-        # Same string forms as `n_clusters` ("3-8", "3,5,7", ...), as the widget
-        # accepts; without this the raw string reaches sklearn's NMF.
-        if isinstance(nmf_components, str):
-            parsed_nmf = parse_n_clusters(nmf_components)
-            if parsed_nmf is None:
-                raise ValueError(
-                    f"nmf_components={nmf_components!r} is not a number, a list of "
-                    'numbers, or a range string like "2-5"'
-                )
-            nmf_components = parsed_nmf
-
-        if method == "kmeans":
-            if isinstance(n_clusters, (list, tuple)):
-                n_clusters_missing = len(n_clusters) == 0 or any(
-                    nc is None for nc in n_clusters
-                )
-            else:
-                n_clusters_missing = n_clusters is None
-            if n_clusters_missing:
-                raise ValueError(
-                    "method_args={'n_clusters': ...} is required for the 'kmeans' method"
-                )
+        # One set of rules for both grid coordinates, so a value that works for
+        # one works for the other and a bad one fails loudly for either.
+        n_clusters = normalize_grid_param("n_clusters", n_clusters)
+        nmf_components = normalize_grid_param("nmf_components", nmf_components)
 
         path_col = path_col or self.eventstream.schema.path_col
 

@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     import pandas as pd
 
 from retentioneering.exceptions import GridPointNotFoundError, RetentioneeringError
-from retentioneering.tools.cluster_analysis import parse_n_clusters as _parse_n_clusters
+from retentioneering.tools.cluster_analysis import normalize_grid_param
 from retentioneering.utils.clustering_methods import parse_method_args
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
 from retentioneering.widgets._utils import distribution_levels as _distribution_levels
@@ -162,6 +162,8 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
             k: v for k, v in _args.items() if k != "n_clusters" and v is not None
         }
         _nc = _args.get("n_clusters")
+        if _nc not in (None, ""):
+            normalize_grid_param("n_clusters", _nc)
         self.n_clusters = (
             json.dumps(_nc)
             if isinstance(_nc, list)
@@ -173,11 +175,8 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         _nmf = _as_n_clusters_str(
             nmf_components if nmf_components is not _UNSET else ""
         )
-        if _nmf and _parse_n_clusters(_nmf) is None:
-            raise ValueError(
-                f"nmf_components={nmf_components!r} is not a number, a list of "
-                'numbers, or a range string like "2-5"'
-            )
+        if _nmf:
+            normalize_grid_param("nmf_components", nmf_components)
         self.nmf_enabled = bool(_nmf)
         self.nmf_components = _nmf
         _mc = overview_metrics if overview_metrics is not _UNSET else None
@@ -295,10 +294,8 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
             features=features,
             method=params.get("method", self.method),
             scaler=params.get("scaler", self.scaler) or None,
-            n_clusters=_parse_n_clusters(_as_n_clusters_str(n_clusters_raw)),
-            nmf_components=(
-                _parse_n_clusters(_as_n_clusters_str(nmf_raw)) if nmf_raw else None
-            ),
+            n_clusters=_as_n_clusters_str(n_clusters_raw) or None,
+            nmf_components=_as_n_clusters_str(nmf_raw) or None,
             overview_metrics=overview_metrics,
             aggregation=params.get("aggregation", self.aggregation or "mean"),
             path_col=params.get("path_col") or self.path_col or None,
@@ -329,9 +326,12 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
                 self._cluster_labels = None
                 return
             metrics = json.loads(self.overview_metrics) if self.overview_metrics else []
-            n_clusters = _parse_n_clusters(self.n_clusters)
+            # Raw strings go to the tool, which parses and validates both the
+            # same way; a typo lands in `self.error` instead of silently
+            # becoming the default range or skipping NMF.
+            n_clusters = self.n_clusters or None
             nmf_components = (
-                _parse_n_clusters(self.nmf_components)
+                self.nmf_components
                 if self.nmf_enabled and self.nmf_components
                 else None
             )
@@ -598,7 +598,7 @@ def _safe(v):
 def _as_n_clusters_str(value) -> str:
     """Normalize a compute_request n_clusters/nmf_components param (which may
     arrive as an int, a list, or already a string) into the string format
-    `_parse_n_clusters` expects — the same normalization the constructor
+    `normalize_grid_param` expects — the same normalization the constructor
     already applies to the `n_clusters`/`nmf_components` traitlets.
     """
     if isinstance(value, list):

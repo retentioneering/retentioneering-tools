@@ -348,6 +348,23 @@ class TestClusterAnalysisWidgetNmfComponents:
         with pytest.raises(ValueError, match="nmf_components"):
             _widget(nmf_components="two")
 
+    def test__an_unparsable_n_clusters_raises_like_nmf_components(self) -> None:
+        with pytest.raises(ValueError, match="n_clusters"):
+            ClusterAnalysisWidget(
+                _grid_stream(), features=FEATURES, method_args={"n_clusters": "two"}
+            )
+
+    @pytest.mark.parametrize("trait", ["n_clusters", "nmf_components"])
+    def test__a_typo_in_the_sidebar_is_reported_not_replaced(self, trait) -> None:
+        """A bad value typed into either field surfaces as an error instead of
+        silently becoming the default range or skipping NMF."""
+        widget = _widget(nmf_components=2)
+        setattr(widget, trait, "two")
+        widget._recompute()
+
+        assert trait in widget.error
+        assert widget.result == "{}"
+
     def test__explicit_argument_wins_over_saved_state(self, tmp_path) -> None:
         path = tmp_path / "clusters.json"
         first = _widget(nmf_components=2, state_file=str(path))

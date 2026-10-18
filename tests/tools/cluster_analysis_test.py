@@ -257,34 +257,51 @@ class TestClusterAnalysis:
             assert name.startswith("cluster_")
             assert len(means) == 2  # nmf_components=2 components
 
-    @pytest.mark.parametrize(
-        "nmf_components, expected",
-        [("2-3", [2, 3]), ("2,3", [2, 3]), ("[2, 3]", [2, 3]), ("2", 2)],
-    )
-    def test_nmf_components_string_forms(self, nmf_components, expected) -> None:
-        """`nmf_components` accepts the same string forms as `n_clusters`
-        (and as the widget), instead of leaking sklearn's n_components error."""
-        stream = Eventstream(get_df())
-        kwargs = {
-            "features": [{"metric": "length"}, {"metric": "duration"}],
-            "method_args": {"n_clusters": 2},
-        }
+    @staticmethod
+    def _grid_kwargs(param: str, value) -> dict:
+        """Call kwargs that put `value` into `param` and keep the other fixed."""
+        kwargs = {"features": [{"metric": "length"}, {"metric": "duration"}]}
+        if param == "n_clusters":
+            kwargs["method_args"] = {"n_clusters": value}
+        else:
+            kwargs["method_args"] = {"n_clusters": 2}
+            kwargs["nmf_components"] = value
+        return kwargs
 
-        got = stream.cluster_analysis_data(nmf_components=nmf_components, **kwargs)
-        want = stream.cluster_analysis_data(nmf_components=expected, **kwargs)
+    @pytest.mark.parametrize("param", ["n_clusters", "nmf_components"])
+    @pytest.mark.parametrize(
+        "value, expected",
+        [
+            ("2-3", [2, 3]),
+            ("2,3", [2, 3]),
+            ("[2, 3]", [2, 3]),
+            ("2", 2),
+            ((2, 3), [2, 3]),
+        ],
+    )
+    def test_grid_param_forms_are_equivalent(self, param, value, expected) -> None:
+        """`n_clusters` and `nmf_components` accept the same forms (#148): each
+        string form gives the same result as its int / list equivalent."""
+        stream = Eventstream(get_df())
+
+        got = stream.cluster_analysis_data(**self._grid_kwargs(param, value))
+        want = stream.cluster_analysis_data(**self._grid_kwargs(param, expected))
 
         assert got.get("silhouette") == want.get("silhouette")
         assert got["nmf"] == want["nmf"]
         assert got.get("best_params") == want.get("best_params")
 
-    def test_nmf_components_invalid_string_raises(self) -> None:
+    @pytest.mark.parametrize("param", ["n_clusters", "nmf_components"])
+    @pytest.mark.parametrize(
+        "value",
+        ["a-b", "", "two", "2.5", "0", "[]", '["a"]', 0, -1, 2.5, True, [], [2, 0]],
+    )
+    def test_invalid_grid_param_raises_naming_it(self, param, value) -> None:
+        """Both parameters reject the same values with a `ValueError` naming the
+        parameter — no silent fallback to the default range, no sklearn error."""
         stream = Eventstream(get_df())
-        with pytest.raises(ValueError, match="nmf_components"):
-            stream.cluster_analysis_data(
-                features=[{"metric": "length"}, {"metric": "duration"}],
-                method_args={"n_clusters": 2},
-                nmf_components="a-b",
-            )
+        with pytest.raises(ValueError, match=f"^{param}="):
+            stream.cluster_analysis_data(**self._grid_kwargs(param, value))
 
     def test_nmf_silhouette(self) -> None:
         """Test NMF + silhouette mode returns silhouette data but no H matrix"""

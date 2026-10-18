@@ -14,11 +14,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
-- `cluster_analysis_data(nmf_components="3-8")` now parses the string the same way
-  as `n_clusters` and as the Cluster Analysis widget (`"3"`, `"3-8"`, `"3,5,7"`,
-  `"[3,5,7]"`). It used to pass the raw string to scikit-learn and fail with an
-  error about `n_components`; an unparseable string now raises a `ValueError`
-  naming `nmf_components`
+- `n_clusters` and `nmf_components` in `cluster_analysis` / `cluster_analysis_data`
+  are now parsed and validated by one rule: a positive int, a non-empty list of
+  positive ints, or a string `"3"`, `"3-8"`, `"3,5,7"`, `"[3,5,7]"`.
+  `cluster_analysis_data(nmf_components="3-8")` used to pass the raw string to
+  scikit-learn and fail with an error about `n_components`; an invalid
+  `n_clusters` string used to fall back to the default `"3-8"` range silently, and
+  an invalid value typed into either Cluster Analysis sidebar field was silently
+  replaced. Any invalid value now raises a `ValueError` naming the parameter (in
+  the widget it is shown as the error)
   ([#148](https://github.com/retentioneering/retentioneering-tools/issues/148)).
 - Funnels and `add_segment(funnel_events=...)` now compare the full event position
   `(index, subindex)`. A synthetic marker immediately before its source event used

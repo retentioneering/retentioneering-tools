@@ -122,7 +122,7 @@ target-version = "py310"
 [tool.ruff.format]
 # Quarto reads cell options from `#|` comments; the formatter would rewrite
 # them to `# |`, which Quarto no longer recognizes.
-exclude = ["notebooks/quantuxcon2026/workshop/*.ipynb"]
+exclude = ["notebooks/quantuxcon2026/workshop*/*.ipynb"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

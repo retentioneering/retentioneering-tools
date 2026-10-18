@@ -41,6 +41,11 @@
     "path-metrics-one-number-per-path": { cls: "slide-path-metrics" },
     "path-patterns-regex-over-events": { cls: "slide-path-patterns", build: buildPathPatternsColumns },
     "why-not-tree-based-diagrams": { cls: "slide-sunburst" },
+    "how-does-a-team-adopt-a-task-tracker": { cls: "slide-taskboard-intro", build: buildTaskboardStageChips },
+    "every-path-is-unique": { cls: "slide-sunburst slide-journeys" },
+    "even-the-transition-graph-is-tangled": { cls: "slide-stage-graph", build: buildStageFrames },
+    "seven-visit-types-instead-of-28-events": { cls: "slide-visits-graph", build: buildVisitsBeforeAfter },
+    "the-same-paths-visit-by-visit": { cls: "slide-sunburst slide-journeys" },
   };
 
   var ROADMAP = "Question · Shape events · Look · Compare · Check · Claim";
@@ -475,6 +480,208 @@
     stepper.appendChild(details);
   }
 
+  // ── Slide: How does a team adopt a task tracker? ──────────────────────────
+  // Each table column is a stage; its events become chips in the stage's color
+  // (custom.scss), and the happy path's events take the color of their column.
+  function buildTaskboardStageChips(slide) {
+    var stageOf = {};
+    slide.querySelectorAll("tbody td").forEach(function (td) {
+      var code = td.querySelector("code");
+      if (!code) return;
+      code.className = "chip stage-" + td.cellIndex;
+      stageOf[code.textContent] = td.cellIndex;
+    });
+    slide.querySelectorAll(":scope > p code").forEach(function (code) {
+      if (code.textContent in stageOf) code.className = "chip stage-" + stageOf[code.textContent];
+    });
+  }
+
+  // ── Static transition graphs: reaching into the widget ─────────────────────
+  // A static widget is a same-origin iframe, and the widget keeps its
+  // Cytoscape instance on the graph container's parent as `__cy`. reloadWidget
+  // reloads an iframe (to refit it, see refitWidgets); whenGraphReady runs `fn`
+  // with the graph once the (re)loaded widget has drawn it.
+  function reloadWidget(f) {
+    f.dataset.refitted = "1";
+    f.dataset.loading = "1";
+    if (!f.dataset.watched) {
+      f.dataset.watched = "1";
+      f.addEventListener("load", function () { delete f.dataset.loading; });
+    }
+    f.srcdoc = withPixelRatio(f.srcdoc);
+  }
+
+  function findCy(f) {
+    var doc = f.contentDocument;
+    if (!doc || f.dataset.loading) return null;
+    var els = doc.querySelectorAll("div");
+    for (var i = 0; i < els.length; i++) if (els[i].__cy) return els[i].__cy;
+    return null;
+  }
+
+  function whenGraphReady(f, fn) {
+    var tries = 0;
+    (function poll() {
+      var cy = findCy(f);
+      if (cy && !cy.destroyed() && cy.nodes().length) { setTimeout(function () { fn(cy); }, 150); return; }
+      if (++tries < 150) setTimeout(poll, 100);
+    })();
+  }
+
+  // ── Slides: Even the transition graph is tangled / Seven visit types ──────
+  // stage_graph() (toy.py) places the events stage by stage and leaves a
+  // {stage: [events]} map next to the widget; on the first click each stage
+  // gets a frame around its nodes, labeled in its color, redrawn whenever the
+  // graph is panned or zoomed.
+  function buildStageFrames(slide) {
+    slide.querySelectorAll("script.stage-groups").forEach(function (script) {
+      var cell = script.closest(".cell");
+      var f = cell && cell.querySelector("iframe[srcdoc]");
+      if (!f) return;
+      var groups = JSON.parse(script.textContent);
+      var host = f.parentElement;
+      host.classList.add("stage-frames-host");
+      var layer = document.createElement("div");
+      layer.className = "stage-frames fragment";
+      host.appendChild(layer);
+      f.addEventListener("load", function () {
+        whenGraphReady(f, function (cy) {
+          function redraw() {
+            var box = cy.container().getBoundingClientRect();
+            layer.innerHTML = "";
+            Object.keys(groups).forEach(function (stage) {
+              if (stage === "path_start" || stage === "path_end") return;
+              var nodes = cy.collection();
+              groups[stage].forEach(function (id) { nodes = nodes.union(cy.getElementById(id)); });
+              if (!nodes.length || groups[stage].length < 2) return;
+              var bb = nodes.renderedBoundingBox({ includeLabels: true });
+              var frame = document.createElement("div");
+              frame.className = "stage-frame stage-" + stage;
+              frame.style.left = f.offsetLeft + box.left + bb.x1 - 8 + "px";
+              frame.style.top = f.offsetTop + box.top + bb.y1 - 8 + "px";
+              frame.style.width = bb.w + 16 + "px";
+              frame.style.height = bb.h + 16 + "px";
+              frame.innerHTML = "<span>" + stage + "</span>";
+              layer.appendChild(frame);
+            });
+          }
+          redraw();
+          cy.on("viewport position", redraw);
+        });
+      });
+    });
+  }
+
+  // The visits graph on the left; on the right, one story per click (the
+  // stories pile up, the current one is highlighted on the graph). A story's
+  // `names` become pills in their stage's color (custom.scss), and the graph
+  // dims everything but those nodes and the edges the story walks: `a` → `b`,
+  // or, for an arrow not right after a name, from the story's first name. The
+  // last click replaces the stories with the raw event graph (the slide's
+  // second widget), captioned by the list's last item.
+  function buildVisitsBeforeAfter(slide) {
+    var cells = slide.querySelectorAll(":scope > .cell");
+    var list = slide.querySelector(":scope > ul");
+    var items = Array.prototype.slice.call(list.children);
+    var caption = items.pop();
+    var layout = document.createElement("div");
+    layout.className = "visits-layout";
+    cells[0].before(layout);
+    layout.appendChild(cells[0]);
+    var side = document.createElement("div");
+    side.className = "visits-side";
+    layout.appendChild(side);
+    side.appendChild(list);
+    side.appendChild(cells[1]);
+    items.forEach(function (li, i) {
+      li.classList.add("fragment", "story");
+      li.dataset.fragmentIndex = i;
+      li.querySelectorAll("code").forEach(function (code) {
+        code.classList.add("chip");
+        code.dataset.visit = code.textContent;
+      });
+    });
+    list.classList.add("fragment", "fade-out");
+    list.dataset.fragmentIndex = items.length;
+    cells[1].classList.add("fragment", "graph-before");
+    cells[1].dataset.fragmentIndex = items.length;
+    var p = document.createElement("p");
+    p.className = "graph-caption";
+    p.innerHTML = caption.innerHTML;
+    caption.remove();
+    cells[1].appendChild(p);
+  }
+
+  function storyWalk(li) {
+    var names = [], edges = [], first = null, last = null, afterName = false;
+    li.childNodes.forEach(function (n) {
+      if (n.nodeName === "CODE") {
+        var name = n.textContent;
+        if (first === null) first = name;
+        if (last && last.pending) edges.push([last.from, name]);
+        names.push(name);
+        last = { name: name };
+        afterName = true;
+        return;
+      }
+      var text = n.textContent;
+      var arrow = text.indexOf("→");
+      if (arrow >= 0) {
+        var from = afterName && !text.slice(0, arrow).trim() ? last.name : first;
+        last = { name: last && last.name, pending: true, from: from };
+      }
+      if (text.trim()) afterName = false;
+    });
+    return { names: names, edges: edges };
+  }
+
+  function highlightStory(cy, li) {
+    if (!cy.scratch("storyStyle")) {
+      cy.scratch("storyStyle", true);
+      cy.style()
+        .selector(".story-dim").style({ opacity: 0.12 })
+        .selector("node.story-on").style({
+          "underlay-color": "#f97316", "underlay-opacity": 0.35, "underlay-padding": 10, "underlay-shape": "ellipse",
+        })
+        .selector("edge.story-on").style({
+          "underlay-color": "#f97316", "underlay-opacity": 0.35, "underlay-padding": 5,
+        })
+        .update();
+    }
+    cy.elements().removeClass("story-dim story-on");
+    if (!li) return;
+    var walk = storyWalk(li);
+    var on = cy.collection();
+    walk.names.forEach(function (name) { on = on.union(cy.getElementById(name)); });
+    walk.edges.forEach(function (e) {
+      on = on.union(cy.edges().filter(function (edge) {
+        return edge.data("source") === e[0] && edge.data("target") === e[1];
+      }));
+    });
+    cy.elements().not(on).addClass("story-dim");
+    on.addClass("story-on");
+  }
+
+  // Called on every slide and fragment change: zoom the visits graph to fit
+  // its half of the slide, and highlight the latest story shown.
+  function syncVisitsSlide(slide) {
+    if (!slide || !slide.classList.contains("slide-visits-graph")) return;
+    var f = slide.querySelector(".visits-layout > .cell iframe[srcdoc]");
+    var story = null;
+    slide.querySelectorAll("li.story").forEach(function (li) {
+      li.classList.remove("story-current");
+      if (li.classList.contains("visible")) story = li;
+    });
+    if (story) story.classList.add("story-current");
+    whenGraphReady(f, function (cy) {
+      if (!cy.scratch("fitted")) {
+        cy.scratch("fitted", true);
+        cy.fit(undefined, 20);
+      }
+      highlightStory(cy, story);
+    });
+  }
+
   // ── Theme conventions ──────────────────────────────────────────────────────
   function applyThemeConventions() {
     var sectionBg = getComputedStyle(document.documentElement).getPropertyValue("--section-bg").trim();
@@ -529,12 +736,23 @@
   // loads every slide up front, so a widget on a slide (or fragment) that isn't
   // on screen yet fits its graph to the wrong viewport. Reload each widget the
   // first time it actually becomes visible.
+  // Reveal scales the whole slide up to the screen, but a graph's canvas
+  // inside the iframe is drawn for the iframe's unscaled size, so on a big
+  // screen it comes out blurry. Cytoscape sizes its canvas by
+  // devicePixelRatio, so the reloaded iframe reports one that includes the
+  // slide's scale (and at least 3, in case the window grows later).
+  function withPixelRatio(srcdoc) {
+    var ratio = Math.max(3, Math.ceil((window.devicePixelRatio || 1) * Reveal.getScale()));
+    var patch = "<script>Object.defineProperty(window, 'devicePixelRatio', { get: function () { return " +
+      ratio + "; } });<\/script>";
+    return srcdoc.indexOf(patch) >= 0 ? srcdoc : srcdoc.replace("<head>", "<head>" + patch);
+  }
+
   function refitWidgets(slide) {
     if (!slide) return;
     slide.querySelectorAll("iframe[srcdoc]").forEach(function (f) {
       if (f.dataset.refitted || f.closest(".fragment:not(.visible)")) return;
-      f.dataset.refitted = "1";
-      f.srcdoc = f.srcdoc;
+      reloadWidget(f);
     });
   }
 
@@ -548,16 +766,37 @@
   }
 
   if (Reveal.isReady()) onReady(); else Reveal.on("ready", onReady);
+
+  // Served by serve.py (./render.sh preview): reload once a new render lands.
+  // Anywhere else /__mtime doesn't exist and the first failed poll stops this.
+  if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+    var seen = null;
+    (function poll() {
+      fetch("/__mtime", { cache: "no-store" })
+        .then(function (r) { if (!r.ok) throw r; return r.json(); })
+        .then(function (d) {
+          if (seen !== null && d.mtime !== seen) location.reload();
+          seen = d.mtime;
+          setTimeout(poll, 1500);
+        })
+        .catch(function () {});
+    })();
+  }
   Reveal.on("slidechanged", function (e) {
     syncFunnelSpots(e.currentSlide);
+    syncVisitsSlide(e.currentSlide);
     refitWidgets(e.currentSlide);
     layoutColumnFrames(e.currentSlide);
   });
   Reveal.on("fragmentshown", function () {
+    syncVisitsSlide(Reveal.getCurrentSlide());
     refitWidgets(Reveal.getCurrentSlide());
     syncFunnelSpots(Reveal.getCurrentSlide());
   });
-  Reveal.on("fragmenthidden", function () { syncFunnelSpots(Reveal.getCurrentSlide()); });
+  Reveal.on("fragmenthidden", function () {
+    syncVisitsSlide(Reveal.getCurrentSlide());
+    syncFunnelSpots(Reveal.getCurrentSlide());
+  });
   Reveal.on("resize", function () { layoutColumnFrames(Reveal.getCurrentSlide()); });
   if (document.fonts) {
     document.fonts.ready.then(function () { layoutColumnFrames(Reveal.getCurrentSlide()); });

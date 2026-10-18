@@ -221,7 +221,7 @@ def metrics_figure(stream, metrics: pd.DataFrame) -> str:
     return (
         '<table class="metrics-figure">'
         f"<thead><tr><th>path</th>{head}</tr></thead>"
-        f'<tbody>{"".join(body)}</tbody></table>'
+        f"<tbody>{''.join(body)}</tbody></table>"
     )
 
 
@@ -478,7 +478,7 @@ def edge_weights_figure(
     table = (
         '<table class="edge-weights">'
         f"<thead><tr><th>edge</th>{head}</tr></thead>"
-        f'<tbody>{"".join(body)}</tbody></table>'
+        f"<tbody>{''.join(body)}</tbody></table>"
     )
 
     # Formulas: n / total, each number lit up on its own click.
@@ -490,7 +490,7 @@ def edge_weights_figure(
         value = data[name].loc[src, dst]
         return (
             f'<div class="weight-formula fragment" data-fragment-index="{k}">'
-            f'<code>{name}</code> = '
+            f"<code>{name}</code> = "
             f'<span class="num">{n}{frag(k_n, "num-ring", inner=f"<small>{src}→{dst}</small>")}</span> / '
             f'<span class="num">{total}{frag(k_total, "num-ring", inner=f"<small>{total_label}</small>")}</span>'
             f" ≈ {value:.2f}</div>"
@@ -549,7 +549,7 @@ def funnel_figure(stream, steps: list[str]) -> str:
     top = max(d["unique_paths"] for d in data) or 1
     bars = []
     for d in data:
-        conv = f'{d["step_conversion_rate"]:.0%}'
+        conv = f"{d['step_conversion_rate']:.0%}"
         bars.append(
             '<div class="funnel-step">'
             f'<span class="bead" style="--bead: {colors[d["step"]]}">{d["step"]}</span>'
@@ -862,16 +862,18 @@ def tree_svg(paths: list[list[str]], depth: int, size=(360, 360), colors=None) -
     return "".join(parts)
 
 
-def branching_figure(stream, depth: int = 5) -> str:
+def branching_figure(stream, depth: int = 5, colors=None, size: int = 330) -> str:
     """Tree, sunburst and icicle of the first `depth` steps of every path in
     `stream`, side by side, with the numbers that make the point: how many
-    distinct branches the tree has, against how many events there are."""
+    paths are unique, and how much of a typical path the `depth` levels show.
+    `colors` maps events to colors (event_colors by default)."""
     paths = _paths(stream)
-    colors = event_colors(e for p in paths for e in p[:depth])
-    size = (330, 330)
+    unique = len({tuple(p) for p in paths})
+    shown = sorted(min(depth, len(p)) / len(p) for p in paths)[len(paths) // 2]
+    colors = colors or event_colors(e for p in paths for e in p[:depth])
+    size = (size, size)
     n_paths = len(paths)
     n_events = stream.df[stream.schema.event_col].nunique()
-    branches = len({tuple(p[:depth]) for p in paths})
     figures = [
         ("tree", tree_svg(paths, depth, size, colors)),
         (
@@ -886,6 +888,183 @@ def branching_figure(stream, depth: int = 5) -> str:
     )
     return (
         f'<div class="branching">{cells}</div>'
-        f'<p class="branching-note">{n_paths} paths, {n_events} event types: after {depth} steps '
-        f"the tree has <strong>{branches}</strong> distinct branches.</p>"
+        f'<p class="branching-note">{n_paths} paths over {n_events} event types, '
+        f"<strong>{unique}</strong> of them unique. The first {depth} levels show "
+        f"<strong>{shown:.0%}</strong> of a typical path.</p>"
     )
+
+
+# ── Motivating example: Taskboard journeys ───────────────────────────────────
+# Events are colored by the kind of visit they belong to (taskboard.EVENT_STAGE),
+# and visits by their own kind, so a user's raw events and the same user's
+# visits keep one color scheme from slide to slide.
+
+STAGE_COLORS = {
+    "onboarding": "#f7c630",  # retentioneering yellow
+    "solo": "#3b82f6",
+    "teamwork": "#10b981",
+    "power": "#8b5cf6",
+    "check_in": "#94a3b8",
+    "waiting": "#f97316",
+    "billing": "#ec4899",
+}
+
+
+def taskboard_colors(events) -> dict[str, str]:
+    """Event or visit name → the color of its stage; anything else is grey."""
+    from taskboard import EVENT_STAGE
+
+    return {e: STAGE_COLORS.get(EVENT_STAGE.get(e, e), "#a8a29e") for e in set(events)}
+
+
+def _chip(event: str, colors: dict[str, str]) -> str:
+    return f'<span class="chip" style="--chip: {colors[event]}">{event}</span>'
+
+
+def _journeys_table(rows: list[tuple[str, list[str | None], str]], colors) -> str:
+    def cell(event: str | None) -> str:
+        return f"<td>{_chip(event, colors) if event else ''}</td>"
+
+    body = "".join(
+        f'<tr><th>{who}</th>{"".join(cell(e) for e in cells)}<td class="more">{more}</td></tr>'
+        for who, cells, more in rows
+    )
+    return f'<table class="journeys"><tbody>{body}</tbody></table>'
+
+
+def distinct_colors(events) -> dict[str, str]:
+    """A color of its own for every event: hues spread around the wheel (by the
+    golden angle, so neighbors in sorted order differ), lightness alternating."""
+    names = sorted(set(events))
+    return {
+        e: f"hsl({round(i * 137.5) % 360}, 70%, {48 if i % 2 else 62}%)"
+        for i, e in enumerate(names)
+    }
+
+
+def first_visits_figure(stream, users: list[str], colors=None) -> str:
+    """The first visit of each user as event chips, followed by how much of
+    the user's path is left."""
+    df = stream.df
+    colors = colors or taskboard_colors(df["event"])
+    rows, rest = [], []
+    for user in users:
+        events = df[df["user_id"] == user].sort_values("index")
+        first = events[events["session_id"] == events["session_id"].iloc[0]]
+        rows.append(list(first["event"]))
+        rest.append(
+            f"+ {events['session_id'].nunique() - 1} visits, {len(events) - len(first)} events"
+        )
+    body = "".join(
+        f'<div class="journey"><span class="who">{who}</span>'
+        f'{"".join(_chip(e, colors) for e in row)}<span class="more">{more}</span></div>'
+        for who, row, more in zip(users, rows, rest)
+    )
+    return f'<div class="journeys">{body}</div>'
+
+
+def visit_paths_figure(visits, users: list[str]) -> str:
+    """Each user's whole path as one chip per visit."""
+    df = visits.df
+    colors = taskboard_colors(df["event"])
+    rows = []
+    for user in users:
+        events = list(df[df["user_id"] == user].sort_values("index")["event"])
+        rows.append((user, events, ""))
+    width = max(len(r[1]) for r in rows)
+    rows = [
+        (who, cells + [None] * (width - len(cells)), more) for who, cells, more in rows
+    ]
+    return _journeys_table(rows, colors)
+
+
+# Where each stage sits on the transition graph's canvas: (column, row). Columns
+# follow the adoption ladder left to right; the side tracks (check-ins, waiting
+# for a teammate) sit under the stage they branch off.
+STAGE_GRID = {
+    "onboarding": (0, 0),
+    "solo": (1, 0),
+    "teamwork": (2, 0),
+    "power": (3, 0),
+    "billing": (4, 0),
+    "check_in": (1, 1),
+    "waiting": (2, 1),
+}
+
+
+# Visits, one node per stage, in a compact zigzag (x, y in layout units): the
+# ladder runs left to right, the side tracks hang below it.
+VISIT_LAYOUT = {
+    "path_start": (0, 0),
+    "onboarding": (1, -0.7),
+    "check_in": (1.5, 0.9),
+    "solo": (2, 0),
+    "waiting": (2.7, 1.0),
+    "teamwork": (3, -0.7),
+    "power": (4, 0),
+    "billing": (4, -1.4),
+    "path_end": (5, 0.3),
+}
+
+
+def stage_positions(events) -> dict[str, dict[str, float]]:
+    """Node positions that group events by stage (a stack per stage, in the
+    order of taskboard.EVENT_STAGE), or, for visits, VISIT_LAYOUT."""
+    from taskboard import EVENT_STAGE
+
+    events = set(events)
+    if events <= set(VISIT_LAYOUT):  # visits: one node per stage
+        unit = 120
+        events |= {"path_start", "path_end"}  # the graph adds them; a node
+        # without a position makes the widget lay out the whole graph itself
+        return {
+            e: {"x": VISIT_LAYOUT[e][0] * unit, "y": VISIT_LAYOUT[e][1] * unit}
+            for e in events
+        }
+    col_w, row_h = 300, 70
+    members = {
+        stage: [
+            e
+            for e in [*EVENT_STAGE, stage]
+            if e in events and EVENT_STAGE.get(e, e) == stage
+        ]
+        for stage in STAGE_GRID
+    }
+    tallest = max(len(m) for (stage, m) in members.items() if STAGE_GRID[stage][1] == 0)
+    positions = {
+        "path_start": {"x": -col_w, "y": 0},
+        "path_end": {"x": 5 * col_w, "y": 0},
+    }
+    for stage, names in members.items():
+        col, row = STAGE_GRID[stage]
+        if row == 0:
+            ys = [(i - (len(names) - 1) / 2) * row_h for i in range(len(names))]
+        else:
+            ys = [
+                (max((tallest + 1) / 2 + 0.6, 3) + i) * row_h for i in range(len(names))
+            ]
+        for name, y in zip(names, ys):
+            positions[name] = {"x": col * col_w, "y": y}
+    return positions
+
+
+def stage_graph(stream, **kwargs):
+    """`stream.transition_graph(**kwargs)` with its nodes grouped by stage, plus
+    a hidden {stage: [events]} map for deck.html, which frames each group."""
+    import json
+
+    from IPython.display import HTML, display
+    from taskboard import EVENT_STAGE
+
+    events = set(stream.df[stream.schema.event_col].astype(str))
+    groups: dict[str, list[str]] = {}
+    for e in sorted(events):
+        groups.setdefault(EVENT_STAGE.get(e, e), []).append(e)
+    widget = stream.transition_graph(**kwargs)
+    widget.node_positions = json.dumps(stage_positions(events))
+    display(
+        HTML(
+            f'<script type="application/json" class="stage-groups">{json.dumps(groups)}</script>'
+        )
+    )
+    return widget

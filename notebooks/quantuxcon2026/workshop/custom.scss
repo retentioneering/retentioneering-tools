@@ -119,6 +119,262 @@ $slide-body-height: 600px;
 // Each block is scoped to its slide's `slide-…` class, set by deck.html (see
 // SLIDES there), so nothing here leaks onto other slides.
 
+// ── Motivating example (Taskboard) ── chips colored by kind of visit ─────
+// The colors match toy.py's STAGE_COLORS, which colors the same events and
+// visits in the figures.
+$stage-onboarding: #f7c630;
+$stage-solo: #3b82f6;
+$stage-teamwork: #10b981;
+$stage-power: #8b5cf6;
+$stage-billing: #ec4899;
+$stage-check-in: #94a3b8;
+$stage-waiting: #f97316;
+$stage-colors: (
+  "onboarding": $stage-onboarding,
+  "solo": $stage-solo,
+  "teamwork": $stage-teamwork,
+  "power": $stage-power,
+  "billing": $stage-billing,
+  "check_in": $stage-check-in,
+  "waiting": $stage-waiting,
+  "path_end": #a8a29e,
+);
+
+@mixin chip {
+  display: inline-block;
+  padding: 0.12em 0.5em;
+  border-radius: 999px;
+  background: rgba($rete-ink, 0.06);
+  box-shadow: inset 0 0 0 2px var(--chip);
+  color: $rete-ink;
+  font-family: $font-family-monospace;
+  white-space: nowrap;
+}
+
+// Slide: How does a team adopt a task tracker? Events by stage, happy path.
+.reveal section.slide-taskboard-intro {
+  table {
+    margin: 0.4em auto 0.8em;
+    font-size: 0.55em;
+
+    th {
+      text-align: center;
+    }
+
+    td {
+      text-align: center;
+      border: none;
+      padding: 0.25em 0.6em;
+    }
+  }
+
+  .chip {
+    @include chip;
+  }
+
+  .stage-0 { --chip: #{$stage-onboarding}; }
+  .stage-1 { --chip: #{$stage-solo}; }
+  .stage-2 { --chip: #{$stage-teamwork}; }
+  .stage-3 { --chip: #{$stage-power}; }
+  .stage-4 { --chip: #{$stage-billing}; }
+
+  > p:last-child {
+    font-size: 0.6em;
+    text-align: center;
+
+    .chip {
+      font-size: 0.9em;
+    }
+  }
+}
+
+// Slides: Every path is unique / The same paths, visit by visit. A few users'
+// paths as chips (toy.py first_visits_figure / visit_paths_figure) above
+// smaller trees.
+.reveal section.slide-journeys {
+  table.journeys {
+    margin: 0.2em auto 0.5em;
+    border-collapse: separate;
+    border-spacing: 0.35em 0.3em;
+    font-size: 0.42em;
+
+    th,
+    td {
+      border: none;
+      padding: 0;
+    }
+
+    th {
+      padding-right: 0.6em;
+      color: #78716c;
+      font-family: $font-family-monospace;
+      font-weight: 400;
+    }
+
+    .chip {
+      @include chip;
+      background: color-mix(in srgb, var(--chip) 18%, white);
+    }
+
+    td {
+      text-align: left;
+    }
+
+    td.more {
+      padding-left: 0.6em;
+      color: #78716c;
+      white-space: nowrap;
+    }
+  }
+
+  // First visits, one row of chips each, not aligned: the lengths differ.
+  div.journeys {
+    margin: 0.2em auto 0.5em;
+    width: fit-content;
+    font-size: 0.42em;
+
+    .journey {
+      display: flex;
+      align-items: center;
+      gap: 0.35em;
+      margin: 0.3em 0;
+    }
+
+    .who {
+      width: 6.5em;
+      color: #78716c;
+      font-family: $font-family-monospace;
+    }
+
+    .chip {
+      @include chip;
+      background: color-mix(in srgb, var(--chip) 18%, white);
+    }
+
+    .more {
+      margin-left: 0.6em;
+      color: #78716c;
+      white-space: nowrap;
+    }
+  }
+
+  .branching {
+    margin-top: 0;
+
+    svg {
+      width: 250px;
+      height: 250px;
+    }
+  }
+}
+
+// Slides with stage_graph(): a labeled frame around each stage's nodes, drawn
+// by deck.html over the widget.
+.reveal section.slide-stage-graph {
+  .stage-frames-host {
+    position: relative;
+  }
+
+  .stage-frames {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .stage-frame {
+    position: absolute;
+    border-radius: 12px;
+    box-shadow: 0 0 0 2px var(--stage);
+    background: color-mix(in srgb, var(--stage) 7%, transparent);
+
+    span {
+      position: absolute;
+      top: -0.75em;
+      left: 0.6em;
+      padding: 0 0.3em;
+      background: #fff;
+      color: var(--stage);
+      font-family: $font-family-monospace;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+  }
+
+  @each $name, $color in $stage-colors {
+    .stage-#{$name} {
+      --stage: #{$color};
+    }
+  }
+}
+
+// Slide: Seven visit types instead of 28 events. The visits graph on the
+// left, stories piling up on the right (the current one in full color), and on
+// the last click the raw event graph in their place.
+.reveal section.slide-visits-graph {
+  .visits-layout {
+    display: flex;
+    gap: 0.6em;
+    align-items: flex-start;
+
+    > .cell {
+      flex: 0 0 57%;
+      min-width: 0;
+    }
+  }
+
+  .visits-side {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    min-height: 470px;
+  }
+
+  .visits-side > ul {
+    margin: 0.6em 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.62em;
+    line-height: 1.5;
+
+    li {
+      margin-bottom: 0.9em;
+      padding-left: 0.7em;
+      border-left: 4px solid transparent;
+    }
+
+    li.story:not(.story-current) {
+      opacity: 0.45;
+    }
+
+    li.story-current {
+      border-left-color: $highlight;
+    }
+  }
+
+  .graph-before {
+    position: absolute;
+    inset: 0;
+  }
+
+  .graph-caption {
+    margin: 0.3em 0 0;
+    font-size: 0.6em;
+    text-align: center;
+  }
+
+  code.chip {
+    @include chip;
+    font-size: 0.85em;
+  }
+
+  @each $name, $color in $stage-colors {
+    code.chip[data-visit="#{$name}"] {
+      --chip: #{$color};
+    }
+  }
+}
+
 // ── Slide: About us ── people cards in a row ───────────────────────────────
 .reveal section.slide-about-us .people {
   display: flex;

@@ -120,7 +120,7 @@ class ClusterAnalysis:
         method: T_ClusteringMethod = "kmeans",
         method_args: Dict[str, Any] | None = None,
         scaler: T_Scaler = "minmax",
-        nmf_components: int | List[int] | None = None,
+        nmf_components: int | List[int] | str | None = None,
         overview_metrics: List[Dict[str, Any]] | None = None,
         path_col: str | None = None,
         select: Dict[str, Any] | None = None,
@@ -133,6 +133,17 @@ class ClusterAnalysis:
         if n_clusters is None and method == "kmeans":
             n_clusters = "3-8"
         n_clusters = parse_n_clusters(n_clusters)
+
+        # Same string forms as `n_clusters` ("3-8", "3,5,7", ...), as the widget
+        # accepts; without this the raw string reaches sklearn's NMF.
+        if isinstance(nmf_components, str):
+            parsed_nmf = parse_n_clusters(nmf_components)
+            if parsed_nmf is None:
+                raise ValueError(
+                    f"nmf_components={nmf_components!r} is not a number, a list of "
+                    'numbers, or a range string like "2-5"'
+                )
+            nmf_components = parsed_nmf
 
         if method == "kmeans":
             if isinstance(n_clusters, (list, tuple)):

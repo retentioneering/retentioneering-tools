@@ -14,6 +14,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- `cluster_analysis_data(nmf_components="3-8")` now parses the string the same way
+  as `n_clusters` and as the Cluster Analysis widget (`"3"`, `"3-8"`, `"3,5,7"`,
+  `"[3,5,7]"`). It used to pass the raw string to scikit-learn and fail with an
+  error about `n_components`; an unparseable string now raises a `ValueError`
+  naming `nmf_components`
+  ([#148](https://github.com/retentioneering/retentioneering-tools/issues/148)).
 - Funnels and `add_segment(funnel_events=...)` now compare the full event position
   `(index, subindex)`. A synthetic marker immediately before its source event used
   to share the same `index`, so `marker -> purchase` incorrectly reported zero

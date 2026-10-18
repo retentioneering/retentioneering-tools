@@ -257,6 +257,35 @@ class TestClusterAnalysis:
             assert name.startswith("cluster_")
             assert len(means) == 2  # nmf_components=2 components
 
+    @pytest.mark.parametrize(
+        "nmf_components, expected",
+        [("2-3", [2, 3]), ("2,3", [2, 3]), ("[2, 3]", [2, 3]), ("2", 2)],
+    )
+    def test_nmf_components_string_forms(self, nmf_components, expected) -> None:
+        """`nmf_components` accepts the same string forms as `n_clusters`
+        (and as the widget), instead of leaking sklearn's n_components error."""
+        stream = Eventstream(get_df())
+        kwargs = {
+            "features": [{"metric": "length"}, {"metric": "duration"}],
+            "method_args": {"n_clusters": 2},
+        }
+
+        got = stream.cluster_analysis_data(nmf_components=nmf_components, **kwargs)
+        want = stream.cluster_analysis_data(nmf_components=expected, **kwargs)
+
+        assert got.get("silhouette") == want.get("silhouette")
+        assert got["nmf"] == want["nmf"]
+        assert got.get("best_params") == want.get("best_params")
+
+    def test_nmf_components_invalid_string_raises(self) -> None:
+        stream = Eventstream(get_df())
+        with pytest.raises(ValueError, match="nmf_components"):
+            stream.cluster_analysis_data(
+                features=[{"metric": "length"}, {"metric": "duration"}],
+                method_args={"n_clusters": 2},
+                nmf_components="a-b",
+            )
+
     def test_nmf_silhouette(self) -> None:
         """Test NMF + silhouette mode returns silhouette data but no H matrix"""
         df = get_df()

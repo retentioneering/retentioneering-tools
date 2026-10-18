@@ -5,6 +5,33 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Changed
+
+- Segment Overview and Cluster Analysis tables group the rows of a bulk metric
+  (`event_count_bulk`, `has_event_bulk`, `in_segment_bulk`) under one collapsible
+  header such as `event_count_bulk · mean`, and label each row with just its event
+  or segment level, instead of repeating the metric and aggregation on every row.
+
+### Fixed
+
+- Funnels and `add_segment(funnel_events=...)` now compare the full event position
+  `(index, subindex)`. A synthetic marker immediately before its source event used
+  to share the same `index`, so `marker -> purchase` incorrectly reported zero
+  completions and assigned only the marker as the deepest stage. Path boundary
+  events were affected too. Matching remains strictly ordered: one occurrence
+  cannot satisfy repeated steps, and reversing the pair does not count as a
+  conversion.
+- On-demand widget computations in Jupyter (for example route stats in Transition
+  Graph) no longer fail or hang when a result contains NaN or Infinity. Python used
+  to send them as bare `NaN` tokens that the browser cannot parse, and one such
+  response rejected every other request waiting at the same time. Non-finite values
+  now come back as `null`, including through `dispatch_compute` for platform
+  backends. A response that still cannot be parsed affects no other request.
+  Interrupting the kernel mid-computation now answers the waiting request with an
+  error, and a request with no answer at all fails after 10 minutes instead of
+  waiting forever
+  ([#175](https://github.com/retentioneering/retentioneering-tools/issues/175)).
+
 ## [5.2.4] - 2026-10-07
 
 ### Changed

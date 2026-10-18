@@ -349,6 +349,20 @@ Bring a question, a useful recipe or a small reproducible example to [GitHub iss
 
 *Apps are better with math. Join us!*
 
+## Citing Retentioneering
+
+If you use Retentioneering in your research, please cite it:
+
+```bibtex
+@software{retentioneering,
+  title   = {Retentioneering: understanding user behavior from event logs},
+  author  = {Godzi, Maxim and Kukushkin, Vladimir and Zaytsev, Anatoly},
+  year    = {2026},
+  url     = {https://github.com/retentioneering/retentioneering-tools},
+  license = {Apache-2.0},
+}
+```
+
 ## License and commercial model
 
 Retentioneering-tools is open-source software licensed under the Apache License, Version 2.0.

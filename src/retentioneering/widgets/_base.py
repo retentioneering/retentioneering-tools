@@ -35,6 +35,7 @@ Factors out what's genuinely identical across ``transition_graph``,
 from __future__ import annotations
 
 import json
+import math
 import pathlib
 import uuid
 from typing import Any, Callable
@@ -59,6 +60,21 @@ _UNSET = object()
 #: plumbing, not our state, and some hold non-JSON-serializable objects
 #: (e.g. `layout` is a `Layout` instance). Excluded from `sync_state()`.
 _FRAMEWORK_SYNC_TRAIT_NAMES = frozenset(anywidget.AnyWidget.class_traits(sync=True))
+
+
+def _replace_non_finite(value: Any) -> Any:
+    """Copy of ``value`` with every NaN/Infinity float replaced by ``None``.
+
+    Walks dicts, lists and tuples; ``np.float64`` is a ``float`` subclass, so
+    it is covered too. Anything else is returned unchanged.
+    """
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, dict):
+        return {k: _replace_non_finite(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_replace_non_finite(v) for v in value]
+    return value
 
 
 class RetentioneeringWidget(StateFileMixin, anywidget.AnyWidget):
@@ -230,7 +246,20 @@ class RetentioneeringWidget(StateFileMixin, anywidget.AnyWidget):
         params = req.get("params") or {}
         try:
             result = self.dispatch_compute(tool, params)
-            self.compute_response = json.dumps({"id": req_id, "result": result})
+            # allow_nan=False: a bare NaN/Infinity token is valid for Python's
+            # json but not for the browser's JSON.parse. dispatch_compute
+            # already maps them to null; anything that still slips through
+            # raises here and goes back as an error, never as invalid JSON.
+            self.compute_response = json.dumps(
+                {"id": req_id, "result": result}, allow_nan=False
+            )
+        except KeyboardInterrupt:
+            # A kernel interrupt mid-computation must still answer the
+            # request, or the JS side keeps waiting for this id.
+            self.compute_response = json.dumps(
+                {"id": req_id, "error": "Computation interrupted"}
+            )
+            raise
         except Exception as exc:
             self.compute_response = json.dumps({"id": req_id, "error": str(exc)})
 
@@ -264,8 +293,11 @@ class RetentioneeringWidget(StateFileMixin, anywidget.AnyWidget):
         (e.g. a platform backend servicing an HTTP request) can reuse the
         exact same dispatch table without round-tripping through
         JSON-encoded ``compute_request``/``compute_response`` traitlets.
+
+        NaN/Infinity floats anywhere in the result come back as ``None``, so
+        the result is always encodable as strict JSON (which has no NaN).
         """
         handler = self.compute_tools.get(tool)
         if handler is None:
             raise ValueError(f"Unknown tool: {tool!r}")
-        return handler(self, params)
+        return _replace_non_finite(handler(self, params))

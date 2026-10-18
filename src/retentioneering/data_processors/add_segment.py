@@ -3,6 +3,7 @@ from typing import Callable, Collection, Tuple
 import pandas as pd
 
 from retentioneering import engine
+from retentioneering.engine.dialect import event_position
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import PreprocessingConfigError
@@ -67,12 +68,13 @@ def _build_funnel_segment_query(
     path_col: str,
     event_col: str,
     index_col: str,
+    subindex_col: str,
     funnel_events: list[str],
     result_col: str,
 ) -> str:
     """
     Per-row DuckDB query, chained-CTE approach identical in spirit to
-    tools/funnel.py: a path reaches step k iff there exist event indices
+    tools/funnel.py: a path reaches step k iff there exist event positions
     i_0 < i_1 < ... < i_k with event(i_j) = funnel_events[j] — i.e. an
     increasing subsequence of positions, not a comparison of *last*
     occurrences. step_k holds, per path, the earliest occurrence of
@@ -83,8 +85,9 @@ def _build_funnel_segment_query(
 
     path_cols is validated (coarsest-first, strictly nested) at Eventstream
     construction time, and the caller restricts path_col to schema.path_cols,
-    so comparing index_col directly is correct at any accepted grain (see
-    ADR-0004).
+    so comparing (index, subindex) is correct at any accepted grain (see
+    ADR-0004). The pair lets synthetic markers precede their source event
+    even when they share its index.
 
     Segment values (named after the deepest step completed in order):
       funnel_events[k]  — path completed steps 0..k in order, but not step k+1
@@ -95,16 +98,18 @@ def _build_funnel_segment_query(
     Row order is restored via _ROW_IDX_COL.
 
     Example output for funnel_events=['add_to_cart', 'purchase'], path_id='session',
-    event='event', index='__index__':
+    event='event', index='__index__', subindex='__subindex__':
 
         WITH step_1 AS (
-                SELECT "session" AS path_id, MIN("__index__") AS idx
+                SELECT "session" AS path_id, MIN(ROW("__index__", "__subindex__")) AS idx
                 FROM eventstream WHERE "event" = 'add_to_cart' GROUP BY "session"
              ),
              step_2 AS (
-                SELECT eventstream."session" AS path_id, MIN(eventstream."__index__") AS idx
+                SELECT eventstream."session" AS path_id,
+                       MIN(ROW(eventstream."__index__", eventstream."__subindex__")) AS idx
                 FROM eventstream JOIN step_1 ON eventstream."session" = step_1.path_id
-                WHERE eventstream."event" = 'purchase' AND eventstream."__index__" > step_1.idx
+                WHERE eventstream."event" = 'purchase'
+                  AND ROW(eventstream."__index__", eventstream."__subindex__") > step_1.idx
                 GROUP BY eventstream."session"
              ),
              paths AS (SELECT DISTINCT "session" AS path_id FROM eventstream),
@@ -126,6 +131,11 @@ def _build_funnel_segment_query(
     path_col_q = engine.quote_ident(path_col)
     event_col_q = engine.quote_ident(event_col)
     index_col_q = engine.quote_ident(index_col)
+    subindex_col_q = engine.quote_ident(subindex_col)
+    position = event_position(index_col_q, subindex_col_q)
+    joined_position = event_position(
+        f"eventstream.{index_col_q}", f"eventstream.{subindex_col_q}"
+    )
     n = len(funnel_events)
 
     ctes = []
@@ -134,7 +144,7 @@ def _build_funnel_segment_query(
         if step_num == 1:
             ctes.append(
                 f"step_1 AS ("
-                f"SELECT {path_col_q} AS path_id, MIN({index_col_q}) AS idx "
+                f"SELECT {path_col_q} AS path_id, MIN({position}) AS idx "
                 f"FROM eventstream "
                 f"WHERE {event_col_q} = {ev} "
                 f"GROUP BY {path_col_q}"
@@ -144,10 +154,10 @@ def _build_funnel_segment_query(
             prev = f"step_{step_num - 1}"
             ctes.append(
                 f"step_{step_num} AS ("
-                f"SELECT eventstream.{path_col_q} AS path_id, MIN(eventstream.{index_col_q}) AS idx "
+                f"SELECT eventstream.{path_col_q} AS path_id, MIN({joined_position}) AS idx "
                 f"FROM eventstream "
                 f"JOIN {prev} ON eventstream.{path_col_q} = {prev}.path_id "
-                f"WHERE eventstream.{event_col_q} = {ev} AND eventstream.{index_col_q} > {prev}.idx "
+                f"WHERE eventstream.{event_col_q} = {ev} AND {joined_position} > {prev}.idx "
                 f"GROUP BY eventstream.{path_col_q}"
                 f")"
             )
@@ -463,6 +473,7 @@ class AddSegment(DataProcessor):
                 pid_col,
                 schema.event_col,
                 schema.index,
+                schema.subindex,
                 self.funnel_events,
                 "__funnel_level__",
             )

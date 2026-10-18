@@ -74,6 +74,75 @@ export function formatMetricLabel(metric: string): string {
   return metric;
 }
 
+// ── bulk-metric row grouping ───────────────────────────────────────────────
+// A bulk metric expands into one row per event (or segment level), and labelling
+// each as "purchase · event_count_bulk · mean" repeats the metric/agg on every row.
+// Consecutive rows from the same bulk metric are instead shown under one group
+// header ("event_count_bulk · mean"), each row labelled with its event alone.
+
+const BULK_BASES = ["event_count_bulk", "has_event_bulk", "in_segment_bulk"];
+const IN_SEGMENT_MODE_SUFFIXES = ["_event_share", "_any", "_all"];
+
+/** "event_count_bulk_purchase_mean" → { base: "event_count_bulk", agg: "mean", item: "purchase" } */
+function parseBulkMetric(metric: string): { base: string; agg: string; item: string } | null {
+  for (const base of BULK_BASES) {
+    if (!metric.startsWith(base + "_")) continue;
+    const rest = metric.slice(base.length + 1);
+    for (const agg of AGG_OPTIONS) {
+      const suffix = "_" + agg;
+      if (rest.endsWith(suffix) && rest.length > suffix.length)
+        return { base, agg, item: rest.slice(0, rest.length - suffix.length) };
+    }
+  }
+  return null;
+}
+
+/** Longest common prefix of `items`, cut back to the last "_" so it never splits a word. */
+function commonUnderscorePrefix(items: string[]): string {
+  let p = items[0];
+  for (const s of items.slice(1)) while (!s.startsWith(p)) p = p.slice(0, -1);
+  const cut = p.lastIndexOf("_");
+  return cut > 0 ? p.slice(0, cut + 1) : "";
+}
+
+export type MetricRowEntry =
+  | { kind: "group"; key: string; label: string; size: number }
+  | { kind: "metric"; mi: number; label: string; group?: string };
+
+export function groupMetricRows(metrics: string[]): MetricRowEntry[] {
+  const parsed = metrics.map(parseBulkMetric);
+  const out: MetricRowEntry[] = [];
+  let i = 0;
+  while (i < metrics.length) {
+    const p = parsed[i];
+    let j = i + 1;
+    if (p) while (j < metrics.length && parsed[j]?.base === p.base && parsed[j]?.agg === p.agg) j++;
+    // A lone bulk row gains nothing from a header — keep the flat label.
+    if (!p || j - i < 2) {
+      out.push({ kind: "metric", mi: i, label: formatMetricLabel(metrics[i]) });
+      i++;
+      continue;
+    }
+    let items = parsed.slice(i, j).map(q => q!.item);
+    const headerParts = [p.base];
+    if (p.base === "in_segment_bulk") {
+      // in_segment_bulk_<segment_name>_<level>_<mode>: pull the shared segment
+      // name and mode up into the header, leaving just the level per row.
+      const mode = IN_SEGMENT_MODE_SUFFIXES.find(m => items.every(s => s.endsWith(m) && s.length > m.length));
+      if (mode) items = items.map(s => s.slice(0, -mode.length));
+      const prefix = commonUnderscorePrefix(items);
+      if (prefix) { items = items.map(s => s.slice(prefix.length)); headerParts.push(prefix.slice(0, -1)); }
+      if (mode) headerParts.push(mode.slice(1));
+    }
+    headerParts.push(p.agg);
+    const key = `${i}:${p.base}:${p.agg}`;
+    out.push({ kind: "group", key, label: headerParts.join(" · "), size: j - i });
+    items.forEach((item, k) => out.push({ kind: "metric", mi: i + k, label: item, group: key }));
+    i = j;
+  }
+  return out;
+}
+
 // ── types ──────────────────────────────────────────────────────────────────
 
 export interface SegmentOverviewData {
@@ -391,6 +460,15 @@ export function SegmentOverviewTable({
 
   const interactive = !!(onCellClick || onCellRightClick);
 
+  const rowEntries = React.useMemo(() => groupMetricRows(metrics), [metrics]);
+  const [collapsed, setCollapsed] = React.useState<Set<string>>(new Set());
+  const toggleGroup = (key: string) => setCollapsed(prev => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+  const groupBg = "#f3f4f6";
+
   return (
     <div style={{ position: "relative", height: "100%", overflow: "hidden" }}>
       {resizableLabelColumn && (
@@ -423,12 +501,32 @@ export function SegmentOverviewTable({
             </tr>
           </thead>
           <tbody>
-            {metrics.map((metric, mi) => {
+            {rowEntries.map(entry => {
+              if (entry.kind === "group") {
+                const isCollapsed = collapsed.has(entry.key);
+                return (
+                  <tr key={`group:${entry.key}`} data-metric-group={entry.label}
+                    onClick={() => toggleGroup(entry.key)} style={{ cursor: "pointer" }}>
+                    <td title={`${entry.label} (${entry.size}) — click to ${isCollapsed ? "expand" : "collapse"}`}
+                      style={{ ...tdL, background: groupBg, color: "#4b5563", fontWeight: 600, userSelect: "none" }}>
+                      <span style={{ display: "inline-block", width: 10, color: "#9ca3af" }}>{isCollapsed ? "▸" : "▾"}</span>
+                      {entry.label}
+                      <span style={{ color: "#9ca3af", fontWeight: 400 }}> ({entry.size})</span>
+                    </td>
+                    <td colSpan={segments.length}
+                      style={{ background: groupBg, borderBottom: "1px solid #f3f4f6" }} />
+                  </tr>
+                );
+              }
+              if (entry.group && collapsed.has(entry.group)) return null;
+              const { mi, label } = entry;
+              const metric = metrics[mi];
               const { min, max } = rowBounds[mi];
               return (
                 <tr key={metric} data-metric={metric}>
-                  <td title={formatMetricLabel(metric)} style={tdL}>
-                    {formatMetricLabel(metric)}
+                  <td title={entry.group ? metric : label}
+                    style={entry.group ? { ...tdL, paddingLeft: 24 } : tdL}>
+                    {label}
                   </td>
                   {segments.map((seg, si) => {
                     const v = values[mi][si];

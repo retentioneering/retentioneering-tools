@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Changed
+
+- Segment Overview and Cluster Analysis tables group the rows of a bulk metric
+  (`event_count_bulk`, `has_event_bulk`, `in_segment_bulk`) under one collapsible
+  header such as `event_count_bulk · mean`, and label each row with just its event
+  or segment level, instead of repeating the metric and aggregation on every row.
+
 ### Fixed
 
 - Funnels and `add_segment(funnel_events=...)` now compare the full event position

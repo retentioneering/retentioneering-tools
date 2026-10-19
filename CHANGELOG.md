@@ -14,6 +14,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- The MCP tools `add_transition_graph`, `add_step_matrix`, `add_segment_overview`
+  and `get_conversion_rate` now return `{"error": "local_preprocessors: ..."}`
+  when a `local_preprocessors` step is invalid, as `update_base_stream` does for
+  the same step. The exception used to escape the tool, so the agent saw only
+  `Error executing tool <name>` with no message.
 - `n_clusters` and `nmf_components` in `cluster_analysis` / `cluster_analysis_data`
   are now parsed and validated by one rule: a positive int, a non-empty list of
   positive ints, or a string `"3"`, `"3-8"`, `"3,5,7"`, `"[3,5,7]"`.

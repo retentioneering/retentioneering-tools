@@ -14,6 +14,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- The bundled ecom dataset (`rete.datasets.load_ecom`) no longer reorders events
+  within a session. Each event's timestamp was `base + gap * index` with a fresh
+  random `gap` per event, so a later event could get an earlier timestamp; 205 of
+  470 purchase sessions showed `purchase` before `payment_details`. Gaps now
+  accumulate, and `ecom.csv.gz` is regenerated: events, sessions and users are
+  unchanged, only timestamps within a session differ.
 - The MCP tools `add_transition_graph`, `add_step_matrix`, `add_segment_overview`
   and `get_conversion_rate` now return `{"error": "local_preprocessors: ..."}`
   when a `local_preprocessors` step is invalid, as `update_base_stream` does for

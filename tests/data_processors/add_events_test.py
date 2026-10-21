@@ -514,6 +514,96 @@ class TestAddEventsByAnchor:
                 name="M", anchor="cart", path_col="nope"
             )
 
+    # ── anchor spec's own event_col ──────────────────────────────────────────
+
+    def get_state_df(self):
+        """
+        A per-row state column whose values are not event names. The run
+        boundary "the row where the user became loyal" is only expressible
+        over `user_lifecycle`, not over the event vocabulary.
+        """
+        return pd.DataFrame(
+            {
+                "user_id": ["user_1"] * 4 + ["user_2"] * 3,
+                "event": ["main", "cart", "pay", "main", "main", "cart", "pay"],
+                "user_lifecycle": [
+                    "new",
+                    "returning",
+                    "loyal",
+                    "loyal",
+                    "new",
+                    "new",
+                    "returning",
+                ],
+                "timestamp": pd.to_datetime(
+                    [
+                        "2020-01-01 00:00:00",
+                        "2020-01-01 00:01:00",
+                        "2020-01-01 00:02:00",
+                        "2020-01-01 00:03:00",
+                        "2020-01-01 00:00:00",
+                        "2020-01-01 00:01:00",
+                        "2020-01-01 00:02:00",
+                    ]
+                ),
+            }
+        )
+
+    STATE_SCHEMA = {
+        "path_cols": ["user_id"],
+        "event_col": "event",
+        "custom_cols": ["user_lifecycle"],
+    }
+
+    def test__anchor_event_col_is_validated_against_its_own_column(self) -> None:
+        """
+        A spec naming its own `event_col` must be validated against *that*
+        column's values, as `anchors.spec_vocabulary` documents and as
+        `truncate_paths` already does. Before the fix the levels of
+        `user_lifecycle` were checked against the event vocabulary, so this
+        valid spec raised PreprocessingConfigError.
+        """
+        stream = Eventstream(self.get_state_df(), self.STATE_SCHEMA)
+        spec = {
+            "pattern": "returning->loyal",
+            "at": "end",
+            "event_col": "user_lifecycle",
+        }
+
+        res = stream.add_events(name="became_loyal", anchor=spec)
+
+        # the same spec is accepted by truncate_paths - the two must agree
+        stream.truncate_paths(start_anchor=spec, end_anchor="path_end")
+
+        assert self.events_of(res, "user_1") == [
+            "main",
+            "cart",
+            "became_loyal",
+            "pay",
+            "main",
+        ]
+        # user_2 never reaches `loyal`, so it gets no marker
+        assert self.events_of(res, "user_2") == ["main", "cart", "pay"]
+
+    def test__anchor_event_col_rejects_a_name_absent_from_its_own_column(self) -> None:
+        """
+        The mirror case. `cart`/`pay` are real events but never values of
+        `user_lifecycle`, so the literal check must reject them. Before the fix
+        validation ran against the event vocabulary, passed, and the call
+        returned the stream unchanged - the always-true hazard inverted.
+        """
+        stream = Eventstream(self.get_state_df(), self.STATE_SCHEMA)
+
+        with pytest.raises(PreprocessingConfigError, match="cart"):
+            stream.add_events(
+                name="M",
+                anchor={
+                    "pattern": "cart->pay",
+                    "at": "end",
+                    "event_col": "user_lifecycle",
+                },
+            )
+
 
 # ---------------------------------------------------------------------------
 # Common validation

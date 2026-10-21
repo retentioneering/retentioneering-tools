@@ -802,7 +802,7 @@ class Eventstream:
             Mark a *position* in each path rather than an event name: an event
             name, or an anchor spec — the same form `truncate_paths` takes for
             `start_anchor`, and the same keys (`pattern`, `at`, `occurrence`,
-            `offset`, `offset_side`); see
+            `offset`, `offset_side`, `event_col`); see
             [Path Patterns](/docs/path-patterns). One anchor per call, not a
             list. By default the anchor resolves once per path
             (`occurrence="first"`); pass `occurrence="all"` to mark every

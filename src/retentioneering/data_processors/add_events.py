@@ -195,10 +195,11 @@ class AddEvents(DataProcessor):
         # Unlike `truncate_paths`, which takes a list of anchors of which some
         # are *expected* not to resolve, a single anchor that names nothing can
         # only be a typo — so literals are checked too.
-        available = df[schema.event_col].unique().tolist()
         try:
             anchors.validate_pattern_tokens(
-                self.anchor_spec.pattern, available, param="anchor"
+                self.anchor_spec.pattern,
+                anchors.spec_vocabulary(df, schema, self.anchor_spec),
+                param="anchor",
             )
             positions = anchors.resolve_positions(
                 df, schema, self.anchor_spec, path_col=path_col

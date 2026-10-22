@@ -28,20 +28,18 @@ def _part_matches(events, start, part):
 
 
 def _restricted_gaps(pattern):
+    """Gaps that care what lies in them or how long they are — anything but `.*`."""
     _, gaps = anchors.split_pattern(pattern)
-    return [
-        g
-        for g in gaps
-        if g is not None and tokens_mod.parse_token(g).constraint is not None
-    ]
+    return [g for g in gaps if g is not None and not tokens_mod.parse_token(g).is_plain]
 
 
 def _gap_allows(gap, events, lo, hi):
-    """Whether every event strictly between steps `lo` and `hi` fits `gap`."""
+    """Whether the run strictly between steps `lo` and `hi` fits `gap`."""
     if gap is None:
         return True
     parsed = tokens_mod.parse_token(gap)
-    return all(parsed.allows(event) for event in events[lo + 1 : hi])
+    run = events[lo + 1 : hi]
+    return parsed.fits(len(run)) and all(parsed.allows(event) for event in run)
 
 
 def _reference_match(tokens, pattern, occurrence="first"):
@@ -383,6 +381,18 @@ class TestOccurrenceIsAComponentwiseExtremum:
         "A->[B|C]*->C",
         "A->[^B]*->B->.*->C",
         "A->.*->B->[^A]*->C",
+        # Bounded gaps: the lower bound is the case that looks as if it should
+        # break the extremum property, the two-sided one the case that needs
+        # both bounded frames at once.
+        "A->.{0,1}->C",
+        "A->.{2,}->C",
+        "A->.{1,2}->C",
+        "A->.{1}->B",
+        "A->.+->A",
+        "A->[^C]{1,}->C",
+        "A->[A|B]{2,3}->C",
+        "A->.{0,1}->B->.{2,}->C",
+        "A->B->.{1,3}->A->C",
     ]
     PATHS = [
         list("ABCABC"),
@@ -392,6 +402,8 @@ class TestOccurrenceIsAComponentwiseExtremum:
         list("ABCBA"),
         list("BCA"),
         list("AABCABAC"),
+        list("ABBBBBC"),
+        list("ACBACAAC"),
     ]
 
     @pytest.mark.parametrize("pattern", PATTERNS)
@@ -417,6 +429,24 @@ class TestOccurrenceIsAComponentwiseExtremum:
         for pi, start in enumerate(extreme):
             expected += [start + 1 + offset for offset in range(len(parts[pi]))]
         assert got == expected
+
+    @pytest.mark.parametrize("pattern", PATTERNS)
+    @pytest.mark.parametrize("events", PATHS)
+    def test__all_is_every_position_of_every_match(self, pattern, events):
+        stream = TestResolveAnchorsSmallFixtures._stream({"u1": events})
+        parts = anchors.split_parts(pattern)
+        matches = _all_matches(events, pattern)
+
+        match = anchors.resolve_anchors(
+            stream.df, stream.schema, pattern, occurrence="all"
+        )
+        ordinal = 0
+        for pi, part in enumerate(parts):
+            starts = {m[pi] for m in matches}
+            for offset in range(len(part)):
+                got = sorted(match.at(ordinal)["step"].tolist()) if matches else []
+                assert got == sorted(s + 1 + offset for s in starts)
+                ordinal += 1
 
     def test__last_is_not_the_last_occurrence_of_the_anchor_event(self):
         """The trap: a later occurrence of the anchor event that participates in
@@ -645,7 +675,17 @@ class TestRejectedPatternSyntax:
             ("[^cart]*->purchase", "nothing on its outer side"),
             ("cart->[^purchase]*", "nothing on its outer side"),
             ("cart->.*->[^purchase]*->catalog", "Two gaps in a row"),
-            ("cart->[^purchase]+->catalog", r"only '\*'"),
+            ("cart->.{3,1}->catalog", "exceeds the upper bound"),
+            ("cart->.{-1}->catalog", "non-negative whole numbers"),
+            ("cart->.{}->catalog", "Empty quantifier"),
+            ("cart->.{,}->catalog", "bounds nothing"),
+            ("cart->.{30m,}->catalog", "time bounds are not supported"),
+            ("cart->.{2,}", "nothing on its outer side"),
+            ("[cart]+->catalog", "nothing on its outer side"),
+            ("cart->.{2}->.*->catalog", "Two gaps in a row"),
+            ("cart{2}->catalog", r"write '\(cart\)\{2\}'"),
+            ("[cart]{2,}", r"write a group, '\(cart\)\{2,\}'"),
+            ("[cart|purchase]+", r"write a group, '\(\[cart\|purchase\]\)\+'"),
         ],
     )
     def test__rejected_with_an_explaining_message(self, pattern, message):
@@ -901,3 +941,140 @@ class TestOccurrenceAll:
     def test__unknown_offset_side_is_rejected(self):
         with pytest.raises(InvalidParameterError):
             anchors.parse_spec({"pattern": "A", "offset_side": "middle"})
+
+
+class TestBoundedGaps:
+    """`A->.{m,n}->B` — between m and n events (inclusive) strictly between the
+    anchors. A bounded gap is still a gap: it takes no ordinal."""
+
+    @staticmethod
+    def _stream(paths):
+        return TestResolveAnchorsSmallFixtures._stream(paths)
+
+    def test__counts_events_strictly_between_the_anchors(self):
+        stream = self._stream(
+            {
+                "adjacent": ["cart", "purchase"],
+                "one": ["cart", "x", "purchase"],
+                "two": ["cart", "x", "y", "purchase"],
+                "three": ["cart", "x", "y", "z", "purchase"],
+            }
+        )
+        for pattern, expected in [
+            ("cart->.{0,2}->purchase", {"adjacent", "one", "two"}),
+            ("cart->.{,2}->purchase", {"adjacent", "one", "two"}),
+            ("cart->.{2,}->purchase", {"two", "three"}),
+            ("cart->.{1,2}->purchase", {"one", "two"}),
+            ("cart->.{2}->purchase", {"two"}),
+            ("cart->.+->purchase", {"one", "two", "three"}),
+            ("cart->.?->purchase", {"adjacent", "one"}),
+        ]:
+            match = anchors.resolve_anchors(stream.df, stream.schema, pattern)
+            assert set(match.paths()) == expected, pattern
+
+    def test__non_empty_whitelist_is_the_doubled_class_with_one_ordinal_less(self):
+        """The acceptance criterion from #110: `[X]{1,}` selects exactly what
+        the workaround `[X]->[X]*` selects, minus the extra ordinal."""
+        stream = self._stream(
+            {
+                "q1": ["cart", "ship", "pay", "buy"],
+                "q2": ["cart", "ship", "buy"],
+                "q3": ["cart", "buy"],
+                "q4": ["cart", "ship", "faq", "buy"],
+            }
+        )
+        quantified = anchors.resolve_anchors(
+            stream.df, stream.schema, "cart->[ship|pay]{1,}->buy"
+        )
+        doubled = anchors.resolve_anchors(
+            stream.df, stream.schema, "cart->[ship|pay]->[ship|pay]*->buy"
+        )
+        assert set(quantified.paths()) == set(doubled.paths()) == {"q1", "q2"}
+        assert list(quantified.tokens) == ["cart", "buy"]
+        assert quantified.part_ordinals == (0, 1)
+
+    def test__any_pair_in_range_is_enough(self):
+        """Matching is existential: one (A, B) pair at the right distance
+        suffices, even if another pair is too far apart or too close."""
+        stream = self._stream({"u1": ["A", "x", "x", "x", "A", "B"]})
+        for pattern in ["A->.{0}->B", "A->.{4}->B"]:
+            match = anchors.resolve_anchors(stream.df, stream.schema, pattern)
+            assert set(match.paths()) == {"u1"}, pattern
+        match = anchors.resolve_anchors(stream.df, stream.schema, "A->.{1,3}->B")
+        assert match.frame.empty
+
+    def test__boundaries_bound_it(self):
+        stream = self._stream({"short": ["a", "b"], "long": ["a", "b", "c", "d"]})
+        match = anchors.resolve_anchors(stream.df, stream.schema, "a->.{2,}->path_end")
+        assert set(match.paths()) == {"long"}
+
+    @pytest.mark.parametrize(
+        "pattern", ["cart->.{0,5}->purchase", "cart->.{8,}->purchase"]
+    )
+    def test__agrees_with_the_oracle_on_real_data(self, ecom_stream, pattern):
+        path_col = ecom_stream.schema.path_col
+        match = anchors.resolve_anchors(ecom_stream.df, ecom_stream.schema, pattern)
+        expected = {
+            pid
+            for pid, events in _tokens_by_path(ecom_stream, path_col).items()
+            if _all_matches_fast(events, pattern)
+        }
+        assert set(match.paths()) == expected
+        assert expected
+
+
+def _all_matches_fast(events, pattern):
+    """Whether a two-part pattern with one gap matches — a linear-ish scan."""
+    (first,), (second,) = anchors.split_parts(pattern)
+    gap = anchors.split_pattern(pattern)[1][1]
+    lefts = [i for i, e in enumerate(events) if e == first]
+    rights = [i for i, e in enumerate(events) if e == second]
+    return any(i < j and _gap_allows(gap, events, i, j) for i in lefts for j in rights)
+
+
+def test__an_event_named_like_a_bounded_gap_is_a_collision():
+    with pytest.raises(PatternSyntaxError, match="reads as a gap"):
+        anchors.validate_pattern_tokens("A->.{2}->B", {"A", "B", ".{2}"})
+
+
+class TestGroupsEndToEnd:
+    """A group is unrolled by `normalize_pattern`, so it reaches the matcher as
+    plain tokens and each copy takes its own ordinals."""
+
+    @staticmethod
+    def _match(paths, pattern, **kwargs):
+        stream = TestResolveAnchorsSmallFixtures._stream(paths)
+        normalized = anchors.normalize_pattern(pattern, warn=False)
+        return anchors.resolve_anchors(stream.df, stream.schema, normalized, **kwargs)
+
+    def test__repetitions_anywhere_along_the_path(self):
+        paths = {
+            "spread": list("AxByCzBwC"),
+            "touching": list("AxByCBwC"),
+            "once": list("AxByCz"),
+            "before_a": list("BCBCA"),
+            "interleaved": list("ABBCC"),
+        }
+        match = self._match(paths, "A->.*->(B->.*->C->.*){2,}")
+        assert set(match.paths()) == {"spread", "touching"}
+
+    def test__a_repeated_event_on_its_own(self):
+        """`(A){2,}` is the standalone spelling of "A twice in a row": a group
+        with nothing either side, so `{2,}` is absorbed into `{2}`."""
+        match = self._match({"loop": list("ABBC"), "revisit": list("ABAC")}, "(B){2,}")
+        assert set(match.paths()) == {"loop"}
+
+    def test__copies_take_ordinals(self):
+        match = self._match({"u1": list("ABCBC")}, "A->(B->C){2}")
+        assert list(match.tokens) == ["A", "B", "C", "B", "C"]
+        assert match.at(-1)["step"].tolist() == [5]
+
+    def test__no_redundancy_warning_for_a_trailing_gap_inside_a_group(self):
+        import warnings
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            assert (
+                anchors.normalize_pattern("A->.*->(B->.*->C->.*){2}")
+                == "A->.*->B->.*->C->.*->B->.*->C"
+            )

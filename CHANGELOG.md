@@ -7,6 +7,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 
+- Path patterns accept the regex quantifier family on gaps: `.{m,n}`, `{n}`,
+  `{m,}`, `{,n}`, `+` and `?` after `.` or a class, alongside `*`. Bounds are
+  inclusive and count the events strictly between the anchors, so
+  `add_to_cart->.{0,4}->purchase` is "bought within five steps", and
+  `cart->[shipping|payment]+->purchase` no longer matches an adjacent
+  cart/purchase the way `*` does. A bounded gap takes no ordinal, so `at=` and
+  Step Matrix centring are unchanged (#110).
+- Round-bracket groups repeat a sequence: `(B->.*->C->.*){2}` is unrolled into
+  two copies before matching. `{k,}` and `+` are accepted where a `.*` absorbs
+  the extra repetitions; an upper bound is rejected with the `NOT` condition
+  that expresses it, and a group whose copies would be glued back to back
+  despite a gap inside (`(B->.*->C){2}`) is rejected with both readings.
 - Condition leaves for 0/1 metrics have a shorthand: `{"has_event": "purchase"}`,
   `{"matches_pattern": "A->.*->B"}`, `{"has_any_event": ["A", "B"]}`, or
   `{metric: metric_args}` for any of `has_event`, `has_any_event`,

@@ -12,8 +12,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   `{metric: metric_args}` for any of `has_event`, `has_any_event`,
   `has_all_events`, `matches_pattern`, `in_segment`. Each means
   `{"op": "=", "metric": ..., "metric_args": ..., "value": True}`, and works
-  wherever a condition does — `filter_paths`, `collapse_events` name cases and
-  MCP `filter_paths` steps.
+  in `filter_paths`, in MCP `filter_paths` steps, and in `collapse_events` name
+  cases for the 0/1 metrics those support (`has_event`, `has_any_event`,
+  `has_all_events`).
 
 ### Changed
 

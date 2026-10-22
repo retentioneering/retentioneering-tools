@@ -660,6 +660,18 @@ class TestCollapseEventsGroupsCases:
         )
         assert events(res) == ["purchase_session", "no_purchase_session"]
 
+    def test_cases_accept_the_shorthand_leaf(self):
+        """`{"has_event": "purchase"}` is the same condition as the full leaf."""
+        stream = self._windows(["A", "purchase", "B"], ["C", "D"])
+        res = stream.collapse_events(
+            bounds=self.BOUNDS,
+            name=[
+                {"condition": {"has_event": "purchase"}, "name": "purchase_session"},
+                "no_purchase_session",
+            ],
+        )
+        assert events(res) == ["purchase_session", "no_purchase_session"]
+
     def test_cases_event_count_metric(self):
         """'event_count' (documented 'event' key) names windows by threshold."""
         stream = self._windows(["click", "click"], ["click", "A"])

@@ -24,6 +24,8 @@ unlearn are on this page, and there are two of them.
 | `[^a]*` | a run containing no `a` | `add_to_cart->[^support_chat]*->purchase` |
 | `[^a\|b]*` | a run containing none of those listed | `add_to_cart->[^support_chat\|error_page]*->purchase` |
 | `[a\|b]*` | a run containing nothing but those listed | `cart->[shipping_details\|payment_details]*->purchase` |
+| `.{m,n}` | a run of `m` to `n` events (also `{n}`, `{m,}`, `{,n}`, `+`, `?`) | `add_to_cart->.{0,5}->purchase` |
+| `(a->b){k}` | the sequence `a->b`, `k` times in a row | `catalog->.*->(cart->.*){2}` |
 | `path_start`, `path_end` | a path's own boundaries | `path_start->home` |
 
 Tokens are separated by `->`. Tokens not separated by `.*` must be **strictly
@@ -41,8 +43,9 @@ which count positions:
 ```
 
 A class is one position no matter how many events it lists. A gap is not a
-position at all — quantifying a class with `*` turns it from "one event like
-this" into "a run of events like this", and runs take no ordinal.
+position at all — quantifying a class with `*` (or any other quantifier) turns
+it from "one event like this" into "a run of events like this", and runs take no
+ordinal.
 
 ## Two things regex users have to unlearn
 
@@ -123,6 +126,111 @@ stream.step_matrix(path_pattern="[^purchase]*->cart")
 Naming `path_start` or `path_end` is usually what was meant:
 `path_start->[^purchase]*->path_end` selects paths that never purchased.
 
+## Bounding how long a run is
+
+`*` is one member of the regex quantifier family, and the rest of the family
+works on every gap — `.` or a class in brackets:
+
+| Quantifier | Run length | Same as |
+|---|---|---|
+| `*` | any, including none | `{0,}` |
+| `+` | at least one | `{1,}` |
+| `?` | none or one | `{0,1}` |
+| `{n}` | exactly `n` | `{n,n}` |
+| `{m,}` | at least `m` | |
+| `{,n}` | at most `n` | `{0,n}` |
+| `{m,n}` | from `m` to `n` | |
+
+As in regex, both bounds are **inclusive**, and the anchors are **not counted**:
+`A->.{0,5}->B` allows at most five events *between* `A` and `B`. Mind the off-by-one
+when translating a question — "bought within five steps of the cart", if the
+fifth step is the purchase itself, is `add_to_cart->.{0,4}->purchase`.
+
+```python
+# converted quickly: at most three events between the cart and the purchase
+stream.get_metrics([{"metric": "matches_pattern",
+                     "metric_args": {"pattern": "add_to_cart->.{,3}->purchase"}}])
+
+# went through checkout steps only, and at least one of them
+stream.step_matrix(path_pattern="cart->[shipping_details|payment_details]+->purchase")
+```
+
+The second example is the one `*` cannot say. `cart->[shipping_details|payment_details]*->purchase`
+is also true of a cart followed directly by a purchase: the empty run contains
+nothing forbidden. `+` rules that out.
+
+**A bounded gap is still one gap, never several positions.** In regex `[ab]{2,3}`
+is two or three characters; here it takes no ordinal at all, so `at=` and Step
+Matrix centring keep addressing the same tokens whatever the run's length. The
+paths matched are exactly regex's — only the numbering differs. `A->.->.->B`
+and `A->.{2}->B` match the same paths, but in the first `B` is position 3 and in
+the second position 1.
+
+Matching is a search, so a bound holds for **some** pair of anchors, not for all
+of them. On `A, x, x, x, A, B`, `A->.{0}->B` is true (the second `A`) and so is
+`A->.{4}->B` (the first). To say that *no* pair is close, negate the pattern
+with a condition — see [What is not supported](#what-is-not-supported).
+
+A bound counts events, not time. A unit (`{30m,}`) is rejected for now.
+
+## Repeating a sequence
+
+Round brackets group a sequence so a quantifier can repeat it. The group is
+**unrolled** into copies before matching, and the copies are joined the way any
+two tokens are — back to back:
+
+```
+(cart->purchase){2}          = cart->purchase->cart->purchase
+catalog->.*->(cart->.*){2}   = catalog->.*->cart->.*->cart
+```
+
+Each copy is ordinary pattern, so each takes its own positions for `at=` and
+Step Matrix: `A->(B->C){2}` has five.
+
+**Put the gap inside the group** when the repetitions may be spread along the
+path — `(B->.*->C->.*){2}` is "`B`, later `C`, and that twice". Without the
+trailing `.*` the copies would be glued as `C->B`. Because that is almost never
+what is meant, the parser rejects it and offers both readings:
+
+```python
+stream.get_metrics([{"metric": "matches_pattern",
+                     "metric_args": {"pattern": "A->.*->(B->.*->C){2}"}}])
+# PatternSyntaxError: In '(B->.*->C){2}' the repetitions are joined back to
+# back, so the group's last event must be followed immediately by its first
+# ('C' then 'B', nothing between). For repetitions anywhere along the path
+# write '(B->.*->C->.*){2}'; if back to back is what you mean, write it out:
+# 'B->.*->C->B->.*->C'.
+```
+
+A group with no gap inside, like `(cart->purchase){3}`, is not affected — back to
+back is the only thing it can mean.
+
+**"At least", never "at most".** A search that finds `k` repetitions does not
+care whether more follow, so `{k}` already means "at least `k`". `{k,}` and `+`
+are accepted where a `.*` sits next to the repeated block (inside the group at
+its edge, outside it, or at an end of the pattern), which is where they mean
+the same as `{k}`. An upper bound — `{,n}`, `{m,n}`, `?` — is rejected, because
+"at most `n`" is a statement about the *absence* of another repetition. Say it
+with a [Filter Paths](/docs/data-processors/filter-paths) condition instead:
+
+```python
+twice = "A->.*->(B->.*->C->.*){2}"
+three_times = "A->.*->(B->.*->C->.*){3}"
+leaf = lambda pattern: {"op": "=", "metric": "matches_pattern", "value": True,
+                        "metric_args": {"pattern": pattern}}
+
+stream.filter_paths({"op": "NOT", "args": [leaf(twice)]})                 # at most once
+stream.filter_paths({"op": "AND", "args": [leaf(twice),
+                                           {"op": "NOT", "args": [leaf(three_times)]}]})  # exactly twice
+```
+
+The same pair spells any range — "from 3 to 5 times" is `{3}` and not `{6}`, and
+its complement is `NOT {3} OR {6}`, which no single quantifier could express.
+
+Repetitions are counted the way `re.findall` counts them: one after another,
+never overlapping. On `B, B, C, C` the sequence `B->.*->C` occurs **once**, not
+four times — the second repetition would need a `B` after the first `C`.
+
 ## Examples
 
 **One position, negated or alternated:**
@@ -135,6 +243,22 @@ Naming `path_start` or `path_end` is usually what was meant:
 | `[search\|filter_results\|compare]->add_to_cart` | added to cart straight after any research action |
 | `[payment_error\|checkout_bug]->path_end` | paths that ended right after a checkout failure |
 | `catalog->.->purchase` | exactly one event between the catalog and the purchase |
+
+**A run of bounded length:**
+
+| Pattern | Question it answers |
+|---|---|
+| `add_to_cart->.{0,4}->purchase` | bought within five steps of adding to cart |
+| `catalog->.{10,}->purchase` | bought after a long browse from the catalog |
+| `cart->[shipping_details\|payment_details]+->purchase` | checked out through at least one checkout step, and nothing else |
+| `product_view->.{2}->add_to_cart` | exactly two events between the view and the add |
+
+**A sequence, repeated:**
+
+| Pattern | Question it answers |
+|---|---|
+| `path_start->.*->(add_to_cart->.*->cart->.*){2}` | went from adding to cart to the cart at least twice |
+| `(product_view->catalog){3}` | bounced between a product and the catalog three times running |
 
 **A whole run, restricted:**
 
@@ -186,9 +310,14 @@ by the parser rather than half-supported:
 | `cart->purchase\|catalog->add_to_cart` | a pattern cannot list alternative sequences |
 | `(cart\|purchase)` | round brackets are not part of the syntax; write `[cart\|purchase]` |
 | `^cart`, `cart$` | not anchors — write `path_start->cart`, `cart->path_end` |
-| `[cart\|purchase]+`, `[^cart]?` | only `*` is supported after a class |
-| `[^cart]*->purchase` | a restricted gap at either end has nothing bounding its outer side |
+| `cart{2}` | a quantifier applies to `.`, a class or a group; write `(cart){2}` for two in a row, `[cart]{2}` for a run between anchors |
+| `[^cart]*->purchase`, `cart->.{3,}` | a restricted or bounded gap at either end has nothing bounding its outer side |
 | `cart->.*->[^purchase]*->catalog` | two gaps in a row |
+| `cart->.{30m,}->purchase` | bounds count events; time bounds are not supported |
+| `A->.*->(B->.*->C){2}` | repetitions glued back to back; put the gap inside: `(B->.*->C->.*){2}` |
+| `(B->C){,3}`, `(B->C){2,4}`, `(B->C)?` | "at most" is a condition on the path, not a pattern; use `NOT` |
+| `A->(B->C){2,}->D` | "at least" between two adjacent tokens would need counting; use `{2}` or allow a gap |
+| `((A->B){2}->C){2}` | nested groups — unroll the inner one by hand |
 | `[]`, `[^]`, `[^[a\|b]]` | empty or nested classes |
 
 Negating a whole sequence has no left boundary: the complement of an unanchored

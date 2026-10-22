@@ -123,6 +123,18 @@ Follow these rules for any new API.
 clustering (`features`), segment comparison (`metrics` / `overview_metrics`), and
 `filter_paths` conditions. Adding a metric also requires updating the JS metric editor and the
 Path Metrics docs page.
+Conditions (`metrics/condition_ast.py`) accept shorthand leaves for 0/1 metrics —
+`{"has_event": "purchase"}` — expanded node by node (ADR-0016); a new 0/1 metric belongs in
+`BOOLEAN_METRICS` there.
+
+### Path patterns (ADR-0015)
+
+One pattern language (`paths/tokens.py` parses, `paths/anchors.py` matches in SQL) serves
+`matches_pattern`, anchors and Step Matrix/Sankey centring. Non-gap tokens are positions with
+ordinals; quantified classes (`.{0,4}`, `[a|b]+`) are gaps and take none; groups `(P){k}` are
+unrolled by `normalize_pattern`, so everything downstream sees plain tokens. Changes to the
+matcher must keep agreeing with the brute-force oracle in `tests/paths/anchors_test.py`; JS
+that splits a pattern into blocks must use `isGapToken` and the unrolled `layout_pattern`.
 
 ### JS: two workspace packages, one build target (ADR-0005)
 

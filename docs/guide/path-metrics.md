@@ -218,6 +218,40 @@ In [Filter Paths](/docs/data-processors/filter-paths), metrics are used inside a
 
 Supported operators: `=` (or `==`), `!=`, `>`, `<`, `>=`, `<=`. Logical nodes use `and`, `or`, `not` with an `args` list.
 
+### Shorthand leaves
+
+A 0/1 metric — `has_event`, `has_any_event`, `has_all_events`, `matches_pattern`,
+`in_segment` — is almost always compared with `True`, so a leaf for one can be
+written with the metric name as its only key. The value is either its
+`metric_args`, or, for a metric with exactly one required argument, that
+argument alone:
+
+| Shorthand | Same as |
+|---|---|
+| `{"has_event": "purchase"}` | `{"op": "=", "metric": "has_event", "metric_args": {"event": "purchase"}, "value": True}` |
+| `{"matches_pattern": "cart->.*->purchase"}` | `... "metric": "matches_pattern", "metric_args": {"pattern": "cart->.*->purchase"} ...` |
+| `{"has_any_event": ["promo_view", "discount_applied"]}` | `... "metric": "has_any_event", "metric_args": {"events": [...]} ...` |
+| `{"has_all_events": ["add_to_cart", "purchase"]}` | `... "metric": "has_all_events", "metric_args": {"events": [...]} ...` |
+| `{"in_segment": {"segment_name": "channel", "segment_level": "mobile"}}` | `... "metric": "in_segment", "metric_args": {...} ...` |
+
+Shorthand leaves sit anywhere a leaf can, so they compose with branches and lists:
+
+```python
+# reached purchase without ever seeing an error page
+stream.filter_paths([{"has_event": "purchase"},
+                     {"op": "not", "args": [{"has_event": "error_page"}]}])
+
+# any event repeated back to back
+stream.filter_paths({"op": "or", "args": [
+    {"matches_pattern": f"{event}->{event}"} for event in ["A", "B", "C"]
+]})
+```
+
+`in_segment` takes the dict form only — it needs both a column and a level. A
+numeric metric (`length`, `event_count`, …) has no shorthand: `{"length": {}}`
+does not say what to compare against, so it is rejected with the full form to
+write instead.
+
 ```python
 # Keep paths that stayed in one segment level for most of their events
 {"op": "=", "metric": "in_segment",

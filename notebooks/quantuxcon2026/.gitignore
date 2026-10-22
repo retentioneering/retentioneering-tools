@@ -1,4 +1,6 @@
 # Quarto render output
+# The MCP report the slides embed, exported during the render
+timeline_report.html
 slides.html
 _build_slides.ipynb
 _build_slides.ipynb.tmp

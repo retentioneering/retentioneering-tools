@@ -19,6 +19,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   the extra repetitions; an upper bound is rejected with the `NOT` condition
   that expresses it, and a group whose copies would be glued back to back
   despite a gap inside (`(B->.*->C){2}`) is rejected with both readings.
+  Step Sankey lays its blocks out from the unrolled pattern, so each copy gets
+  a block of its own.
 - Condition leaves for 0/1 metrics have a shorthand: `{"has_event": "purchase"}`,
   `{"matches_pattern": "A->.*->B"}`, `{"has_any_event": ["A", "B"]}`, or
   `{metric: metric_args}` for any of `has_event`, `has_any_event`,

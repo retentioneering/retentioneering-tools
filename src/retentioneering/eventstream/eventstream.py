@@ -164,6 +164,24 @@ class Eventstream:
         schema = self.schema
         event_types = EventTypes()
 
+        # Before anything indexes into the frame. `custom_cols` is checked in
+        # `_post_init`; without this the other four keys surfaced only as the
+        # bare `KeyError` pandas raises at the first use of the name, which
+        # names neither the schema key that was wrong nor the columns on offer.
+        declared = [
+            ("event_col", [schema.event_col]),
+            ("timestamp_col", [schema.timestamp_col]),
+            ("path_cols", list(schema.path_cols)),
+            ("segment_cols", list(schema.segment_cols)),
+        ]
+        for key, names in declared:
+            missing = [c for c in names if c not in df.columns]
+            if missing:
+                raise SchemaConfigError(
+                    f"{key} column(s) not found in the DataFrame: {missing}. "
+                    f"Available columns: {list(df.columns)}."
+                )
+
         df[schema.timestamp_col] = _to_datetime_auto(df[schema.timestamp_col])
 
         for col in schema.path_cols:

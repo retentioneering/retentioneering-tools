@@ -10,12 +10,14 @@ this one module, not grep every query string in the codebase.
 
 This module does not transpile or validate SQL - it only wraps the
 enumerable DuckDB-specific fragments currently in use (EPOCH, path-string
-aggregation, regex matching) as plain string-returning functions.
+aggregation, regex matching, calendar-day truncation) as plain
+string-returning functions.
 """
 
 from __future__ import annotations
 
 __all__ = [
+    "calendar_date",
     "event_position",
     "epoch",
     "interval_seconds",
@@ -41,6 +43,28 @@ def interval_seconds(seconds: float) -> str:
     (``ts + interval_seconds(1800)``). The inverse of :func:`epoch`.
     """
     return f"to_seconds({float(seconds)})"
+
+
+def calendar_date(ts_expr: str, *, tz_aware: bool) -> str:
+    """
+    The calendar day of a timestamp expression, as a DuckDB DATE.
+
+    A ``TIMESTAMP WITH TIME ZONE`` resolves to a calendar day in DuckDB's
+    session timezone, which defaults to the host's. Pinning that setting is not
+    an option here: it is not inherited by the per-call cursors
+    :func:`engine.run` executes on. So a bare ``CAST(ts AS DATE)`` would bucket
+    the same tz-aware eventstream into different days on two different
+    machines, and the day has to be taken in a fixed zone instead.
+
+    A tz-naive column carries no zone to convert from and is cast directly.
+    Routing it through ``AT TIME ZONE`` would read it *as* UTC and hand back a
+    tz-aware value, reintroducing the session-timezone dependency the
+    conversion exists to remove — hence `tz_aware` rather than one expression
+    for both.
+    """
+    if tz_aware:
+        return f"CAST({ts_expr} AT TIME ZONE 'UTC' AS DATE)"
+    return f"CAST({ts_expr} AS DATE)"
 
 
 def epoch(expr: str) -> str:

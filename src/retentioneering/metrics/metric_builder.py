@@ -1112,14 +1112,18 @@ class MetricBuilder:
         path_col_q = engine.quote_ident(path_col)
         event_col_q = engine.quote_ident(event_col)
         timestamp_col_q = engine.quote_ident(timestamp_col)
+        day_expr = dialect.calendar_date(
+            timestamp_col_q,
+            tz_aware=isinstance(self.df[timestamp_col].dtype, pd.DatetimeTZDtype),
+        )
         if active_events:
             ev_list = (
                 active_events if isinstance(active_events, list) else [active_events]
             )
             quoted = quote_list(ev_list)
-            count_expr = f"COUNT(DISTINCT CASE WHEN {event_col_q} IN ({quoted}) THEN CAST({timestamp_col_q} AS DATE) END)"
+            count_expr = f"COUNT(DISTINCT CASE WHEN {event_col_q} IN ({quoted}) THEN {day_expr} END)"
         else:
-            count_expr = f"COUNT(DISTINCT CAST({timestamp_col_q} AS DATE))"
+            count_expr = f"COUNT(DISTINCT {day_expr})"
         query = f"""
         SELECT {path_col_q}, {count_expr} AS active_days
         FROM df

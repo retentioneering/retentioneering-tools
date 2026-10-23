@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple
 import pandas as pd
 
 from retentioneering import engine
+from retentioneering.engine import dialect
 from retentioneering.data_processors.collapse_events import _session_agg_exprs
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.event_type import EventTypes
@@ -90,6 +91,10 @@ class ToDailyStates(DataProcessor):
         event_type_col_q = engine.quote_ident(event_type_col)
         index_col_q = engine.quote_ident(schema.index)
         subindex_col_q = engine.quote_ident(schema.subindex)
+        day_expr = dialect.calendar_date(
+            timestamp_col_q,
+            tz_aware=isinstance(df[timestamp_col].dtype, pd.DatetimeTZDtype),
+        )
 
         if self.active_events:
             quoted = ", ".join(
@@ -138,7 +143,7 @@ class ToDailyStates(DataProcessor):
 
         query = f"""
         WITH base AS (
-            SELECT *, CAST({timestamp_col_q} AS DATE) AS day
+            SELECT *, {day_expr} AS day
             FROM df
         ),
         dataset_end AS (

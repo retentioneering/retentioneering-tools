@@ -239,7 +239,7 @@ class ConversionRate:
             )
             SELECT COUNT(DISTINCT s.p) AS converted
             FROM s JOIN e ON e.p = s.p
-            WHERE {condition}
+            WHERE e.step > s.step AND {condition}
         """
         result = engine.run(
             query, df=self.eventstream.df, starts=start_pos, ends=end_pos

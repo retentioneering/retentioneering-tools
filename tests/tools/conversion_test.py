@@ -206,6 +206,50 @@ class TestConversionRateSemantics:
         assert result["converted"] == 1
         assert result["conversion_rate"] == 0.5
 
+    @pytest.mark.parametrize("within", ["30m", 1])
+    def test_occurrence_all_window_opens_at_each_start_not_before_it(
+        self, within
+    ) -> None:
+        # The window is measured forward from each start occurrence: the B
+        # that precedes the second A is not "within 30m after" it, and it is
+        # an hour (two steps) past the first one.
+        stream = _stream(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00"],
+                ["user_1", "X", "2020-01-01 00:30:00"],
+                ["user_1", "B", "2020-01-01 01:00:00"],
+                ["user_1", "A", "2020-01-01 02:00:00"],
+            ]
+        )
+        result = _row(
+            stream.get_conversion_rate(
+                {"pattern": "A", "occurrence": "all"}, "B", within=within
+            )
+        )
+
+        assert result["paths_with_start"] == 1
+        assert result["converted"] == 0
+
+    def test_occurrence_all_start_converts_from_a_later_attempt(self) -> None:
+        # The question "all" exists for: the first view is hours before the
+        # purchase, the second is ten minutes before it.
+        stream = _stream(
+            [
+                ["user_1", "view", "2020-01-01 10:00:00"],
+                ["user_1", "view", "2020-01-01 14:00:00"],
+                ["user_1", "purchase", "2020-01-01 14:10:00"],
+            ]
+        )
+        first = _row(stream.get_conversion_rate("view", "purchase", within="30m"))
+        every = _row(
+            stream.get_conversion_rate(
+                {"pattern": "view", "occurrence": "all"}, "purchase", within="30m"
+            )
+        )
+
+        assert first["converted"] == 0
+        assert every["converted"] == 1
+
     def test_end_pattern_must_fall_entirely_after_the_start(self) -> None:
         # user_3 matches "cart->.*->purchase", but only with the cart *before*
         # Y — which is not something that happened after Y.

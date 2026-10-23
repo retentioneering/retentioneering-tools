@@ -20,6 +20,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   470 purchase sessions showed `purchase` before `payment_details`. Gaps now
   accumulate, and `ecom.csv.gz` is regenerated: events, sessions and users are
   unchanged, only timestamps within a session differ.
+- `get_conversion_rate` counts paths rather than anchor positions when an anchor
+  spec uses `occurrence="all"`. `paths_with_start` used to count one per
+  occurrence, and a `within` window counted matching `(start, end)` pairs, so a
+  single path with one start and two ends inside the window reported
+  `converted=2` against `paths_with_start=1` — a `conversion_rate` of 2.0, with
+  `lift` carrying the same factor. The inflated denominator also understated the
+  rate (0.667 where both paths converted), and the `within=None` and windowed
+  branches disagreed with each other. A `within` window is also measured forward
+  from each start occurrence: an end that preceded a later start no longer
+  counts as converting from it
+  ([#186](https://github.com/retentioneering/retentioneering-tools/issues/186)).
 - The MCP tools `add_transition_graph`, `add_step_matrix`, `add_segment_overview`
   and `get_conversion_rate` now return `{"error": "local_preprocessors: ..."}`
   when a `local_preprocessors` step is invalid, as `update_base_stream` does for

@@ -2237,7 +2237,10 @@ class Eventstream:
         ----------
         start_anchor : str or dict or list
             The condition — where the window opens. `occurrence` (default
-            `"first"`) picks which occurrence of it counts.
+            `"first"`) picks which occurrence of it counts. With `within`,
+            `occurrence="all"` opens a window at every occurrence, and the path
+            converts if any of them is followed by the end anchor in time;
+            without `within` it gives the same result as `"first"`.
         end_anchor : str or dict or list
             The target(s) looked for after it. The whole pattern has to fall
             after the start anchor, lead-in included.

@@ -102,7 +102,9 @@ class ToDailyStates(DataProcessor):
             is_active_today = "TRUE"
 
         exclude = {path_col, schema.event_col, schema.event_type}
-        agg_exprs = _session_agg_exprs(df, self.agg, exclude, timestamp_col)
+        agg_exprs = _session_agg_exprs(
+            df, self.agg, exclude, timestamp_col, PROCESSOR_NAME
+        )
         agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
 
         other_path_cols = [c for c in schema.path_cols if c != path_col]

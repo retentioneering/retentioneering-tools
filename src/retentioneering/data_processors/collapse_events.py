@@ -20,6 +20,21 @@ from retentioneering.utils.sql_quoting import quote_literal
 
 PROCESSOR_NAME = "collapse_events"
 
+#: SQL for each `agg` function `collapse_events` and `to_daily_states` accept,
+#: keyed by the name the user writes. `first` / `last` mean earliest / latest by
+#: timestamp rather than by row order, so every builder takes the quoted
+#: timestamp column as well as the quoted value column.
+AGG_SQL = {
+    "first": lambda col, ts: f"ARG_MIN({col}, {ts})",
+    "last": lambda col, ts: f"ARG_MAX({col}, {ts})",
+    "min": lambda col, ts: f"MIN({col})",
+    "max": lambda col, ts: f"MAX({col})",
+    "mean": lambda col, ts: f"AVG({col})",
+    "sum": lambda col, ts: f"SUM({col})",
+    "mode": lambda col, ts: f"MODE({col})",
+    "any": lambda col, ts: f"ANY_VALUE({col})",
+}
+
 BOUNDS_KEYS = ("start_event", "end_event")
 
 #: Modes that chunk a path by its events, sharing `split_sessions`' vocabulary.
@@ -350,7 +365,19 @@ class CollapseEvents(DataProcessor):
         agg_config: Dict[str, str],
         exclude_cols: Set[str],
         ts_col: str,
+        processor: str = PROCESSOR_NAME,
     ) -> List[str]:
+        # Validated over the whole config rather than per column, so a name
+        # that is wrong is reported even when its column is excluded from this
+        # particular aggregation.
+        for col, agg_name in sorted(agg_config.items()):
+            if agg_name not in AGG_SQL:
+                raise PreprocessingConfigError(
+                    processor,
+                    f"unknown agg function {agg_name!r} for column {col!r}. "
+                    f"agg_func is one of {sorted(AGG_SQL)}.",
+                )
+
         agg_exprs = []
         ts_col_q = engine.quote_ident(ts_col)
         for c in df.columns:
@@ -358,22 +385,7 @@ class CollapseEvents(DataProcessor):
                 continue
             c_q = engine.quote_ident(c)
             agg_name = agg_config.get(c, "first")
-            if agg_name == "first":
-                agg_exprs.append(f"ARG_MIN({c_q}, {ts_col_q}) AS {c_q}")
-            elif agg_name == "last":
-                agg_exprs.append(f"ARG_MAX({c_q}, {ts_col_q}) AS {c_q}")
-            elif agg_name == "min":
-                agg_exprs.append(f"MIN({c_q}) AS {c_q}")
-            elif agg_name == "max":
-                agg_exprs.append(f"MAX({c_q}) AS {c_q}")
-            elif agg_name == "mean":
-                agg_exprs.append(f"AVG({c_q}) AS {c_q}")
-            elif agg_name == "mode":
-                agg_exprs.append(f"MODE({c_q}) AS {c_q}")
-            elif agg_name == "any":
-                agg_exprs.append(f"ANY_VALUE({c_q}) AS {c_q}")
-            else:
-                agg_exprs.append(f"ARG_MIN({c_q}, {ts_col_q}) AS {c_q}")
+            agg_exprs.append(f"{AGG_SQL[agg_name](c_q, ts_col_q)} AS {c_q}")
         return agg_exprs
 
     @staticmethod

@@ -25,6 +25,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Cluster Analysis Save/Copy use the features and path column from the displayed
+  analysis even after sidebar edits. Copied code explicitly preserves
+  `scaler=None`, and clearing a result also clears its saved call.
+
 - Cluster Analysis records the realized seed for `random_state=None` in
   `best_params`, so saving clusters replays the displayed split. The widget
   persists its KMeans settings and current seed in `state_file`; grid selection

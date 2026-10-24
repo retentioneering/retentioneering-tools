@@ -177,7 +177,7 @@ stream = stream.add_clusters(
 )
 ```
 
-Note the difference in `n_clusters`: the widget searches a range (`"3-8"` by default) and picks the best split by silhouette score, while `add_clusters` materializes one specific clustering and therefore needs an exact number. Either way it travels inside `method_args`, the dict holding the chosen `method`'s own parameters — `n_clusters` for k-means (plus, optionally, `n_init` and `random_state`: `n_init=10` runs ten k-means++ starts and keeps the best, which is what makes a split reproducible across seeds), `min_cluster_size` / `cluster_selection_epsilon` for hdbscan. You don't have to copy it by hand — the widget's "Save Clusters" button writes the matching `add_clusters(...)` call for you, and the headless twin returns the same thing under `best_params`:
+Note the difference in `n_clusters`: the widget searches a range (`"3-8"` by default) and picks the best split by silhouette score, while `add_clusters` materializes one specific clustering and therefore needs an exact number. Either way it travels inside `method_args`, the dict holding the chosen `method`'s own parameters — `n_clusters` for k-means (plus, optionally, `n_init` and `random_state`: `n_init=10` runs ten k-means++ starts and keeps the best; more starts can reduce sensitivity to the seed, while a fixed seed makes a run repeatable), `min_cluster_size` / `cluster_selection_epsilon` for hdbscan. You don't have to copy it by hand — the widget's "Save Clusters" button writes the matching `add_clusters(...)` call for you, and the headless twin returns the same thing under `best_params`:
 
 ```python
 features = [{"metric": "length"}, {"metric": "active_days"}]

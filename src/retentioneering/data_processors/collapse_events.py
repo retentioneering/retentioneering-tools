@@ -20,6 +20,16 @@ from retentioneering.utils.sql_quoting import quote_literal
 
 PROCESSOR_NAME = "collapse_events"
 
+
+def _is_tz_aware(df: pd.DataFrame, ts_col: str) -> bool:
+    """Whether the timestamp column carries a timezone.
+
+    Decides how a calendar day is taken from it — see
+    :func:`engine.dialect.calendar_date`.
+    """
+    return isinstance(df[ts_col].dtype, pd.DatetimeTZDtype)
+
+
 BOUNDS_KEYS = ("start_event", "end_event")
 
 #: Modes that chunk a path by its events, sharing `split_sessions`' vocabulary.
@@ -284,7 +294,7 @@ class CollapseEvents(DataProcessor):
     # ── naming SQL ───────────────────────────────────────────────────────────
 
     def _name_sql(
-        self, default_expr: str, event_col: str, ts_col: str
+        self, default_expr: str, event_col: str, ts_col: str, tz_aware: bool = False
     ) -> Tuple[str, str]:
         """
         Build the merged event's name expression, plus any aggregates it needs.
@@ -321,7 +331,9 @@ class CollapseEvents(DataProcessor):
                 if key in seen_keys:
                     continue
                 seen_keys.add(key)
-                for col_name, agg_sql in self._metric_agg_sql(mc, event_col, ts_col):
+                for col_name, agg_sql in self._metric_agg_sql(
+                    mc, event_col, ts_col, tz_aware
+                ):
                     if col_name not in metric_col_names:
                         metric_col_names.append(col_name)
                         metric_agg_parts.append(
@@ -378,7 +390,7 @@ class CollapseEvents(DataProcessor):
 
     @staticmethod
     def _metric_agg_sql(
-        mc: Dict[str, Any], event_col: str, ts_col: str
+        mc: Dict[str, Any], event_col: str, ts_col: str, tz_aware: bool = False
     ) -> List[Tuple[str, str]]:
         metric = mc["metric"]
         args = mc.get("metric_args") or {}
@@ -438,7 +450,8 @@ class CollapseEvents(DataProcessor):
             )
             return [(f"time_from_{ef}_to_{et}", agg_sql)]
         elif metric == "active_days":
-            return [("active_days", f"COUNT(DISTINCT CAST({ts_col_q} AS DATE))")]
+            day_expr = dialect.calendar_date(ts_col_q, tz_aware=tz_aware)
+            return [("active_days", f"COUNT(DISTINCT {day_expr})")]
         else:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
@@ -472,7 +485,9 @@ class CollapseEvents(DataProcessor):
         subindex_col_q = engine.quote_ident(schema.subindex)
 
         # A run of one event keeps that event's own name unless `name` overrides it.
-        name_expr, metric_agg_chunk = self._name_sql("_event", event_col, ts_col)
+        name_expr, metric_agg_chunk = self._name_sql(
+            "_event", event_col, ts_col, _is_tz_aware(df, ts_col)
+        )
 
         # LAG/SUM below must be ordered by a unique key: (timestamp, subindex) can
         # tie (subindex is the same for all raw events), and DuckDB's default RANGE
@@ -579,7 +594,7 @@ class CollapseEvents(DataProcessor):
 
         # Without `name`, the group is named after the value it is a run of.
         name_expr, metric_agg_chunk = self._name_sql(
-            "CAST(_run_value AS VARCHAR)", event_col, ts_col
+            "CAST(_run_value AS VARCHAR)", event_col, ts_col, _is_tz_aware(df, ts_col)
         )
 
         run_col_select = (
@@ -663,7 +678,9 @@ class CollapseEvents(DataProcessor):
         default = quote_literal(
             self.event_groups[0] if self.event_groups else "session"
         )
-        name_expr, metric_agg_chunk = self._name_sql(default, event_col, ts_col)
+        name_expr, metric_agg_chunk = self._name_sql(
+            default, event_col, ts_col, _is_tz_aware(df, ts_col)
+        )
 
         session_ctes = build_session_ctes(
             self._as_group(), path_col, event_col, ts_col, subindex_col

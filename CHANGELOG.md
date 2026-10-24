@@ -14,6 +14,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Calendar-day bucketing no longer depends on the timezone of the machine
+  running the query. DuckDB resolves a `TIMESTAMP WITH TIME ZONE` to a calendar
+  day in its session timezone, which defaults to the host's, so for a tz-aware
+  timestamp column the `active_days` metric, `to_daily_states` and an
+  `active_days` condition in `collapse_events`' `name` cases all gave a
+  different answer on a machine in a different zone — two events at 23:30 and
+  00:30 UTC counted as two active days in UTC and one in `Asia/Tokyo`. The day
+  is now taken in UTC for tz-aware columns; tz-naive columns are unchanged
+  ([#190](https://github.com/retentioneering/retentioneering-tools/issues/190)).
 - `get_conversion_rate` counts paths rather than anchor positions when an anchor
   spec uses `occurrence="all"`. `paths_with_start` used to count one per
   occurrence, and a `within` window counted matching `(start, end)` pairs, so a

@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added
+
+- `method_args` of the `"kmeans"` method accepts `n_init` (`"auto"` or a positive
+  int, default `"auto"`) and `random_state` (int or None, default 42) on all three
+  clustering surfaces (`add_clusters`, `cluster_analysis_data`, `cluster_analysis`).
+  The library used to hard-code scikit-learn's single k-means++ run, so the same
+  features clustered under another seed could land in a different local optimum
+  and there was no way to ask for more initialisations; `n_init=10` now does
+  that. The values you pass are carried into `best_params`, so the saved
+  `add_clusters` call reproduces the split. Defaults are unchanged.
+
 ### Changed
 
 - Segment Overview and Cluster Analysis tables group the rows of a bulk metric
@@ -14,12 +25,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Cluster Analysis Save/Copy use the features and path column from the displayed
+  analysis even after sidebar edits. Copied code explicitly preserves
+  `scaler=None`, and clearing a result also clears its saved call.
+
+- Cluster Analysis records the realized seed for `random_state=None` in
+  `best_params`, so saving clusters replays the displayed split. The widget
+  persists its KMeans settings and current seed in `state_file`; grid selection
+  and restoration reuse that seed, while a new Apply chooses a fresh one.
+
 - The bundled ecom dataset (`rete.datasets.load_ecom`) no longer reorders events
   within a session. Each event's timestamp was `base + gap * index` with a fresh
   random `gap` per event, so a later event could get an earlier timestamp; 205 of
   470 purchase sessions showed `purchase` before `payment_details`. Gaps now
   accumulate, and `ecom.csv.gz` is regenerated: events, sessions and users are
   unchanged, only timestamps within a session differ.
+
 - `describe()["segments"]` reports the events that have no value for a segment
   column under the `<MISSING>` sentinel, the same level `get_segment_levels`
   lists. Those events used to be dropped, and because `share` was normalized

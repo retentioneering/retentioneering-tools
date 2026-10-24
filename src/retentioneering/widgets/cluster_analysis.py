@@ -11,6 +11,7 @@ from retentioneering.exceptions import GridPointNotFoundError, RetentioneeringEr
 from retentioneering.tools.cluster_analysis import normalize_grid_param
 from retentioneering.utils.clustering_methods import (
     KMEANS_INIT_KEYS,
+    new_kmeans_seed,
     parse_method_args,
 )
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
@@ -25,6 +26,10 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
     method = traitlets.Unicode("kmeans").tag(sync=True)
     scaler = traitlets.Unicode("minmax").tag(sync=True)
     n_clusters = traitlets.Unicode("").tag(sync=True)  # "" | "3" | "3-8" | "[3,4,5]"
+    # Python-only state: retain the requested None policy separately from the
+    # seed used for the current result, selection, and saved segment.
+    _kmeans_args = traitlets.Dict(default_value={})
+    _kmeans_seed = traitlets.Int(default_value=None, allow_none=True)
     nmf_components = traitlets.Unicode("").tag(sync=True)  # "" | "3" | "3,5,7"
     nmf_enabled = traitlets.Bool(False).tag(sync=True)
     overview_metrics = traitlets.Unicode("[]").tag(sync=True)
@@ -81,6 +86,8 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         "method",
         "scaler",
         "n_clusters",
+        "_kmeans_args",
+        "_kmeans_seed",
         "nmf_components",
         "nmf_enabled",
         "overview_metrics",
@@ -208,6 +215,8 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
                     ("method", method),
                     ("scaler", scaler),
                     ("n_clusters", method_args),
+                    ("_kmeans_args", method_args),
+                    ("_kmeans_seed", method_args),
                     ("nmf_components", nmf_components),
                     ("nmf_enabled", nmf_components),
                     ("overview_metrics", overview_metrics),
@@ -248,6 +257,8 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         # a point of the old grid need not exist in the new one — so a hand-picked
         # selection is dropped rather than carried over into a grid it may not fit.
         self._clear_selection()
+        if self.method == "kmeans":
+            self._kmeans_seed = None
         self._recompute()
 
     def _on_select(self, _change):
@@ -395,7 +406,12 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         expose.
         """
         if method == "kmeans":
-            return {"n_clusters": n_clusters, **self._kmeans_args}
+            args = {"n_clusters": n_clusters, **self._kmeans_args}
+            if "random_state" in args and args["random_state"] is None:
+                if self._kmeans_seed is None:
+                    self._kmeans_seed = new_kmeans_seed()
+                args["random_state"] = self._kmeans_seed
+            return args
         return dict(self._hdbscan_args)
 
     def _compute_raw(

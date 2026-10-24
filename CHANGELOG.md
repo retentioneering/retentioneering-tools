@@ -25,6 +25,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Cluster Analysis records the realized seed for `random_state=None` in
+  `best_params`, so saving clusters replays the displayed split. The widget
+  persists its KMeans settings and current seed in `state_file`; grid selection
+  and restoration reuse that seed, while a new Apply chooses a fresh one.
+
 - `describe()["segments"]` reports the events that have no value for a segment
   column under the `<MISSING>` sentinel, the same level `get_segment_levels`
   lists. Those events used to be dropped, and because `share` was normalized

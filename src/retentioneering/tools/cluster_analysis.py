@@ -31,7 +31,12 @@ from retentioneering.exceptions import (
     GridPointNotFoundError,
 )
 from retentioneering.metrics.metric_builder import MetricBuilder
-from retentioneering.utils.clustering_methods import METHOD_ARGS, parse_method_args
+from retentioneering.utils.clustering_methods import (
+    KMEANS_INIT_KEYS,
+    METHOD_ARGS,
+    kmeans_init_args,
+    parse_method_args,
+)
 from retentioneering.utils.sentinels import UNSET as _UNSET
 
 SEGMENT_COL = "__cluster__"
@@ -117,6 +122,11 @@ def normalize_grid_param(name: str, value) -> int | List[int] | None:
     )
 
 
+# scikit-learn's own defaults, used when a caller reaches `_cluster` / `_search`
+# without going through `fit` (the validated `kmeans_init` is built there).
+_DEFAULT_KMEANS_INIT: Dict[str, Any] = kmeans_init_args({}, error=ValueError)
+
+
 def _as_call_params(
     method: str, scaler: T_Scaler, params: Dict[str, Any]
 ) -> Dict[str, Any]:
@@ -158,6 +168,13 @@ class ClusterAnalysis:
         n_clusters = args.get("n_clusters")
         min_cluster_size = args.get("min_cluster_size")
         cluster_selection_epsilon = args.get("cluster_selection_epsilon")
+        # `n_init` / `random_state` are settings, not grid coordinates: every
+        # k-means fit of this call uses them, and `best_params` carries the ones
+        # that were passed so the saved `add_clusters` call reproduces the split.
+        kmeans_init = (
+            kmeans_init_args(args, error=ValueError) if method == "kmeans" else {}
+        )
+        kmeans_passed = {k: args[k] for k in KMEANS_INIT_KEYS if k in args}
 
         if n_clusters is None and method == "kmeans":
             n_clusters = "3-8"
@@ -195,6 +212,7 @@ class ClusterAnalysis:
                 min_cluster_size,
                 cluster_selection_epsilon,
                 select=select,
+                kmeans_init=kmeans_init,
             )
             result: Dict[str, Any] = {
                 "silhouette": {
@@ -231,6 +249,7 @@ class ClusterAnalysis:
                     nmf_components, (list, tuple)
                 ):
                     point["nmf_components"] = nmf_components
+                point.update(kmeans_passed)
                 result["best_params"] = _as_call_params(method, scaler, point)
                 if chosen.get("nmf_data") is not None:
                     nmf_data = chosen["nmf_data"]
@@ -265,6 +284,7 @@ class ClusterAnalysis:
             n_clusters,
             min_cluster_size,
             cluster_selection_epsilon,
+            kmeans_init=kmeans_init,
         )
 
         if nmf_data is not None:
@@ -280,7 +300,7 @@ class ClusterAnalysis:
         )
 
         if method == "kmeans":
-            used: Dict[str, Any] = {"n_clusters": n_clusters}
+            used: Dict[str, Any] = {"n_clusters": n_clusters, **kmeans_passed}
         else:
             used = {
                 "min_cluster_size": min_cluster_size or 5,
@@ -317,11 +337,11 @@ class ClusterAnalysis:
         n_clusters: int | None,
         min_cluster_size: int | None,
         cluster_selection_epsilon: float | None,
+        kmeans_init: Dict[str, Any] | None = None,
     ) -> np.ndarray:
         if method == "kmeans":
-            return KMeans(
-                n_clusters=n_clusters, random_state=42, n_init="auto"
-            ).fit_predict(features)
+            init = kmeans_init if kmeans_init is not None else _DEFAULT_KMEANS_INIT
+            return KMeans(n_clusters=n_clusters, **init).fit_predict(features)
         elif method == "hdbscan":
             return HDBSCAN(
                 min_cluster_size=min_cluster_size or 5,
@@ -355,7 +375,9 @@ class ClusterAnalysis:
         min_cluster_size: int | List[int] | None,
         cluster_selection_epsilon: float | List[float] | None,
         select: Dict[str, Any] | None = None,
+        kmeans_init: Dict[str, Any] | None = None,
     ) -> Dict[str, Any]:
+        init = kmeans_init if kmeans_init is not None else _DEFAULT_KMEANS_INIT
         nmf_component_values = (
             nmf_components
             if isinstance(nmf_components, (list, tuple))
@@ -419,9 +441,7 @@ class ClusterAnalysis:
                     else [n_clusters]
                 )
                 for nc in nc_values:
-                    labels = KMeans(
-                        n_clusters=nc, random_state=42, n_init="auto"
-                    ).fit_predict(X)
+                    labels = KMeans(n_clusters=nc, **init).fit_predict(X)
                     score = self._safe_silhouette(X, labels)
                     p = {"n_clusters": nc}
                     if is_nmf_search:

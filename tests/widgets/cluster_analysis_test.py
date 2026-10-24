@@ -79,6 +79,26 @@ class TestClusterAnalysisWidgetSave:
         assert params["method"] == "hdbscan"
         assert params["method_args"]["min_cluster_size"] == 2
 
+    def test__kmeans_init_args_reach_the_computation(self) -> None:
+        """Like hdbscan's arguments, `n_init` / `random_state` have no sidebar
+        field: the constructor is the only way to set them, and they must ride
+        along with every Apply and into the saved call."""
+        stream = _make_stream()
+        widget = ClusterAnalysisWidget(
+            stream,
+            features=[{"metric": "length"}],
+            method_args={"n_clusters": 2, "n_init": 10, "random_state": 3},
+        )
+
+        assert widget.error == ""
+        assert widget.n_clusters == "2"
+        params = json.loads(widget.chosen_params)
+        assert params["method_args"] == {
+            "n_clusters": 2,
+            "n_init": 10,
+            "random_state": 3,
+        }
+
     def test__save_mutates_shared_eventstream(self) -> None:
         stream = _make_stream()
         widget = ClusterAnalysisWidget(

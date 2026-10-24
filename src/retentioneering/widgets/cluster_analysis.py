@@ -9,7 +9,10 @@ if TYPE_CHECKING:
 
 from retentioneering.exceptions import GridPointNotFoundError, RetentioneeringError
 from retentioneering.tools.cluster_analysis import normalize_grid_param
-from retentioneering.utils.clustering_methods import parse_method_args
+from retentioneering.utils.clustering_methods import (
+    KMEANS_INIT_KEYS,
+    parse_method_args,
+)
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
 from retentioneering.widgets._utils import distribution_levels as _distribution_levels
 
@@ -159,8 +162,13 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
             error=ValueError,
         )
         self._hdbscan_args = {
-            k: v for k, v in _args.items() if k != "n_clusters" and v is not None
+            k: v
+            for k, v in _args.items()
+            if k != "n_clusters" and k not in KMEANS_INIT_KEYS and v is not None
         }
+        # k-means' `n_init` / `random_state` have no sidebar field either; they
+        # come from the constructor and ride along with every Apply.
+        self._kmeans_args = {k: v for k, v in _args.items() if k in KMEANS_INIT_KEYS}
         _nc = _args.get("n_clusters")
         if _nc not in (None, ""):
             normalize_grid_param("n_clusters", _nc)
@@ -381,12 +389,13 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         """
         The chosen method's own arguments.
 
-        The sidebar only edits `n_clusters`; hdbscan's arguments come from the
-        constructor and are kept here so the widget can run a method whose
-        parameters its UI does not (yet) expose.
+        The sidebar only edits `n_clusters`; hdbscan's arguments and k-means'
+        initialisation arguments come from the constructor and are kept here so
+        the widget can run a method whose parameters its UI does not (yet)
+        expose.
         """
         if method == "kmeans":
-            return {"n_clusters": n_clusters}
+            return {"n_clusters": n_clusters, **self._kmeans_args}
         return dict(self._hdbscan_args)
 
     def _compute_raw(

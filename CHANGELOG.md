@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added
+
+- `method_args` of the `"kmeans"` method accepts `n_init` (`"auto"` or a positive
+  int, default `"auto"`) and `random_state` (int or None, default 42) on all three
+  clustering surfaces (`add_clusters`, `cluster_analysis_data`, `cluster_analysis`).
+  The library used to hard-code scikit-learn's single k-means++ run, so the same
+  features clustered under another seed could land in a different local optimum
+  and there was no way to ask for more initialisations; `n_init=10` now does
+  that. The values you pass are carried into `best_params`, so the saved
+  `add_clusters` call reproduces the split. Defaults are unchanged.
+
 ### Changed
 
 - Segment Overview and Cluster Analysis tables group the rows of a bulk metric

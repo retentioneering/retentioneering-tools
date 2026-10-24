@@ -14,6 +14,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- `add_events(anchor=...)` now validates the pattern against the column the
+  anchor spec names, as `truncate_paths` already does and as
+  `anchors.spec_vocabulary` documents. A spec naming its own `event_col`
+  (`{"pattern": "returning->loyal", "event_col": "user_lifecycle"}`) used to be
+  checked against the event vocabulary instead, so the levels of that column
+  were rejected as unknown events, while real event names — which are never
+  values of that column — passed validation and then matched nothing, inserting
+  no events and raising no error
+  ([#138](https://github.com/retentioneering/retentioneering-tools/issues/138)).
 - `get_conversion_rate` counts paths rather than anchor positions when an anchor
   spec uses `occurrence="all"`. `paths_with_start` used to count one per
   occurrence, and a `within` window counted matching `(start, end)` pairs, so a

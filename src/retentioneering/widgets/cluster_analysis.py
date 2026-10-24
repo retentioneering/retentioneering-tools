@@ -8,8 +8,12 @@ if TYPE_CHECKING:
     import pandas as pd
 
 from retentioneering.exceptions import GridPointNotFoundError, RetentioneeringError
-from retentioneering.tools.cluster_analysis import parse_n_clusters as _parse_n_clusters
-from retentioneering.utils.clustering_methods import parse_method_args
+from retentioneering.tools.cluster_analysis import normalize_grid_param
+from retentioneering.utils.clustering_methods import (
+    KMEANS_INIT_KEYS,
+    new_kmeans_seed,
+    parse_method_args,
+)
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
 from retentioneering.widgets._utils import distribution_levels as _distribution_levels
 
@@ -22,6 +26,10 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
     method = traitlets.Unicode("kmeans").tag(sync=True)
     scaler = traitlets.Unicode("minmax").tag(sync=True)
     n_clusters = traitlets.Unicode("").tag(sync=True)  # "" | "3" | "3-8" | "[3,4,5]"
+    # Python-only state: retain the requested None policy separately from the
+    # seed used for the current result, selection, and saved segment.
+    _kmeans_args = traitlets.Dict(default_value={})
+    _kmeans_seed = traitlets.Int(default_value=None, allow_none=True)
     nmf_components = traitlets.Unicode("").tag(sync=True)  # "" | "3" | "3,5,7"
     nmf_enabled = traitlets.Bool(False).tag(sync=True)
     overview_metrics = traitlets.Unicode("[]").tag(sync=True)
@@ -42,6 +50,9 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
     # Follows `selected_params` when the user picks a grid point by hand, so the
     # code shown and the segment saved always match what is on screen.
     chosen_params = traitlets.Unicode("{}").tag(sync=True)
+    # Full replay call for Save/Copy, frozen at the displayed result. Keep
+    # chosen_params' existing shape for consumers that supply features separately.
+    save_params = traitlets.Unicode("{}").tag(sync=True)
 
     # '' = interpret the highest-silhouette grid point (the default), or a JSON
     # object naming another one, e.g. '{"n_clusters": 5}'. Cleared whenever the
@@ -78,6 +89,8 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         "method",
         "scaler",
         "n_clusters",
+        "_kmeans_args",
+        "_kmeans_seed",
         "nmf_components",
         "nmf_enabled",
         "overview_metrics",
@@ -159,9 +172,16 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
             error=ValueError,
         )
         self._hdbscan_args = {
-            k: v for k, v in _args.items() if k != "n_clusters" and v is not None
+            k: v
+            for k, v in _args.items()
+            if k != "n_clusters" and k not in KMEANS_INIT_KEYS and v is not None
         }
+        # k-means' `n_init` / `random_state` have no sidebar field either; they
+        # come from the constructor and ride along with every Apply.
+        self._kmeans_args = {k: v for k, v in _args.items() if k in KMEANS_INIT_KEYS}
         _nc = _args.get("n_clusters")
+        if _nc not in (None, ""):
+            normalize_grid_param("n_clusters", _nc)
         self.n_clusters = (
             json.dumps(_nc)
             if isinstance(_nc, list)
@@ -173,11 +193,8 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         _nmf = _as_n_clusters_str(
             nmf_components if nmf_components is not _UNSET else ""
         )
-        if _nmf and _parse_n_clusters(_nmf) is None:
-            raise ValueError(
-                f"nmf_components={nmf_components!r} is not a number, a list of "
-                'numbers, or a range string like "2-5"'
-            )
+        if _nmf:
+            normalize_grid_param("nmf_components", nmf_components)
         self.nmf_enabled = bool(_nmf)
         self.nmf_components = _nmf
         _mc = overview_metrics if overview_metrics is not _UNSET else None
@@ -201,6 +218,8 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
                     ("method", method),
                     ("scaler", scaler),
                     ("n_clusters", method_args),
+                    ("_kmeans_args", method_args),
+                    ("_kmeans_seed", method_args),
                     ("nmf_components", nmf_components),
                     ("nmf_enabled", nmf_components),
                     ("overview_metrics", overview_metrics),
@@ -241,6 +260,8 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         # a point of the old grid need not exist in the new one — so a hand-picked
         # selection is dropped rather than carried over into a grid it may not fit.
         self._clear_selection()
+        if self.method == "kmeans":
+            self._kmeans_seed = None
         self._recompute()
 
     def _on_select(self, _change):
@@ -295,10 +316,8 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
             features=features,
             method=params.get("method", self.method),
             scaler=params.get("scaler", self.scaler) or None,
-            n_clusters=_parse_n_clusters(_as_n_clusters_str(n_clusters_raw)),
-            nmf_components=(
-                _parse_n_clusters(_as_n_clusters_str(nmf_raw)) if nmf_raw else None
-            ),
+            n_clusters=_as_n_clusters_str(n_clusters_raw) or None,
+            nmf_components=_as_n_clusters_str(nmf_raw) or None,
             overview_metrics=overview_metrics,
             aggregation=params.get("aggregation", self.aggregation or "mean"),
             path_col=params.get("path_col") or self.path_col or None,
@@ -326,15 +345,21 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
             features = json.loads(self.features) if self.features else []
             if not features:
                 self.result = "{}"
+                self.chosen_params = "{}"
+                self.save_params = "{}"
                 self._cluster_labels = None
                 return
             metrics = json.loads(self.overview_metrics) if self.overview_metrics else []
-            n_clusters = _parse_n_clusters(self.n_clusters)
+            # Raw strings go to the tool, which parses and validates both the
+            # same way; a typo lands in `self.error` instead of silently
+            # becoming the default range or skipping NMF.
+            n_clusters = self.n_clusters or None
             nmf_components = (
-                _parse_n_clusters(self.nmf_components)
+                self.nmf_components
                 if self.nmf_enabled and self.nmf_components
                 else None
             )
+            path_col = self.path_col or self._eventstream.schema.path_col
 
             try:
                 computed = self._compute_raw(
@@ -345,7 +370,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
                     nmf_components=nmf_components,
                     overview_metrics=metrics,
                     aggregation=self.aggregation or "mean",
-                    path_col=self.path_col or None,
+                    path_col=path_col,
                     select=self._select(),
                 )
             except GridPointNotFoundError:
@@ -361,11 +386,15 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
                     nmf_components=nmf_components,
                     overview_metrics=metrics,
                     aggregation=self.aggregation or "mean",
-                    path_col=self.path_col or None,
+                    path_col=path_col,
                 )
 
             self.result = json.dumps(computed["result"])
-            self.chosen_params = json.dumps(computed["best_params"])
+            params = computed["best_params"]
+            self.chosen_params = json.dumps(params)
+            if params:
+                params = {**params, "features": features, "path_col": path_col}
+            self.save_params = json.dumps(params)
             self._cluster_labels = computed["cluster_labels"]
         except RetentioneeringError:
             raise
@@ -373,6 +402,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
             self.error = str(exc)
             self.result = "{}"
             self.chosen_params = "{}"
+            self.save_params = "{}"
             self._cluster_labels = None
         finally:
             self.is_loading = False
@@ -381,12 +411,18 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         """
         The chosen method's own arguments.
 
-        The sidebar only edits `n_clusters`; hdbscan's arguments come from the
-        constructor and are kept here so the widget can run a method whose
-        parameters its UI does not (yet) expose.
+        The sidebar only edits `n_clusters`; hdbscan's arguments and k-means'
+        initialisation arguments come from the constructor and are kept here so
+        the widget can run a method whose parameters its UI does not (yet)
+        expose.
         """
         if method == "kmeans":
-            return {"n_clusters": n_clusters}
+            args = {"n_clusters": n_clusters, **self._kmeans_args}
+            if "random_state" in args and args["random_state"] is None:
+                if self._kmeans_seed is None:
+                    self._kmeans_seed = new_kmeans_seed()
+                args["random_state"] = self._kmeans_seed
+            return args
         return dict(self._hdbscan_args)
 
     def _compute_raw(
@@ -485,7 +521,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         The JS side offers a "Copy code" alternative that renders the
         equivalent `add_clusters(...)` call without touching the eventstream
         at all — that one is computed entirely client-side (see
-        `chosen_params` below) since it's pure templating, so it doesn't need
+        `save_params` below) since it's pure templating, so it doesn't need
         a round trip through this method.
         """
         try:
@@ -493,24 +529,14 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
             if not name:
                 raise ValueError("Segment column name is required.")
 
-            features = json.loads(self.features) if self.features else []
-            if not features:
-                raise ValueError("No features configured - nothing to cluster.")
-
+            params = json.loads(self.save_params) if self.save_params else {}
+            if not params.get("features") or self._cluster_labels is None:
+                raise ValueError("No clustering result to save - click Apply first.")
             rename = json.loads(self.save_rename) if self.save_rename else {}
-            params = json.loads(self.chosen_params) if self.chosen_params else {}
 
-            # `chosen_params` is already `add_clusters`-shaped (method /
-            # method_args / scaler / nmf_components), so the call is a splat
-            # rather than a per-method reassembly.
-            kwargs: dict = {
-                "name": name,
-                "features": features,
-                "path_col": self.path_col or None,
-                "method": self.method,
-                "scaler": self.scaler or None,
-                **params,
-            }
+            # Replay the displayed result, including its features/path, rather
+            # than combining it with sidebar edits that have not been applied.
+            kwargs = {**params, "name": name}
 
             self._apply_clusters_inplace(kwargs, rename)
             self.save_result = json.dumps({"ok": True, "segment_name": name})
@@ -598,7 +624,7 @@ def _safe(v):
 def _as_n_clusters_str(value) -> str:
     """Normalize a compute_request n_clusters/nmf_components param (which may
     arrive as an int, a list, or already a string) into the string format
-    `_parse_n_clusters` expects — the same normalization the constructor
+    `normalize_grid_param` expects — the same normalization the constructor
     already applies to the `n_clusters`/`nmf_components` traitlets.
     """
     if isinstance(value, list):

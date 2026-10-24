@@ -276,7 +276,10 @@ def add_transition_graph(
     """
     if (err := _require_stream(session)) is not None:
         return err
-    src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
     widget = src.transition_graph(
         edge_weight=edge_weight,
         diff=diff,
@@ -351,7 +354,10 @@ def add_step_matrix(
     """
     if (err := _require_stream(session)) is not None:
         return err
-    src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
     widget = src.step_matrix(
         max_steps=max_steps,
         diff=diff,
@@ -459,7 +465,10 @@ def add_segment_overview(
     """
     if (err := _require_stream(session)) is not None:
         return err
-    src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
     widget = src.segment_overview(
         segment_col=segment_col,
         metrics=metrics or [],
@@ -554,7 +563,10 @@ def get_conversion_rate(
     """
     if (err := _require_stream(session)) is not None:
         return err
-    src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
     try:
         frame = src.get_conversion_rate(
             start_anchor=start_anchor,

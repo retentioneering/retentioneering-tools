@@ -407,7 +407,10 @@ class Eventstream:
               count/mean/std/min/percentiles/max rows and `length`/`duration`
               columns
             - `segments`: DataFrame of segment_col/value/count/share, one row
-              per segment level across all segment columns
+              per segment level across all segment columns. `count` is the number
+              of events carrying the value and `share` its fraction of all events,
+              per column. Events with no value are reported under the `<MISSING>`
+              level `get_segment_levels` uses.
 
         Examples
         --------
@@ -513,7 +516,11 @@ class Eventstream:
             `nmf_components` are not method arguments — they are pipeline steps
             applied before clustering, so they stay outside this dict.
 
-            - `"kmeans"` — `n_clusters` (int, required).
+            - `"kmeans"` — `n_clusters` (int, required); optionally `n_init`
+              (`"auto"` or a positive int, default `"auto"`: how many k-means++
+              initialisations to run, keeping the best) and `random_state`
+              (int or None, default 42). More starts can reduce sensitivity to
+              the seed; a fixed seed makes a run repeatable.
             - `"hdbscan"` — `min_cluster_size` (int, default 5),
               `cluster_selection_epsilon` (float, default 0.0).
         scaler : str or None, default "minmax"
@@ -2237,7 +2244,10 @@ class Eventstream:
         ----------
         start_anchor : str or dict or list
             The condition — where the window opens. `occurrence` (default
-            `"first"`) picks which occurrence of it counts.
+            `"first"`) picks which occurrence of it counts. With `within`,
+            `occurrence="all"` opens a window at every occurrence, and the path
+            converts if any of them is followed by the end anchor in time;
+            without `within` it gives the same result as `"first"`.
         end_anchor : str or dict or list
             The target(s) looked for after it. The whole pattern has to fall
             after the start anchor, lead-in included.
@@ -2451,18 +2461,23 @@ class Eventstream:
 
             - `"kmeans"` — `n_clusters` (int, list of int, or a range string like
               `"3-8"`; a list or range runs a silhouette-scored grid search).
-              Defaults to `"3-8"`.
+              Defaults to `"3-8"`. Optionally `n_init` and `random_state`, which
+              the sidebar has no fields for either: they apply to every Apply
+              and travel into the saved `add_clusters` call. With
+              `random_state=None`, each Apply chooses a fresh seed; selecting
+              a grid point or restoring `state_file` reuses the current seed.
             - `"hdbscan"` — `min_cluster_size`, `cluster_selection_epsilon`.
         scaler : {"minmax", "std"}, optional
             Feature scaler applied before clustering; default `"minmax"`.
-        nmf_components : int or list of int, optional
+        nmf_components : int, list of int, or str, optional
             Number of components for an optional NMF (non-negative matrix
             factorization) step applied to the scaled features before
             clustering; if omitted, NMF is skipped (the sidebar's "NMF
             Decomposition" toggle starts off). Passing it turns the toggle on
             and pre-fills the field, so it is a starting point you can edit
             rather than a lock. A list triggers a silhouette-scored grid search
-            over the given values.
+            over the given values; a string is parsed like `n_clusters`
+            (`"3"`, `"3-8"`, `"3,5,7"`, `"[3,5,7]"`).
         overview_metrics : list of dict, optional
             Metrics shown in the overview heatmap after clustering (independent
             of `features`). If omitted, the sidebar starts pre-filled with a
@@ -2487,6 +2502,12 @@ class Eventstream:
         state_file : str, optional
             JSON file the widget state is bound to; see
             [Saving widget state](/docs/widgets#saving-widget-state).
+
+        Notes
+        -----
+        Save Clusters and Copy code use the last displayed analysis, including
+        its features, path column, and scaler. Sidebar edits take effect after
+        Apply; copied code preserves an explicitly disabled scaler (`None`).
 
         Examples
         --------
@@ -2570,16 +2591,24 @@ class Eventstream:
             rather than being ignored.
 
             - `"kmeans"` — `n_clusters` (int, list of int, or a range string like
-              `"3-8"`). Defaults to `"3-8"`, i.e. a grid search.
+              `"3-8"`). Defaults to `"3-8"`, i.e. a grid search. Optionally
+              `n_init` (`"auto"` or a positive int, default `"auto"`) and
+              `random_state` (int or None, default 42): settings, not grid
+              coordinates — every fit of the search uses them, and the ones you
+              pass are carried into `best_params`. `random_state=None` chooses
+              one random seed per call and returns that integer in `best_params`
+              so the resulting split can be replayed.
             - `"hdbscan"` — `min_cluster_size` (int, default 5),
               `cluster_selection_epsilon` (float, default 0.0).
         scaler : {"minmax", "std"}, optional
             Feature scaler applied before clustering; default `"minmax"`.
-        nmf_components : int or list of int, optional
+        nmf_components : int, list of int, or str, optional
             Number of components for an optional NMF (non-negative matrix
             factorization) step applied to the scaled features before
             clustering; if omitted, NMF is skipped. A list triggers a
-            silhouette-scored grid search over the given values.
+            silhouette-scored grid search over the given values. A string is
+            parsed like `n_clusters`: `"3"`, a range `"3-8"`, or a list
+            `"3,5,7"` / `"[3,5,7]"`.
         overview_metrics : list of dict, optional
             Metrics shown in the overview heatmap after clustering (independent
             of `features`); if omitted, `overview_df` only has segment_size and

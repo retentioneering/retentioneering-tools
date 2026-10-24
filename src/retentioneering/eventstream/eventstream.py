@@ -407,11 +407,10 @@ class Eventstream:
               count/mean/std/min/percentiles/max rows and `length`/`duration`
               columns
             - `segments`: DataFrame of segment_col/value/count/share, one row
-              per segment level across all segment columns. Counted over
-              **events**, not paths: `count` is the number of events carrying
-              the value and `share` its fraction of all events, per column
-              (`segment_overview_data` counts paths). Events with no value are
-              reported under the `<MISSING>` level `get_segment_levels` uses.
+              per segment level across all segment columns. `count` is the number
+              of events carrying the value and `share` its fraction of all events,
+              per column. Events with no value are reported under the `<MISSING>`
+              level `get_segment_levels` uses.
 
         Examples
         --------

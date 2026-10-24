@@ -40,11 +40,13 @@
     "path-metrics-one-number-per-path": { cls: "slide-path-metrics" },
     "path-patterns-regex-over-events": { cls: "slide-path-patterns", build: buildPathPatternsColumns },
     "why-not-tree-based-diagrams": { cls: "slide-sunburst" },
-    "how-does-a-team-adopt-a-task-tracker": { cls: "slide-taskboard-intro", build: buildTaskboardStageChips },
+    "how-does-a-team-adopt-a-task-tracker": { cls: "slide-taskboard-app" },
+    "events-and-the-happy-path": { cls: "slide-taskboard-intro", build: buildTaskboardStageChips },
     "every-path-is-unique": { cls: "slide-sunburst slide-journeys" },
     "even-the-transition-graph-is-tangled": { cls: "slide-stage-graph", build: buildStageFrames },
     "what-kind-of-visit-was-it": { cls: "slide-cluster-table", build: buildClusterTableLayout },
     "who-is-timeline-for": { cls: "slide-cluster-table", build: buildClusterTableLayout },
+    "who-are-the-users": { cls: "slide-cluster-table", build: buildClusterTableLayout },
     "eight-visit-types-instead-of-31-events": { cls: "slide-visits-graph", build: buildVisitsBeforeAfter },
     "the-timeline-experiment": { cls: "slide-timeline-experiment" },
     "what-it-looks-like-in-retentioneering-code": { cls: "slide-code-steps", build: buildCodeSteps },
@@ -481,7 +483,7 @@
     stepper.appendChild(details);
   }
 
-  // ── Slide: How does a team adopt a task tracker? ──────────────────────────
+  // ── Slide: Events and the happy path ──────────────────────────
   // Each table column is a stage; its events become chips in the stage's color
   // (custom.scss), and the happy path's events take the color of their column.
   function buildTaskboardStageChips(slide) {
@@ -497,7 +499,7 @@
     });
   }
 
-  // ── Slides: What kind of visit was it? / Who is Timeline for? ─────────────
+  // ── Slides: What kind of visit was it? / Who are the users? / Who is Timeline for? ─
   // The cluster table on the left, a line per cluster on the right; the names
   // become pills, in their stage's color where they have one (custom.scss).
   //

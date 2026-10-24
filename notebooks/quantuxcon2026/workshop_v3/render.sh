@@ -20,7 +20,7 @@ cd "$(dirname "$0")"
 QUARTO="${QUARTO:-$(command -v quarto || echo /Applications/quarto/bin/quarto)}"
 export QUARTO_PYTHON="${QUARTO_PYTHON:-../../../.venv/bin/python}"
 BUILD=_build_slides.ipynb
-WATCHED=(slides.ipynb deck.html custom.scss toy.py taskboard.py)
+WATCHED=(slides.ipynb deck.html custom.scss toy.py taskboard.py taskboard.csv.gz)
 
 # Copy via a temp file + rename, so the preview never sees a half-written copy.
 sync_copy() {
@@ -32,6 +32,9 @@ sync_copy() {
 mtime() {
     stat -f %m "${WATCHED[@]}" 2>/dev/null || stat -c %Y "${WATCHED[@]}"
 }
+
+# The dataset is generated, not tracked: make it if it's missing.
+[[ -f taskboard.csv.gz ]] || "$QUARTO_PYTHON" taskboard.py
 
 sync_copy
 

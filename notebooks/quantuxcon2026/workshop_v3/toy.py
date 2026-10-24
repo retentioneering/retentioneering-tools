@@ -895,30 +895,34 @@ def branching_figure(stream, depth: int = 5, colors=None, size: int = 330) -> st
 
 
 # ── Motivating example: Taskboard journeys ───────────────────────────────────
-# Events are colored by the kind of visit they belong to (taskboard.EVENT_STAGE),
-# and visits by their own kind, so a user's raw events and the same user's
-# visits keep one color scheme from slide to slide.
+# Events are colored by where in the app they happen (taskboard.EVENT_GROUP),
+# visits by their own kind.
 
 STAGE_COLORS = {
-    "onboarding": "#f7c630",  # retentioneering yellow
-    "solo": "#3b82f6",
-    "teamwork": "#10b981",
+    # Event groups: where in the app an event happens (taskboard.EVENT_GROUP).
+    "getting_started": "#f7c630",  # retentioneering yellow
+    "tasks": "#3b82f6",
+    "discussion": "#f97316",
+    "team": "#10b981",
     "power": "#8b5cf6",
-    "check_in": "#94a3b8",
+    "billing": "#ec4899",
+    # Visits: the kinds the clustering finds.
+    "onboarding": "#f7c630",
+    "focus": "#3b82f6",
+    "sync": "#10b981",
+    "review": "#8b5cf6",
+    "planning": "#06b6d4",
     "quick": "#94a3b8",
     "checkout": "#ec4899",
     "checkout_failed": "#ec4899",
-    "waiting": "#f97316",
-    "billing": "#ec4899",
-    "planning": "#06b6d4",
 }
 
 
 def taskboard_colors(events) -> dict[str, str]:
     """Event or visit name → the color of its stage; anything else is grey."""
-    from taskboard import EVENT_STAGE
+    from taskboard import EVENT_GROUP
 
-    return {e: STAGE_COLORS.get(EVENT_STAGE.get(e, e), "#a8a29e") for e in set(events)}
+    return {e: STAGE_COLORS.get(EVENT_GROUP.get(e, e), "#a8a29e") for e in set(events)}
 
 
 def _chip(event: str, colors: dict[str, str]) -> str:
@@ -982,44 +986,39 @@ def visit_paths_figure(visits, users: list[str]) -> str:
     return _journeys_table(rows, colors)
 
 
-# Where each stage sits on the transition graph's canvas: (column, row). Columns
-# follow the adoption ladder left to right; the side tracks (check-ins, waiting
-# for a teammate) sit under the stage they branch off.
+# Where each event group sits on the transition graph's canvas: (column, row).
+# Groups follow a user's way through the app left to right; power features sit
+# under discussion, the shortest column.
 STAGE_GRID = {
-    "onboarding": (0, 0),
-    "solo": (1, 0),
-    "teamwork": (2, 0),
-    "power": (3, 0),
+    "getting_started": (0, 0),
+    "tasks": (1, 0),
+    "discussion": (2, 0),
+    "team": (3, 0),
     "billing": (4, 0),
-    "check_in": (1, 1),
-    "waiting": (2, 1),
-    "planning": (3, 1),
+    "power": (2, 1),
 }
 
 
-# Visits, one node per stage, in a compact zigzag (x, y in layout units): the
-# ladder runs left to right, the side tracks hang below it.
+# Visits, one node per kind, in a compact zigzag (x, y in layout units).
 VISIT_LAYOUT = {
     "path_start": (0, 0),
     "onboarding": (1, -0.7),
-    "check_in": (1.5, 0.9),
-    "quick": (1.5, 0.9),  # short visits: a little work, a look at notifications
+    "quick": (1.5, 0.9),  # short visits: notifications, a task or two
+    "focus": (2, 0),
+    "planning": (2.2, -1.5),
+    "sync": (3, -0.7),
+    "review": (4, 0),
     "checkout": (4, -1.4),
     "checkout_failed": (4.6, -0.7),
-    "solo": (2, 0),
-    "waiting": (2.7, 1.0),
-    "teamwork": (3, -0.7),
-    "power": (4, 0),
-    "billing": (4, -1.4),
-    "planning": (2.2, -1.5),
     "path_end": (5, 0.3),
 }
 
 
 def stage_positions(events) -> dict[str, dict[str, float]]:
-    """Node positions that group events by stage (a stack per stage, in the
-    order of taskboard.EVENT_STAGE), or, for visits, VISIT_LAYOUT."""
-    from taskboard import EVENT_STAGE
+    """Node positions that group events by where in the app they happen (a
+    stack per group, in the order of taskboard.EVENT_GROUP), or, for visits,
+    VISIT_LAYOUT."""
+    from taskboard import EVENT_GROUP
 
     events = set(events)
     if events <= set(VISIT_LAYOUT):  # visits: one node per stage
@@ -1034,8 +1033,8 @@ def stage_positions(events) -> dict[str, dict[str, float]]:
     members = {
         stage: [
             e
-            for e in [*EVENT_STAGE, stage]
-            if e in events and EVENT_STAGE.get(e, e) == stage
+            for e in [*EVENT_GROUP, stage]
+            if e in events and EVENT_GROUP.get(e, e) == stage
         ]
         for stage in STAGE_GRID
     }
@@ -1063,12 +1062,12 @@ def stage_graph(stream, **kwargs):
     import json
 
     from IPython.display import HTML, display
-    from taskboard import EVENT_STAGE
+    from taskboard import EVENT_GROUP
 
     events = set(stream.df[stream.schema.event_col].astype(str))
     groups: dict[str, list[str]] = {}
     for e in sorted(events):
-        groups.setdefault(EVENT_STAGE.get(e, e), []).append(e)
+        groups.setdefault(EVENT_GROUP.get(e, e), []).append(e)
     widget = stream.transition_graph(**kwargs)
     widget.node_positions = json.dumps(stage_positions(events))
     display(
@@ -1241,6 +1240,69 @@ def timeline_clicks_mockups(n_clicks: int = 160, seed: int = 4) -> str:
             "After: drag an end to change the dates; click to open the task",
             "Timeline",
             _mock_gantt(panel, "bar live"),
+        )
+        + "</div>"
+    )
+
+
+def app_mockups() -> str:
+    """Two pseudo-screenshots of Taskboard for the introduction: the board of
+    a project two people work on, and a task open with its comments, as a
+    teammate joins."""
+    team = '<span class="mock-team"><em>AK</em><em>MG</em><u>Invite</u></span>'
+    columns = {
+        "To do": [
+            ("Pick fonts", "", "Fri", 0),
+            ("Draft sitemap", "AK", "Thu", 2),
+            ("Write homepage copy", "", "Mon", 0),
+        ],
+        "In progress": [
+            ("Homepage wireframe", "MG", "Wed", 3),
+            ("Logo variants", "AK", "Thu", 1),
+        ],
+        "Done": [
+            ("Kick-off call", "AK", "", 1),
+            ("Collect references", "MG", "", 0),
+            ("Agree on the brief", "AK", "", 4),
+        ],
+    }
+
+    def card(title, who, due, comments):
+        meta = (f"<span>{due}</span>" if due else "") + (
+            f"<span>&#128172; {comments}</span>" if comments else ""
+        )
+        avatar = f"<em>{who}</em>" if who else '<em class="empty">+</em>'
+        return f'<div class="card">{title}<div class="meta">{meta}{avatar}</div></div>'
+
+    board = (
+        '<div class="mock-board">'
+        + "".join(
+            f'<div class="col"><h6>{name}</h6>'
+            + "".join(card(*c) for c in cards)
+            + "</div>"
+            for name, cards in columns.items()
+        )
+        + "</div>"
+    )
+    comments = [
+        ("AK", "@MG can you take the wireframe? The sitemap is almost done."),
+        ("MG", "On it, will share a draft on Wednesday."),
+        ("AK", "Great, I'll add Jamie for the copy."),
+    ]
+    task = (
+        '<div class="mock-task"><b>Homepage wireframe</b>'
+        '<div class="fields"><span>Assignee <em>MG</em></span><span>Due Wed</span>'
+        "<span>Depends on Draft sitemap</span></div>"
+        + "".join(
+            f'<div class="comment"><em>{w}</em><p>{t}</p></div>' for w, t in comments
+        )
+        + '<div class="toast"><em>JS</em> Jamie joined Website redesign</div></div>'
+    )
+    return (
+        '<div class="mockups">'
+        + _mock_window("The board: tasks, assignees, due dates", "Board", team + board)
+        + _mock_window(
+            "A task: comments and mentions as the team grows", "Board", team + task
         )
         + "</div>"
     )

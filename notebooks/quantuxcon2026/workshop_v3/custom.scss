@@ -119,29 +119,33 @@ $slide-body-height: 600px;
 // Each block is scoped to its slide's `slide-…` class, set by deck.html (see
 // SLIDES there), so nothing here leaks onto other slides.
 
-// ── Motivating example (Taskboard) ── chips colored by kind of visit ─────
+// ── Motivating example (Taskboard) ── chips colored by event group / visit ─
 // The colors match toy.py's STAGE_COLORS, which colors the same events and
-// visits in the figures.
-$stage-onboarding: #f7c630;
-$stage-solo: #3b82f6;
-$stage-teamwork: #10b981;
+// visits in the figures: events by where in the app they happen, visits by
+// their kind.
+$stage-getting-started: #f7c630;
+$stage-tasks: #3b82f6;
+$stage-discussion: #f97316;
+$stage-team: #10b981;
 $stage-power: #8b5cf6;
 $stage-billing: #ec4899;
-$stage-check-in: #94a3b8;
-$stage-waiting: #f97316;
 $stage-planning: #06b6d4;
+$stage-quick: #94a3b8;
 $stage-colors: (
-  "onboarding": $stage-onboarding,
-  "solo": $stage-solo,
-  "teamwork": $stage-teamwork,
+  "getting_started": $stage-getting-started,
+  "tasks": $stage-tasks,
+  "discussion": $stage-discussion,
+  "team": $stage-team,
   "power": $stage-power,
   "billing": $stage-billing,
-  "check_in": $stage-check-in,
-  "quick": $stage-check-in,
+  "onboarding": $stage-getting-started,
+  "focus": $stage-tasks,
+  "sync": $stage-team,
+  "review": $stage-power,
+  "planning": $stage-planning,
+  "quick": $stage-quick,
   "checkout": $stage-billing,
   "checkout_failed": $stage-billing,
-  "waiting": $stage-waiting,
-  "planning": $stage-planning,
   "path_end": #a8a29e,
 );
 
@@ -156,10 +160,10 @@ $stage-colors: (
   white-space: nowrap;
 }
 
-// Slide: How does a team adopt a task tracker? Events by stage, happy path.
+// Slide: Events and the happy path. Events by stage, happy path.
 .reveal section.slide-taskboard-intro {
   table {
-    margin: 0.4em auto 0.8em;
+    margin: 0.6em auto 1.2em;
     font-size: 0.55em;
 
     th {
@@ -169,7 +173,7 @@ $stage-colors: (
     td {
       text-align: center;
       border: none;
-      padding: 0.25em 0.6em;
+      padding: 0.4em 0.6em;
     }
   }
 
@@ -177,15 +181,15 @@ $stage-colors: (
     @include chip;
   }
 
-  .stage-0 { --chip: #{$stage-onboarding}; }
-  .stage-1 { --chip: #{$stage-solo}; }
-  .stage-2 { --chip: #{$stage-teamwork}; }
-  .stage-3 { --chip: #{$stage-power}; }
-  .stage-4 { --chip: #{$stage-planning}; }
+  .stage-0 { --chip: #{$stage-getting-started}; }
+  .stage-1 { --chip: #{$stage-tasks}; }
+  .stage-2 { --chip: #{$stage-discussion}; }
+  .stage-3 { --chip: #{$stage-team}; }
+  .stage-4 { --chip: #{$stage-power}; }
   .stage-5 { --chip: #{$stage-billing}; }
 
-  > p:last-child {
-    font-size: 0.6em;
+  > p:last-of-type {
+    font-size: 0.55em;
     text-align: center;
 
     .chip {
@@ -314,7 +318,7 @@ $stage-colors: (
   }
 }
 
-// Slides: What kind of visit was it? / Who is Timeline for? The cluster
+// Slides: What kind of visit was it? / Who are the users? / Who is Timeline for? The cluster
 // table, narrower, and what each cluster is, in a word, in the order of the
 // table's columns.
 .reveal section.slide-cluster-table {
@@ -709,6 +713,155 @@ $stage-colors: (
 
     span {
       color: #71717a;
+    }
+  }
+}
+
+// Slide: How does a team adopt a task tracker? The product and how it makes
+// money, then two pseudo-screenshots of the app (toy.py app_mockups).
+.reveal section.slide-taskboard-app {
+  @include mock-ui;
+
+  > ul {
+    font-size: 0.8em;
+
+    li {
+      margin-bottom: 0.3em;
+    }
+  }
+
+  .mockups {
+    margin-top: 0.6em;
+  }
+
+  .mock {
+    width: 580px;
+  }
+
+  .mock-window {
+    position: relative;
+    height: 290px;
+    font-size: 14px;
+  }
+
+  .mock-tabs {
+    position: relative;
+  }
+
+  .mock-team {
+    position: absolute;
+    top: 34px;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+
+    u {
+      margin-left: 6px;
+      padding: 1px 8px;
+      border-radius: 4px;
+      background: $rete-ink;
+      color: #fff;
+      text-decoration: none;
+    }
+  }
+
+  em {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: $rete-ink;
+    color: #fff;
+    font-size: 8px;
+    font-style: normal;
+    line-height: 18px;
+    text-align: center;
+  }
+
+  em.empty {
+    background: #fff;
+    box-shadow: inset 0 0 0 1px #a1a1aa;
+    color: #71717a;
+    font-size: 11px;
+  }
+
+  .mock-board {
+    padding: 7px;
+
+    .card {
+      padding: 4px 6px;
+    }
+
+    .meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 2px;
+      color: #71717a;
+      font-size: 10px;
+
+      em {
+        margin-left: auto;
+        width: 15px;
+        height: 15px;
+        font-size: 7px;
+        line-height: 15px;
+      }
+    }
+  }
+
+  .mock-task {
+    padding: 7px 12px;
+
+    .fields {
+      display: flex;
+      gap: 14px;
+      margin: 3px 0 7px;
+      color: #71717a;
+
+      em {
+        width: 15px;
+        height: 15px;
+        font-size: 7px;
+        line-height: 15px;
+        vertical-align: middle;
+      }
+    }
+
+    .comment {
+      display: flex;
+      gap: 7px;
+      margin-bottom: 6px;
+
+      em {
+        flex: none;
+      }
+
+      p {
+        margin: 0;
+        padding: 3px 7px;
+        border-radius: 6px;
+        background: #f4f4f5;
+      }
+    }
+
+    .toast {
+      position: absolute;
+      right: 10px;
+      bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 9px;
+      border-radius: 6px;
+      background: #{$stage-team};
+      color: #fff;
+
+      em {
+        background: #fff;
+        color: $rete-ink;
+      }
     }
   }
 }

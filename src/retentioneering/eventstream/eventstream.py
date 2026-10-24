@@ -2501,6 +2501,12 @@ class Eventstream:
             JSON file the widget state is bound to; see
             [Saving widget state](/docs/widgets#saving-widget-state).
 
+        Notes
+        -----
+        Save Clusters and Copy code use the last displayed analysis, including
+        its features, path column, and scaler. Sidebar edits take effect after
+        Apply; copied code preserves an explicitly disabled scaler (`None`).
+
         Examples
         --------
             stream.cluster_analysis(

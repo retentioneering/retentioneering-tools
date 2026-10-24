@@ -25,6 +25,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Cluster Analysis Save/Copy use the features and path column from the displayed
+  analysis even after sidebar edits. Copied code explicitly preserves
+  `scaler=None`, and clearing a result also clears its saved call.
+
 - `describe()["segments"]` reports the events that have no value for a segment
   column under the `<MISSING>` sentinel, the same level `get_segment_levels`
   lists. Those events used to be dropped, and because `share` was normalized

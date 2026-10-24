@@ -45,6 +45,9 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
     # Follows `selected_params` when the user picks a grid point by hand, so the
     # code shown and the segment saved always match what is on screen.
     chosen_params = traitlets.Unicode("{}").tag(sync=True)
+    # Full replay call for Save/Copy, frozen at the displayed result. Keep
+    # chosen_params' existing shape for consumers that supply features separately.
+    save_params = traitlets.Unicode("{}").tag(sync=True)
 
     # '' = interpret the highest-silhouette grid point (the default), or a JSON
     # object naming another one, e.g. '{"n_clusters": 5}'. Cleared whenever the
@@ -331,6 +334,8 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
             features = json.loads(self.features) if self.features else []
             if not features:
                 self.result = "{}"
+                self.chosen_params = "{}"
+                self.save_params = "{}"
                 self._cluster_labels = None
                 return
             metrics = json.loads(self.overview_metrics) if self.overview_metrics else []
@@ -343,6 +348,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
                 if self.nmf_enabled and self.nmf_components
                 else None
             )
+            path_col = self.path_col or self._eventstream.schema.path_col
 
             try:
                 computed = self._compute_raw(
@@ -353,7 +359,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
                     nmf_components=nmf_components,
                     overview_metrics=metrics,
                     aggregation=self.aggregation or "mean",
-                    path_col=self.path_col or None,
+                    path_col=path_col,
                     select=self._select(),
                 )
             except GridPointNotFoundError:
@@ -369,11 +375,15 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
                     nmf_components=nmf_components,
                     overview_metrics=metrics,
                     aggregation=self.aggregation or "mean",
-                    path_col=self.path_col or None,
+                    path_col=path_col,
                 )
 
             self.result = json.dumps(computed["result"])
-            self.chosen_params = json.dumps(computed["best_params"])
+            params = computed["best_params"]
+            self.chosen_params = json.dumps(params)
+            if params:
+                params = {**params, "features": features, "path_col": path_col}
+            self.save_params = json.dumps(params)
             self._cluster_labels = computed["cluster_labels"]
         except RetentioneeringError:
             raise
@@ -381,6 +391,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
             self.error = str(exc)
             self.result = "{}"
             self.chosen_params = "{}"
+            self.save_params = "{}"
             self._cluster_labels = None
         finally:
             self.is_loading = False
@@ -494,7 +505,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         The JS side offers a "Copy code" alternative that renders the
         equivalent `add_clusters(...)` call without touching the eventstream
         at all — that one is computed entirely client-side (see
-        `chosen_params` below) since it's pure templating, so it doesn't need
+        `save_params` below) since it's pure templating, so it doesn't need
         a round trip through this method.
         """
         try:
@@ -502,24 +513,14 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
             if not name:
                 raise ValueError("Segment column name is required.")
 
-            features = json.loads(self.features) if self.features else []
-            if not features:
-                raise ValueError("No features configured - nothing to cluster.")
-
+            params = json.loads(self.save_params) if self.save_params else {}
+            if not params.get("features") or self._cluster_labels is None:
+                raise ValueError("No clustering result to save - click Apply first.")
             rename = json.loads(self.save_rename) if self.save_rename else {}
-            params = json.loads(self.chosen_params) if self.chosen_params else {}
 
-            # `chosen_params` is already `add_clusters`-shaped (method /
-            # method_args / scaler / nmf_components), so the call is a splat
-            # rather than a per-method reassembly.
-            kwargs: dict = {
-                "name": name,
-                "features": features,
-                "path_col": self.path_col or None,
-                "method": self.method,
-                "scaler": self.scaler or None,
-                **params,
-            }
+            # Replay the displayed result, including its features/path, rather
+            # than combining it with sidebar edits that have not been applied.
+            kwargs = {**params, "name": name}
 
             self._apply_clusters_inplace(kwargs, rename)
             self.save_result = json.dumps({"ok": True, "segment_name": name})

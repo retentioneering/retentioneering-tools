@@ -14,6 +14,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- `sample_paths(..., random_state=...)` no longer leaves every later query in
+  the process running on one thread. A seeded sample runs with
+  `set threads = 1` so that it is reproducible, and since all `engine.run()`
+  calls share one DuckDB instance, that instance-wide setting used to stay at 1
+  after the sample was drawn. The previous thread count is now restored.
 - `get_conversion_rate` counts paths rather than anchor positions when an anchor
   spec uses `occurrence="all"`. `paths_with_start` used to count one per
   occurrence, and a `within` window counted matching `(start, end)` pairs, so a

@@ -70,10 +70,19 @@ class SamplePaths(DataProcessor):
          """
 
         seed_chunk = set_threads = ""
+        prior_threads = None
 
         if self.random_state is not None:
             seed_chunk = f"repeatable({self.random_state})"
             set_threads = "set threads = 1;"
+            # `threads` is a setting of the whole DuckDB instance, and every
+            # engine.run() call shares one instance, so note the current value
+            # and put it back once the sample is drawn.
+            prior_threads = int(
+                engine.run("SELECT current_setting('threads') AS threads")[
+                    "threads"
+                ].iloc[0]
+            )
 
         if self.frac is not None:
             sample_chunk = f"{self.frac * 100}%"
@@ -87,7 +96,13 @@ class SamplePaths(DataProcessor):
             set_threads=set_threads,
         )
 
-        df = engine.run(query, df=df)
+        try:
+            df = engine.run(query, df=df)
+        finally:
+            if prior_threads is not None:
+                engine.run(
+                    f"SET threads = {prior_threads}; SELECT {prior_threads} AS threads"
+                )
 
         for col in [schema.event_col] + schema.segment_cols:
             df[col] = df[col].astype("category")

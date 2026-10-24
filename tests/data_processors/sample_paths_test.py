@@ -1,6 +1,8 @@
 import pandas as pd
 import pytest
 
+from retentioneering import engine
+
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.exceptions import PreprocessingConfigError
 
@@ -57,6 +59,27 @@ class TestSamplePaths:
         res1 = _make_stream().sample_paths(frac=0.5, random_state=42)
         res2 = _make_stream().sample_paths(frac=0.5, random_state=42)
         assert res1.equals(res2)
+
+    def test__random_state_leaves_the_thread_count_unchanged(self) -> None:
+        # The seeded sample runs single-threaded, but `threads` is a setting
+        # of the DuckDB instance that every engine.run() call shares, so it
+        # must be put back afterwards rather than leak into later queries.
+        def threads() -> int:
+            return int(
+                engine.run("SELECT current_setting('threads') AS threads")[
+                    "threads"
+                ].iloc[0]
+            )
+
+        before = threads()
+        try:
+            engine.run("SET threads = 3; SELECT 3 AS threads")
+            _make_stream().sample_paths(frac=0.5, random_state=42)
+            assert threads() == 3
+            _make_stream().sample_paths(n=2, random_state=7)
+            assert threads() == 3
+        finally:
+            engine.run(f"SET threads = {before}; SELECT {before} AS threads")
 
         res3 = _make_stream().sample_paths(n=2, random_state=7)
         res4 = _make_stream().sample_paths(n=2, random_state=7)

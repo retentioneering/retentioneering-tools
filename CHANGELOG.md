@@ -14,6 +14,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- An anchor spec's `at` is range-checked at either end. A value past the start
+  of the pattern — `{"pattern": "a->b->.*->c", "at": -4}` — used to surface as
+  the internal `ValueError: max() iterable argument is empty`, while a value
+  past the other end already named the pattern and its positions
+  ([#194](https://github.com/retentioneering/retentioneering-tools/issues/194)).
 - `get_conversion_rate` counts paths rather than anchor positions when an anchor
   spec uses `occurrence="all"`. `paths_with_start` used to count one per
   occurrence, and a `within` window counted matching `(start, end)` pairs, so a

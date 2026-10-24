@@ -789,13 +789,28 @@ class AnchorSpec:
     event_col: str | None = None
 
     def ordinal(self) -> int:
-        """`at` as a token ordinal; ``"start"``/``"end"`` are aliases for 0/-1."""
+        """`at` as a token ordinal; ``"start"``/``"end"`` are aliases for 0/-1.
+
+        Range-checked here, against the spec's own pattern, so that an `at`
+        pointing outside it is reported the same way whichever end it overruns.
+        `AnchorMatch.at` makes the same check, but only once there is a match to
+        index into — and `_anchor_part` needs the resolved ordinal before that,
+        where an out-of-range negative used to leave it taking `max()` of an
+        empty sequence.
+        """
         if self.at == "start":
             return 0
         if self.at == "end":
             return -1
         if isinstance(self.at, bool) or not isinstance(self.at, int):
             raise InvalidParameterError("at", self.at, ["start", "end", "an integer"])
+        tokens = literal_tokens(self.pattern)
+        resolved = self.at if self.at >= 0 else len(tokens) + self.at
+        if not 0 <= resolved < len(tokens):
+            raise IndexError(
+                f"anchor ordinal {self.at} is out of range for a pattern with "
+                f"{len(tokens)} literal token(s): {tokens}"
+            )
         return self.at
 
 

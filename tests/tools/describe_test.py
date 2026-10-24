@@ -1,5 +1,5 @@
 import pandas as pd
-from retentioneering.eventstream.eventstream import Eventstream
+from retentioneering.eventstream.eventstream import SEGMENT_MISSING, Eventstream
 
 
 class TestDescribe:
@@ -116,6 +116,41 @@ class TestDescribe:
         row_2 = segments[segments["value"] == "segment_2"].iloc[0]
         assert row_1["count"] == 5
         assert row_2["count"] == 3
+        assert segments["share"].sum() == 1.0
+
+    def test_segments_reports_the_missing_level(self) -> None:
+        # `func=` leaves the unmatched paths with no segment value, which
+        # `get_segment_levels` reports as `SEGMENT_MISSING`. `describe` has to
+        # account for them too, or `share` is normalized over a subset of the
+        # paths while still summing to 1.0.
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "US", "2020-01-01 00:00:00"],
+                ["user_2", "A", "GB", "2020-01-01 00:01:00"],
+                ["user_3", "A", "DE", "2020-01-01 00:02:00"],
+                ["user_4", "A", "DE", "2020-01-01 00:03:00"],
+                ["user_5", "A", "DE", "2020-01-01 00:04:00"],
+            ],
+            columns=["user_id", "event", "country", "timestamp"],
+        )
+        stream = Eventstream(
+            df, {"event_col": "event", "custom_cols": ["country"]}
+        ).add_segment(
+            "tier",
+            func=lambda d: [
+                "paid" if c == "US" else ("free" if c == "GB" else None)
+                for c in d["country"]
+            ],
+        )
+        segments = stream.describe()["segments"]
+
+        assert SEGMENT_MISSING in stream.get_segment_levels()["tier"]
+        assert set(segments["value"]) == {"paid", "free", SEGMENT_MISSING}
+        missing = segments[segments["value"] == SEGMENT_MISSING].iloc[0]
+        assert missing["count"] == 3
+        assert missing["share"] == 0.6
+        # Every event is accounted for, so the shares are a real partition.
+        assert segments["count"].sum() == len(df)
         assert segments["share"].sum() == 1.0
 
     def test_segments_empty_when_no_segment_cols(self) -> None:

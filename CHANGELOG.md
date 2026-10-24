@@ -14,6 +14,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- `describe()["segments"]` reports the events that have no value for a segment
+  column under the `<MISSING>` sentinel, the same level `get_segment_levels`
+  lists. Those events used to be dropped, and because `share` was normalized
+  over the remaining rows it still summed to 1.0 — a segment built with
+  `add_segment(func=...)` that left 3 of 5 events unassigned reported a 50/50
+  split instead of 20/20/60, with nothing marking the table as partial. The
+  docstring now states that these counts are over events, not paths
+  ([#188](https://github.com/retentioneering/retentioneering-tools/issues/188)).
 - `get_conversion_rate` counts paths rather than anchor positions when an anchor
   spec uses `occurrence="all"`. `paths_with_start` used to count one per
   occurrence, and a `within` window counted matching `(start, end)` pairs, so a

@@ -516,7 +516,11 @@ class Eventstream:
             `nmf_components` are not method arguments — they are pipeline steps
             applied before clustering, so they stay outside this dict.
 
-            - `"kmeans"` — `n_clusters` (int, required).
+            - `"kmeans"` — `n_clusters` (int, required); optionally `n_init`
+              (`"auto"` or a positive int, default `"auto"`: how many k-means++
+              initialisations to run, keeping the best) and `random_state`
+              (int or None, default 42). `n_init=10` is the usual way to make
+              a split stable across seeds.
             - `"hdbscan"` — `min_cluster_size` (int, default 5),
               `cluster_selection_epsilon` (float, default 0.0).
         scaler : str or None, default "minmax"
@@ -2457,7 +2461,9 @@ class Eventstream:
 
             - `"kmeans"` — `n_clusters` (int, list of int, or a range string like
               `"3-8"`; a list or range runs a silhouette-scored grid search).
-              Defaults to `"3-8"`.
+              Defaults to `"3-8"`. Optionally `n_init` and `random_state`, which
+              the sidebar has no fields for either: they apply to every Apply
+              and travel into the saved `add_clusters` call.
             - `"hdbscan"` — `min_cluster_size`, `cluster_selection_epsilon`.
         scaler : {"minmax", "std"}, optional
             Feature scaler applied before clustering; default `"minmax"`.
@@ -2577,7 +2583,11 @@ class Eventstream:
             rather than being ignored.
 
             - `"kmeans"` — `n_clusters` (int, list of int, or a range string like
-              `"3-8"`). Defaults to `"3-8"`, i.e. a grid search.
+              `"3-8"`). Defaults to `"3-8"`, i.e. a grid search. Optionally
+              `n_init` (`"auto"` or a positive int, default `"auto"`) and
+              `random_state` (int or None, default 42): settings, not grid
+              coordinates — every fit of the search uses them, and the ones you
+              pass are carried into `best_params`.
             - `"hdbscan"` — `min_cluster_size` (int, default 5),
               `cluster_selection_epsilon` (float, default 0.0).
         scaler : {"minmax", "std"}, optional

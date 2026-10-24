@@ -148,6 +148,59 @@ class TestClusterAnalysis:
         ]
         assert result["best_params"]["method_args"]["n_clusters"] in [2, 3, 4, 5]
 
+    def test_kmeans_init_args_reach_the_fit_and_best_params(self) -> None:
+        """`n_init` / `random_state` are settings, not grid coordinates: the grid
+        stays `n_clusters` only, every fit uses them, and `best_params` carries
+        the ones passed so the saved `add_clusters` call reproduces the split."""
+        stream = Eventstream(get_df())
+        features = [{"metric": "length"}, {"metric": "duration"}]
+
+        fixed = stream.cluster_analysis_data(
+            features=features,
+            method_args={"n_clusters": 2, "n_init": 10, "random_state": 7},
+        )
+        assert fixed["best_params"]["method_args"] == {
+            "n_clusters": 2,
+            "n_init": 10,
+            "random_state": 7,
+        }
+        # ... and the split it describes is the one `add_clusters` reproduces.
+        again = stream.add_clusters(
+            name="cluster", features=features, **fixed["best_params"]
+        )
+        labels = again.df.groupby("user_id")["cluster"].first()
+        assert labels.to_dict() == fixed["cluster_labels"].to_dict()
+
+        searched = stream.cluster_analysis_data(
+            features=features, method_args={"n_clusters": [2, 3], "n_init": 10}
+        )
+        assert searched["silhouette"]["params"] == [
+            {"n_clusters": 2},
+            {"n_clusters": 3},
+        ]
+        assert searched["best_params"]["method_args"]["n_init"] == 10
+        assert "random_state" not in searched["best_params"]["method_args"]
+
+        picked = stream.cluster_analysis_data(
+            features=features,
+            method_args={"n_clusters": [2, 3], "n_init": 10},
+            select={"n_clusters": 3},
+        )
+        assert picked["best_params"]["method_args"] == {"n_clusters": 3, "n_init": 10}
+
+    def test_kmeans_invalid_init_args_raise(self) -> None:
+        stream = Eventstream(get_df())
+        with pytest.raises(ValueError, match="n_init"):
+            stream.cluster_analysis_data(
+                features=[{"metric": "length"}],
+                method_args={"n_clusters": 2, "n_init": "ten"},
+            )
+        with pytest.raises(ValueError, match="random_state"):
+            stream.cluster_analysis_data(
+                features=[{"metric": "length"}],
+                method_args={"n_clusters": 2, "random_state": 1.5},
+            )
+
     def test_hdbscan_basic(self) -> None:
         """Test hdbscan clustering with overview"""
         df = get_df()

@@ -396,3 +396,163 @@ class TestClusterAnalysisWidgetNmfComponents:
 
         overridden = _widget(nmf_components=1, state_file=str(path))
         assert overridden.nmf_components == "1"
+
+
+class TestClusterAnalysisWidgetKmeansState:
+    @pytest.mark.parametrize("n_clusters", [3, [2, 3, 4]])
+    def test__random_seed_save_and_code_match_the_shown_labels(
+        self, n_clusters, monkeypatch
+    ) -> None:
+        monkeypatch.setattr(
+            "retentioneering.widgets.cluster_analysis.new_kmeans_seed", lambda: 123
+        )
+        stream = _grid_stream()
+        args = {"n_clusters": n_clusters, "n_init": 10, "random_state": None}
+        widget = ClusterAnalysisWidget(stream, features=FEATURES, method_args=args)
+        assert widget.error == ""
+        shown = widget._cluster_labels.copy()
+        params = json.loads(widget.chosen_params)
+        assert params["method_args"]["random_state"] == 123
+        copied = stream.add_clusters("copied", features=FEATURES, **params)
+        assert (
+            copied.df.groupby("user_id")["copied"].first().to_dict() == shown.to_dict()
+        )
+
+        rename = {label: f"named_{label}" for label in shown.unique()}
+        widget.save_segment_name = "saved"
+        widget.save_rename = json.dumps(rename)
+        widget.save_trigger = "save"
+        assert json.loads(widget.save_result)["ok"] is True
+        assert (
+            stream.df.groupby("user_id")["saved"].first().to_dict()
+            == shown.map(rename).to_dict()
+        )
+        assert args["random_state"] is None
+
+    def test__selection_reuses_seed_but_apply_draws_a_new_one(
+        self, monkeypatch
+    ) -> None:
+        seeds = iter([123, 456])
+        monkeypatch.setattr(
+            "retentioneering.widgets.cluster_analysis.new_kmeans_seed",
+            lambda: next(seeds),
+        )
+        widget = ClusterAnalysisWidget(
+            _grid_stream(),
+            features=FEATURES,
+            method_args={"n_clusters": [2, 3, 4], "random_state": None},
+        )
+        before = json.loads(widget.result)["silhouette"]
+        for n_clusters in [4, 99]:
+            widget.selected_params = json.dumps({"n_clusters": n_clusters})
+            assert widget.error == ""
+            after = json.loads(widget.result)["silhouette"]
+            for key in ["params", "silhouette", "best_index"]:
+                assert after[key] == before[key]
+            assert (
+                json.loads(widget.chosen_params)["method_args"]["random_state"] == 123
+            )
+
+        widget.apply_trigger = "again"
+        assert widget.error == ""
+        assert json.loads(widget.chosen_params)["method_args"]["random_state"] == 456
+
+    @pytest.mark.parametrize("random_state", [7, None])
+    def test__state_restores_options_and_effective_seed(
+        self, random_state, tmp_path, monkeypatch
+    ) -> None:
+        seeds = iter([123])
+        monkeypatch.setattr(
+            "retentioneering.widgets.cluster_analysis.new_kmeans_seed",
+            lambda: next(seeds),
+        )
+        path = tmp_path / "clusters.json"
+        first = ClusterAnalysisWidget(
+            _grid_stream(),
+            features=FEATURES,
+            method_args={
+                "n_clusters": [2, 3, 4],
+                "n_init": 10,
+                "random_state": random_state,
+            },
+            state_file=path,
+        )
+        first.selected_params = json.dumps({"n_clusters": 3})
+        restored = ClusterAnalysisWidget(_grid_stream(), state_file=path)
+        assert restored.error == ""
+        assert json.loads(restored.chosen_params) == json.loads(first.chosen_params)
+        pd.testing.assert_series_equal(restored._cluster_labels, first._cluster_labels)
+        state = json.loads(path.read_text())["state"]
+        assert state["_kmeans_args"] == {"n_init": 10, "random_state": random_state}
+        if random_state is None:
+            assert state["_kmeans_seed"] == 123
+
+    @pytest.mark.parametrize(
+        "override", [None, {}, {"n_clusters": 3, "random_state": 9}]
+    )
+    def test__explicit_method_args_replace_saved_options(
+        self, override, tmp_path
+    ) -> None:
+        path = tmp_path / "clusters.json"
+        ClusterAnalysisWidget(
+            _grid_stream(),
+            features=FEATURES,
+            method_args={"n_clusters": 3, "n_init": 10, "random_state": None},
+            state_file=path,
+        )
+        restored = ClusterAnalysisWidget(
+            _grid_stream(), method_args=override, state_file=path
+        )
+        assert restored.error == ""
+        actual = json.loads(restored.chosen_params)["method_args"]
+        if override:
+            assert actual == override
+        else:
+            assert set(actual) == {"n_clusters"}
+
+    def test__legacy_state_keeps_default_call_shape(self, tmp_path) -> None:
+        path = tmp_path / "clusters.json"
+        first = ClusterAnalysisWidget(
+            _grid_stream(),
+            features=FEATURES,
+            method_args={"n_clusters": 3},
+            state_file=path,
+        )
+        payload = json.loads(path.read_text())
+        for key in ["_kmeans_args", "_kmeans_seed"]:
+            payload["state"].pop(key, None)
+        path.write_text(json.dumps(payload))
+        restored = ClusterAnalysisWidget(_grid_stream(), state_file=path)
+        assert restored.error == ""
+        assert json.loads(restored.chosen_params)["method_args"] == {"n_clusters": 3}
+        pd.testing.assert_series_equal(restored._cluster_labels, first._cluster_labels)
+
+    def test__method_switch_preserves_kmeans_settings_without_leaking_them(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        seeds = iter([123, 456])
+        monkeypatch.setattr(
+            "retentioneering.widgets.cluster_analysis.new_kmeans_seed",
+            lambda: next(seeds),
+        )
+        path = tmp_path / "clusters.json"
+        widget = ClusterAnalysisWidget(
+            _grid_stream(),
+            features=FEATURES,
+            method_args={"n_clusters": 3, "n_init": 10, "random_state": None},
+            state_file=path,
+        )
+        widget.method = "hdbscan"
+        widget.apply_trigger = "hdbscan"
+        assert widget.error == ""
+        assert widget._method_args("hdbscan", None) == {}
+        restored = ClusterAnalysisWidget(_grid_stream(), state_file=path)
+        assert restored.error == ""
+        restored.method = "kmeans"
+        restored.apply_trigger = "kmeans"
+        assert restored.error == ""
+        assert json.loads(restored.chosen_params)["method_args"] == {
+            "n_clusters": 3,
+            "n_init": 10,
+            "random_state": 456,
+        }

@@ -35,6 +35,7 @@ from retentioneering.utils.clustering_methods import (
     KMEANS_INIT_KEYS,
     METHOD_ARGS,
     kmeans_init_args,
+    new_kmeans_seed,
     parse_method_args,
 )
 from retentioneering.utils.sentinels import UNSET as _UNSET
@@ -175,6 +176,12 @@ class ClusterAnalysis:
             kmeans_init_args(args, error=ValueError) if method == "kmeans" else {}
         )
         kmeans_passed = {k: args[k] for k in KMEANS_INIT_KEYS if k in args}
+        if method == "kmeans" and kmeans_init["random_state"] is None:
+            # One stochastic analysis, including its whole grid, must be
+            # replayable through best_params without mutating the caller's args.
+            seed = new_kmeans_seed()
+            kmeans_init["random_state"] = seed
+            kmeans_passed["random_state"] = seed
 
         if n_clusters is None and method == "kmeans":
             n_clusters = "3-8"

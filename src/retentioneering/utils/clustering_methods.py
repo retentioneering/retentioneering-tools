@@ -14,12 +14,14 @@ steps applied before clustering, valid for every method.
 
 k-means also takes its two initialisation arguments here, `n_init` and
 `random_state`. They are not grid coordinates (a list is not searched over) but
-the way to make a k-means split reproducible across seeds: scikit-learn's
-default `n_init="auto"` runs k-means++ once, and on features with a long tail
-that single run lands in a different local optimum from seed to seed.
+controls for initialisation: more starts can reduce sensitivity to the seed;
+a fixed seed makes a run repeatable. Scikit-learn's default `n_init="auto"`
+runs k-means++ once.
 """
 
 from typing import Any, Dict
+
+import numpy as np
 
 METHOD_ARGS: Dict[str, tuple] = {
     "kmeans": ("n_clusters", "n_init", "random_state"),
@@ -31,6 +33,11 @@ METHOD_ARGS: Dict[str, tuple] = {
 # tell a coordinate from a setting that is merely carried along.
 KMEANS_INIT_KEYS: tuple = ("n_init", "random_state")
 KMEANS_INIT_DEFAULTS: Dict[str, Any] = {"n_init": "auto", "random_state": 42}
+
+
+def new_kmeans_seed() -> int:
+    """Realize a stochastic run as a JSON-safe, replayable seed."""
+    return int(np.random.randint(0, 2**32, dtype=np.uint32))
 
 
 def parse_method_args(

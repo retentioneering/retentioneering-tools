@@ -519,8 +519,8 @@ class Eventstream:
             - `"kmeans"` — `n_clusters` (int, required); optionally `n_init`
               (`"auto"` or a positive int, default `"auto"`: how many k-means++
               initialisations to run, keeping the best) and `random_state`
-              (int or None, default 42). `n_init=10` is the usual way to make
-              a split stable across seeds.
+              (int or None, default 42). More starts can reduce sensitivity to
+              the seed; a fixed seed makes a run repeatable.
             - `"hdbscan"` — `min_cluster_size` (int, default 5),
               `cluster_selection_epsilon` (float, default 0.0).
         scaler : str or None, default "minmax"
@@ -2463,7 +2463,9 @@ class Eventstream:
               `"3-8"`; a list or range runs a silhouette-scored grid search).
               Defaults to `"3-8"`. Optionally `n_init` and `random_state`, which
               the sidebar has no fields for either: they apply to every Apply
-              and travel into the saved `add_clusters` call.
+              and travel into the saved `add_clusters` call. With
+              `random_state=None`, each Apply chooses a fresh seed; selecting
+              a grid point or restoring `state_file` reuses the current seed.
             - `"hdbscan"` — `min_cluster_size`, `cluster_selection_epsilon`.
         scaler : {"minmax", "std"}, optional
             Feature scaler applied before clustering; default `"minmax"`.
@@ -2587,7 +2589,9 @@ class Eventstream:
               `n_init` (`"auto"` or a positive int, default `"auto"`) and
               `random_state` (int or None, default 42): settings, not grid
               coordinates — every fit of the search uses them, and the ones you
-              pass are carried into `best_params`.
+              pass are carried into `best_params`. `random_state=None` chooses
+              one random seed per call and returns that integer in `best_params`
+              so the resulting split can be replayed.
             - `"hdbscan"` — `min_cluster_size` (int, default 5),
               `cluster_selection_epsilon` (float, default 0.0).
         scaler : {"minmax", "std"}, optional

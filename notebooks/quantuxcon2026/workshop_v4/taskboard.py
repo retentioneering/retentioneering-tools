@@ -1,19 +1,21 @@
 """Taskboard: a synthetic event log of a team task tracker, for the workshop.
 
-The legend (pricing, kinds of visits, kinds of users, the planted stories) is
-in LEGEND.md; this module generates the click stream from it. In short:
+The legend (pricing, kinds of sessions, kinds of users, the planted stories)
+is in LEGEND.md; this module generates the click stream from it. In short:
 
 - A workspace is free for up to FREE_SEATS members; a bigger team needs the
   Team plan, which the owner buys. Power features are free for everyone.
 - Users are owners (signed up themselves, own a workspace) or members (came
   through an owner's invite). Members never see the paywall.
-- Every visit has a kind (check-in, focus, planning, sync, review, admin,
-  onboarding): a mix of events from all over the app, in random amounts, with
-  each user's own taste on top. Users differ by the mix of visits they make.
+- Every session has a kind (onboarding, short, focus, planning, teamwork,
+  review): a mix of events from all over the app, in random amounts, with
+  each user's own taste on top. The team's rare events happen in sessions of
+  any kind. Users differ by the mix of sessions they make.
 
-Segments: `channel` (organic / ads / invite), `platform` (web / mobile),
-`ab_group` (control / test, per workspace). `workspace_id` is a plain column.
-Paths: `user_id`, and `session_id` for visits. Deterministic for a seed.
+Segments: `channel` (organic / ads / invite), `platform` (web / mobile).
+`workspace_id` is a plain column. Paths: `user_id`, and `session_id` for
+sessions. Deterministic for a seed. `python taskboard.py` writes the snapshot
+the slides read, taskboard.csv.gz.
 """
 
 from __future__ import annotations
@@ -73,25 +75,7 @@ EVENT_GROUP = {
     ),
 }
 
-# Clustering features for visits: everything but signup, templates and the
-# team events, which are rare and would each take a cluster of their own.
-EVERYDAY = [
-    "open_board",
-    "create_task",
-    "complete_task",
-    "edit_task",
-    "comment",
-    "assign_task",
-    "mention",
-    "view_notifications",
-    "view_report",
-    "export",
-    "view_timeline",
-    "set_due_date",
-    "add_dependency",
-    "tour_step",
-    "create_project",
-]
+# The billing events (members never have them).
 CHECKOUT = [
     "view_pricing",
     "select_plan",
@@ -177,7 +161,7 @@ SOLO_COMMENT = 0.1  # notes to self: a user with no team still comments a bit
 TASTE = 0.4  # spread of each user's own taste for each event (lognormal sigma)
 
 # ── Users ─────────────────────────────────────────────────────────────────────
-# Owners by kind: (share, channel weights, visits range). Members come from the
+# Owners by kind: (share, channel weights, sessions range). Members come from the
 # invites owners send; their kinds are drawn when they join (MEMBER_KINDS).
 OWNER_KINDS = {
     "staller": (0.30, {"organic": 0.3, "ads": 0.7}, (1, 3)),
@@ -188,7 +172,7 @@ OWNER_KINDS = {
 }
 MEMBER_KINDS = {"active": (0.6, (6, 16)), "passive": (0.4, (3, 8))}
 
-# Which kinds of visits a user makes, by kind and state (weights).
+# Which kinds of sessions a user makes, by kind and state (weights).
 VISIT_WEIGHTS = {
     "alone": {"focus": 4, "short": 3, "planning": 1, "review": 0.4},
     # A pair shares the work: half the sessions are spent working it out together.
@@ -246,7 +230,7 @@ def _taste(rng: random.Random) -> dict[str, float]:
 
 
 def _visit(kind: str, user: dict, rng: random.Random) -> list[str]:
-    """The events of one visit of a given kind: how it opens, then a mix of
+    """The events of one session of a given kind: how it opens, then a mix of
     actions in random amounts, in random order."""
     rates = dict(VISIT_MIX[kind])
     for event, lam in BACKGROUND.items():
@@ -307,7 +291,7 @@ def _checkout(at: pd.Timestamp, rng: random.Random) -> tuple[list[str], bool]:
 
 
 def _next_start(t: int, rng: random.Random) -> int:
-    """When the next visit starts, the previous one having ended at `t`:
+    """When the next session starts, the previous one having ended at `t`:
     later the same day, or on a later day, in the daytime."""
     gap_days = rng.choice([0, 1, 1, 2, 2, 3, 4, 6])
     if gap_days == 0 and t + 2 * 3600 < (t // 86400) * 86400 + 22 * 3600:

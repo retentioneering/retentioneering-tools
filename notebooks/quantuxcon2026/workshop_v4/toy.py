@@ -1346,13 +1346,13 @@ def visits_as_events_figure(stream, sessions_stream, user: str, n: int = 4) -> s
     """One user's first `n` sessions, built up a step per click (reveal.js
     fragments 0-3): the path as one line of event beads, a dashed cut between
     sessions; each session's events; the sessions as vectors, the bag of
-    events the clustering sees (taskboard's EVERYDAY + CHECKOUT, the events
-    none of these sessions has folded into "…"), session 1 traced from its
+    events the clustering sees (all the events, the ones none of these
+    sessions has folded into "…"), session 1 traced from its
     events to its numbers; each vector's cluster label; and the labels under
     the path, the path the sessions make."""
     from collections import Counter
 
-    from taskboard import CHECKOUT, EVERYDAY
+    from taskboard import EVENT_GROUP
 
     df = stream.df
     events = df[(df["user_id"] == user) & ~df["event"].isin(["path_start", "path_end"])]
@@ -1372,7 +1372,7 @@ def visits_as_events_figure(stream, sessions_stream, user: str, n: int = 4) -> s
         for sid in shown
     }
     counts = {sid: Counter(names[sid]) for sid in shown}
-    features = EVERYDAY + CHECKOUT
+    features = list(EVENT_GROUP)  # the bag of events: all of them
     columns = [e for e in features if any(counts[sid][e] for sid in shown)]
     rest = len(features) - len(columns)
     first = counts[shown[0]]

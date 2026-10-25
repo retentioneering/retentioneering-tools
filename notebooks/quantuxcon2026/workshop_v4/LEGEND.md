@@ -19,16 +19,16 @@ it, the same for the same seed. Change the legend first, then the generator.
 
 ## Events: where in the app they happen
 
-31 events, grouped by the part of the app, not by who uses them or why; any
-kind of visit mixes them.
+29 events, grouped by the part of the app, not by who uses them or why; any
+kind of session mixes them.
 
 | Getting started | Tasks | Discussion | Team | Power features | Billing |
 |---|---|---|---|---|---|
 | `signup` | `open_board` | `comment` | `invite_member` | `view_report` | `view_pricing` |
-| `tour_step` | `create_task` | `mention` | `view_invite_status` | `export` | `select_plan` |
-| `template_view` | `edit_task` | `view_notifications` | `resend_invite` | `create_automation` | `start_checkout` |
-| `create_project` | `complete_task` | | `accept_invite` | `connect_integration` | `enter_payment` |
-| | `assign_task` | | `teammate_joined` | | `payment_error` |
+| `tour_step` | `create_task` | `mention` | `accept_invite` | `export` | `select_plan` |
+| `template_view` | `edit_task` | `view_notifications` | `teammate_joined` | `create_automation` | `start_checkout` |
+| `create_project` | `complete_task` | | | `connect_integration` | `enter_payment` |
+| | `assign_task` | | | | `payment_error` |
 | | `set_due_date` | | | | `support_ticket` |
 | | `add_dependency` | | | | `upgrade` |
 | | `view_timeline` | | | | |
@@ -36,68 +36,75 @@ kind of visit mixes them.
 Due dates and dependencies are fields of a task card; Timeline is one more way
 to look at the tasks.
 
-Owner's happy path: `signup` → `create_project` → `create_task` →
-`invite_member` → `teammate_joined` → `invite_member` (a third person: the
-paywall) → `view_pricing` → `upgrade`.
+Owner's happy path: `signup` → `create_project` → `invite_member` →
+`teammate_joined` → `invite_member` (a third person: the paywall) →
+`view_pricing` → `upgrade`.
 
-## Kinds of visits
+## Kinds of sessions
 
-A visit is a mix of events from all over the app, in random amounts. Each
+A session is a mix of events from all over the app, in random amounts. Each
 user also has their own taste for each event (some write more comments, some
-hardly ever set due dates), so visits of one kind differ from user to user.
-Clustering visits on their event counts should recover these kinds.
+hardly ever set due dates), so sessions of one kind differ from user to user.
 
-| Visit | What happens | Typical events |
+| Session | What happens | Typical events |
 |---|---|---|
-| onboarding | the first visit: the tour, a project, first tasks | `tour_step`, `template_view`, `create_project`, `create_task` |
-| check-in | a quick look, mostly from a notification | `view_notifications`, `complete_task`, a comment |
+| onboarding | the first session: the tour, templates, a project, first tasks | `signup`, `tour_step`, `template_view`, `create_project` |
+| short | a quick look, mostly from a notification | `view_notifications`, a task completed |
 | focus | heads-down work on one's own tasks | `create_task`, `edit_task`, `complete_task` |
 | planning | lays out the work: tasks, dates, dependencies, who does what | `create_task`, `set_due_date`, `add_dependency`, `assign_task`, `view_timeline` |
-| sync | works it out with the team | `comment`, `mention`, `assign_task`, `view_notifications` |
-| review | how the project is going: reports and exports | `view_report`, `export`, `view_timeline` |
-| admin | sets the workspace up | `create_automation`, `connect_integration`, `create_project` |
+| teamwork | works it out with the team | `comment`, `mention`, `assign_task`, `view_notifications` |
+| review | the power features | `view_report`, `export`, `create_automation`, `connect_integration` |
 
-Checkout is not a kind of visit: it happens at the end of whatever visit the
-owner hit the paywall in. Comments, mentions and assignments need someone to
-work with: a user without a team only leaves an occasional note to self.
+The team's rare events are not a kind of session: they happen in sessions of
+any kind. An invite (`invite_member`) is sent at any point of a session; a
+teammate who has joined since shows up as a notification (`teammate_joined`)
+at the start of the owner's next session; an invited member's first session,
+of whatever kind, opens with `accept_invite`. Checkout comes at the end of
+whatever session the owner hit the paywall in.
+
+Why it's built this way: the slides cluster sessions on the counts of all 29
+events (a bag of events), standardized. Standardized, a rare event that shows
+up in only part of one kind of session is worth a cluster of its own, however
+rare it is. Mixed into every kind, it isn't, and k-means (`k=8`, `n_init=30`)
+finds the kinds above, plus checkout and checkout_failed, the same on every
+seed tried.
 
 ## Kinds of users
 
-Users differ by the mix of visits they make, and by how it changes over time.
-Clustering users on the kinds of their visits should recover these kinds.
+Users differ by the mix of sessions they make, and by how it changes over
+time. Clustering users on the kinds of their sessions recovers these.
 
 **Owners** sign up themselves (`channel` organic or ads) and own a workspace.
 
 | Owner | Share | Story |
 |---|---|---|
-| staller | 30% | onboarding, sometimes not even a project, then a check-in or two at most |
-| solo | 28% | works alone: focus and check-ins; most invite someone who never comes |
-| duo | 15% | invites one person, who joins; the two share the work (half the visits are sync) and stay on the free plan |
-| team lead | 15% | brings a teammate in, plans, syncs, reviews; invites a third person, hits the paywall and mostly pays; then invites more |
-| planner | 12% | a freelancer planning client work alone: planning visit after visit on Timeline |
+| staller | 30% | onboarding, sometimes not even a project, then a short session or two at most |
+| solo | 28% | works alone: focus and short sessions; most invite someone who never comes |
+| duo | 15% | invites one person, who joins; the two share the work (half the sessions are teamwork) and stay on the free plan |
+| team lead | 15% | brings a teammate in, plans, works with the team, reviews; invites a third person, hits the paywall and mostly pays; then invites more |
+| planner | 12% | a freelancer planning client work alone; those who find Timeline plan session after session, the rest leave early |
 
 **Members** come in through an owner's invite (`channel` invite,
-`accept_invite`), into the owner's workspace and A/B group.
+`accept_invite`), into the owner's workspace.
 
 | Member | Story |
 |---|---|
-| active | focus, sync and check-ins, like a regular user |
-| passive | mostly check-ins: reads notifications, closes a task now and then |
+| active | focus, teamwork and short sessions, like a regular user |
+| passive | mostly short sessions: reads notifications, closes a task now and then |
 | dropped | accepts the invite, looks around once or twice and is gone |
 
 A share of team leads (40%) and active members (12%) are the **core
-audience**: many more review and admin visits.
+audience**: many more review sessions.
 
 ## Stories planted in the data
 
-1. **Visits, then users.** Visits clustered on events give the kinds of visits
-   above, not the event groups; users clustered on their visits give the kinds
-   of users.
-2. **A-ha moment: a teammate joins** (`teammate_joined`). Owners whose teammate
-   comes and stays go on to sync, plan and review; the rest stay in focus and
-   check-ins, or leave.
-3. **The invite funnel.** Many solo owners invite someone who never comes;
-   they keep checking the invite (`view_invite_status`, `resend_invite`).
+1. **Sessions, then users.** Sessions clustered on all their events give the
+   kinds of sessions above, not the event groups; users clustered on their
+   sessions give the kinds of users.
+2. **A-ha moment: a teammate joins** (`teammate_joined`). Owners whose
+   teammate comes and stays go on to work with the team, plan and review; the
+   rest stay in focus and short sessions, or leave.
+3. **The invite funnel.** Many solo owners invite someone who never comes.
 4. **The paywall.** Upgrades come from team leads inviting a third person;
    duos never need to pay. Small teams that stop at two are a segment of
    their own.
@@ -106,23 +113,12 @@ audience**: many more review and admin visits.
 6. **Anomaly.** For a week (`CHECKOUT_BUG`) the payment form fails three times
    out of four: `start_checkout` → `payment_error` → `support_ticket`, and
    upgrades drop.
-7. **The A/B test of Timeline.** Randomized by workspace: in test, a new
-   project opens on Timeline with a "Plan with your team" prompt. Team
-   activation and upgrades don't move, every funnel step is grey. Behind the
-   grey numbers:
-   - planners find Timeline far more often in test (90% vs 25%) and stay much
-     longer, but they work alone and never hit the paywall;
-   - a few more new teams fall apart right away in test (32% vs 30%).
-8. **A UI problem on Timeline.** Task bars look clickable but aren't: some
-   planners keep reopening the timeline (`view_timeline` → `view_timeline`)
-   and give up after a few planning visits.
 
 ## Data
 
-- `user_id`, `session_id` (one visit), `event`, `timestamp`;
+- `user_id`, `session_id` (one session), `event`, `timestamp`;
 - `workspace_id`: a plain column, not a path: the events of different members
   interleaved by time would make transitions nobody made;
-- segments `channel` (organic / ads / invite), `platform` (web / mobile),
-  `ab_group` (control / test, per workspace);
+- segments `channel` (organic / ads / invite), `platform` (web / mobile);
 - eight weeks from 2026-03-02; owners sign up during the first six;
-- about 14,000 workspaces, 20,000 users, a million events.
+- 5,000 workspaces, about 7,000 users, 48,000 sessions, 390,000 events.

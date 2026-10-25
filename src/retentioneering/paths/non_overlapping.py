@@ -35,6 +35,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
+import numpy as np
 import pandas as pd
 
 from retentioneering import engine
@@ -132,10 +133,11 @@ def compile_pattern(pattern: str, chars: dict[str, str]) -> tuple[re.Pattern, in
     return regex, regex.groups
 
 
-def _stepped(
+def _stepped_sql(
     df: pd.DataFrame, schema: "EventstreamSchema", path_col: str, event_col: str
-) -> pd.DataFrame:
-    """Every path's events in order, with steps numbered as `resolve_anchors` does."""
+) -> str:
+    """CTEs ending in ``stepped``: every path's events with steps numbered as
+    `resolve_anchors` numbers them, virtual boundary rows included if needed."""
     from retentioneering.paths.anchors import _has_boundary_rows
 
     path_q = engine.quote_ident(path_col)
@@ -160,9 +162,7 @@ def _stepped(
             UNION ALL
             SELECT p, {end}, MAX(idx), MAX(step) + 1 FROM base GROUP BY p
         """
-    return engine.run(
-        f"WITH base AS ({base}) {stepped} ORDER BY p, step", df=df
-    ).rename(columns={"p": path_col})
+    return f"base AS ({base}), stepped AS ({stepped})"
 
 
 def resolve(
@@ -180,38 +180,69 @@ def resolve(
     Returns the long frame :func:`anchors.resolve_anchors` returns — one row per
     positional token per match, columns `path_col`, ``ordinal``, ``step``,
     ``index`` — with each match's rows describing that one match.
-    """
-    stepped = _stepped(df, schema, path_col, event_col)
-    columns = [path_col, "ordinal", "step", "index"]
-    if stepped.empty:
-        return pd.DataFrame(columns=columns)
 
-    chars = _alphabet(stepped["e"].dropna().unique().tolist())
+    One DuckDB query numbers every path's steps and returns all events sorted
+    by ``(path, step)`` with an integer code per event. Python turns the codes
+    into one string in a single vectorised step (code points →
+    ``bytes.decode("utf-32")``), not one string per path, and scans each path's slice of it with ``finditer(text, pos,
+    endpos)``, so match offsets are global row numbers and map back to steps
+    and indices by array indexing. An ordered ``string_agg`` per path would
+    keep the encoding in SQL but serialises on the ordering, which made it the
+    slowest step by far.
+    """
+    columns = [path_col, "ordinal", "step", "index"]
+    event_q = engine.quote_ident(event_col)
+    vocabulary = engine.run(
+        f"SELECT DISTINCT CAST({event_q} AS VARCHAR) AS e FROM df "
+        f"WHERE {event_q} IS NOT NULL",
+        df=df,
+    )["e"].tolist()
+    chars = _alphabet(vocabulary)
     regex, groups = compile_pattern(pattern, chars)
     if groups != ordinals:  # pragma: no cover - guards the ordinal contract
         raise AssertionError(
             f"{pattern!r} compiled to {groups} captures for {ordinals} positions"
         )
 
-    stepped["ch"] = stepped["e"].map(chars).fillna("\x00")
-    stepped["pos"] = stepped.groupby(path_col, sort=False).cumcount()
-    encoded = stepped.groupby(path_col, sort=False)["ch"].agg("".join)
-
-    paths, ords, positions = [], [], []
-    for path, text in encoded.items():
-        for match in regex.finditer(text):
-            if match.end() == match.start():
-                continue  # cannot happen with a positional token; be safe
-            for ordinal in range(groups):
-                paths.append(path)
-                ords.append(ordinal)
-                positions.append(match.start(ordinal + 1))
-    if not paths:
+    # Codes, not characters, cross the DuckDB boundary: an integer column is
+    # far cheaper to materialise than a string one, and the text is rebuilt
+    # from code points in one vectorised step below. Code 0 is an unknown event.
+    alphabet = pd.DataFrame({"e": list(chars), "code": range(1, len(chars) + 1)})
+    points = np.array([0, *map(ord, chars.values())], dtype="<u4")
+    rows = engine.run(
+        f"""
+        WITH {_stepped_sql(df, schema, path_col, event_col)}
+        SELECT s.p, s.step, s.idx, COALESCE(a.code, 0) AS code
+        FROM stepped s LEFT JOIN alphabet a ON a.e = CAST(s.e AS VARCHAR)
+        ORDER BY s.p, s.step
+        """,
+        df=df,
+        alphabet=alphabet,
+    )
+    if rows.empty:
         return pd.DataFrame(columns=columns)
 
-    hits = pd.DataFrame({path_col: paths, "ordinal": ords, "pos": positions})
-    lookup = stepped[[path_col, "pos", "step", "idx"]]
-    frame = hits.merge(lookup, on=[path_col, "pos"], how="left").rename(
-        columns={"idx": "index"}
+    text = points[rows["code"].to_numpy()].tobytes().decode("utf-32-le")
+    path_ids = rows["p"].to_numpy()
+    breaks = np.flatnonzero(path_ids[1:] != path_ids[:-1]) + 1
+    starts = np.concatenate(([0], breaks))
+    ends = np.concatenate((breaks, [len(path_ids)]))
+
+    found: list[int] = []
+    finditer = regex.finditer
+    for start, end in zip(starts.tolist(), ends.tolist()):
+        for match in finditer(text, start, end):
+            found.extend(match.start(g) for g in range(1, groups + 1))
+    if not found:
+        return pd.DataFrame(columns=columns)
+
+    at = np.asarray(found)
+    frame = pd.DataFrame(
+        {
+            path_col: path_ids[at],
+            "ordinal": np.tile(np.arange(groups), len(at) // groups),
+            "step": rows["step"].to_numpy()[at],
+            "index": rows["idx"].to_numpy()[at],
+        }
     )
-    return frame[columns].sort_values([path_col, "ordinal", "step"], ignore_index=True)
+    return frame.sort_values([path_col, "ordinal", "step"], ignore_index=True)

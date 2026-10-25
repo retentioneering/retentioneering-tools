@@ -54,9 +54,15 @@ for "does a match exist" and for first/last positions `(B){3,}` equals
 
 ## Consequences
 
-- Cost is one pass over the events in Python (`groupby` + `"".join`) and a C
-  regex scan per path; fine for typical event logs, slower than SQL for very
-  large ones.
+- Cost. DuckDB still does the heavy lifting — numbering steps and sorting
+  all events by `(path, step)` in parallel — and hands over integer codes;
+  Python rebuilds one string for all paths in a single vectorised step and runs
+  a C regex scan per path. Measured on 1M paths / 20M events (8 cores), the
+  mode takes 1.3–1.7× the time of `"first"` / `"all"` on the same pattern
+  (9–10 s vs 6–7 s); the regex scan itself is under a tenth of that. Two
+  slower designs were measured and dropped: a per-path pandas `"".join`
+  (4.5× slower) and an ordered `string_agg` in DuckDB, which serialises on its
+  `ORDER BY`.
 - The name contrasts with `"all"` by mechanism rather than by quantity —
   `"each"` was rejected as a near-synonym of `"all"`.
 - A future `pattern_count` metric is the length of this mode's match list.

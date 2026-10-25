@@ -135,6 +135,9 @@ ordinals; quantified classes (`.{0,4}`, `[a|b]+`) are gaps and take none; groups
 unrolled by `normalize_pattern`, so everything downstream sees plain tokens. Changes to the
 matcher must keep agreeing with the brute-force oracle in `tests/paths/anchors_test.py`; JS
 that splits a pattern into blocks must use `isGapToken` and the unrolled `layout_pattern`.
+`occurrence="non_overlapping"` is the one mode not matched in SQL: `paths/non_overlapping.py`
+compiles the pattern to a Python regex over a one-character-per-event encoding (ADR-0017), and
+its capture order must stay equal to the ordinals of the unrolled pattern.
 
 ### JS: two workspace packages, one build target (ADR-0005)
 

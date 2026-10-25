@@ -821,8 +821,11 @@ class Eventstream:
             [Path Patterns](/docs/path-patterns). One anchor per call, not a
             list. By default the anchor resolves once per path
             (`occurrence="first"`); pass `occurrence="all"` to mark every
-            position the anchor can occupy. Paths where it resolves nowhere get
-            no event.
+            position the anchor can occupy, or `occurrence="non_overlapping"`
+            to mark each match in turn, as `re.finditer` finds them —
+            `{"pattern": "(B){3,}", "at": "start", "occurrence":
+            "non_overlapping"}` marks the start of every run of three or more
+            `B`. Paths where it resolves nowhere get no event.
 
             This is what makes a position addressable by every other tool: a
             pattern can say "the cart that was followed by checkout with no cart

@@ -67,6 +67,35 @@ marker by a number of events or by a duration — `{"pattern": "purchase",
 "occurrence": "all", "offset": -3}` marks every purchase three events ahead of
 time.
 
+To mark each *instance* of a pattern — every loop, every attempt — use
+`occurrence="non_overlapping"`. It finds matches one after another, left to
+right, the way `re.finditer` does, and a repeated group takes its whole run:
+
+Before — two loops of three or more `B`, and a shorter one in between:
+
+- u1: `B → B → B → C → B → B → D → B → B → B → B → B → E`
+
+```python
+stream.add_events(
+    "B_loop",
+    anchor={"pattern": "(B){3,}", "at": "start", "occurrence": "non_overlapping"},
+)
+```
+
+After — one marker at the start of each long enough run:
+
+- u1: `B_loop → B → B → B → C → B → B → D → B_loop → B → B → B → B → B → E`
+
+`"all"` would have marked the second loop three times — every `B` a run of
+three can start on. `at="end"` is the run's last `B`, so
+`{"at": "end", "offset": 1}` marks the event right after each loop. See
+[Path Patterns](/docs/path-patterns#occurrencenon_overlapping) for how the
+mode treats gaps and groups.
+
+A marker always sits **before** its anchor, and an offset clamps to the path's
+last real event, so nothing can be inserted after a path's final event: a loop
+that ends the path gets its "after" marker before its last repetition.
+
 ### churn
 
 Marks the point where a path goes quiet: a `churn` event is inserted after

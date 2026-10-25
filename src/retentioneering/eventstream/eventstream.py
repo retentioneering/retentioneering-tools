@@ -2042,6 +2042,7 @@ class Eventstream:
         path_pattern=None,
         height=None,
         sidebar_open=None,
+        label_scale=None,
         views=None,
         view=None,
         state_file=None,
@@ -2077,6 +2078,9 @@ class Eventstream:
             Widget height in pixels.
         sidebar_open : bool, default True
             Whether the sidebar starts open.
+        label_scale : float, default 1.0
+            Multiplier on node and edge label font sizes, from 0.5 to 3.
+            Raise it for slides and screenshots.
         views : list of dict, optional
             Named visual presets rendered as pills above the graph. Each view
             is a dict with the keys `name`, `focus`, `edgeFilter`,
@@ -2125,6 +2129,7 @@ class Eventstream:
             path_col=path_col if path_col is not None else _UNSET,
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
+            label_scale=label_scale if label_scale is not None else _UNSET,
             views=views if views is not None else _UNSET,
             view=view if view is not None else _UNSET,
             state_file=state_file,

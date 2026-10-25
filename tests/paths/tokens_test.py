@@ -9,6 +9,7 @@ catch, because the matcher would be faithfully executing the wrong reading.
 import pytest
 
 from retentioneering.exceptions import PatternSyntaxError
+from retentioneering.paths import anchors
 from retentioneering.paths import tokens as tokens_mod
 from retentioneering.paths.tokens import (
     PATH_END,
@@ -355,6 +356,16 @@ class TestGroups:
     )
     def test__unrolls(self, pattern, expanded):
         assert self._expand(pattern) == expanded
+
+    def test__a_group_may_end_with_a_restricted_gap(self):
+        """The closing token `[^X]*){2,}` does not parse on its own; the group
+        it closes does."""
+        assert self._expand("A->([^X]*->B){2}") == "A->[^X]*->B->[^X]*->B"
+        pattern = "(product_view->[^order_success]*){2,}->order_success"
+        assert anchors.normalize_pattern(pattern, warn=False) == (
+            "product_view->[^order_success]*->product_view->[^order_success]*"
+            "->order_success"
+        )
 
     def test__names_with_round_brackets_are_not_groups(self):
         for pattern in ["(beta) promo->cart", "cart->pay (card)", "(cart|purchase)"]:

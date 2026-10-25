@@ -55,6 +55,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- A group ending in a restricted or bounded gap — `(product_view->[^order_success]*){2,}`
+  — raised `PatternSyntaxError: Unbalanced brackets`. The check for redundant
+  `.*` read the group's closing token (`[^order_success]*){2,}`) on its own,
+  before the group was unrolled.
 - A condition node with no `op` that is not a shorthand leaf now raises
   `PreprocessingConfigError` naming the node, instead of
   `AttributeError: 'NoneType' object has no attribute 'upper'`.

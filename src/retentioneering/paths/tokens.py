@@ -360,10 +360,18 @@ def check_class_spans(tokens: list[str]) -> None:
 
 
 def is_plain_gap(token: str | None) -> bool:
-    """Whether `token` is ``.*`` in effect — a gap that admits any run at all."""
+    """Whether `token` is ``.*`` in effect — a gap that admits any run at all.
+
+    Safe on raw tokens before groups are unrolled: a group's closing half such
+    as ``[^X]*){2,}`` does not parse on its own, and it is not a plain gap
+    either. Its syntax is checked when the group itself is read.
+    """
     if token is None:
         return False
-    parsed = parse_token(token)
+    try:
+        parsed = parse_token(token)
+    except PatternSyntaxError:
+        return False
     return isinstance(parsed, Gap) and parsed.is_plain
 
 

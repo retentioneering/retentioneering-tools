@@ -615,6 +615,20 @@ Two rules turn the regex translation into what an analyst expects:
   `A, A, B` there is one match — it starts on the first `A`, and the second is
   inside it.
 
+**A greedy group swallows what its gap allows.** Inside a repeated group, a
+`.*` admits any event — including the one meant to close the match. On
+`pv, pv, order, pv, pv, pv, order`, the pattern
+`(product_view->.*){2,}->order_success` finds **one** match: the group's
+repetitions run straight through the first order to the last one. To get one
+match per order, keep the closing event out of the group's gap:
+
+```python
+"(product_view->[^order_success]*){2,}->order_success"   # two matches, one per order
+```
+
+The same pattern without `non_overlapping` is unaffected — "does it match" and
+"where is the first match" come out the same either way.
+
 It costs somewhat more than the other modes — on a million paths, about
 1.3–1.7× the time of `"all"` on the same pattern. DuckDB still numbers and
 sorts the events in parallel; only the regex scan itself runs in Python, and

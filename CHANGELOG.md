@@ -15,6 +15,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   and there was no way to ask for more initialisations; `n_init=10` now does
   that. The values you pass are carried into `best_params`, so the saved
   `add_clusters` call reproduces the split. Defaults are unchanged.
+- `transition_graph(label_scale=...)` scales every node and edge label on the
+  canvas (0.5–3, default 1), since the default sizes read too small on slides
+  and in screenshots. HTML exports keep the scale.
 
 ### Changed
 

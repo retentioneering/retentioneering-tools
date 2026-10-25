@@ -131,6 +131,125 @@ class TestConversionRateSemantics:
         assert last["paths_with_start"] == 1
         assert last["converted"] == 0
 
+    def test_occurrence_all_counts_paths_not_start_occurrences(self) -> None:
+        # occurrence="all" resolves one position per occurrence, but the unit of
+        # observation is the path: user_1's two A's are one path in the
+        # denominator, not two.
+        stream = _stream(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00"],
+                ["user_1", "A", "2020-01-01 00:01:00"],
+                ["user_1", "B", "2020-01-01 00:02:00"],
+                ["user_2", "A", "2020-01-01 00:00:00"],
+                ["user_2", "B", "2020-01-01 00:01:00"],
+            ]
+        )
+        spec = {"pattern": "A", "occurrence": "all"}
+
+        unbounded = _row(stream.get_conversion_rate(spec, "B"))
+        windowed = _row(stream.get_conversion_rate(spec, "B", within="30m"))
+
+        assert unbounded["paths_with_start"] == 2
+        assert windowed["paths_with_start"] == 2
+        # Both paths reach B, and a window wide enough to hold the whole
+        # eventstream cannot change which paths converted.
+        assert unbounded["converted"] == 2
+        assert windowed["converted"] == 2
+        assert unbounded["conversion_rate"] == 1.0
+        assert windowed["conversion_rate"] == 1.0
+
+    def test_occurrence_all_end_counts_paths_not_matching_pairs(self) -> None:
+        # One path, one start, two ends inside the window: the path converted
+        # once. Counting (start, end) pairs would report a 200% conversion rate.
+        stream = _stream(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00"],
+                ["user_1", "B", "2020-01-01 00:01:00"],
+                ["user_1", "B", "2020-01-01 00:02:00"],
+            ]
+        )
+        result = _row(
+            stream.get_conversion_rate(
+                "A", {"pattern": "B", "occurrence": "all"}, within="30m"
+            )
+        )
+
+        assert result["paths_with_start"] == 1
+        assert result["converted"] == 1
+        assert result["conversion_rate"] == 1.0
+        assert result["lift"] == 1.0
+
+    @pytest.mark.parametrize("within", [None, "30m", 10])
+    def test_converted_never_exceeds_paths_with_start(self, within) -> None:
+        # The documented invariant behind `conversion_rate`: `converted` counts
+        # a subset of the paths `paths_with_start` counted, so the rate is a
+        # share and cannot exceed 1.
+        stream = _stream(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00"],
+                ["user_1", "B", "2020-01-01 00:01:00"],
+                ["user_1", "A", "2020-01-01 00:02:00"],
+                ["user_1", "B", "2020-01-01 00:03:00"],
+                ["user_2", "A", "2020-01-01 00:00:00"],
+            ]
+        )
+        result = _row(
+            stream.get_conversion_rate(
+                {"pattern": "A", "occurrence": "all"},
+                {"pattern": "B", "occurrence": "all"},
+                within=within,
+            )
+        )
+
+        assert result["paths_with_start"] == 2
+        assert result["converted"] <= result["paths_with_start"]
+        assert result["converted"] == 1
+        assert result["conversion_rate"] == 0.5
+
+    @pytest.mark.parametrize("within", ["30m", 1])
+    def test_occurrence_all_window_opens_at_each_start_not_before_it(
+        self, within
+    ) -> None:
+        # The window is measured forward from each start occurrence: the B
+        # that precedes the second A is not "within 30m after" it, and it is
+        # an hour (two steps) past the first one.
+        stream = _stream(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00"],
+                ["user_1", "X", "2020-01-01 00:30:00"],
+                ["user_1", "B", "2020-01-01 01:00:00"],
+                ["user_1", "A", "2020-01-01 02:00:00"],
+            ]
+        )
+        result = _row(
+            stream.get_conversion_rate(
+                {"pattern": "A", "occurrence": "all"}, "B", within=within
+            )
+        )
+
+        assert result["paths_with_start"] == 1
+        assert result["converted"] == 0
+
+    def test_occurrence_all_start_converts_from_a_later_attempt(self) -> None:
+        # The question "all" exists for: the first view is hours before the
+        # purchase, the second is ten minutes before it.
+        stream = _stream(
+            [
+                ["user_1", "view", "2020-01-01 10:00:00"],
+                ["user_1", "view", "2020-01-01 14:00:00"],
+                ["user_1", "purchase", "2020-01-01 14:10:00"],
+            ]
+        )
+        first = _row(stream.get_conversion_rate("view", "purchase", within="30m"))
+        every = _row(
+            stream.get_conversion_rate(
+                {"pattern": "view", "occurrence": "all"}, "purchase", within="30m"
+            )
+        )
+
+        assert first["converted"] == 0
+        assert every["converted"] == 1
+
     def test_end_pattern_must_fall_entirely_after_the_start(self) -> None:
         # user_3 matches "cart->.*->purchase", but only with the cart *before*
         # Y — which is not something that happened after Y.

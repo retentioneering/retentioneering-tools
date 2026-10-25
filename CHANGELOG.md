@@ -29,6 +29,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   in `filter_paths`, in MCP `filter_paths` steps, and in `collapse_events` name
   cases for the 0/1 metrics those support (`has_event`, `has_any_event`,
   `has_all_events`).
+- `method_args` of the `"kmeans"` method accepts `n_init` (`"auto"` or a positive
+  int, default `"auto"`) and `random_state` (int or None, default 42) on all three
+  clustering surfaces (`add_clusters`, `cluster_analysis_data`, `cluster_analysis`).
+  The library used to hard-code scikit-learn's single k-means++ run, so the same
+  features clustered under another seed could land in a different local optimum
+  and there was no way to ask for more initialisations; `n_init=10` now does
+  that. The values you pass are carried into `best_params`, so the saved
+  `add_clusters` call reproduces the split. Defaults are unchanged.
 
 ### Changed
 
@@ -43,6 +51,34 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   `PreprocessingConfigError` naming the node, instead of
   `AttributeError: 'NoneType' object has no attribute 'upper'`.
 
+- Cluster Analysis Save/Copy use the features and path column from the displayed
+  analysis even after sidebar edits. Copied code explicitly preserves
+  `scaler=None`, and clearing a result also clears its saved call.
+
+- Cluster Analysis records the realized seed for `random_state=None` in
+  `best_params`, so saving clusters replays the displayed split. The widget
+  persists its KMeans settings and current seed in `state_file`; grid selection
+  and restoration reuse that seed, while a new Apply chooses a fresh one.
+
+- `describe()["segments"]` reports the events that have no value for a segment
+  column under the `<MISSING>` sentinel, the same level `get_segment_levels`
+  lists. Those events used to be dropped, and because `share` was normalized
+  over the remaining rows it still summed to 1.0 — a segment built with
+  `add_segment(func=...)` that left 3 of 5 events unassigned reported a 50/50
+  split instead of 20/20/60, with nothing marking the table as partial. The
+  docstring now states that these counts are over events, not paths
+  ([#188](https://github.com/retentioneering/retentioneering-tools/issues/188)).
+- `get_conversion_rate` counts paths rather than anchor positions when an anchor
+  spec uses `occurrence="all"`. `paths_with_start` used to count one per
+  occurrence, and a `within` window counted matching `(start, end)` pairs, so a
+  single path with one start and two ends inside the window reported
+  `converted=2` against `paths_with_start=1` — a `conversion_rate` of 2.0, with
+  `lift` carrying the same factor. The inflated denominator also understated the
+  rate (0.667 where both paths converted), and the `within=None` and windowed
+  branches disagreed with each other. A `within` window is also measured forward
+  from each start occurrence: an end that preceded a later start no longer
+  counts as converting from it
+  ([#186](https://github.com/retentioneering/retentioneering-tools/issues/186)).
 - The MCP tools `add_transition_graph`, `add_step_matrix`, `add_segment_overview`
   and `get_conversion_rate` now return `{"error": "local_preprocessors: ..."}`
   when a `local_preprocessors` step is invalid, as `update_base_stream` does for

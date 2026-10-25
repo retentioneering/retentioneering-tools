@@ -103,7 +103,11 @@ class ConversionRate:
             start_pos = anchors.resolve_positions(
                 df, schema, start_spec, offset_side="start", path_col=path_col
             )
-            paths_with_start = int(len(start_pos))
+            # One row per *position* comes back, not per path: `resolve_positions`
+            # documents that "with occurrence="all" a path appears once per
+            # position its anchor can occupy". The unit of observation here is
+            # the path, so collapse to distinct paths before counting.
+            paths_with_start = int(start_pos[path_col].nunique())
             # Step space, strictly after: an end anchor at the same position as
             # the start one is the start one (`start_anchor == end_anchor` asks
             # about a *repeat*), and only steps put a `path_end` sentinel after
@@ -199,7 +203,7 @@ class ConversionRate:
         if end_pos.empty:
             return 0
         if window is None:
-            return int(len(end_pos))
+            return int(end_pos[path_col].nunique())
 
         schema = self.eventstream.schema
         path_q = engine.quote_ident(path_col)
@@ -233,9 +237,9 @@ class ConversionRate:
                 SELECT x.{path_q} AS p, x.step AS step, b.ts AS ts
                 FROM ends x JOIN base b ON b.p = x.{path_q} AND b.idx = x.bound
             )
-            SELECT COUNT(*) AS converted
+            SELECT COUNT(DISTINCT s.p) AS converted
             FROM s JOIN e ON e.p = s.p
-            WHERE {condition}
+            WHERE e.step > s.step AND {condition}
         """
         result = engine.run(
             query, df=self.eventstream.df, starts=start_pos, ends=end_pos

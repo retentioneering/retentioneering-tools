@@ -180,3 +180,19 @@ came from a tab). `playbook("conversion_rate")` carries the procedure.
   Node required). pip-installed wheels ship the bundle.
 - Telemetry: the library reports anonymous usage (method names, never data);
   see the docs "Tracking" page for scope and opt-out.
+
+
+## Unreleased: explicit pattern episodes
+
+`find_matches(pattern, path_col=...)` returns one row per leftmost non-overlapping
+match with complete start/end bounds and a per-path match_id. Greedy groups and
+lazy gaps define episodes; fixed blocks and maximal runs are different questions.
+`get_match_conversion(pattern, target_event, path_col=..., from_boundary=...,
+attribution="any_later", within=...)` retains non-converting episodes and makes
+the match denominator explicit. One target may convert several earlier matches.
+`get_conversion_rate` remains path-based and requires explicit unit="path" for
+non_overlapping starts. New-mode anchors require at, and path_col if several
+grains exist. In add_events use placement="after" instead of offset=1 for an
+end marker; duplicate names default to error, with explicit replace/allow options.
+These APIs are from the source checkout, not an assertion about the current PyPI
+release. Inspect available methods before using them with an installed release.

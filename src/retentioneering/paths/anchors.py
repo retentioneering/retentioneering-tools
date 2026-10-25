@@ -78,6 +78,7 @@ from retentioneering import engine
 from retentioneering.engine import dialect
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.exceptions import InvalidParameterError, PatternSyntaxError
+from retentioneering.paths import non_overlapping
 from retentioneering.paths import tokens as tokens_mod
 from retentioneering.utils.durations import parse_duration
 from retentioneering.utils.sequences import PATH_DELIMITER
@@ -107,7 +108,11 @@ PATH_START = tokens_mod.PATH_START
 PATH_END = tokens_mod.PATH_END
 GAP = tokens_mod.GAP
 
-OCCURRENCES = ("first", "last", "all")
+OCCURRENCES = ("first", "last", "all", "non_overlapping")
+
+#: Occurrence modes returning several positions per path. A caller needing one
+#: position per path — a window bound, a matrix centre — rejects both.
+MULTI_OCCURRENCES = ("all", "non_overlapping")
 
 #: Sides an offset may round to. Only a *time* offset needs one — a step offset
 #: lands on a real row either way.
@@ -480,6 +485,7 @@ def resolve_anchors(
     event_col: str | None = None,
     not_before: pd.DataFrame | None = None,
     not_before_part: int = 0,
+    source_pattern: str | None = None,
 ) -> AnchorMatch:
     """
     Locate `pattern` in every path and return the position of each of its tokens.
@@ -500,7 +506,10 @@ def resolve_anchors(
         match, ``"last"`` at the latest — see this module's docstring for what
         that does and does not mean. ``"all"`` returns every position each token
         can occupy, so a path may appear more than once per ordinal and the rows
-        no longer describe a single match.
+        no longer describe a single match. ``"non_overlapping"`` returns each
+        match in turn, left to right and without overlap, as ``re.finditer``
+        does — rows for one ordinal are one per match, and a repeated group
+        takes its whole run (see :mod:`paths.non_overlapping`).
     path_col : str, optional
         Path id column; defaults to ``schema.path_col``.
     event_col : str, optional
@@ -534,6 +543,10 @@ def resolve_anchors(
     not_before_part : int, default 0
         Index into the pattern's gap-separated parts; parts before it are exempt
         from `not_before`.
+    source_pattern : str, optional
+        The pattern as written, before :func:`normalize_pattern` unrolled its
+        groups. Only ``"non_overlapping"`` reads it: a ``{k,}`` group is greedy
+        there, which the unrolled form can no longer say.
 
     Returns
     -------
@@ -549,6 +562,35 @@ def resolve_anchors(
     if not parts:
         raise InvalidParameterError(
             "pattern", pattern, ["a pattern with at least one event name"]
+        )
+
+    if occurrence == "non_overlapping":
+        if not_before is not None:
+            # A floor would have to restart the left-to-right scan per path at
+            # a different place; no caller needs it yet, so say so.
+            raise InvalidParameterError(
+                "occurrence",
+                occurrence,
+                ["first", "last", "all (a floor applies to a single match)"],
+            )
+        part_ordinals: list[int] = []
+        running = 0
+        for part in parts:
+            part_ordinals.append(running)
+            running += len(part)
+        frame = non_overlapping.resolve(
+            df,
+            schema,
+            source_pattern or pattern,
+            path_col=path_col,
+            event_col=event_col or schema.event_col,
+            ordinals=running,
+        )
+        return AnchorMatch(
+            frame=frame,
+            path_col=path_col,
+            tokens=literal_tokens(pattern),
+            part_ordinals=tuple(part_ordinals),
         )
 
     path_q = engine.quote_ident(path_col)
@@ -872,6 +914,10 @@ class AnchorSpec:
     #: ``schema.event_col``. Only read — resolving an anchor locates rows, it
     #: does not modify them.
     event_col: str | None = None
+    #: `pattern` as written, groups not yet unrolled — what
+    #: ``occurrence="non_overlapping"`` compiles, since a ``{k,}`` group is
+    #: greedy there. Not part of the spec's identity.
+    source_pattern: str | None = field(default=None, compare=False)
 
     def ordinal(self) -> int:
         """`at` as a token ordinal; ``"start"``/``"end"`` are aliases for 0/-1."""
@@ -893,7 +939,10 @@ def parse_spec(value: object, *, param: str = "anchor") -> AnchorSpec:
     exactly as before.
     """
     if isinstance(value, str):
-        return AnchorSpec(pattern=normalize_pattern(value, warn=False, param=param))
+        return AnchorSpec(
+            pattern=normalize_pattern(value, warn=False, param=param),
+            source_pattern=value,
+        )
     if isinstance(value, AnchorSpec):
         return value
     if not isinstance(value, dict):
@@ -911,6 +960,22 @@ def parse_spec(value: object, *, param: str = "anchor") -> AnchorSpec:
     if event_col is not None and not isinstance(event_col, str):
         raise InvalidParameterError("event_col", event_col, ["a column name"])
 
+    if value.get("occurrence") == "non_overlapping" and "at" not in value:
+        raise InvalidParameterError(
+            "at",
+            "omitted for non_overlapping",
+            ["explicit 'start' or 'end' of the complete match, or a token ordinal"],
+        )
+
+    if value.get("occurrence") == "non_overlapping":
+        if not isinstance(value["pattern"], str):
+            raise InvalidParameterError(
+                "pattern", value["pattern"], ["a pattern string"]
+            )
+        # Enforce the compilation budget before normalize_pattern unrolls large
+        # fixed groups. No vocabulary is needed to count the program states.
+        non_overlapping.compile_pattern(value["pattern"], {})
+
     spec = AnchorSpec(
         pattern=normalize_pattern(value["pattern"], warn=False, param=param),
         at=value.get("at", "end"),
@@ -918,6 +983,7 @@ def parse_spec(value: object, *, param: str = "anchor") -> AnchorSpec:
         offset=value.get("offset"),
         offset_side=value.get("offset_side"),
         event_col=event_col,
+        source_pattern=value["pattern"],
     )
     if spec.occurrence not in OCCURRENCES:
         raise InvalidParameterError("occurrence", spec.occurrence, list(OCCURRENCES))
@@ -1109,6 +1175,14 @@ def resolve_positions(
     if offset_side is not None and offset_side not in OFFSET_SIDES:
         raise InvalidParameterError("offset_side", offset_side, list(OFFSET_SIDES))
 
+    if (
+        spec.occurrence == "non_overlapping"
+        and path_col is None
+        and len(schema.path_cols) > 1
+    ):
+        raise InvalidParameterError(
+            "path_col", "omitted for non_overlapping", schema.path_cols
+        )
     path_col = path_col or schema.path_col
     if not_before_part is None:
         not_before_part = _anchor_part(spec)
@@ -1122,10 +1196,16 @@ def resolve_positions(
         event_col=spec.event_col,
         not_before=not_before,
         not_before_part=not_before_part,
+        source_pattern=spec.source_pattern,
     )
-    anchor = match.at(spec.ordinal())[[path_col, "step", "index"]].rename(
-        columns={"index": "bound"}
-    )
+    if spec.occurrence == "non_overlapping" and spec.at in ("start", "end"):
+        anchor = match.frame.drop_duplicates([path_col, "match_id"])[
+            [path_col, f"{spec.at}_step", f"{spec.at}_index"]
+        ].rename(columns={f"{spec.at}_step": "step", f"{spec.at}_index": "bound"})
+    else:
+        anchor = match.at(spec.ordinal())[[path_col, "step", "index"]].rename(
+            columns={"index": "bound"}
+        )
     if spec.offset is None or anchor.empty:
         return anchor
 
@@ -1137,6 +1217,38 @@ def resolve_positions(
         seconds, in_steps = spec.offset, True
     else:
         seconds, in_steps = parse_duration(spec.offset, param="offset"), False
+
+    if spec.occurrence == "non_overlapping":
+        path_q = engine.quote_ident(path_col)
+        ts_q = engine.quote_ident(schema.timestamp_col)
+        idx_q = engine.quote_ident(schema.index)
+        if in_steps:
+            outside = f"a.step + {seconds} < 1 OR a.step + {seconds} > l.n"
+            join = ""
+        else:
+            shifted = f"b.{ts_q} + {dialect.interval_seconds(seconds)}"
+            outside = f"{shifted} < l.lo OR {shifted} > l.hi"
+            join = f"JOIN df b ON b.{path_q} = a.{path_q} AND b.{idx_q} = a.bound"
+        invalid = engine.run(
+            f"""
+            WITH limits AS (
+                SELECT {path_q}, COUNT(*) AS n, MIN({ts_q}) AS lo, MAX({ts_q}) AS hi
+                FROM df GROUP BY {path_q}
+            )
+            SELECT COUNT(*) AS n FROM anchor a JOIN limits l USING ({path_q})
+            {join} WHERE {outside}
+        """,
+            df=df,
+            anchor=anchor,
+        ).iloc[0, 0]
+        if invalid:
+            raise InvalidParameterError(
+                "offset",
+                spec.offset,
+                [
+                    "an offset inside every matched path; use add_events(placement='after') to close terminal matches"
+                ],
+            )
 
     resolved_side = spec.offset_side or offset_side
     if resolved_side is None:

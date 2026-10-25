@@ -332,10 +332,10 @@ class StepMatrix:
         render: `"all"` gives several positions per path, and a path counted
         once per occurrence is no longer the unit the shares are taken over."""
         spec = anchors.parse_spec(anchor, param="anchor")
-        if spec.occurrence == "all":
+        if spec.occurrence in anchors.MULTI_OCCURRENCES:
             raise InvalidParameterError(
                 "anchor",
-                "occurrence='all'",
+                f"occurrence={spec.occurrence!r}",
                 ["first", "last"],
             )
         return spec

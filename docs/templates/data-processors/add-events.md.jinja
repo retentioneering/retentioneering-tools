@@ -4,8 +4,9 @@
 ## How it works
 
 New events are marked `synthetic` and inserted at the same timestamp as the row
-that produced them, ordered immediately *before* it: a marker names the moment
-its source event opens. Nothing is removed. The one exception is `churn`, which
+that produced them, by default ordered *before* it. With an anchor,
+`placement="after"` closes the selected event instead, including at path end.
+Original events are retained. The separate `churn` mode
 closes a stretch of inactivity rather than opening anything — it carries its own
 `churn` event type and sorts *after* the last active event.
 
@@ -66,6 +67,38 @@ By default the anchor resolves once per path (`occurrence="first"`); pass
 marker by a number of events or by a duration — `{"pattern": "purchase",
 "occurrence": "all", "offset": -3}` marks every purchase three events ahead of
 time.
+
+To mark each *instance* of a pattern — every loop, every attempt — use
+`occurrence="non_overlapping"`. It finds matches one after another, left to
+right, with greedy groups and lazy gaps; set `at` explicitly. A repeated group takes its whole run:
+
+Before — two loops of three or more `B`, and a shorter one in between:
+
+- u1: `B → B → B → C → B → B → D → B → B → B → B → B → E`
+
+```python
+stream.add_events(
+    "B_loop",
+    anchor={"pattern": "(B){3,}", "at": "start", "occurrence": "non_overlapping"},
+)
+```
+
+After — one marker at the start of each long enough run:
+
+- u1: `B_loop → B → B → B → C → B → B → D → B_loop → B → B → B → B → B → E`
+
+`"all"` would have marked the second loop three times — every `B` a run of
+three can start on. `at="end"` is the run's last `B`, including for `(B)+`.
+Pass `placement="after"` to insert after it without moving the anchor. See
+[Path Patterns](/docs/path-patterns#occurrencenon_overlapping) for how the
+mode treats gaps and groups.
+
+An offset outside a path is an error in non_overlapping mode; it is not a
+substitute for placement. Set `at` explicitly and also `path_col` when more
+than one grain is available. For an existing marker name this mode raises by
+default: recompute from the raw stream or choose `on_existing="replace"`
+(synthetic rows only). `on_existing="allow"` explicitly permits duplicates.
+Other occurrence modes retain their legacy defaults and offset clamping.
 
 ### churn
 

@@ -12,8 +12,8 @@ a flag.
 The unit of observation is the **path**, not the occurrence: a path where Y
 happened three times contributes one row to the denominator, not three. Per-
 occurrence questions ("of 22,986 visits to this page, how many were entrances")
-are a different shape of answer and are not expressible here — use a transition
-matrix on a subpopulation for those.
+are a different shape of answer: use `get_match_conversion` for explicit
+per-match outcomes and attribution, not a path-level denominator.
 """
 
 from dataclasses import dataclass
@@ -75,6 +75,7 @@ class ConversionRate:
         end_anchor,
         within=None,
         path_col: str | None = None,
+        unit: str | None = None,
     ) -> pd.DataFrame:
         """
         Conversion from `start_anchor` to `end_anchor`, one row per pair.
@@ -86,6 +87,7 @@ class ConversionRate:
         schema = es.schema
         df = es.df
 
+        explicit_path_col = path_col
         path_col = path_col or schema.path_col
         if path_col not in schema.path_cols:
             raise InvalidParameterError("path_col", path_col, schema.path_cols)
@@ -93,6 +95,33 @@ class ConversionRate:
         available = df[schema.event_col].unique().tolist()
         starts = self._parse_side(start_anchor, "start_anchor", available)
         ends = self._parse_side(end_anchor, "end_anchor", available)
+        if unit not in (None, "path"):
+            raise InvalidParameterError(
+                "unit",
+                unit,
+                ["path; use get_match_conversion for match-level outcomes"],
+            )
+        if any(spec.occurrence == "non_overlapping" for spec in starts + ends):
+            if unit != "path":
+                raise InvalidParameterError(
+                    "unit",
+                    "omitted for non_overlapping",
+                    ["explicit unit='path'; use get_match_conversion for episodes"],
+                )
+            if explicit_path_col is None and len(schema.path_cols) > 1:
+                raise InvalidParameterError(
+                    "path_col", "omitted for non_overlapping", schema.path_cols
+                )
+        if any(spec.occurrence == "non_overlapping" for spec in ends):
+            raise InvalidParameterError(
+                "end_anchor.occurrence",
+                "non_overlapping",
+                [
+                    "first",
+                    "last",
+                    "all; mark target matches before computing path conversion",
+                ],
+            )
         window = parse_within(within)
 
         total_paths = int(df[path_col].nunique())
@@ -139,6 +168,7 @@ class ConversionRate:
         result = pd.DataFrame(rows, columns=COLUMNS)
         result["paths_with_start"] = result["paths_with_start"].astype("int64")
         result["converted"] = result["converted"].astype("int64")
+        result.attrs.update(unit="path", path_col=path_col)
         return result
 
     @staticmethod

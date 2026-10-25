@@ -359,6 +359,23 @@ Self-loops are also what [Collapse Events](/docs/data-processors/collapse-events
 draws as a node's edge to itself. Filter on them first if the question is about
 the users who loop, collapse them if the loops are noise.
 
+To **mark** each loop in place, put an event at its start with
+[`occurrence="non_overlapping"`](#occurrencenon_overlapping):
+
+```python
+for e in events:
+    stream = stream.add_events(
+        f"{e}_loop",
+        anchor={"pattern": f"({e}){{3,}}", "at": "start", "occurrence": "non_overlapping"},
+    )
+# B, B, B, C, B, B, D, B, B, B, B, B, E
+#   -> B_loop, B, B, B, C, B, B, D, B_loop, B, B, B, B, B, E
+```
+
+Each run of three or more gets exactly one marker, wherever it is in the path —
+including at its very start. `"all"` would mark every `B` a run of three can
+start on, and `"first"` only the first loop of the path.
+
 ## Examples
 
 **One position, negated or alternated:**
@@ -566,6 +583,122 @@ some valid match. On `A, B, A, B` the `A` token of `A->.*->B` resolves to both
 Because it returns several positions per path, the rows no longer describe one
 match, and anything needing a single position rejects it. `truncate_paths` does:
 a window bound has to be one place to cut. `add_events` is what it is for.
+
+### `occurrence="non_overlapping"`
+
+This mode takes the leftmost match, resumes after it and repeats. `all` instead
+returns every position a token can occupy in any match, including overlap.
+Use `find_matches` first when the unit of analysis is an **episode**:
+
+```python
+matches = stream.find_matches("(smart_cart_open){3,}", path_col="session_id")
+# One row per match, keyed by (session_id, match_id), with full start/end
+# steps, source indices and timestamps. Inspect these before counting.
+```
+
+**An episode is a modelling decision, not just a mode name.**
+
+| Pattern / question | Result | Interpretation |
+|---|---|---|
+| `(B){3,}` on B×6 | one match | maximal run of at least three |
+| `(B){3}` on B×6 | two matches | fixed blocks of exactly three |
+| `A->.*->B` on A,A,B,B | first A → first B | gaps are lazy; the second A is consumed |
+| `(B)+`, `at="end"` on A,B,B,B | last B | complete match boundary, even with one capture |
+| `(B)+`, `at=-1` on A,B,B,B | first B | last **numeric capture**, retained for ordinal addressing |
+
+Repeated groups are greedy; gaps are lazy. A greedy group can consume the event
+intended to close an episode. On pv,pv,order,pv,pv,pv,order,
+`(pv->.*){2,}->order` finds one match reaching the last order. To close at each
+order, exclude it from the repeated gap: `(pv->[^order]*){2,}->order` finds two.
+Neither interpretation is a universal default for purchase attribution.
+
+#### Marking boundaries without hidden defaults
+
+```python
+marked = stream.add_events(
+    "loop_end",
+    anchor={"pattern": "(smart_cart_open)+", "at": "end",
+            "occurrence": "non_overlapping"},
+    path_col="session_id",
+    placement="after",
+)
+```
+
+- `at` is required with this mode. Strings `start` and `end` select the full
+  match's first/last positional event, not necessarily its first/last capture.
+  Integers address the normalized pattern's token ordinals as in other modes.
+- `path_col` is required when the schema offers several grains. The new
+  `find_matches` and `get_match_conversion` methods always require it.
+- `placement="after"` inserts after the selected row **even at the path's
+  terminal event**, retaining its timestamp. Do not emulate it with offset=1:
+  non_overlapping offsets outside the path raise instead of silently clamping.
+  Existing occurrence modes retain their offset behaviour.
+- If the output event name already exists, this mode raises. Recompute from
+  `raw_stream`, choose `on_existing="replace"` to remove only prior synthetic
+  rows of that name before matching, or `"allow"` to permit duplicates explicitly.
+- Omitting occurrence still means `first` in the legacy anchor API. Prefer
+  `find_matches` when counting episodes; it has no implicit first-only mode.
+
+#### Path conversion and match conversion are different questions
+
+```python
+outcomes = stream.get_match_conversion(
+    "(smart_cart_open){3,}", "order_success",
+    path_col="session_id", from_boundary="end", attribution="any_later",
+)
+# One row per match, including converted=False. Empty input has an undefined rate.
+match_rate = outcomes.converted.mean()
+match_denominator = len(outcomes)
+
+paths = stream.get_conversion_rate(
+    start_anchor={"pattern": "(smart_cart_open){3,}", "at": "end",
+                  "occurrence": "non_overlapping"},
+    end_anchor="order_success", path_col="session_id", unit="path",
+)
+```
+
+`get_match_conversion` requires an explicit `from_boundary` (start or end) and
+`attribution="any_later"`: one order **may convert several earlier matches**.
+`within` limits the window by steps or duration; without it, the window reaches
+the path end. The target is a literal event name, not another pattern. The
+returned first target index/time makes attribution inspectable. There is no
+implicit one-to-one allocation of orders, and no path-level baseline/lift.
+
+`get_conversion_rate` still counts distinct paths; it now requires explicit
+`unit="path"` when non_overlapping is used. A path with three matches contributes
+one denominator unit. `non_overlapping` is supported only on its start side;
+for a pattern target, mark those matches first and pass the marker's event name.
+
+#### Data semantics, limits and compatibility
+
+Positional `.` / negative classes do not match missing events or implicit
+boundaries. Gaps follow SQL's existing semantics: NULL and real boundary rows
+are not gap violations, including inside restricted gaps. Adding session-boundary
+rows therefore does not silently prevent a user-level gap from crossing sessions.
+They still count as internal steps; a bounded gap can change if rows are added.
+`to_dataframe()` hides boundary events by default; inspect `stream.df` when
+checking the actual matcher input.
+Duplicate `(path, index, subindex)` rows have no unambiguous internal order;
+this mode rejects them. Rebuild annotations from raw events rather than rely
+on arbitrary ordering between duplicate markers. Insertion also raises if
+stacked markers exhaust the floating-point ranks between neighbouring rows.
+
+The matcher evaluates an ordered instruction program with memoization, not a
+Python backtracking regex. Each (program state, input position) is evaluated at
+most once per path. There are explicit limits of 4096 program states and
+2,000,000 matching states per path; exceeding either raises
+`PatternMatchLimitError`, never a partial result. Cost depends on pattern size
+and path length; the original regex implementation's timing claims do not apply.
+
+Step Matrix, Step Sankey and truncate_paths still require one anchor position
+per path and reject this mode. First mark the matches, then anchor those tools
+on the marker name. The internal not_before floor also remains unsupported.
+
+**Migration from the draft #207:** supply at/path_col/unit explicitly where
+required; use at=-1 if you deliberately need the old last-capture meaning,
+placement="after" instead of an out-of-range offset, and an explicit
+on_existing policy when rerunning an annotation. Legacy first/last/all remain
+available with their existing defaults.
 
 ## Turning a position into an event
 

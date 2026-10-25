@@ -28,6 +28,8 @@ class AddEvents(DataProcessor):
         anchor: str | dict | None = None,
         path_col: str | None = None,
         churn: dict | None = None,
+        placement: str = "before",
+        on_existing: str | None = None,
     ) -> None:
         if not isinstance(name, str) or not name:
             raise PreprocessingConfigError(
@@ -102,6 +104,25 @@ class AddEvents(DataProcessor):
                     )
 
         self.anchor_spec = self._parse_anchor(anchor) if anchor is not None else None
+        if placement not in ("before", "after"):
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "placement must be 'before' or 'after'."
+            )
+        if placement != "before" and anchor is None:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                "placement='after' requires anchor=; churn already sorts after its source.",
+            )
+        if on_existing not in (None, "error", "replace", "allow"):
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "on_existing must be 'error', 'replace', or 'allow'."
+            )
+        self.placement = placement
+        self.on_existing = on_existing or (
+            "error"
+            if self.anchor_spec and self.anchor_spec.occurrence == "non_overlapping"
+            else "allow"
+        )
 
         self.name = name
         self.source_event = source_event
@@ -129,6 +150,34 @@ class AddEvents(DataProcessor):
     def apply(
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
+        exists = df[schema.event_col].eq(self.name)
+        if exists.any() and self.on_existing != "allow":
+            if self.on_existing == "error":
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME,
+                    f"Event {self.name!r} already exists. Start from the raw stream, "
+                    "or explicitly choose on_existing='replace' (synthetic rows only) or 'allow'.",
+                )
+            if (
+                not df.loc[exists, schema.event_type]
+                .eq(EventTypes().SYNTHETIC_EVENT.type)
+                .all()
+            ):
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME,
+                    f"on_existing='replace' cannot remove non-synthetic event {self.name!r}.",
+                )
+            df = df.loc[~exists].copy()
+        if (
+            self.anchor_spec
+            and self.anchor_spec.occurrence == "non_overlapping"
+            and self.path_col is None
+            and len(schema.path_cols) > 1
+        ):
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"Specify path_col for non_overlapping: choose from {schema.path_cols}.",
+            )
         if self.source_event is not None:
             df_source = self._get_by_source_event(df, schema)
         elif self.sql is not None:
@@ -153,10 +202,55 @@ class AddEvents(DataProcessor):
         df_new[schema.event_col] = self.name
         df_new[schema.event_type] = marker.type
         df_new[schema.subindex] = marker.index
+        if self.placement == "after" or (
+            self.anchor_spec and self.anchor_spec.occurrence == "non_overlapping"
+        ):
+            # Allocate a rank immediately after the selected row, including
+            # at a terminal event. Never simulate 'after' via offset/clamping.
+            keys = [schema.path_col, schema.index]
+            ranks = df[keys + [schema.subindex]].drop_duplicates()
+            following = df_source[keys + [schema.subindex]].merge(
+                ranks, on=keys, suffixes=("", "_candidate")
+            )
+            candidate = schema.subindex + "_candidate"
+            row_keys = keys + [schema.subindex]
+            current = pd.Series(
+                df_source[schema.subindex].to_numpy(),
+                index=pd.MultiIndex.from_frame(df_source[row_keys]),
+            )
+            if self.placement == "after":
+                following = following[following[candidate] > following[schema.subindex]]
+                neighbor = following.groupby(row_keys, observed=True)[candidate].min()
+                neighbor = neighbor.reindex(current.index).fillna(current + 2)
+            else:
+                following = following[following[candidate] < following[schema.subindex]]
+                neighbor = following.groupby(row_keys, observed=True)[candidate].max()
+                neighbor = neighbor.reindex(current.index).fillna(current - 2)
+            inserted = (current + neighbor) / 2
+            if (inserted.eq(current) | inserted.eq(neighbor)).any():
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME,
+                    "No representable subindex remains next to this anchor. "
+                    "Rebuild annotations from the raw stream instead of stacking markers.",
+                )
+            df_new[schema.subindex] = inserted.to_numpy()
 
         df = (
             pd.concat([df, df_new])
-            .sort_values([schema.path_col, schema.timestamp_col, schema.subindex])
+            .sort_values(
+                [
+                    schema.path_col,
+                    schema.index
+                    if self.anchor_spec
+                    and (
+                        self.placement == "after"
+                        or self.anchor_spec.occurrence == "non_overlapping"
+                    )
+                    else schema.timestamp_col,
+                    schema.subindex,
+                ],
+                kind="stable",
+            )
             .reset_index(drop=True)
         )
 
@@ -195,7 +289,7 @@ class AddEvents(DataProcessor):
         # Unlike `truncate_paths`, which takes a list of anchors of which some
         # are *expected* not to resolve, a single anchor that names nothing can
         # only be a typo — so literals are checked too.
-        available = df[schema.event_col].unique().tolist()
+        available = anchors.spec_vocabulary(df, schema, self.anchor_spec)
         try:
             anchors.validate_pattern_tokens(
                 self.anchor_spec.pattern, available, param="anchor"
@@ -208,6 +302,25 @@ class AddEvents(DataProcessor):
 
         if positions.empty:
             return df.iloc[0:0]
+
+        if (
+            self.placement == "after"
+            or self.anchor_spec.occurrence == "non_overlapping"
+        ):
+            # Select the exact internal row. An index alone is ambiguous when
+            # a boundary or a previously added marker shares a raw event's index.
+            ordered = df.sort_values(
+                [path_col, schema.index, schema.subindex], kind="stable"
+            )
+            ranks = ordered.groupby(path_col, observed=True).cumcount() + 1
+            sizes = ordered.groupby(path_col, observed=True).size()
+            keys = positions[[path_col, "step"]].drop_duplicates().copy()
+            keys["step"] = (
+                keys["step"].clip(lower=1).clip(upper=keys[path_col].map(sizes))
+            )
+            wanted = pd.MultiIndex.from_frame(keys)
+            actual = pd.MultiIndex.from_arrays([ordered[path_col], ranks])
+            return ordered.loc[actual.isin(wanted)]
 
         keys = positions[[path_col, "bound"]].drop_duplicates()
         keys.columns = [path_col, schema.index]

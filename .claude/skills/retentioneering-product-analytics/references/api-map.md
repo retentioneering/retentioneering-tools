@@ -93,7 +93,10 @@ event — which replaces merging events with `rename_events` just to ask one que
 `[^a]` and `.` never match `path_start`/`path_end`; a sentinel takes part only when named.
 Quantified with `*` a class becomes a restricted gap: `a->[^x]*->b` is "reached b from a
 without passing through x". A restricted gap needs an anchor on both sides — name
-`path_start`/`path_end` if that is what you mean.
+`path_start`/`path_end` if that is what you mean. Any regex quantifier bounds the run
+(inclusive, anchors not counted): `a->.{0,4}->b`, `a->[x|y]+->b`. `(p->.*){k}` repeats a
+sequence k times (unrolled; each copy takes ordinals) — put the `.*` inside the group, or
+the copies are glued back to back. "At most k" is not a pattern: use a `NOT` condition.
 `time_between` measures first occurrence of A to first occurrence of B **globally in the
 path** (not "first B after A") — verify fit for your question.
 

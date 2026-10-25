@@ -1,5 +1,12 @@
 import { makeAutoObservable } from "mobx";
 
+/** Whether a pattern token is a gap rather than a position: `.` or a bracketed
+ *  class followed by a quantifier — `.*`, `[^X]*`, `.{0,5}`, `[a|b]+`. Mirrors
+ *  `parse_token` in `retentioneering/paths/tokens.py`. */
+export function isGapToken(token: string): boolean {
+  return /^(\.|\[.*\])(\*|\+|\?|\{[^{}]*\})$/.test(token);
+}
+
 /** Manages the step sankey path pattern as a mutable list of tokens.
  *  Wildcards are represented as ".*".
  *  path_start is never stored — it is prepended in asString. */
@@ -51,7 +58,7 @@ export class PatternStore {
     const groups: string[][] = [];
     let bucket: string[] = [];
     for (const tok of this.segments) {
-      if (tok === ".*") { groups.push(bucket); bucket = []; }
+      if (isGapToken(tok)) { groups.push(bucket); bucket = []; }
       else               bucket.push(tok);
     }
     groups.push(bucket);

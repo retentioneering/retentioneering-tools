@@ -681,7 +681,12 @@ class Eventstream:
               - `metric_args` (optional) — dict of extra arguments for the metric.
                 `has_event`/`event_count` take a single `event` string; for a
                 multi-event AND/OR condition use `has_all_events`/`has_any_event`
-                with an `event_groups` list.
+                with an `events` list.
+            A leaf comparing a 0/1 metric (`has_event`, `has_any_event`,
+            `has_all_events`, `matches_pattern`, `in_segment`) with `True` may be
+            written as `{metric: metric_args}`, or as `{metric: value}` for a metric
+            with one required argument: `{"has_event": "purchase"}`,
+            `{"matches_pattern": "A->.*->B"}`, `{"has_any_event": ["A", "B"]}`.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
 
@@ -693,6 +698,9 @@ class Eventstream:
             # Keep paths that contain a promo_view or a discount_applied event
             stream.filter_paths({"op": "=", "metric": "has_any_event", "value": True,
                                   "metric_args": {"events": ["promo_view", "discount_applied"]}})
+
+            # The same, with the shorthand for a 0/1 metric compared with True
+            stream.filter_paths({"has_any_event": ["promo_view", "discount_applied"]})
 
             # Keep paths longer than 3 events that match a funnel pattern
             # (a top-level list means AND)
@@ -1054,7 +1062,8 @@ class Eventstream:
               plain string used as the fallback for groups no case matched.
               A condition is the `filter_paths` condition tree, over the metrics
               `has_event`, `event_count`, `has_all_events`, `has_any_event`,
-              `duration`, `length`, `time_between`, `active_days`.
+              `duration`, `length`, `time_between`, `active_days`, including its
+              shorthand leaves (`{"has_event": "purchase"}`).
         agg : dict, optional
             Aggregation rules for non-event columns when rows are merged, as a
             `{column: agg_func}` dict. `agg_func` is one of `"first"` (default),
@@ -2033,6 +2042,7 @@ class Eventstream:
         path_pattern=None,
         height=None,
         sidebar_open=None,
+        label_scale=None,
         views=None,
         view=None,
         state_file=None,
@@ -2068,6 +2078,9 @@ class Eventstream:
             Widget height in pixels.
         sidebar_open : bool, default True
             Whether the sidebar starts open.
+        label_scale : float, default 1.0
+            Multiplier on node and edge label font sizes, from 0.5 to 3.
+            Raise it for slides and screenshots.
         views : list of dict, optional
             Named visual presets rendered as pills above the graph. Each view
             is a dict with the keys `name`, `focus`, `edgeFilter`,
@@ -2116,6 +2129,7 @@ class Eventstream:
             path_col=path_col if path_col is not None else _UNSET,
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
+            label_scale=label_scale if label_scale is not None else _UNSET,
             views=views if views is not None else _UNSET,
             view=view if view is not None else _UNSET,
             state_file=state_file,

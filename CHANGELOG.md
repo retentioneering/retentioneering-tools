@@ -7,6 +7,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 
+- Path patterns accept the regex quantifier family on gaps: `.{m,n}`, `{n}`,
+  `{m,}`, `{,n}`, `+` and `?` after `.` or a class, alongside `*`. Bounds are
+  inclusive and count the events strictly between the anchors, so
+  `add_to_cart->.{0,4}->purchase` is "bought within five steps", and
+  `cart->[shipping|payment]+->purchase` no longer matches an adjacent
+  cart/purchase the way `*` does. A bounded gap takes no ordinal, so `at=` and
+  Step Matrix centring are unchanged (#110).
+- Round-bracket groups repeat a sequence: `(B->.*->C->.*){2}` is unrolled into
+  two copies before matching. `{k,}` and `+` are accepted where a `.*` absorbs
+  the extra repetitions; an upper bound is rejected with the `NOT` condition
+  that expresses it, and a group whose copies would be glued back to back
+  despite a gap inside (`(B->.*->C){2}`) is rejected with both readings.
+  Step Sankey lays its blocks out from the unrolled pattern, so each copy gets
+  a block of its own.
+- Condition leaves for 0/1 metrics have a shorthand: `{"has_event": "purchase"}`,
+  `{"matches_pattern": "A->.*->B"}`, `{"has_any_event": ["A", "B"]}`, or
+  `{metric: metric_args}` for any of `has_event`, `has_any_event`,
+  `has_all_events`, `matches_pattern`, `in_segment`. Each means
+  `{"op": "=", "metric": ..., "metric_args": ..., "value": True}`, and works
+  in `filter_paths`, in MCP `filter_paths` steps, and in `collapse_events` name
+  cases for the 0/1 metrics those support (`has_event`, `has_any_event`,
+  `has_all_events`).
 - `method_args` of the `"kmeans"` method accepts `n_init` (`"auto"` or a positive
   int, default `"auto"`) and `random_state` (int or None, default 42) on all three
   clustering surfaces (`add_clusters`, `cluster_analysis_data`, `cluster_analysis`).
@@ -15,6 +37,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   and there was no way to ask for more initialisations; `n_init=10` now does
   that. The values you pass are carried into `best_params`, so the saved
   `add_clusters` call reproduces the split. Defaults are unchanged.
+- `transition_graph(label_scale=...)` scales every node and edge label on the
+  canvas (0.5–3, default 1), since the default sizes read too small on slides
+  and in screenshots. HTML exports keep the scale.
 
 ### Changed
 
@@ -24,6 +49,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   or segment level, instead of repeating the metric and aggregation on every row.
 
 ### Fixed
+
+- A condition node with no `op` that is not a shorthand leaf now raises
+  `PreprocessingConfigError` naming the node, instead of
+  `AttributeError: 'NoneType' object has no attribute 'upper'`.
 
 - Cluster Analysis Save/Copy use the features and path column from the displayed
   analysis even after sidebar edits. Copied code explicitly preserves

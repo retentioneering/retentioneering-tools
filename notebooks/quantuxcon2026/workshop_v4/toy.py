@@ -666,7 +666,9 @@ def prefix_tree_svg(stream, steps: int, spotlight=(), size=(600, 470)) -> str:
     branch, every node carries the number of paths through it. Nodes of one
     step sit in one column; `spotlight` steps get a black frame around their
     column on their own click (reveal.js fragment k). path_start and path_end
-    are small grey circles marked ▸ and ■."""
+    are small grey circles marked ▸ and ■. Nodes carry their event and the
+    event before them, edges their two ends, as data attributes, for deck.html
+    to spotlight an event and where it leads."""
     paths = _paths(stream)
     colors = event_colors(e for p in paths for e in p)
     tree: dict[tuple, int] = {}
@@ -728,8 +730,10 @@ def prefix_tree_svg(stream, steps: int, spotlight=(), size=(600, 470)) -> str:
     for prefix in tree:
         (x1, y1), (x2, y2) = xy(prefix[:-1]), xy(prefix)
         xm = (x1 + x2) / 2
+        source = prefix[-2] if len(prefix) > 1 else START
         parts.append(
-            f'<path class="edge" d="M{x1:.1f},{y1:.1f} H{xm:.1f} V{y2:.1f} H{x2:.1f}"/>'
+            f'<path class="edge" data-from="{source}" data-to="{prefix[-1]}" '
+            f'd="M{x1:.1f},{y1:.1f} H{xm:.1f} V{y2:.1f} H{x2:.1f}"/>'
         )
 
     def terminal(x, y, name):
@@ -759,10 +763,14 @@ def prefix_tree_svg(stream, steps: int, spotlight=(), size=(600, 470)) -> str:
                 f'<text class="count" x="{x + r * 0.8:.1f}" y="{y - r * 0.7:.1f}">{n}</text>'
             )
             continue
+        parent = prefix[-2] if len(prefix) > 1 else START
+        node = f'data-event="{name}" data-parent="{parent}"'
         parts.append(
-            f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r:.1f}" fill="{colors[name]}"/>'
+            f'<circle {node} cx="{x:.1f}" cy="{y:.1f}" r="{r:.1f}" fill="{colors[name]}"/>'
         )
-        parts.append(f'<text class="label" x="{x:.1f}" y="{y:.1f}">{name}</text>')
+        parts.append(
+            f'<text class="label" {node} x="{x:.1f}" y="{y:.1f}">{name}</text>'
+        )
         parts.append(
             f'<text class="count" x="{x + r * 0.9:.1f}" y="{y - r * 0.9:.1f}">{n}</text>'
         )
@@ -909,10 +917,10 @@ STAGE_COLORS = {
     # Visits: the kinds the clustering finds.
     "onboarding": "#f7c630",
     "focus": "#3b82f6",
-    "sync": "#10b981",
+    "teamwork": "#10b981",
     "review": "#8b5cf6",
     "planning": "#06b6d4",
-    "quick": "#94a3b8",
+    "short": "#94a3b8",
     "checkout": "#ec4899",
     "checkout_failed": "#ec4899",
 }
@@ -961,7 +969,7 @@ def first_visits_figure(stream, users: list[str], colors=None) -> str:
         first = events[events["session_id"] == events["session_id"].iloc[0]]
         rows.append(list(first["event"]))
         rest.append(
-            f"+ {events['session_id'].nunique() - 1} visits, {len(events) - len(first)} events"
+            f"+ {events['session_id'].nunique() - 1} sessions, {len(events) - len(first)} events"
         )
     body = "".join(
         f'<div class="journey"><span class="who">{who}</span>'
@@ -1003,14 +1011,28 @@ STAGE_GRID = {
 VISIT_LAYOUT = {
     "path_start": (0, 0),
     "onboarding": (1, -0.7),
-    "quick": (1.5, 0.9),  # short visits: notifications, a task or two
+    "short": (1.5, 0.9),  # short sessions: notifications, a task or two
     "focus": (2, 0),
     "planning": (2.2, -1.5),
-    "sync": (3, -0.7),
+    "teamwork": (3, -0.7),
     "review": (4, 0),
     "checkout": (4, -1.4),
     "checkout_failed": (4.6, -0.7),
     "path_end": (5, 0.3),
+}
+
+
+# The six event groups, one node each (events renamed to their group), in a
+# zigzag like the visits: the way through the app left to right.
+GROUP_LAYOUT = {
+    "path_start": (0, 0),
+    "getting_started": (1, -0.8),
+    "tasks": (2, 0.4),
+    "discussion": (3, -0.9),
+    "power": (2.6, 1.6),
+    "team": (4, 0.6),
+    "billing": (4.8, -0.9),
+    "path_end": (5.6, 0.3),
 }
 
 
@@ -1021,6 +1043,12 @@ def stage_positions(events) -> dict[str, dict[str, float]]:
     from taskboard import EVENT_GROUP
 
     events = set(events)
+    if events <= set(GROUP_LAYOUT):  # event groups: one node per group
+        unit = 120
+        return {
+            e: {"x": GROUP_LAYOUT[e][0] * unit, "y": GROUP_LAYOUT[e][1] * unit}
+            for e in events | {"path_start", "path_end"}
+        }
     if events <= set(VISIT_LAYOUT):  # visits: one node per stage
         unit = 120
         events |= {"path_start", "path_end"}  # the graph adds them; a node
@@ -1056,20 +1084,26 @@ def stage_positions(events) -> dict[str, dict[str, float]]:
     return positions
 
 
-def stage_graph(stream, **kwargs):
+def stage_graph(stream, slide_height=None, **kwargs):
     """`stream.transition_graph(**kwargs)` with its nodes grouped by stage, plus
-    a hidden {stage: [events]} map for deck.html, which frames each group."""
+    a hidden {stage: [events]} map for deck.html, which frames each group.
+    `slide_height` sets the widget's height on a slide."""
     import json
 
     from IPython.display import HTML, display
     from taskboard import EVENT_GROUP
 
     events = set(stream.df[stream.schema.event_col].astype(str))
+    # Larger labels than the widget's default: a few visits, or many events.
+    few = events <= set(VISIT_LAYOUT) | set(GROUP_LAYOUT)
+    kwargs.setdefault("label_scale", 1.6 if few else 1.8)
     groups: dict[str, list[str]] = {}
     for e in sorted(events):
         groups.setdefault(EVENT_GROUP.get(e, e), []).append(e)
     widget = stream.transition_graph(**kwargs)
     widget.node_positions = json.dumps(stage_positions(events))
+    if slide_height:
+        widget.slide_height = slide_height
     display(
         HTML(
             f'<script type="application/json" class="stage-groups">{json.dumps(groups)}</script>'
@@ -1306,3 +1340,146 @@ def app_mockups() -> str:
         )
         + "</div>"
     )
+
+
+def visits_as_events_figure(stream, sessions_stream, user: str, n: int = 4) -> str:
+    """One user's first `n` sessions, built up a step per click (reveal.js
+    fragments 0-3): the path as one line of event beads, a dashed cut between
+    sessions; each session's events; the sessions as vectors, the bag of
+    events the clustering sees (taskboard's EVERYDAY + CHECKOUT, the events
+    none of these sessions has folded into "…"), session 1 traced from its
+    events to its numbers; each vector's cluster label; and the labels under
+    the path, the path the sessions make."""
+    from collections import Counter
+
+    from taskboard import CHECKOUT, EVERYDAY
+
+    df = stream.df
+    events = df[(df["user_id"] == user) & ~df["event"].isin(["path_start", "path_end"])]
+    events = events.sort_values("index")
+    sessions = list(dict.fromkeys(events["session_id"]))
+    v = sessions_stream.df
+    kind = (
+        v[v["session_id"].isin(sessions) & ~v["event"].isin(["path_start", "path_end"])]
+        .groupby("session_id")["event"]
+        .first()
+        .astype(str)
+    )
+    colors = taskboard_colors(list(events["event"]) + list(kind))
+    shown = sessions[:n]
+    names = {
+        sid: list(events.loc[events["session_id"] == sid, "event"].astype(str))
+        for sid in shown
+    }
+    counts = {sid: Counter(names[sid]) for sid in shown}
+    features = EVERYDAY + CHECKOUT
+    columns = [e for e in features if any(counts[sid][e] for sid in shown)]
+    rest = len(features) - len(columns)
+    first = counts[shown[0]]
+
+    def frag(step: int) -> str:
+        return f'fragment" data-fragment-index="{step}'
+
+    def beads(sid: str) -> str:
+        return "".join(
+            f'<span class="bead" title="{e}" style="--bead: {colors[e]}"></span>'
+            for e in names[sid]
+        )
+
+    # The path: a column per session, its beads, and (last click) its label.
+    path = (
+        '<div class="idea-path">'
+        '<div class="idea-labels"><span>a user\'s path, cut into sessions</span>'
+        f'<span class="{frag(3)}">the same path, session by session</span></div>'
+        + "".join(
+            f'<div class="idea-segment"><div class="visit-segment">{beads(sid)}</div>'
+            f'<div class="idea-seg-kind {frag(3)}">{"→ " if k else ""}{_chip(kind[sid], colors)}</div></div>'
+            for k, sid in enumerate(shown)
+        )
+        + f'<div class="idea-more"><span>+ {len(sessions) - n} more sessions</span>'
+        f'<span class="{frag(3)}">→ …</span></div></div>'
+    )
+    boxes = (
+        f'<div class="idea-visits {frag(0)}" style="--visits: {len(shown)}">'
+        + "".join(
+            '<div class="visit-events">'
+            + (f'<span class="trace {frag(1)}"></span>' if k == 1 else "")
+            + f'<span class="visit-name">session {k}</span>'
+            + "".join(_chip(e, colors) for e in names[sid])
+            + "</div>"
+            for k, sid in enumerate(shown, start=1)
+        )
+        + "</div>"
+    )
+    head = (
+        "<tr><th></th>"
+        + "".join(
+            f'<th class="{"traced" if first[e] else ""}"><span>{_chip(e, colors)}</span></th>'
+            for e in columns
+        )
+        + (f"<th><span>… {rest} more</span></th>" if rest else "")
+        + f'<th class="{frag(2)}"></th></tr>'
+    )
+    body = "".join(
+        f'<tr class="{"traced" if k == 1 else ""}"><th>session {k}</th>'
+        + "".join(
+            f'<td class="{"zero" if not counts[sid][e] else ""}">{counts[sid][e]}</td>'
+            for e in columns
+        )
+        + ('<td class="zero">0 …</td>' if rest else "")
+        + f'<td class="idea-kind {frag(2)}">→ {_chip(kind[sid], colors)}</td></tr>'
+        for k, sid in enumerate(shown, start=1)
+    )
+    vectors = (
+        f'<table class="idea-vectors {frag(1)}"><thead>{head}</thead>'
+        f"<tbody>{body}</tbody></table>"
+    )
+    return f'<div class="visits-idea">{path}{boxes}{vectors}</div>'
+
+
+# ── The transition graph, introduced on a handful of short paths ─────────────
+
+SHORT_PATHS = ["A B C", "A A C", "B A C", "B A B"]
+
+
+def short_paths_events(paths=SHORT_PATHS) -> pd.DataFrame:
+    """Short paths as an event log: one row per event, a minute apart."""
+    return pd.DataFrame(
+        {
+            "user_id": f"user_{i}",
+            "event": event,
+            "timestamp": pd.Timestamp("2026-01-01 10:00")
+            + pd.Timedelta(hours=i, minutes=step),
+        }
+        for i, path in enumerate(paths, start=1)
+        for step, event in enumerate(path.split())
+    )
+
+
+def short_paths_html(paths=SHORT_PATHS) -> str:
+    """The paths themselves, one row each, the events as beads colored as on
+    the tree (event_colors). Beads carry their event and the event before
+    them, arrows their two ends, as the tree does, for deck.html to spotlight
+    an event and where it leads."""
+    events = [e for p in paths for e in p.split()]
+    colors = event_colors(events)
+
+    def row(path: list[str]) -> str:
+        parts = []
+        for k, e in enumerate(path):
+            before = path[k - 1] if k else START
+            if k:
+                parts.append(
+                    f'<span class="arrow" data-from="{before}" data-to="{e}">→</span>'
+                )
+            parts.append(
+                f'<span class="bead" data-event="{e}" data-parent="{before}" '
+                f'style="--bead: {colors[e]}">{e}</span>'
+            )
+        return "".join(parts)
+
+    rows = "".join(
+        f'<div class="short-path"><span class="who">user {i}</span>{row(path.split())}</div>'
+        for i, path in enumerate(paths, start=1)
+    )
+    return f'<div class="short-paths">{rows}</div>'

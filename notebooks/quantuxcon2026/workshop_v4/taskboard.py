@@ -51,8 +51,6 @@ EVENT_GROUP = {
     **dict.fromkeys(
         [
             "invite_member",
-            "view_invite_status",
-            "resend_invite",
             "accept_invite",
             "teammate_joined",
         ],
@@ -104,21 +102,24 @@ CHECKOUT = [
     "support_ticket",
 ]
 
-# ── Visits ────────────────────────────────────────────────────────────────────
-# Expected counts of each event in a visit, by the kind of visit. Comments,
-# mentions and assignments need someone to work with (TEAM_EVENTS).
+# ── Sessions ──────────────────────────────────────────────────────────────────
+# Expected counts of each event in a session, by the kind of session. Comments,
+# mentions and assignments need someone to work with (TEAM_EVENTS). The team's
+# rare events (an invite, checking on it, a teammate joining, accepting an
+# invite) aren't a kind of session: they happen in sessions of any kind, so
+# clustering on all the events finds the kinds, not these markers.
 VISIT_MIX = {
-    "check_in": {
-        "view_notifications": 1.5,
-        "complete_task": 0.8,
-        "comment": 0.35,
-        "edit_task": 0.25,
-        "create_task": 0.2,
+    "short": {
+        "view_notifications": 1.8,
+        "complete_task": 0.6,
+        "comment": 0.15,
+        "edit_task": 0.15,
+        "create_task": 0.1,
     },
     "focus": {
-        "create_task": 1.6,
-        "edit_task": 1.4,
-        "complete_task": 2.3,
+        "create_task": 2.0,
+        "edit_task": 1.7,
+        "complete_task": 2.8,
         "set_due_date": 0.35,
         "comment": 0.3,
         "view_notifications": 0.2,
@@ -132,32 +133,27 @@ VISIT_MIX = {
         "complete_task": 0.3,
         "view_timeline": 0.2,
     },
-    "sync": {
+    "teamwork": {
         "comment": 2.3,
         "mention": 0.9,
-        "view_notifications": 0.7,
+        "view_notifications": 0.4,
         "assign_task": 0.6,
         "complete_task": 0.6,
         "edit_task": 0.4,
     },
+    # The power features: reports, exports, automations, integrations.
     "review": {
         "view_report": 2.4,
         "export": 1.0,
         "view_timeline": 0.6,
+        "create_automation": 0.4,
+        "connect_integration": 0.3,
         "complete_task": 0.5,
         "comment": 0.4,
         "edit_task": 0.3,
     },
-    "admin": {
-        "create_automation": 0.9,
-        "connect_integration": 0.7,
-        "create_task": 0.5,
-        "create_project": 0.4,
-        "view_report": 0.3,
-        "edit_task": 0.3,
-    },
 }
-# A little of everything in any visit, on top of its kind's mix.
+# A little of everything in any session, on top of its kind's mix.
 BACKGROUND = {
     "create_task": 0.1,
     "edit_task": 0.12,
@@ -175,6 +171,8 @@ BACKGROUND = {
     "connect_integration": 0.005,
 }
 TEAM_EVENTS = {"comment", "mention", "assign_task"}
+# Set up once, not in batches: at most one of each per session.
+ONCE = {"create_automation", "connect_integration", "create_project"}
 SOLO_COMMENT = 0.1  # notes to self: a user with no team still comments a bit
 TASTE = 0.4  # spread of each user's own taste for each event (lognormal sigma)
 
@@ -192,33 +190,25 @@ MEMBER_KINDS = {"active": (0.6, (6, 16)), "passive": (0.4, (3, 8))}
 
 # Which kinds of visits a user makes, by kind and state (weights).
 VISIT_WEIGHTS = {
-    "alone": {"focus": 4, "check_in": 3, "planning": 1, "review": 0.4},
-    # A pair shares the work: half the visits are spent working it out together.
-    "duo": {"sync": 6, "focus": 2, "check_in": 1.5, "planning": 1.5, "review": 0.5},
+    "alone": {"focus": 4, "short": 3, "planning": 1, "review": 0.4},
+    # A pair shares the work: half the sessions are spent working it out together.
+    "duo": {"teamwork": 6, "focus": 2, "short": 1.5, "planning": 1.5, "review": 0.5},
     "lead": {
-        "sync": 3,
+        "teamwork": 3,
         "planning": 3,
         "focus": 2,
-        "check_in": 2,
+        "short": 2,
         "review": 2.0,
-        "admin": 0.5,
     },
-    "planner": {"planning": 6, "focus": 3, "check_in": 1, "review": 0.5},
-    "active": {"focus": 3, "sync": 3, "check_in": 2, "planning": 0.3, "review": 0.5},
-    "passive": {"check_in": 4, "sync": 1, "focus": 1},
+    "planner": {"planning": 6, "focus": 3, "short": 1, "review": 0.5},
+    "active": {"focus": 3, "teamwork": 3, "short": 2, "planning": 0.3, "review": 0.5},
+    "passive": {"short": 4, "teamwork": 1, "focus": 1},
 }
 POWER_SHARE = {"lead": 0.4, "active": 0.12}  # the core audience among them
-POWER_BOOST = {"review": 3.0, "admin": 4.0}
+POWER_BOOST = {"review": 3.0}
 
-# The A/B test of Timeline (per workspace): in test, a new project opens on
-# Timeline with a "Plan with your team" prompt. Planners find the view far
-# more often; a team's first member drops off a little more often.
-FINDS_TIMELINE = {"control": 0.25, "test": 0.9}
-FRAGILE_TEAM = {"control": 0.30, "test": 0.32}
-# A UI problem on the timeline: the task bars look clickable, but aren't. Some
-# planners keep reopening the timeline and give up after a few planning visits.
-STUCK_ON_BARS = 0.4
-UX_SEED = 7
+FINDS_TIMELINE = 0.6  # planners who find the Timeline view; the rest leave early
+FRAGILE_TEAM = 0.3  # a team's first member drops off right after joining
 
 
 def _poisson(lam: float, rng: random.Random) -> int:
@@ -268,29 +258,31 @@ def _visit(kind: str, user: dict, rng: random.Random) -> list[str]:
             rates.pop(event, None)
         rates["comment"] = SOLO_COMMENT
     taste = user["taste"]
-    body = [e for e, lam in rates.items() for _ in range(_poisson(lam * taste[e], rng))]
+    body = [
+        e
+        for e, lam in rates.items()
+        for _ in range(min(_poisson(lam * taste[e], rng), 1 if e in ONCE else 99))
+    ]
     if kind == "planning" and user["timeline"]:
         opening = (
             ["view_timeline"]
             if rng.random() < 0.75
             else ["open_board", "view_timeline"]
         )
-    elif rng.random() < (0.7 if kind == "check_in" else 0.12):
+    elif rng.random() < (0.7 if kind == "short" else 0.12):
         opening = ["view_notifications", "open_board"]  # came in from a notification
     else:
         opening = ["open_board"]
     return opening + _shuffled(body, rng)
 
 
-def _onboarding(rng: random.Random, abandoned: bool, test: bool) -> list[str]:
+def _onboarding(rng: random.Random, abandoned: bool) -> list[str]:
     events = ["signup"] + ["tour_step"] * (1 + _poisson(1.3, rng))
-    for _ in range(_poisson(0.8, rng)):  # templates, looked at during the tour
+    for _ in range(1 + _poisson(0.5, rng)):  # templates, looked at during the tour
         events.insert(rng.randint(1, len(events)), "template_view")
     if abandoned:  # leaves before creating a project
         return events
     events.append("create_project")
-    if test:  # test: the new project opens on the timeline
-        events.append("view_timeline")
     body = ["open_board"] * (rng.random() < 0.85)
     body += ["create_task"] * _poisson(1.0, rng) + ["edit_task"] * _poisson(0.2, rng)
     return events + body
@@ -327,12 +319,11 @@ def _next_start(t: int, rng: random.Random) -> int:
 class _Generator:
     def __init__(self, seed: int):
         self.rng = random.Random(seed)
-        self.ux = random.Random(seed + UX_SEED)  # the timeline UI problem's own stream
         self.rows: list[tuple] = []
         self.n_users = 0
         self.end = DAYS * 86400  # seconds since START: the end of the data
 
-    def _new_user(self, kind, ws, channel, group) -> dict:
+    def _new_user(self, kind, ws, channel) -> dict:
         self.n_users += 1
         rng = self.rng
         return {
@@ -341,7 +332,6 @@ class _Generator:
             "ws": ws,
             "channel": channel,
             "platform": "mobile" if rng.random() < 0.3 else "web",
-            "group": group,
             "taste": _taste(rng),
             "power": rng.random() < POWER_SHARE.get(kind, 0),
             "team": False,
@@ -349,18 +339,16 @@ class _Generator:
             "visits": 0,
         }
 
-    def _write(self, user, events, start, visit_kind, ux_marks=()) -> int | None:
-        """Writes one visit; returns when it ends, or None past the data end.
-        Timeline opened again right after itself is written only when it is
-        the UI problem (`ux_marks`): an ordinary visit doesn't reopen a view
-        it is on. (The skipped event still takes its time, so the rest of the
-        data stays as it is.)"""
+    def _write(self, user, events, start, visit_kind) -> int | None:
+        """Writes one session; returns when it ends, or None past the data
+        end. Timeline opened again right after itself isn't written: a session
+        doesn't reopen a view it is on."""
         rng, t, out, last = self.rng, start, [], start
         sid = f"{user['id']}_{user['visits'] + 1:02d}"
         for i, event in enumerate(events):
             last = t
             reopened = i and event == "view_timeline" == events[i - 1]
-            if reopened and i not in ux_marks:
+            if reopened:
                 t += rng.randint(15, 120)
                 continue
             out.append(
@@ -372,12 +360,11 @@ class _Generator:
                     user["ws"],
                     user["channel"],
                     user["platform"],
-                    user["group"],
                     visit_kind,
                     user["kind"],
                 )
             )
-            t += (self.ux if i in ux_marks else rng).randint(15, 120)
+            t += rng.randint(15, 120)
         if last >= self.end:
             return None
         user["visits"] += 1
@@ -399,15 +386,12 @@ class _Generator:
         kinds = list(OWNER_KINDS)
         kind = rng.choices(kinds, [OWNER_KINDS[k][0] for k in kinds])[0]
         _, channels, (lo, hi) = OWNER_KINDS[kind]
-        group = "test" if rng.random() < 0.5 else "control"
-        user = self._new_user(kind, f"ws_{ws:05d}", _pick(channels, rng), group)
-        n_visits = rng.randint(lo, hi)
-        found = kind == "planner" and rng.random() < FINDS_TIMELINE[group]
+        user = self._new_user(kind, f"ws_{ws:05d}", _pick(channels, rng))
+        n_sessions = rng.randint(lo, hi)
+        found = kind == "planner" and rng.random() < FINDS_TIMELINE
         if kind == "planner" and not found:
-            n_visits = rng.randint(3, 5)  # never finds the view: a few tasks, gone
+            n_sessions = rng.randint(3, 5)  # never finds the view: a few tasks, gone
         user["timeline"] = found
-        stuck = found and self.ux.random() < STUCK_ON_BARS
-        gives_up_after = self.ux.randint(2, 4)
 
         first_invite = rng.randint(1, 3)
         invites = {
@@ -421,117 +405,112 @@ class _Generator:
         seats = 1  # the owner
         pending: list[int | None] = []  # accept times; None: never accepted
         bounced = False  # the first member dropped off: back to working alone
-        team_visits = 0
+        team_sessions = 0
         upgraded = False
         wants_more = kind == "lead"
         extra_invites = 0
-        planned = 0
 
         start = rng.randrange(SIGNUP_DAYS) * 86400 + rng.randint(8, 20) * 3600
         start += rng.randint(0, 59) * 60
         abandoned = kind == "staller" and rng.random() < 0.25
-        events = _onboarding(rng, abandoned, group == "test")
-        t = self._write(user, events, start, "onboarding")
+        t = self._write(user, _onboarding(rng, abandoned), start, "onboarding")
         if t is None or abandoned:
             return
 
-        for i in range(1, n_visits):
+        for i in range(1, n_sessions):
             start = _next_start(t, rng)
             if start >= self.end:
                 break
             at = START + pd.Timedelta(seconds=start)
-            # Teammates who accepted since the last visit: a notification.
+            # Teammates who accepted since the last session: a notification,
+            # and the owner sets them up.
             arrived = [a for a in pending if a is not None and a <= start]
             pending = [a for a in pending if a is None or a > start]
             seats += len(arrived)
             user["team"] = user["team"] or bool(arrived)
 
+            invite = (i == first_invite and invites) or (
+                upgraded and extra_invites and rng.random() < 0.5
+            )
+            paywall = (
+                not invite
+                and wants_more
+                and not bounced
+                and seats >= FREE_SEATS
+                and team_sessions >= 3
+            )
             if kind == "planner":
-                weights = VISIT_WEIGHTS["planner" if found else "alone"]
-            elif not user["team"] or (bounced and team_visits >= 1):
-                weights = VISIT_WEIGHTS["alone"]
-            elif team_visits == 0:
-                weights = {"sync": 1}  # the first visit together
+                session_kind = _pick(
+                    VISIT_WEIGHTS["planner" if found else "alone"], rng
+                )
+            elif not user["team"] or (bounced and team_sessions >= 1):
+                session_kind = _pick(_boosted(VISIT_WEIGHTS["alone"], user), rng)
+            elif team_sessions == 0:
+                session_kind = "teamwork"  # the first session together
             else:
                 weights = VISIT_WEIGHTS["lead" if kind == "lead" else "duo"]
-            visit_kind = _pick(_boosted(weights, user), rng)
-            team_visits += user["team"]
-            events = _visit(visit_kind, user, rng)
-            suffix: list[str] = []
+                session_kind = _pick(_boosted(weights, user), rng)
+            team_sessions += user["team"]
+            events = _visit(session_kind, user, rng)
 
-            if i == first_invite and invites:
-                suffix.append("invite_member")
-                accept_at, member = self._invite(user, start, accepted, first=True)
+            # The team's events, in a session of any kind: a teammate who has
+            # joined since (a notification at the start), an invite sent at
+            # any point of the session.
+            head = ["teammate_joined"] * len(arrived)
+            tail: list[str] = []
+            if invite:
+                events.insert(rng.randint(1, len(events)), "invite_member")
+                if i == first_invite:
+                    accept_at, member = self._invite(user, start, accepted, first=True)
+                    bounced = member is not None and member["kind"] == "dropped"
+                else:
+                    extra_invites -= 1
+                    accept_at, _ = self._invite(user, start, rng.random() < 0.8)
                 pending.append(accept_at)
-                bounced = member is not None and member["kind"] == "dropped"
-            elif (
-                wants_more and not bounced and seats >= FREE_SEATS and team_visits >= 3
-            ):
+            if paywall:
                 # A lead invites a third person: the paywall.
                 checkout, upgraded = _checkout(at, rng)
-                suffix += checkout
+                tail += checkout
+                session_kind = "checkout"
                 if upgraded:
                     wants_more = False
                     extra_invites = rng.randint(1, 4)
                 elif rng.random() < 0.4:
                     wants_more = False  # gives up: the team stays at two
-            elif upgraded and extra_invites and rng.random() < 0.5:
-                extra_invites -= 1
-                suffix.append("invite_member")
-                accept_at, _ = self._invite(user, start, rng.random() < 0.8)
-                pending.append(accept_at)
             elif kind != "staller" and rng.random() < 0.02:
-                suffix.append("view_pricing")  # just curious
+                tail.append("view_pricing")  # just curious
 
-            if pending and not suffix and rng.random() < 0.35:
-                # An invite hangs: now and then the owner checks on it.
-                suffix.append("view_invite_status")
-                suffix += ["resend_invite"] * (rng.random() < 0.4)
-
-            events = (
-                events[:1] + ["teammate_joined"] * len(arrived) + events[1:] + suffix
-            )
-            ux_marks: set[int] = set()
-            if stuck and visit_kind == "planning":
-                # Clicks on a task bar do nothing; the user opens the timeline again.
-                at_ = events.index("view_timeline") + 1
-                for k in range(self.ux.randint(1, 3)):
-                    events.insert(at_, "view_timeline")
-                    ux_marks.add(at_ + k)
-                planned += 1
-                if planned > gives_up_after:
-                    break  # gave up
-            t = self._write(user, events, start, visit_kind, ux_marks)
+            events = events[:1] + head + events[1:] + tail
+            t = self._write(user, events, start, session_kind)
             if t is None:
                 break
 
     # ── Members ───────────────────────────────────────────────────────────────
     def member(self, owner: dict, accept_at: int, first: bool = False) -> dict | None:
         """A member joining `owner`'s workspace at `accept_at`; the first one
-        of a team drops off at once with FRAGILE_TEAM's odds."""
+        of a team drops off at once with FRAGILE_TEAM's odds. Their first
+        session, of whatever kind, opens with `accept_invite`."""
         rng = self.rng
         if accept_at >= self.end:
             return None
-        if first and rng.random() < FRAGILE_TEAM[owner["group"]]:
+        if first and rng.random() < FRAGILE_TEAM:
             kind, (lo, hi) = "dropped", (1, 2)
         else:
             names = list(MEMBER_KINDS)
             kind = rng.choices(names, [MEMBER_KINDS[k][0] for k in names])[0]
             lo, hi = MEMBER_KINDS[kind][1]
-        user = self._new_user(kind, owner["ws"], "invite", owner["group"])
+        user = self._new_user(kind, owner["ws"], "invite")
         user["team"] = True
         start = accept_at
         for i in range(rng.randint(lo, hi)):
-            if i == 0:
-                visit_kind = "sync"  # joins to work on something together
-            elif kind == "dropped":
-                visit_kind = "check_in"
+            if kind == "dropped":
+                session_kind = "teamwork" if i == 0 else "short"
             else:
-                visit_kind = _pick(_boosted(VISIT_WEIGHTS[kind], user), rng)
-            events = _visit(visit_kind, user, rng)
+                session_kind = _pick(_boosted(VISIT_WEIGHTS[kind], user), rng)
+            events = _visit(session_kind, user, rng)
             if i == 0:
                 events = ["accept_invite"] + events
-            t = self._write(user, events, start, visit_kind)
+            t = self._write(user, events, start, session_kind)
             if t is None:
                 break
             start = _next_start(t, rng)
@@ -546,14 +525,13 @@ COLUMNS = [
     "workspace_id",
     "channel",
     "platform",
-    "ab_group",
     "visit_kind",  # ground truth, for checking only
     "archetype",  # ground truth, for checking only
 ]
 TRUTH = ["visit_kind", "archetype"]
 
 
-def taskboard_events(n_workspaces: int = 14000, seed: int = 1) -> pd.DataFrame:
+def taskboard_events(n_workspaces: int = 5000, seed: int = 1) -> pd.DataFrame:
     """The Taskboard event log as a DataFrame (one row per event)."""
     gen = _Generator(seed)
     for ws in range(1, n_workspaces + 1):
@@ -565,9 +543,9 @@ def taskboard_events(n_workspaces: int = 14000, seed: int = 1) -> pd.DataFrame:
     )
 
 
-def load_taskboard(n_workspaces: int = 14000, seed: int = 1, keep_truth: bool = False):
+def load_taskboard(n_workspaces: int = 5000, seed: int = 1, keep_truth: bool = False):
     """The Taskboard event log as an Eventstream (users and visits as paths,
-    `channel`, `platform` and `ab_group` as segments). `keep_truth` keeps the
+    `channel` and `platform` as segments). `keep_truth` keeps the
     generator's `visit_kind` and `archetype` columns."""
     import retentioneering as rete
 
@@ -578,7 +556,7 @@ def load_taskboard(n_workspaces: int = 14000, seed: int = 1, keep_truth: bool = 
         df,
         schema={
             "path_cols": ["user_id", "session_id"],
-            "segment_cols": ["channel", "platform", "ab_group"],
+            "segment_cols": ["channel", "platform"],
             "custom_cols": ["workspace_id"] + (TRUTH if keep_truth else []),
         },
     )

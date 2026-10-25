@@ -29,7 +29,7 @@
     "step-matrix-count-events-at-each-step": { cls: "slide-step-matrix", build: buildStepSpotlight },
     "tree-vs.-step-matrix": { cls: "slide-step-matrix", build: buildStepSpotlight },
     "step-matrix-centered-on-an-event": { cls: "slide-step-matrix", build: buildStepSpotlight },
-    "step-matrix-one-row-per-visit-type-live-demo": { cls: "slide-step-matrix-demo" },
+    "step-matrix-one-row-per-session-type-live-demo": { cls: "slide-step-matrix-demo" },
     "step-matrix-diff-mode": { cls: "slide-widget-points", build: buildWidgetAndPoints },
     "diff-mode-two-segments-one-graph": { cls: "slide-graph-points", build: graphAndPoints(false) },
     "collapse_events-one-event-for-a-run": { cls: "slide-path-beads", build: buildPathBeadsStep },
@@ -42,24 +42,19 @@
     "why-not-tree-based-diagrams": { cls: "slide-sunburst" },
     "how-does-a-team-adopt-a-task-tracker": { cls: "slide-taskboard-app" },
     "events-and-the-happy-path": { cls: "slide-taskboard-intro", build: buildTaskboardStageChips },
-    "every-path-is-unique": { cls: "slide-sunburst slide-journeys" },
-    "even-the-transition-graph-is-tangled": { cls: "slide-stage-graph", build: buildStageFrames },
-    "what-kind-of-visit-was-it": { cls: "slide-cluster-table", build: buildClusterTableLayout },
-    "who-is-timeline-for": { cls: "slide-cluster-table", build: buildClusterTableLayout },
+    "almost-every-path-is-unique": { cls: "slide-sunburst slide-journeys" },
+    "the-transition-graph": { cls: "slide-graph-intro slide-step-matrix", build: buildSideBySide },
+    "even-the-graph-is-tangled-on-real-data": { cls: "slide-graph-switch slide-stage-graph", build: buildGraphSwitcher },
+    "idea-one-session-one-event": { cls: "slide-visits-idea", build: buildVisitsIdea },
+    "what-kind-of-session-was-it": { cls: "slide-cluster-table", build: buildClusterTableLayout },
     "who-are-the-users": { cls: "slide-cluster-table", build: buildClusterTableLayout },
-    "eight-visit-types-instead-of-31-events": { cls: "slide-visits-graph", build: buildVisitsBeforeAfter },
-    "the-timeline-experiment": { cls: "slide-timeline-experiment" },
+    "eight-session-types-instead-of-31-events": { cls: "slide-visits-graph", build: buildVisitsBeforeAfter },
     "what-it-looks-like-in-retentioneering-code": { cls: "slide-code-steps", build: buildCodeSteps },
     "what-makes-retentioneering-different": { cls: "slide-four-cards" },
     "start-a-local-server": { cls: "slide-mcp" },
     "ask-and-get-a-report": { cls: "slide-mcp" },
     "every-number-is-a-link": { cls: "slide-report" },
-    "where-we-could-have-stopped": { cls: "slide-stops" },
-    "the-result-grey": { cls: "slide-ab-results" },
-    "through-the-funnel-and-back": { cls: "slide-graph-points", build: graphAndPoints(false) },
-    "digging-deeper-a-loop-on-the-timeline": { cls: "slide-graph-points", build: graphAndPoints(true) },
-    "digging-deeper-what-they-click": { cls: "slide-timeline-clicks" },
-    "the-same-paths-visit-by-visit": { cls: "slide-sunburst slide-journeys" },
+    "the-same-paths-session-by-session": { cls: "slide-sunburst slide-journeys" },
   };
 
   var ROADMAP = "Question · Shape events · Look · Compare · Check · Claim";
@@ -602,41 +597,50 @@
   // graph is panned or zoomed.
   function buildStageFrames(slide) {
     slide.querySelectorAll("script.stage-groups").forEach(function (script) {
-      var cell = script.closest(".cell");
-      var f = cell && cell.querySelector("iframe[srcdoc]");
-      if (!f) return;
-      var groups = JSON.parse(script.textContent);
-      var host = f.parentElement;
-      host.classList.add("stage-frames-host");
-      var layer = document.createElement("div");
-      layer.className = "stage-frames fragment";
-      host.appendChild(layer);
-      f.addEventListener("load", function () {
-        whenGraphReady(f, function (cy) {
-          function redraw() {
-            var box = cy.container().getBoundingClientRect();
-            layer.innerHTML = "";
-            Object.keys(groups).forEach(function (stage) {
-              if (stage === "path_start" || stage === "path_end") return;
-              var nodes = cy.collection();
-              groups[stage].forEach(function (id) { nodes = nodes.union(cy.getElementById(id)); });
-              if (!nodes.length || groups[stage].length < 2) return;
-              var bb = nodes.renderedBoundingBox({ includeLabels: true });
-              var frame = document.createElement("div");
-              frame.className = "stage-frame stage-" + stage;
-              frame.style.left = f.offsetLeft + box.left + bb.x1 - 8 + "px";
-              frame.style.top = f.offsetTop + box.top + bb.y1 - 8 + "px";
-              frame.style.width = bb.w + 16 + "px";
-              frame.style.height = bb.h + 16 + "px";
-              frame.innerHTML = "<span>" + stage + "</span>";
-              layer.appendChild(frame);
-            });
-          }
-          redraw();
-          cy.on("viewport position", redraw);
-        });
+      var layer = stageFramesLayer(script);
+      if (layer) layer.classList.add("fragment");
+    });
+  }
+
+  // The frames for one stage_graph() output (its script tag): a layer over
+  // the widget, filled in once the graph is ready. Returns the layer (null if
+  // the script has no widget next to it).
+  function stageFramesLayer(script) {
+    var cell = script.closest(".cell");
+    var f = cell && cell.querySelector("iframe[srcdoc]");
+    if (!f) return null;
+    var groups = JSON.parse(script.textContent);
+    var host = f.parentElement;
+    host.classList.add("stage-frames-host");
+    var layer = document.createElement("div");
+    layer.className = "stage-frames";
+    host.appendChild(layer);
+    f.addEventListener("load", function () {
+      whenGraphReady(f, function (cy) {
+        function redraw() {
+          var box = cy.container().getBoundingClientRect();
+          layer.innerHTML = "";
+          Object.keys(groups).forEach(function (stage) {
+            if (stage === "path_start" || stage === "path_end") return;
+            var nodes = cy.collection();
+            groups[stage].forEach(function (id) { nodes = nodes.union(cy.getElementById(id)); });
+            if (!nodes.length || groups[stage].length < 2) return;
+            var bb = nodes.renderedBoundingBox({ includeLabels: true });
+            var frame = document.createElement("div");
+            frame.className = "stage-frame stage-" + stage;
+            frame.style.left = f.offsetLeft + box.left + bb.x1 - 8 + "px";
+            frame.style.top = f.offsetTop + box.top + bb.y1 - 8 + "px";
+            frame.style.width = bb.w + 16 + "px";
+            frame.style.height = bb.h + 16 + "px";
+            frame.innerHTML = "<span>" + stage + "</span>";
+            layer.appendChild(frame);
+          });
+        }
+        redraw();
+        cy.on("viewport position", redraw);
       });
     });
+    return layer;
   }
 
   // The visits graph on the left; on the right, one story per click (the
@@ -750,6 +754,177 @@
     });
   }
 
+  // ── Slide: The transition graph ───────────────────────────────────────────
+  // The slide's figures side by side (a tree, the graph of the same paths),
+  // the points under them.
+  // The last point is a click that spotlights its event (its first `code`)
+  // everywhere: in the paths and the tree, every occurrence with the steps
+  // out of it and the events they lead to; in the graph, its one node with
+  // the transitions out of it.
+  function buildSideBySide(slide) {
+    var cells = slide.querySelectorAll(":scope > .cell");
+    var row = document.createElement("div");
+    row.className = "side-by-side";
+    cells[0].before(row);
+    cells.forEach(function (cell) { row.appendChild(cell); });
+    var spot = slide.querySelector(":scope > ul > li:last-child");
+    var code = spot && spot.querySelector("code");
+    if (!code) return;
+    spot.classList.add("fragment", "spot-point");
+    spot.dataset.node = code.textContent;
+  }
+
+  function syncTreeGraphSpot(slide) {
+    var spot = slide && slide.querySelector("li.spot-point");
+    if (!spot) return;
+    var name = spot.dataset.node;
+    var on = spot.classList.contains("visible");
+    slide.querySelectorAll("svg.prefix-tree, .short-paths").forEach(function (svg) {
+      svg.classList.toggle("spot-on", on);
+      svg.querySelectorAll("[data-event], [data-from]").forEach(function (el) {
+        var hit = el.dataset.event === name || el.dataset.from === name;
+        var next = el.dataset.parent === name;
+        el.classList.toggle("spot-hit", on && hit);
+        el.classList.toggle("spot-next", on && next && !hit);
+      });
+    });
+    var f = slide.querySelector(".side-by-side iframe[srcdoc]");
+    if (!f) return;
+    whenGraphReady(f, function (cy) {
+      if (!cy.scratch("spotStyle")) {
+        cy.scratch("spotStyle", true);
+        cy.style()
+          .selector(".spot-dim").style({ opacity: 0.15 })
+          .selector("node.spot-hit").style({
+            "underlay-color": "#f97316", "underlay-opacity": 0.35, "underlay-padding": 10, "underlay-shape": "ellipse",
+          })
+          .selector("edge.spot-hit").style({
+            "underlay-color": "#f97316", "underlay-opacity": 0.35, "underlay-padding": 5,
+          })
+          .update();
+      }
+      cy.elements().removeClass("spot-dim spot-hit");
+      if (!on) return;
+      var node = cy.getElementById(name);
+      var edges = node.outgoers("edge");
+      node.union(edges).addClass("spot-hit");
+      cy.elements().not(node.union(edges).union(edges.connectedNodes())).addClass("spot-dim");
+    });
+  }
+
+  // ── Slide: Even the graph is tangled on real data ─────────────────────────
+  // The first paragraph on top. Under it, two graphs side by side: on the
+  // left, always the graph as it is; on the right, stacked in one place, what
+  // each operation makes of it. The text goes underneath. Each point of the
+  // list is a click that brings its own graph up on the right (the lead-in
+  // comes with the first one). With the grouped graph (one node per group:
+  // stage_graph's groups all of one event, named after it), the left graph
+  // shows those groups framed. A paragraph after the list is the last click.
+  function buildGraphSwitcher(slide) {
+    var cells = Array.prototype.slice.call(slide.querySelectorAll(":scope > .cell"));
+    var list = slide.querySelector(":scope > ul");
+    var intro = slide.querySelector(":scope > p");
+    if (!list) throw new Error("no list of points (a blank line before it?)");
+    var top = document.createElement("div");
+    top.className = "graph-switch-top";
+    cells[0].before(top);
+    if (intro) {
+      top.before(intro);
+      intro.classList.add("graph-switch-intro");
+    }
+    var before = document.createElement("div");
+    before.className = "graph-switch-before";
+    var stack = document.createElement("div");
+    stack.className = "graph-switch-stack";
+    top.appendChild(before);
+    top.appendChild(stack);
+    var text = document.createElement("div");
+    text.className = "graph-switch-text";
+    top.after(text);
+    // Everything after the intro, in order: the lead-in, the list, the close.
+    var leadIn = [], close = [];
+    for (var el = list.previousElementSibling; el && el !== intro; el = el.previousElementSibling) {
+      if (el.tagName === "P") leadIn.unshift(el);
+    }
+    for (el = list.nextElementSibling; el; el = el.nextElementSibling) {
+      if (el.tagName === "P") close.push(el);
+    }
+    leadIn.concat([list], close).forEach(function (node) { text.appendChild(node); });
+    before.appendChild(cells[0]);
+    var points = Array.prototype.slice.call(list.children);
+    var framesAt = null;
+    cells.slice(1).forEach(function (cell, i) {
+      stack.appendChild(cell);
+      cell.classList.add("fragment", "graph-switch-next");
+      cell.dataset.fragmentIndex = i;
+      if (points[i]) {
+        points[i].classList.add("fragment", "switch-point");
+        points[i].dataset.fragmentIndex = i;
+      }
+      if (isGroupedGraph(cell)) framesAt = i;
+    });
+    leadIn.forEach(function (p) {
+      p.classList.add("fragment");
+      p.dataset.fragmentIndex = 0;
+    });
+    var last = cells.length - 1;
+    close.forEach(function (p) {
+      p.classList.add("fragment", "graph-switch-close");
+      p.dataset.fragmentIndex = last;
+    });
+    // The left graph's groups, framed while the grouped graph is on.
+    var script = cells[0].querySelector("script.stage-groups");
+    var layer = framesAt !== null && script && stageFramesLayer(script);
+    if (layer) {
+      var shown = document.createElement("div");
+      shown.className = "stage-frames-window fragment fade-out";
+      shown.dataset.fragmentIndex = framesAt + 1;
+      layer.before(shown);
+      shown.appendChild(layer);
+      layer.classList.add("fragment");
+      layer.dataset.fragmentIndex = framesAt;
+    }
+  }
+
+  // A graph whose every node is a group of its own (the events renamed to
+  // their groups).
+  function isGroupedGraph(cell) {
+    var script = cell.querySelector("script.stage-groups");
+    if (!script) return false;
+    var groups = JSON.parse(script.textContent);
+    var names = Object.keys(groups).filter(function (g) { return g !== "path_start" && g !== "path_end"; });
+    return names.length > 2 && names.every(function (g) {
+      return groups[g].length === 1 && groups[g][0] === g;
+    });
+  }
+
+  // The point shown last is the current one, until the closing paragraph.
+  function syncGraphSwitcher(slide) {
+    if (!slide || !slide.classList.contains("slide-graph-switch")) return;
+    var current = null;
+    slide.querySelectorAll("li.switch-point").forEach(function (li) {
+      li.classList.remove("switch-current");
+      if (li.classList.contains("visible")) current = li;
+    });
+    // Once the closing paragraph is up, no point is the current one.
+    var close = slide.querySelector(".graph-switch-close");
+    if (close && close.classList.contains("visible")) current = null;
+    if (current) current.classList.add("switch-current");
+  }
+
+  // ── Slide: Idea: one visit, one event ─────────────────────────────────────
+  // The figure (toy.py visits_as_events_figure) builds up a row per click,
+  // fragments 0, 1, 2; the first point goes with its first row, each next
+  // point is the click that brings up the next row.
+  function buildVisitsIdea(slide) {
+    var points = slide.querySelectorAll(":scope > ul > li");
+    Array.prototype.forEach.call(points, function (li, i) {
+      if (i === 0) return;
+      li.classList.add("fragment");
+      li.dataset.fragmentIndex = i - 1;
+    });
+  }
+
   // ── Slides: Through the funnel, and back / Digging deeper: a loop ─────────
   // A graph on the left; on the right, the slide's other widget if it has one
   // (a step matrix), and the points. The graph highlights the walk in the
@@ -833,7 +1008,13 @@
         return;
       }
       SLIDES[id].cls.split(" ").forEach(function (c) { slide.classList.add(c); });
-      if (SLIDES[id].build) SLIDES[id].build(slide);
+      // One slide's builder failing (say, its markdown changed shape) must
+      // not leave every slide after it unbuilt.
+      try {
+        if (SLIDES[id].build) SLIDES[id].build(slide);
+      } catch (err) {
+        console.error("deck.html: building slide '" + id + "' failed", err);
+      }
     });
   }
 
@@ -871,6 +1052,7 @@
     Reveal.layout();
     refitWidgets(Reveal.getCurrentSlide());
     layoutColumnFrames(Reveal.getCurrentSlide());
+    syncGraphSwitcher(Reveal.getCurrentSlide());
   }
 
   if (Reveal.isReady()) onReady(); else Reveal.on("ready", onReady);
@@ -892,17 +1074,23 @@
   }
   Reveal.on("slidechanged", function (e) {
     syncFunnelSpots(e.currentSlide);
+    syncTreeGraphSpot(e.currentSlide);
+    syncGraphSwitcher(e.currentSlide);
     syncVisitsSlide(e.currentSlide);
     refitWidgets(e.currentSlide);
     layoutColumnFrames(e.currentSlide);
   });
   Reveal.on("fragmentshown", function () {
     syncVisitsSlide(Reveal.getCurrentSlide());
+    syncTreeGraphSpot(Reveal.getCurrentSlide());
+    syncGraphSwitcher(Reveal.getCurrentSlide());
     refitWidgets(Reveal.getCurrentSlide());
     syncFunnelSpots(Reveal.getCurrentSlide());
   });
   Reveal.on("fragmenthidden", function () {
     syncVisitsSlide(Reveal.getCurrentSlide());
+    syncTreeGraphSpot(Reveal.getCurrentSlide());
+    syncGraphSwitcher(Reveal.getCurrentSlide());
     syncFunnelSpots(Reveal.getCurrentSlide());
   });
   Reveal.on("resize", function () { layoutColumnFrames(Reveal.getCurrentSlide()); });

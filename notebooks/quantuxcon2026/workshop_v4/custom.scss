@@ -140,10 +140,10 @@ $stage-colors: (
   "billing": $stage-billing,
   "onboarding": $stage-getting-started,
   "focus": $stage-tasks,
-  "sync": $stage-team,
+  "teamwork": $stage-team,
   "review": $stage-power,
   "planning": $stage-planning,
-  "quick": $stage-quick,
+  "short": $stage-quick,
   "checkout": $stage-billing,
   "checkout_failed": $stage-billing,
   "path_end": #a8a29e,
@@ -862,6 +862,428 @@ $stage-colors: (
         background: #fff;
         color: $rete-ink;
       }
+    }
+  }
+}
+
+// Slide: The transition graph. A tree and the graph of the same toy paths,
+// side by side, the points under them.
+.reveal section.slide-graph-intro {
+  .side-by-side {
+    display: flex;
+    gap: 1em;
+    align-items: center;
+
+    > .cell {
+      flex: 1;
+      min-width: 0;
+    }
+
+    // The widget gets the most room; the paths, the least.
+    > .cell:first-child {
+      flex: 0 0 auto;
+    }
+
+    > .cell:last-child {
+      flex: 1.3;
+    }
+  }
+
+  // The paths themselves: a row of beads each, colored as on the tree.
+  .short-paths {
+    padding: 4px 8px 4px 4px;  // room for the spotlight's outline
+    font-size: 0.6em;
+  }
+
+  .short-path {
+    display: flex;
+    align-items: center;
+    gap: 0.35em;
+    margin: 0.5em 0;
+
+    .who {
+      margin-right: 0.4em;
+      color: #78716c;
+      font-family: $font-family-monospace;
+      font-size: 0.85em;
+    }
+
+    .bead {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.7em;
+      height: 1.7em;
+      border-radius: 50%;
+      background: var(--bead);
+      color: $rete-ink;
+      font-weight: 700;
+    }
+
+    .arrow {
+      color: #a8a29e;
+    }
+
+    .bead,
+    .arrow {
+      transition: opacity 0.3s;
+    }
+  }
+
+  // The spotlit event in the paths: its beads and the steps out of them.
+  .short-paths.spot-on {
+    .bead:not(.spot-hit):not(.spot-next),
+    .arrow:not(.spot-hit),
+    .who {
+      opacity: 0.25;
+    }
+
+    .bead.spot-hit,
+    .bead.spot-next {
+      box-shadow: 0 0 0 3px #f97316;
+    }
+
+    .arrow.spot-hit {
+      color: #f97316;
+      font-weight: 700;
+    }
+  }
+
+  .side-by-side svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+  }
+
+  > ul {
+    margin-top: 0.4em;
+    font-size: 0.62em;
+
+    li {
+      margin-bottom: 0.3em;
+    }
+  }
+
+  // The spotlit event: its nodes and branches stand out, the rest fades.
+  svg.prefix-tree {
+    circle,
+    .edge,
+    text {
+      transition: opacity 0.3s;
+    }
+  }
+
+  svg.prefix-tree.spot-on {
+    circle:not(.spot-hit):not(.spot-next),
+    .terminal-mark,
+    .edge:not(.spot-hit),
+    .label:not(.spot-hit):not(.spot-next) {
+      opacity: 0.18;
+    }
+
+    // Where the spotlit event leads: outlined in the same orange.
+    circle.spot-next {
+      stroke: #f97316;
+      stroke-width: 3;
+    }
+
+    .edge.spot-hit {
+      stroke: #f97316;
+      stroke-width: 3;
+    }
+
+    circle.spot-hit {
+      stroke: #f97316;
+      stroke-width: 4;
+    }
+  }
+}
+
+// Slide: Even the graph is tangled on real data. The intro on top; under it
+// the graph as it is (left) and what each operation makes of it (right, the
+// figures stacked in one place, each next one over the one before); the text
+// underneath, the current point marked.
+.reveal section.slide-graph-switch {
+  .graph-switch-intro {
+    margin: 0 0 0.3em;
+    font-size: 0.65em;
+  }
+
+  .graph-switch-top {
+    display: flex;
+    gap: 0.6em;
+    align-items: stretch;
+  }
+
+  .graph-switch-before,
+  .graph-switch-stack {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+  }
+
+  // Empty until the first operation: a quiet placeholder.
+  .graph-switch-stack {
+    min-height: 330px;
+    border-radius: 12px;
+    background: #fafaf9;
+
+    > .graph-switch-next {
+      position: absolute;
+      inset: 0;
+      background: #fff;
+    }
+  }
+
+  .stage-frames-window {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .graph-switch-text {
+    margin-top: 0.4em;
+    font-size: 0.55em;
+    line-height: 1.4;
+
+    > p {
+      margin: 0 0 0.3em;
+    }
+
+    > ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    li {
+      margin-bottom: 0.25em;
+      padding-left: 0.7em;
+      border-left: 4px solid transparent;
+    }
+
+    li.switch-point:not(.switch-current) {
+      opacity: 0.45;
+    }
+
+    li.switch-current {
+      border-left-color: $highlight;
+    }
+
+    .graph-switch-close {
+      margin-top: 0.4em;
+      font-weight: 600;
+    }
+  }
+}
+
+// Slide: Idea: one session, one event. One user's first sessions (toy.py
+// visits_as_events_figure), built up a step per click: the path as one line
+// of beads cut into sessions; each session's events; the sessions as vectors
+// of event counts, session 1 traced in orange, then their cluster labels; the
+// labels under the path.
+.reveal section.slide-visits-idea {
+  .visits-idea {
+    margin: 0.3em 0 0.6em;
+    font-size: 0.4em;
+  }
+
+  // Session 1 is traced until the vectors get their labels.
+  .visits-idea:has(td.idea-kind.visible) {
+    .trace {
+      opacity: 0;
+    }
+
+    table.idea-vectors {
+      tr.traced th,
+      tr.traced td:not(.idea-kind) {
+        background: none;
+      }
+
+      tr.traced td:not(.zero):not(.idea-kind) {
+        color: inherit;
+        font-weight: 400;
+      }
+    }
+  }
+
+  .idea-labels,
+  .idea-more,
+  .visit-name {
+    color: #78716c;
+  }
+
+  // The path: a column per session, a dashed cut between them; the label
+  // under each column comes last.
+  .idea-path {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+  }
+
+  .idea-labels,
+  .idea-more {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    gap: 0.6em;
+    padding: 0 1em;
+  }
+
+  .idea-labels {
+    text-align: right;
+  }
+
+  .idea-segment {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-around;
+    gap: 0.6em;
+    padding: 0.2em 0.7em;
+
+    & + .idea-segment {
+      border-left: 2px dashed #a8a29e;
+    }
+  }
+
+  .idea-more {
+    border-left: 2px dashed #a8a29e;
+  }
+
+  .visit-segment {
+    display: flex;
+    gap: 2px;
+  }
+
+  .idea-seg-kind {
+    color: #a8a29e;
+    white-space: nowrap;
+  }
+
+  .bead {
+    display: inline-block;
+    flex: none;
+    width: 1em;
+    height: 1em;
+    border-radius: 50%;
+    background: var(--bead);
+  }
+
+  .idea-visits {
+    display: grid;
+    grid-template-columns: repeat(var(--visits), 1fr);
+    gap: 0.5em;
+    margin: 1.2em 0 0.3em;
+  }
+
+  .visit-events {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    justify-content: center;
+    gap: 0.25em;
+    padding: 0.4em;
+    border-radius: 8px;
+    box-shadow: inset 0 0 0 1px #d4d4d8;
+  }
+
+  // Session 1, traced from its events to its vector, in orange.
+  .trace {
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    box-shadow: inset 0 0 0 3px #f97316;
+    pointer-events: none;
+  }
+
+  .visit-name {
+    flex-basis: 100%;
+    text-align: center;
+  }
+
+  // The sessions as vectors: event counts, zeros faint, headers slanted.
+  table.idea-vectors {
+    margin: 0 auto;
+    border-collapse: collapse;
+    font-family: $font-family-monospace;
+    font-size: 1.15em;
+
+    th,
+    td {
+      padding: 0.15em 0.6em;
+      border: none;
+      text-align: center;
+    }
+
+    // Events as on the session boxes above: chips, slanted. The row is tall
+    // enough for the longest one, so nothing reaches into the boxes.
+    thead th {
+      height: 8.5em;
+      vertical-align: bottom;
+      white-space: nowrap;
+
+      > span {
+        display: inline-block;
+        width: 1.4em;
+        transform: rotate(-50deg);
+        transform-origin: 0.7em 0.7em;
+        font-weight: 400;
+        text-align: left;
+      }
+
+      .chip {
+        font-size: 0.8em;
+      }
+    }
+
+
+    // The session names stand apart from the counts.
+    tbody th {
+      padding-right: 1.6em;
+      color: #78716c;
+      font-weight: 400;
+      text-align: right;
+    }
+
+    tbody td {
+      box-shadow: inset 0 -1px 0 #e7e5e4;
+    }
+
+    tr.traced th,
+    tr.traced td:not(.idea-kind) {
+      background: color-mix(in srgb, #f97316 12%, white);
+    }
+
+    tr.traced td:not(.zero):not(.idea-kind) {
+      color: #c2410c;
+      font-weight: 700;
+    }
+
+    td.zero {
+      color: #d6d3d1;
+    }
+
+    td.idea-kind {
+      box-shadow: none;
+      padding-left: 1em;
+      color: #a8a29e;
+      text-align: left;
+    }
+  }
+
+  .chip {
+    @include chip;
+    background: color-mix(in srgb, var(--chip) 18%, white);
+  }
+
+  > ul {
+    font-size: 0.55em;
+
+    li {
+      margin-bottom: 0.15em;
     }
   }
 }

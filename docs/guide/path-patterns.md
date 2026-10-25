@@ -615,6 +615,11 @@ Two rules turn the regex translation into what an analyst expects:
   `A, A, B` there is one match — it starts on the first `A`, and the second is
   inside it.
 
+It costs somewhat more than the other modes — on a million paths, about
+1.3–1.7× the time of `"all"` on the same pattern. DuckDB still numbers and
+sorts the events in parallel; only the regex scan itself runs in Python, and
+that is the cheap part.
+
 Like `"all"`, it returns several positions per path, so `truncate_paths`, Step
 Matrix and Step Sankey reject it; `add_events` is what it is for, and
 `get_conversion_rate` counts each path once however many matches it has.

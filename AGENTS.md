@@ -137,7 +137,9 @@ matcher must keep agreeing with the brute-force oracle in `tests/paths/anchors_t
 that splits a pattern into blocks must use `isGapToken` and the unrolled `layout_pattern`.
 `occurrence="non_overlapping"` is the one mode not matched in SQL: `paths/non_overlapping.py`
 compiles the pattern to a Python regex over a one-character-per-event encoding (ADR-0017), and
-its capture order must stay equal to the ordinals of the unrolled pattern.
+its capture order must stay equal to the ordinals of the unrolled pattern. DuckDB still numbers,
+sorts and encodes the events (as integer codes); keep per-path Python work out of that path —
+a per-path `"".join` made the first version 4.5× slower.
 
 ### JS: two workspace packages, one build target (ADR-0005)
 

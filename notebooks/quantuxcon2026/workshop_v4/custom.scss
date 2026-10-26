@@ -119,6 +119,172 @@ $slide-body-height: 600px;
 // Each block is scoped to its slide's `slide-…` class, set by deck.html (see
 // SLIDES there), so nothing here leaks onto other slides.
 
+// Title slide: a photo and a role next to each author's name (deck.html
+// addTitlePhotos).
+.reveal #title-slide {
+  .quarto-title-authors {
+    display: flex;
+    gap: 2.5em;
+  }
+
+  .quarto-title-author {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 0.6em;
+    align-items: center;
+  }
+
+  .author-photo {
+    grid-row: 1 / span 2;
+    width: 88px;
+    height: 88px;
+    margin: 0;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .author-role {
+    align-self: start;
+    color: #78716c;
+    font-size: 0.75em;
+  }
+}
+
+// Slide: What Retentioneering is. The event log (and the two lines of code)
+// on the left, the transition graph it becomes on the right.
+.reveal section.slide-what {
+  > p {
+    margin-bottom: 0.3em;
+    font-size: 0.75em;
+  }
+
+  .what-row {
+    display: flex;
+    gap: 1em;
+    align-items: center;
+
+    > .cell:first-child {
+      flex: 0 0 40%;
+    }
+
+    > .cell:last-child {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  .what-in {
+    font-size: 0.5em;
+
+    table {
+      margin: 0;
+      font-family: $font-family-monospace;
+
+      th,
+      td {
+        padding: 0.15em 0.6em;
+        text-align: left;
+      }
+    }
+  }
+
+  .what-label,
+  .what-more {
+    margin: 0.2em 0;
+    color: #78716c;
+  }
+
+  .what-code {
+    margin-top: 0.8em;
+    font-size: 1.15em;
+  }
+
+  > ul {
+    font-size: 0.62em;
+  }
+}
+
+// Slide: Retentioneering history. The emblem (logo, years) left of the history.
+.reveal section.slide-history {
+  .history-lead {
+    margin: 0 0 0.6em;
+    color: #57534e;
+    font-size: 0.8em;
+  }
+
+  .history-layout {
+    display: flex;
+    gap: 1.5em;
+    align-items: center;
+  }
+
+  .history-emblem {
+    flex: 0 0 22%;
+    text-align: center;
+
+    p {
+      margin: 0.1em 0;
+    }
+
+    img {
+      width: 130px;
+      margin: 0 auto 0.3em;
+    }
+
+    figure,
+    .quarto-figure {
+      margin: 0;
+    }
+
+    strong {
+      font-size: 1.1em;
+    }
+
+    p:last-child {
+      color: #57534e;
+      font-size: 0.55em;
+    }
+  }
+
+  .history-layout > ul {
+    font-size: 0.7em;
+
+    li {
+      margin-bottom: 0.7em;
+    }
+
+    li > strong:first-child {
+      color: #c2410c;
+      font-weight: 600;
+    }
+  }
+
+  > p:last-child {
+    margin-top: 0.8em;
+    font-size: 0.6em;
+  }
+}
+
+// Slide: Questions Retentioneering answers. The questions, then the workshop.
+.reveal section.slide-why {
+  > p {
+    font-size: 0.75em;
+  }
+
+  > ul {
+    font-size: 0.68em;
+
+    li {
+      margin-bottom: 0.4em;
+    }
+  }
+
+  > h3 {
+    margin-top: 0.6em;
+    font-size: 0.8em;
+  }
+}
+
 // ── Motivating example (Taskboard) ── chips colored by event group / visit ─
 // The colors match toy.py's STAGE_COLORS, which colors the same events and
 // visits in the figures: events by where in the app they happen, visits by
@@ -141,7 +307,6 @@ $stage-colors: (
   "onboarding": $stage-getting-started,
   "focus": $stage-tasks,
   "teamwork": $stage-team,
-  "review": $stage-power,
   "planning": $stage-planning,
   "short": $stage-quick,
   "checkout": $stage-billing,
@@ -322,6 +487,15 @@ $stage-colors: (
 // table, narrower, and what each cluster is, in a word, in the order of the
 // table's columns.
 .reveal section.slide-cluster-table {
+  > .cluster-table-layout > ul li,
+  .cluster-table-layout ul li {
+    line-height: 1.7;
+  }
+
+  .cluster-table-layout code.chip {
+    vertical-align: middle;
+  }
+
   .cluster-table-layout {
     display: flex;
     gap: 1em;
@@ -1078,6 +1252,40 @@ $stage-colors: (
   }
 }
 
+// Slide: A tree hides what the graph shows. The tree diagrams of the session
+// paths, larger, the points under them; a point spotlights its transition on
+// all three (deck.html buildTreeSpot).
+.reveal section.slide-tree-spot {
+  .branching svg {
+    [data-event] {
+      transition: opacity 0.3s;
+    }
+
+    &.spot-on [data-event]:not(.spot-hit) {
+      opacity: 0.1;
+    }
+
+    // Thick enough to find a single path among a thousand.
+    line.spot-hit {
+      stroke: #f97316;
+      stroke-width: 4;
+      stroke-opacity: 1;
+    }
+
+    path.spot-hit,
+    rect.spot-hit {
+      stroke: #f97316;
+      stroke-width: 4;
+    }
+  }
+
+  // The point sits halfway down the space under the diagrams.
+  > ul {
+    margin-top: 4.5em;
+    font-size: 0.62em;
+  }
+}
+
 // Slide: Idea: one session, one event. One user's first sessions (toy.py
 // visits_as_events_figure), built up a step per click: the path as one line
 // of beads cut into sessions; each session's events; the sessions as vectors
@@ -1474,8 +1682,14 @@ $stage-colors: (
       min-width: 0;
     }
 
+    // Small enough for the whole pipeline, about 24 lines, with no scroll.
+    pre {
+      max-height: none;
+    }
+
     pre code {
-      font-size: 0.85em;
+      max-height: none;
+      font-size: 0.76em;
     }
   }
 

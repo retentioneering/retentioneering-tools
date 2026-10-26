@@ -122,8 +122,10 @@ def sunburst_svg(
             span = (a1 - a0) * counts[child] / (counts[prefix] if prefix else total)
             r0, r1 = hole + ring * level, hole + ring * (level + 1)
             event = child[-1]
+            parent = child[-2] if len(child) > 1 else "path_start"
             parts.append(
-                f'<path d="{_arc(c, c, r0, r1, a, a + span)}" fill="{colors[event]}" '
+                f'<path data-event="{event}" data-parent="{parent}" '
+                f'd="{_arc(c, c, r0, r1, a, a + span)}" fill="{colors[event]}" '
                 'stroke="#fff" stroke-width="1.5"/>'
             )
             # Label only arcs the whole word fits into (~0.6em per character).
@@ -818,8 +820,10 @@ def icicle_svg(paths: list[list[str]], depth: int, size=(360, 360), colors=None)
         for child in _children(tree, prefix):
             h = (y1 - y0) * tree[child] / total
             x = (len(child) - 1) * col_w
+            parent = child[-2] if len(child) > 1 else "path_start"
             parts.append(
-                f'<rect x="{x:.1f}" y="{y:.2f}" width="{col_w - 1:.1f}" height="{max(h - 0.4, 0.1):.2f}" '
+                f'<rect data-event="{child[-1]}" data-parent="{parent}" '
+                f'x="{x:.1f}" y="{y:.2f}" width="{col_w - 1:.1f}" height="{max(h - 0.4, 0.1):.2f}" '
                 f'fill="{colors[child[-1]]}"/>'
             )
             if len(child) < depth:
@@ -862,19 +866,25 @@ def tree_svg(paths: list[list[str]], depth: int, size=(360, 360), colors=None) -
     ]
     for prefix in tree:
         (x1, y1), (x2, y2) = xy(prefix[:-1]), xy(prefix)
+        parent = prefix[-2] if len(prefix) > 1 else "path_start"
         parts.append(
-            f'<line x1="{x1:.1f}" y1="{y1:.2f}" x2="{x2:.1f}" y2="{y2:.2f}" '
+            f'<line data-event="{prefix[-1]}" data-parent="{parent}" '
+            f'x1="{x1:.1f}" y1="{y1:.2f}" x2="{x2:.1f}" y2="{y2:.2f}" '
             f'stroke="{colors[prefix[-1]]}" stroke-width="0.6" stroke-opacity="0.8"/>'
         )
     parts.append("</svg>")
     return "".join(parts)
 
 
-def branching_figure(stream, depth: int = 5, colors=None, size: int = 330) -> str:
+def branching_figure(
+    stream, depth: int = 5, colors=None, size: int = 330, note: bool = True
+) -> str:
     """Tree, sunburst and icicle of the first `depth` steps of every path in
-    `stream`, side by side, with the numbers that make the point: how many
-    paths are unique, and how much of a typical path the `depth` levels show.
-    `colors` maps events to colors (event_colors by default)."""
+    `stream`, side by side, with the numbers that make the point (`note`): how
+    many paths are unique, and how much of a typical path the `depth` levels
+    show. `colors` maps events to colors (event_colors by default). Every
+    segment carries its event and the event before it (`data-event`,
+    `data-parent`), for deck.html to spotlight a transition."""
     paths = _paths(stream)
     unique = len({tuple(p) for p in paths})
     shown = sorted(min(depth, len(p)) / len(p) for p in paths)[len(paths) // 2]
@@ -894,6 +904,8 @@ def branching_figure(stream, depth: int = 5, colors=None, size: int = 330) -> st
         f"<figure>{svg}<figcaption>{name}</figcaption></figure>"
         for name, svg in figures
     )
+    if not note:
+        return f'<div class="branching">{cells}</div>'
     return (
         f'<div class="branching">{cells}</div>'
         f'<p class="branching-note">{n_paths} paths over {n_events} event types, '
@@ -918,7 +930,6 @@ STAGE_COLORS = {
     "onboarding": "#f7c630",
     "focus": "#3b82f6",
     "teamwork": "#10b981",
-    "review": "#8b5cf6",
     "planning": "#06b6d4",
     "short": "#94a3b8",
     "checkout": "#ec4899",
@@ -1013,9 +1024,9 @@ VISIT_LAYOUT = {
     "onboarding": (1, -0.7),
     "short": (1.5, 0.9),  # short sessions: notifications, a task or two
     "focus": (2, 0),
-    "planning": (2.2, -1.5),
+    "planning": (1.6, -1.6),
     "teamwork": (3, -0.7),
-    "review": (4, 0),
+    "power": (4, 0),
     "checkout": (4, -1.4),
     "checkout_failed": (4.6, -0.7),
     "path_end": (5, 0.3),

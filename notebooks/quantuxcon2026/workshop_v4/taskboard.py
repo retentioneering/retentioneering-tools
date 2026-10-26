@@ -8,7 +8,7 @@ is in LEGEND.md; this module generates the click stream from it. In short:
 - Users are owners (signed up themselves, own a workspace) or members (came
   through an owner's invite). Members never see the paywall.
 - Every session has a kind (onboarding, short, focus, planning, teamwork,
-  review): a mix of events from all over the app, in random amounts, with
+  power): a mix of events from all over the app, in random amounts, with
   each user's own taste on top. The team's rare events happen in sessions of
   any kind. Users differ by the mix of sessions they make.
 
@@ -126,7 +126,7 @@ VISIT_MIX = {
         "edit_task": 0.4,
     },
     # The power features: reports, exports, automations, integrations.
-    "review": {
+    "power": {
         "view_report": 2.4,
         "export": 1.0,
         "view_timeline": 0.6,
@@ -174,22 +174,22 @@ MEMBER_KINDS = {"active": (0.6, (6, 16)), "passive": (0.4, (3, 8))}
 
 # Which kinds of sessions a user makes, by kind and state (weights).
 VISIT_WEIGHTS = {
-    "alone": {"focus": 4, "short": 3, "planning": 1, "review": 0.4},
+    "alone": {"focus": 4, "short": 3, "planning": 1, "power": 0.4},
     # A pair shares the work: half the sessions are spent working it out together.
-    "duo": {"teamwork": 6, "focus": 2, "short": 1.5, "planning": 1.5, "review": 0.5},
+    "duo": {"teamwork": 6, "focus": 2, "short": 1.5, "planning": 1.5, "power": 0.5},
     "lead": {
         "teamwork": 3,
         "planning": 3,
         "focus": 2,
         "short": 2,
-        "review": 2.0,
+        "power": 2.0,
     },
-    "planner": {"planning": 6, "focus": 3, "short": 1, "review": 0.5},
-    "active": {"focus": 3, "teamwork": 3, "short": 2, "planning": 0.3, "review": 0.5},
+    "planner": {"planning": 6, "focus": 3, "short": 1, "power": 0.5},
+    "active": {"focus": 3, "teamwork": 3, "short": 2, "planning": 0.3, "power": 0.5},
     "passive": {"short": 4, "teamwork": 1, "focus": 1},
 }
 POWER_SHARE = {"lead": 0.4, "active": 0.12}  # the core audience among them
-POWER_BOOST = {"review": 3.0}
+POWER_BOOST = {"power": 3.0}
 
 FINDS_TIMELINE = 0.6  # planners who find the Timeline view; the rest leave early
 FRAGILE_TEAM = 0.3  # a team's first member drops off right after joining

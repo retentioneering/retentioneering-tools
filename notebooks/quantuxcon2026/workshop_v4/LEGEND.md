@@ -53,7 +53,7 @@ hardly ever set due dates), so sessions of one kind differ from user to user.
 | focus | heads-down work on one's own tasks | `create_task`, `edit_task`, `complete_task` |
 | planning | lays out the work: tasks, dates, dependencies, who does what | `create_task`, `set_due_date`, `add_dependency`, `assign_task`, `view_timeline` |
 | teamwork | works it out with the team | `comment`, `mention`, `assign_task`, `view_notifications` |
-| review | the power features | `view_report`, `export`, `create_automation`, `connect_integration` |
+| power | the power features | `view_report`, `export`, `create_automation`, `connect_integration` |
 
 The team's rare events are not a kind of session: they happen in sessions of
 any kind. An invite (`invite_member`) is sent at any point of a session; a
@@ -81,7 +81,7 @@ time. Clustering users on the kinds of their sessions recovers these.
 | staller | 30% | onboarding, sometimes not even a project, then a short session or two at most |
 | solo | 28% | works alone: focus and short sessions; most invite someone who never comes |
 | duo | 15% | invites one person, who joins; the two share the work (half the sessions are teamwork) and stay on the free plan |
-| team lead | 15% | brings a teammate in, plans, works with the team, reviews; invites a third person, hits the paywall and mostly pays; then invites more |
+| team lead | 15% | brings a teammate in, plans, works with the team, uses the power features; invites a third person, hits the paywall and mostly pays; then invites more |
 | planner | 12% | a freelancer planning client work alone; those who find Timeline plan session after session, the rest leave early |
 
 **Members** come in through an owner's invite (`channel` invite,
@@ -94,7 +94,7 @@ time. Clustering users on the kinds of their sessions recovers these.
 | dropped | accepts the invite, looks around once or twice and is gone |
 
 A share of team leads (40%) and active members (12%) are the **core
-audience**: many more review sessions.
+audience**: many more power sessions.
 
 ## Stories planted in the data
 
@@ -102,7 +102,7 @@ audience**: many more review sessions.
    kinds of sessions above, not the event groups; users clustered on their
    sessions give the kinds of users.
 2. **A-ha moment: a teammate joins** (`teammate_joined`). Owners whose
-   teammate comes and stays go on to work with the team, plan and review; the
+   teammate comes and stays go on to work with the team, plan and use the power features; the
    rest stay in focus and short sessions, or leave.
 3. **The invite funnel.** Many solo owners invite someone who never comes.
 4. **The paywall.** Upgrades come from team leads inviting a third person;

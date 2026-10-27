@@ -6,6 +6,8 @@ timeline_report.html
 # when the file is missing)
 taskboard.csv.gz
 slides.html
+# Still-frame export (export.py)
+export/
 _build_slides.ipynb
 _build_slides.ipynb.tmp
 _build_slides_files/

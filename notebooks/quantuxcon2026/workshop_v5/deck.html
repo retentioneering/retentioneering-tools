@@ -44,9 +44,9 @@
     "the-transition-graph": { cls: "slide-graph-intro slide-step-matrix", build: buildSideBySide },
     "even-the-graph-is-tangled-on-real-data": { cls: "slide-graph-switch slide-stage-graph", build: buildGraphSwitcher },
     "make-each-session-a-single-event": { cls: "slide-visits-idea", build: buildVisitsIdea },
-    "what-kind-of-session-was-it": { cls: "slide-cluster-table", build: buildSessionClusterSpots },
+    "clustering-results-what-kind-of-session-was-it": { cls: "slide-cluster-table", build: buildSessionClusterSpots },
     "who-the-users-are-cluster-sequences-of-sessions": { cls: "slide-cluster-table", build: buildClusterTableLayout },
-    "eight-session-types-instead-of-29-events": { cls: "slide-visits-graph", build: buildVisitsBeforeAfter },
+    "transition-graph-built-on-session-sequences": { cls: "slide-visits-graph", build: buildVisitsBeforeAfter },
     "what-it-looks-like-in-retentioneering-code": { cls: "slide-code-steps", build: buildCodeSteps },
     "start-a-local-server": { cls: "slide-mcp" },
     "ask-and-get-a-report": { cls: "slide-report", build: buildReportAsk },
@@ -1049,6 +1049,10 @@
             // The whole graph, after the widget's own fit, which leaves room
             // for the controls.
             setTimeout(function () { cy.fit(undefined, 6); }, 600);
+            // Lighter dimming than the widget's default (opacity 0.1): the
+            // rest of the graph stays readable behind the highlighted path.
+            // Set after the widget's own fade-in has finished.
+            setTimeout(function () { cy.$(".dimmed").style("opacity", 0.2); }, 1200);
           });
           return;
         }

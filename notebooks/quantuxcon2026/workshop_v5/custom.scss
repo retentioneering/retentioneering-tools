@@ -166,7 +166,8 @@ $slide-body-height: 600px;
 
   .what-grid {
     display: grid;
-    grid-template-columns: 1fr 40px 1fr;
+    // The right column is wider: the cluster table needs it, the step matrix doesn't.
+    grid-template-columns: 0.9fr 40px 1.1fr;
     grid-template-rows: auto 30px auto;
     align-items: center;
   }
@@ -591,6 +592,11 @@ $stage-colors: (
 // left, stories piling up on the right (the current one in full color), and on
 // the last click the raw event graph in their place.
 .reveal section.slide-visits-graph {
+  > p {
+    margin: 0 0 0.3em;
+    font-size: 0.75em;
+  }
+
   .visits-layout {
     display: flex;
     gap: 0.6em;
@@ -2531,6 +2537,13 @@ $stage-colors: (
     svg {
       width: 330px;
       height: 330px;
+    }
+
+    // The sunburst is round: it can take more room than its square neighbours.
+    figure:nth-child(2) svg {
+      width: 360px;
+      height: 360px;
+      margin: -15px 0;
     }
 
     figcaption {

@@ -102,8 +102,19 @@ def sunburst_svg(
         colors.setdefault(e, PALETTE[len(colors) % len(PALETTE)])
 
     c = size / 2
-    hole = size * 0.12
-    ring = (c - hole - 2) / depth
+    deep = depth > 6
+    hole = size * (0.07 if deep else 0.12)
+    ring = (c - hole - 1) / depth
+    # Thin white seams on deep sunbursts: a 1.5px seam would eat the small arcs.
+    seam = 0.6 if deep else 1.5
+
+    def radius(level: int) -> float:
+        # Deep sunbursts give the first rings more room: they hold the shares
+        # you can read, the outer rings are mostly slivers.
+        if not deep:
+            return hole + ring * level
+        return hole + (c - hole - 1) * (level / depth) ** 0.7
+
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {size} {size}" '
         f'width="{size}" height="{size}" font-family="Source Sans Pro, sans-serif">'
@@ -118,13 +129,13 @@ def sunburst_svg(
         a = a0
         for child in children:
             span = (a1 - a0) * counts[child] / (counts[prefix] if prefix else total)
-            r0, r1 = hole + ring * level, hole + ring * (level + 1)
+            r0, r1 = radius(level), radius(level + 1)
             event = child[-1]
             parent = child[-2] if len(child) > 1 else "path_start"
             parts.append(
                 f'<path data-event="{event}" data-parent="{parent}" '
                 f'd="{_arc(c, c, r0, r1, a, a + span)}" fill="{colors[event]}" '
-                'stroke="#fff" stroke-width="1.5"/>'
+                f'stroke="#fff" stroke-width="{seam}"/>'
             )
             # Label only arcs the whole word fits into (~0.6em per character).
             mid, rm = a + span / 2, (r0 + r1) / 2

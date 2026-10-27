@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+## [5.3.0] - 2026-10-27
+
 ### Added
 
 - Path patterns accept the regex quantifier family on gaps: `.{m,n}`, `{n}`,

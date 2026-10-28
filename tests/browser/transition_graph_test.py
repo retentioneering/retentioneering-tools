@@ -7,6 +7,7 @@ is absent; CI runs it with Chromium on Python 3.12.
 """
 
 import os
+import re
 
 import pandas as pd
 import pytest
@@ -129,7 +130,13 @@ def test_millisecond_diff_hover_and_ego_keep_units(tmp_path, path_groups):
             )
             page.mouse.move(point["x"], point["y"])
             for value in ("125ms", "375ms", "-250ms"):
-                playwright.expect(page.get_by_text(value, exact=True)).to_be_visible()
+                # The Ego ribbon also has a tspan with the delta; require the
+                # tooltip's HTML span so a missing tooltip cannot pass this check.
+                playwright.expect(
+                    page.locator("span").filter(
+                        has_text=re.compile(r"^" + re.escape(value) + r"$")
+                    )
+                ).to_be_visible()
             point = page.evaluate(
                 """() => {
                     const cy = [...document.querySelectorAll('*')].find(e => e.__cy).__cy;
@@ -141,7 +148,13 @@ def test_millisecond_diff_hover_and_ego_keep_units(tmp_path, path_groups):
             page.get_by_role("button", name="Ego view: request", exact=True).click()
             page.locator("svg g path").first.hover()
             for value in ("125ms", "375ms", "-250ms"):
-                playwright.expect(page.get_by_text(value, exact=True)).to_be_visible()
+                # The Ego ribbon also has a tspan with the delta; require the
+                # tooltip's HTML span so a missing tooltip cannot pass this check.
+                playwright.expect(
+                    page.locator("span").filter(
+                        has_text=re.compile(r"^" + re.escape(value) + r"$")
+                    )
+                ).to_be_visible()
             assert not errors
         finally:
             browser.close()

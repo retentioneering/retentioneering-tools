@@ -3224,6 +3224,7 @@ export const TransitionGraph = observer(function TransitionGraph({
           formatValue={formatValue}
           isDark={isDark}
           isDifferential={isDifferential}
+          isTime={isTimeValue}
           getDiffBreakdown={(source, target) =>
             store.getDiffCellBreakdown(source, target)
           }
@@ -3712,6 +3713,7 @@ export const TransitionGraph = observer(function TransitionGraph({
             />
           ) : isDifferential ? (
             <DiffBreakdownTooltip
+              isTime={isTimeValue}
               title={
                 <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span>{tooltip.from}</span>

@@ -142,3 +142,39 @@ def test_widget_pattern_diff_and_explicit_state_override(tmp_path):
     assert result["values"][i][j] == -0.250
     assert result["group1"]["values"][i][j] == 0.125
     assert spans().transition_graph(state_file=state, time_unit="s").time_unit == "s"
+
+
+def test_interactive_settings_retain_resolution_and_export(tmp_path):
+    frame = spans().df[["user_id", "event", "timestamp"]].copy()
+    frame["session_id"] = frame.user_id
+    frame["cohort"] = frame.user_id.map({1: "fast", 2: "fast", 3: "slow"})
+    stream = Eventstream(
+        frame,
+        {"path_cols": ["user_id", "session_id"], "segment_cols": ["cohort"]},
+    )
+    state = str(tmp_path / "graph.json")
+    widget = stream.transition_graph(
+        edge_weight="time_median", time_unit="ms", state_file=state
+    )
+    # These trait changes mirror the interactive sidebar's host.set calls.
+    widget.edge_weight = "count"
+    widget.path_col = "session_id"
+    widget.edge_weight = "time_q95"
+    widget.diff = json.dumps(["cohort", "fast", "slow"])
+    result = json.loads(widget.result)
+    i, j = result["events"].index("request"), result["events"].index("ready")
+    assert result["values"][i][j] == -0.250
+    assert result["group1"]["values"][i][j] == 0.125
+    assert result["group2"]["values"][i][j] == 0.375
+    restored = stream.transition_graph(state_file=state)
+    assert restored.time_unit == "ms"
+    assert restored.edge_weight == "time_q95"
+    assert restored.path_col == "session_id"
+    assert restored._export_data()["result"] == result
+    export = tmp_path / "graph.html"
+    restored.export_html(str(export))
+    assert export.exists()
+    widget.diff = ""
+    widget.edge_weight = "time_median"
+    assert widget.time_unit == "ms"
+    assert widget._export_data()["result"]["values"][i][j] == 0.125

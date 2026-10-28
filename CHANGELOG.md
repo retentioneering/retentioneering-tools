@@ -12,6 +12,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   keeps existing results. Timedelta results and seconds-based widget JSON
   retain their existing units; the option persists in widget state and exports.
 
+### Fixed
+
+- Time-weighted graph and Ego-view diff tooltips display duration units for both
+  groups and their signed difference, including millisecond values.
+- Graph settings identify path-ID-group comparisons instead of showing a missing
+  segment warning; the diff help text states the group 1 minus group 2 direction.
+
 ## [5.3.0] - 2026-10-27
 
 ### Added

@@ -85,7 +85,6 @@ def test_millisecond_diff_hover_and_ego_keep_units(tmp_path, path_groups):
     export = tmp_path / "diff.html"
     stream.transition_graph(
         edge_weight="time_median",
-        time_unit="ms",
         diff=([1], [2]) if path_groups else ("cohort", "fast", "slow"),
         height=500,
     ).export_html(str(export))

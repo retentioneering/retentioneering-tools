@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, get_args
 import pandas as pd
 
 from retentioneering import engine
-from retentioneering.engine.dialect import date_diff
+from retentioneering.engine import dialect
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.exceptions import EmptyEventstreamError, InvalidParameterError
 from .types import T_Diff, T_TransitionMatrixValues
@@ -37,10 +37,7 @@ class TransitionMatrix:
         diff: T_Diff = None,
         path_col: str | None = None,
         path_pattern: str | None = None,
-        time_unit: str = "s",
     ) -> pd.DataFrame:
-        if time_unit not in ("s", "ms"):
-            raise InvalidParameterError("time_unit", time_unit, ["s", "ms"])
         path_col = path_col or self.eventstream.schema.path_col
         if path_col not in self.eventstream.schema.path_cols:
             raise InvalidParameterError(
@@ -48,7 +45,7 @@ class TransitionMatrix:
             )
         if path_pattern is not None:
             return self._restricted(path_pattern, path_col).fit(
-                values, diff, path_col=path_col, time_unit=time_unit
+                values, diff, path_col=path_col
             )
         event_col = self.eventstream.schema.event_col
         timestamp_col = self.eventstream.schema.timestamp_col
@@ -157,7 +154,7 @@ class TransitionMatrix:
                             partition by {path_col_q}
                             order by {order_by}
                         ) as next_{timestamp_col},
-                        {date_diff(time_unit, timestamp_col_q, f"next_{timestamp_col}")} as timedelta
+                        {dialect.epoch(f"next_{timestamp_col} - {timestamp_col_q}")} as timedelta
                     from df
                 ) where next_{event_col} is not null
                 group by {event_col_q}, next_{event_col}
@@ -166,7 +163,7 @@ class TransitionMatrix:
                 timedeltas = timedeltas.set_index([event_col, f"next_{event_col}"])[
                     "timedelta"
                 ]
-                timedeltas = pd.to_timedelta(timedeltas, unit=time_unit)
+                timedeltas = pd.to_timedelta(timedeltas, unit="s")
                 tm = timedeltas.unstack()
 
             else:
@@ -190,12 +187,8 @@ class TransitionMatrix:
 
         else:
             stream1, stream2 = self.eventstream._split_two(diff, path_col=path_col)
-            tm1 = TransitionMatrix(stream1).fit(
-                values, path_col=path_col, time_unit=time_unit
-            )
-            tm2 = TransitionMatrix(stream2).fit(
-                values, path_col=path_col, time_unit=time_unit
-            )
+            tm1 = TransitionMatrix(stream1).fit(values, path_col=path_col)
+            tm2 = TransitionMatrix(stream2).fit(values, path_col=path_col)
             index = tm1.index.union(tm2.index)
             columns = tm1.columns.union(tm2.columns)
             fill_value = 0 if values not in time_values else pd.NaT

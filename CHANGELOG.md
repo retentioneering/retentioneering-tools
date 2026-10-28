@@ -5,15 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
-### Added
-
-- `transition_graph` and `transition_graph_data` accept `time_unit="ms"` for
-  millisecond-resolution median and q95 edge durations. The default `"s"`
-  keeps existing results. Timedelta results and seconds-based widget JSON
-  retain their existing units; the option persists in widget state and exports.
-
 ### Fixed
 
+- `time_median` and `time_q95` edge weights in `transition_graph` and
+  `transition_graph_data` measure the exact gap between events instead of
+  counting whole-second boundaries, so a 125 ms span no longer reads as 0 s or
+  1 s depending on where it starts. Time-weighted results computed before this
+  release can shift by up to a second per transition.
 - Time-weighted graph and Ego-view diff tooltips display duration units for both
   groups and their signed difference, including millisecond values.
 - Graph settings identify path-ID-group comparisons instead of showing a missing

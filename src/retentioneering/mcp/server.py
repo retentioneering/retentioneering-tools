@@ -289,7 +289,6 @@ def _build_server(
         path_col: str | None = None,
         views: list | None = None,
         local_preprocessors: list | None = None,
-        time_unit: str = "s",
     ) -> str:
         """
         Compute a transition graph and register it as a tab in the pending report.
@@ -306,8 +305,6 @@ def _build_server(
         edge_weight:
             How to weight edges. One of: proba_out, proba_in, count, unique_paths,
             share_of_total, avg_per_path, time_median, time_q95.
-        time_unit:
-            Timing resolution: "s" (default) or "ms". Returned values remain seconds.
         diff:
             Optional diff: [segment_col, value1, value2].
         path_col:
@@ -336,14 +333,7 @@ def _build_server(
             applies to multiple visualisations.
         """
         result = tools.add_transition_graph(
-            session,
-            label,
-            edge_weight,
-            diff,
-            path_col,
-            views,
-            local_preprocessors,
-            time_unit,
+            session, label, edge_weight, diff, path_col, views, local_preprocessors
         )
         return json.dumps(result, ensure_ascii=False)
 

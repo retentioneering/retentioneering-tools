@@ -49,7 +49,6 @@ class TransitionGraphWidget(RetentioneeringWidget):
 
     # ── recompute triggers ─────────────────────────────────────────────────────
     edge_weight = traitlets.Unicode("proba_out").tag(sync=True)
-    time_unit = traitlets.Enum(["s", "ms"], default_value="s").tag(sync=True)
     diff = traitlets.Unicode("").tag(sync=True)
     path_col = traitlets.Unicode("").tag(sync=True)
 
@@ -95,7 +94,6 @@ class TransitionGraphWidget(RetentioneeringWidget):
 
     _persist_names = (
         "edge_weight",
-        "time_unit",
         "diff",
         "path_col",
         "height",
@@ -120,7 +118,6 @@ class TransitionGraphWidget(RetentioneeringWidget):
         views=_UNSET,
         view=_UNSET,
         state_file=None,
-        time_unit=_UNSET,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -143,7 +140,6 @@ class TransitionGraphWidget(RetentioneeringWidget):
         # views/view referencing them must validate, not just real events.
         _available_events = set(_event_counts.keys()) | {"path_start", "path_end"}
 
-        self.time_unit = time_unit if time_unit is not _UNSET else "s"
         self.edge_weight = edge_weight if edge_weight is not _UNSET else "proba_out"
         _diff_val = diff if diff is not _UNSET else None
         self.diff = json.dumps(list(_diff_val)) if _diff_val else ""
@@ -217,7 +213,6 @@ class TransitionGraphWidget(RetentioneeringWidget):
                 name
                 for name, arg in (
                     ("edge_weight", edge_weight),
-                    ("time_unit", time_unit),
                     ("diff", diff),
                     ("path_col", path_col),
                     ("height", height),
@@ -238,10 +233,7 @@ class TransitionGraphWidget(RetentioneeringWidget):
         self.graph_layout = json.dumps(self._compute_graph_layout({}))
 
         self._initialized = True
-        self.observe(
-            self._on_params_change,
-            names=["edge_weight", "time_unit", "diff", "path_col"],
-        )
+        self.observe(self._on_params_change, names=["edge_weight", "diff", "path_col"])
         self.observe(self._on_positions_change, names=["node_positions"])
         self.observe(self._on_event_visibility_change, names=["event_visibility"])
         self._start_state_autosave()
@@ -266,7 +258,6 @@ class TransitionGraphWidget(RetentioneeringWidget):
     def _tool_transition_graph_data(self, params: dict):
         return self._compute_tm_raw(
             edge_weight=params.get("edge_weight", self.edge_weight),
-            time_unit=params.get("time_unit", self.time_unit),
             path_col=params.get("path_col") or self.path_col or None,
             diff=_parse_diff(params.get("diff")),
         )
@@ -334,12 +325,9 @@ class TransitionGraphWidget(RetentioneeringWidget):
         finally:
             self.is_loading = False
 
-    def _compute_tm_raw(
-        self, edge_weight: str, path_col=None, diff=None, time_unit=None
-    ) -> dict:
+    def _compute_tm_raw(self, edge_weight: str, path_col=None, diff=None) -> dict:
         tm = self._eventstream.transition_graph_data(
             edge_weight=edge_weight,
-            time_unit=self.time_unit if time_unit is None else time_unit,
             path_col=path_col,
             diff=diff,
         )
@@ -409,7 +397,6 @@ class TransitionGraphWidget(RetentioneeringWidget):
             "widget_id": self.widget_id,
             "result": json.loads(self.result or "{}"),
             "edge_weight": self.edge_weight,
-            "time_unit": self.time_unit,
             "diff": json.loads(self.diff) if self.diff else None,
             "event_counts": json.loads(self.event_counts or "{}"),
             "event_counts_g1": json.loads(self.event_counts_g1 or "{}"),

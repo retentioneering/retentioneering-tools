@@ -41,17 +41,15 @@ is a *display* choice — the underlying matrix always has every transition, and
 
 {{ bullets(headless.parameters, "edge_weight") }}
 
-### Timing resolution
+### Transition durations
 
-Use `time_unit="ms"` with `time_median` or `time_q95` to preserve short
-request-to-response spans. The default `"s"` retains whole-second boundary
-counting. Resolution is applied to individual transitions before aggregation:
-for example, a 125 ms span wholly inside a second is zero at the default
-resolution and 125 ms with `time_unit="ms"`. The matrix returns timedeltas;
-widget JSON remains seconds (`0.125`) and labels render readable units (`125ms`).
-Use a session or request ID as `path_col` to avoid timing across visits.
-Pair request/response events before constructing the stream when requests overlap;
-a graph computes adjacency and does not infer request identity.
+`time_median` and `time_q95` aggregate the exact gap between consecutive
+events, so sub-second spans keep their precision: a 125 ms request-to-ready
+span is 125 ms whether or not it crosses a second boundary. The matrix returns
+timedeltas; widget JSON carries seconds (`0.125`) and labels render readable
+units (`125ms`). Use a session or request ID as `path_col` to avoid timing
+across visits. Pair request/response events before constructing the stream when
+requests overlap; a graph computes adjacency and does not infer request identity.
 
 ### Views
 

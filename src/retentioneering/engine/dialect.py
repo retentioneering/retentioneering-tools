@@ -16,7 +16,6 @@ aggregation, regex matching) as plain string-returning functions.
 from __future__ import annotations
 
 __all__ = [
-    "date_diff",
     "event_position",
     "epoch",
     "interval_seconds",
@@ -79,15 +78,3 @@ def regexp_match(expr: str, pattern_sql: str) -> str:
     DuckDB-specific function name, it does not escape its arguments.
     """
     return f"regexp_matches({expr}, {pattern_sql})"
-
-
-def date_diff(unit: str, start_expr: str, end_expr: str) -> str:
-    """Count second or millisecond boundaries; expressions must be SQL identifiers.
-
-    Units are allowlisted before interpolation. This retains the legacy second
-    boundary semantics while permitting millisecond-resolution transition edges.
-    """
-    units = {"s": "second", "ms": "millisecond"}
-    if unit not in units:
-        raise ValueError(f"Unsupported time unit: {unit!r}; expected s or ms")
-    return f"date_diff('{units[unit]}', {start_expr}, {end_expr})"

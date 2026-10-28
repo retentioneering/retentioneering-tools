@@ -52,6 +52,7 @@ GUIDES = [
     ("installation", "Installation"),
     ("path-analysis", "Path Analysis"),
     ("eventstream", "Eventstream"),
+    ("observation-windows", "Observation Windows and SQL Exports"),
     ("widgets", "Widgets"),
     ("data-processors", "Data Processors"),
     ("segments", "Segments"),

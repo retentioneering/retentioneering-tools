@@ -278,6 +278,8 @@ These are starting points for common exports; check identity and timestamp field
 | [Mixpanel](https://docs.mixpanel.com/reference/raw-event-export) | `properties.distinct_id` | `event` | `properties.time` (Unix seconds) |
 | Segment tracks | `user_id` or `anonymous_id` | `event` | `timestamp` |
 
+For bounded analysis periods, use the [BigQuery and ClickHouse export recipes](https://github.com/retentioneering/retentioneering-tools/blob/master/docs/guide/observation-windows.md) to preserve prior sessions, follow-up and censoring metadata.
+
 Flatten nested properties and convert numeric timestamps to datetimes with the correct unit before loading. For example, after exporting the three GA4 fields above to a DataFrame named `ga4`:
 
 ```python

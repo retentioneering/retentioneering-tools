@@ -49,44 +49,41 @@ stream.truncate_paths(start_anchor="path_start", end_anchor="purchase").step_san
 
 ## Find what leads to churn
 
-Conversion has a mirror image: which early behavior separates the users who came back from the ones who never did? Mark the outcome, label every path with it, then look only at the window you could have acted in.
+Compare users who returned within a fixed horizon with users whose inactivity was fully
+observed. Start with `core` from [Observation Windows and SQL Exports](/docs/observation-windows):
+it contains real events in the analysis period, SQL-assigned sessions, and an `outcome` segment
+based on 14 days after each user's last core event.
 
 ```python
-labelled = (
-    stream
-    # a synthetic event after 14 days of silence marks the moment a path went cold
-    .add_events("churned", churn={"inactivity_days": 14})
-    # ... which makes every path either churned or retained
-    .add_segment(
-        "outcome",
-        sql="""
-            SELECT CASE
-                WHEN COUNT(*) FILTER (WHERE event = 'churned') OVER (PARTITION BY user_id) > 0
-                THEN 'churned' ELSE 'retained'
-            END
-            FROM eventstream
-        """,
-    )
-)
+# Keep the unknown outcomes visible before selecting the comparison population.
+outcomes = core.to_dataframe().groupby("user_id", observed=True)["outcome"].first()
+print(outcomes.value_counts())  # returned / inactive_14d / right_censored
 
-early = (
-    labelled
-    # keep each path's first 7 days — the onboarding window you can still influence
-    .filter_events(
-        sql="""
-            SELECT * FROM eventstream
-            QUALIFY timestamp < MIN(timestamp) OVER (PARTITION BY user_id) + INTERVAL 7 DAY
-        """
-    )
-    # drop the marker itself: compare behavior, not the label you just derived
-    .filter_events(drop={"event": ["churned"]})
-)
-
-early.step_matrix(diff=("outcome", "churned", "retained"))
-early.transition_graph(diff=("outcome", "churned", "retained"))
+comparable = core.filter_events(keep={"outcome": ["returned", "inactive_14d"]})
+comparable.step_matrix(diff=("outcome", "inactive_14d", "returned"))
+comparable.transition_graph(diff=("outcome", "inactive_14d", "returned"))
 ```
 
-The order matters: the label comes from the *whole* path, the comparison from its *first days*. That gap is the point — whatever the diff highlights happened before the outcome was decided, so it is a candidate cause rather than a symptom. Widen or narrow the window to find when the two groups start to diverge.
+`inactive_14d` means an observed 14-day inactivity spell, not "never returned".
+`right_censored` is neither inactive nor retained. Report its count and fraction;
+removing censored users may bias the comparison if their observation differs systematically.
+This is an exploratory comparison, not a causal conclusion or a leakage-free prediction design.
+For onboarding, use a verified registration anchor and separate feature and outcome windows;
+the first event in a truncated export is not necessarily the user's first event.
+
+### Why not label everyone without a churn marker retained?
+
+`stream.add_events("churned", churn={"inactivity_days": 14})` detects gaps **strictly longer**
+than 14 days between active events. For the last active event it uses the maximum timestamp
+in the **whole input dataset** as the endpoint. It has no explicit ingestion watermark or
+per-user observation coverage. A user without a marker can simply lack sufficient follow-up;
+a marked user may return later. The marker copies the preceding active event's timestamp
+and sorts after it; it is not placed at that timestamp plus 14 days.
+
+Use this processor to explore observed gaps when those assumptions fit, but never map
+"no marker" directly to "retained". The SQL recipe supplies explicit coverage and three-state
+outcomes instead. Its fixed-horizon rule counts a return exactly at the deadline; it is a
+different question from "did any gap anywhere in the path exceed 14 days?".
 
 ## Read an A/B test beyond the headline metric
 
@@ -133,6 +130,11 @@ stream.segment_overview(
 
 A user is not the same person in their first session and in their fiftieth. Session number is a ready-made state: [Split Sessions](/docs/data-processors/split-sessions) numbers each path's sessions, and a rule over that number turns the number into named stages.
 
+**Coverage prerequisite:** `session_index = 1` means first in the supplied log. Call it
+"first session" only when complete history is verified; otherwise use "first observed
+session". See [observation context](/docs/observation-windows) for SQL sessionization
+before clipping to the analysis period.
+
 The `split_sessions` call below assumes sessions aren't marked yet — drop it if your log already carries a session column (the bundled [e-commerce dataset](/docs/eventstream#sample-dataset) does, and also ships a ready-made `user_lifecycle` segment along the same lines).
 
 ```python
@@ -142,14 +144,14 @@ labelled = (
     .add_segment(
         "experience",
         rules=[
-            ["session_index", "=", 1, "first session"],
+            ["session_index", "=", 1, "first observed session"],
             ["session_index", "<=", 5, "getting familiar"],
             ["experienced"],
         ],
     )
 )
 
-labelled.transition_graph(diff=("experience", "first session", "experienced"))
+labelled.transition_graph(diff=("experience", "first observed session", "experienced"))
 labelled.segment_overview(segment_col="experience", metrics=[{"metric": "length"}])
 ```
 

@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Documentation
+
+- Add BigQuery/GA4 and ClickHouse exports with observation context, compact session
+  features and explicit censoring; replace the churn recipe's no-marker/retained inference.
+
 ## [5.3.0] - 2026-10-27
 
 ### Added

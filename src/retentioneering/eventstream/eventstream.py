@@ -808,7 +808,11 @@ class Eventstream:
             and returns rows in the eventstream schema. Each returned row is added as a
             new synthetic event.
         churn : dict, optional
-            Creates a churn event after a period of inactivity.
+            Marks active events followed by a gap strictly longer than the threshold.
+            The marker keeps the active event's timestamp. For trailing gaps,
+            observation ends at the whole dataset's maximum timestamp, not an
+            explicit coverage watermark. No marker does not establish retention;
+            the path may be right-censored.
               - `inactivity_days` (int or float, required) — gap in days after which
                 a churn event is inserted.
               - `active_events` (list of str, optional) — only these events count as

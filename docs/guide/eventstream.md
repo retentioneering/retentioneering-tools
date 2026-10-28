@@ -55,6 +55,9 @@ You can also pass a CSV path directly:
 stream = rete.Eventstream("events.csv")
 ```
 
+For time-bounded exports, prepare [observation context](/docs/observation-windows) before
+creating the stream: the first/last exported event does not establish the user's lifetime boundaries.
+
 ## Expected data format
 
 Each row in your DataFrame represents a single event. At minimum, you need a path identifier column, an event name column, and a timestamp column.

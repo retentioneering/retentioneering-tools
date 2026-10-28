@@ -1670,6 +1670,7 @@ class Eventstream:
         path_col: str | None = None,
         diff: T_Diff = None,
         path_pattern: str | None = None,
+        time_unit: str = "s",
     ) -> pd.DataFrame:
         """
         Compute the transition **matrix** between events (headless): an
@@ -1709,6 +1710,12 @@ class Eventstream:
             themselves down to the window the pattern describes, use
             `truncate_paths`.
 
+        time_unit : {"s", "ms"}, default "s"
+            Resolution of time-based edge weights. Counts second or millisecond
+            boundaries before aggregation; each individual duration has less than
+            one unit of quantization error. Results remain pandas Timedelta values.
+            Non-time edge weights are unaffected. Use "ms" for short load spans.
+
         Returns
         -------
         pd.DataFrame
@@ -1724,7 +1731,7 @@ class Eventstream:
         from retentioneering.tools.transition_matrix import TransitionMatrix
 
         return TransitionMatrix(self).fit(
-            edge_weight, diff, path_col, path_pattern=path_pattern
+            edge_weight, diff, path_col, path_pattern=path_pattern, time_unit=time_unit
         )
 
     @_tracked("headless_step_sankey")
@@ -2046,6 +2053,7 @@ class Eventstream:
         views=None,
         view=None,
         state_file=None,
+        time_unit=None,
     ):
         """
         Displays an interactive directed graph where nodes are unique events and edges represent transitions
@@ -2097,9 +2105,15 @@ class Eventstream:
             JSON file the widget state is bound to; see
             [Saving widget state](/docs/widgets#saving-widget-state).
 
+        time_unit : {"s", "ms"}, default "s"
+            Resolution of time-based edge weights; see `transition_graph_data`.
+            JSON and exported values remain seconds, and graph labels choose
+            readable units (including milliseconds). Persisted with widget state.
+
         Examples
         --------
             stream.transition_graph()
+            stream.transition_graph(edge_weight="time_median", time_unit="ms")
             stream.transition_graph(edge_weight="count", diff=("user_lifecycle", "loyal", "new"))
             stream.transition_graph(state_file="checkout_graph.json")
             stream.transition_graph(path_pattern="add_to_cart->.*->purchase")
@@ -2124,6 +2138,7 @@ class Eventstream:
 
         return TransitionGraphWidget(
             eventstream=source,
+            time_unit=time_unit if time_unit is not None else _UNSET,
             edge_weight=edge_weight if edge_weight is not None else _UNSET,
             diff=diff if diff is not None else _UNSET,
             path_col=path_col if path_col is not None else _UNSET,

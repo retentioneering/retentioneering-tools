@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added
+
+- `transition_graph` and `transition_graph_data` accept `time_unit="ms"` for
+  millisecond-resolution median and q95 edge durations. The default `"s"`
+  keeps existing results. Timedelta results and seconds-based widget JSON
+  retain their existing units; the option persists in widget state and exports.
+
 ## [5.3.0] - 2026-10-27
 
 ### Added

@@ -237,6 +237,7 @@ def add_transition_graph(
     path_col: str | None = None,
     views: list | None = None,
     local_preprocessors: list | None = None,
+    time_unit: str = "s",
 ) -> dict:
     """
     Compute a transition graph and register it as a tab in the pending report.
@@ -253,6 +254,8 @@ def add_transition_graph(
     edge_weight:
         How to weight edges. One of: proba_out, proba_in, count, unique_paths,
         share_of_total, avg_per_path, time_median, time_q95.
+    time_unit:
+        Timing resolution: "s" (default) or "ms". Returned values remain seconds.
     diff:
         Optional diff: [segment_col, value1, value2].
     path_col:
@@ -282,6 +285,7 @@ def add_transition_graph(
         return {"error": f"local_preprocessors: {exc}"}
     widget = src.transition_graph(
         edge_weight=edge_weight,
+        time_unit=time_unit,
         diff=diff,
         path_col=path_col or None,
         **({"views": views} if views else {}),
@@ -293,6 +297,7 @@ def add_transition_graph(
         "widget_id": widget.widget_id,
         "result": json.loads(widget.result or "{}"),
         "edge_weight": widget.edge_weight,
+        "time_unit": widget.time_unit,
         "diff": json.loads(widget.diff) if widget.diff else None,
         "event_counts": json.loads(widget.event_counts or "{}"),
         "event_counts_g1": json.loads(widget.event_counts_g1 or "{}"),
@@ -310,6 +315,7 @@ def add_transition_graph(
 
     result_raw = json.loads(widget.result or "{}")
     summary = _transition_graph_summary(result_raw, session.context_events, edge_weight)
+    summary["time_unit"] = time_unit
     summary["tab_id"] = tab_id
     summary["label"] = label
     return summary

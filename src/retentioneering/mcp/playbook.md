@@ -213,3 +213,8 @@ Confirm with the user, then call `update_base_stream` with one or more of:
 {"type": "filter_paths", "op": ">", "metric": "length", "value": 3}
 {"type": "filter_events", "drop": {"event": ["noise_event"]}}
 ```
+
+For short request-to-ready durations, pass `time_unit="ms"` to
+`add_transition_graph(edge_weight="time_median", ...)`. This selects timing
+resolution; returned numeric durations remain seconds. Use request/session-bounded
+paths and pair overlapping requests before constructing synthetic transitions.

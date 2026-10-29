@@ -1664,7 +1664,8 @@ class Eventstream:
             the [Path Metrics](/docs/path-metrics) documentation page for the full metric reference.
             An optional `name` labels the column, as in `get_ab_test` (a metric
             that expands into several columns, a `*_bulk` one, takes no `name`;
-            names must be unique).
+            names must be unique and must not repeat another metric's column
+            name, or `InvalidMetricConfigError` is raised).
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
 
@@ -1714,7 +1715,14 @@ class Eventstream:
                     "single column"
                 )
             rename[columns[0]] = name
-        return frame.rename(columns=rename)
+        frame = frame.rename(columns=rename)
+        clash = sorted({c for c in frame.columns if list(frame.columns).count(c) > 1})
+        if clash:
+            raise InvalidMetricConfigError(
+                f"duplicate output column(s) {clash}: a 'name' repeats the column "
+                "name of another metric; choose another name"
+            )
+        return frame
 
     @_tracked("dp_add_events")
     @_op

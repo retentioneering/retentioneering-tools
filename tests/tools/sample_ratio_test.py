@@ -337,6 +337,11 @@ def test_assignment_ids_matched_by_string_form() -> None:
     assert result["periods"]["paths"].sum() == 100
 
 
+def test_no_arguments_names_both_forms() -> None:
+    with pytest.raises(InvalidParameterError, match="assignment="):
+        _stream(_arms(50, 50)).get_sample_ratio()
+
+
 def test_assignment_ids_that_match_nothing_raise() -> None:
     stream = _stream(_arms(50, 50))
     table = pd.Series({k.upper(): v for k, v in _arms(50, 50).items()})

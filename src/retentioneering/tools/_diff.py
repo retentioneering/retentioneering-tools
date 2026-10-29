@@ -293,12 +293,54 @@ def align_assignment(
             [f"a table indexed by '{path_col}' ids, the grain the analysis runs at"],
         )
     if n_matched < MIN_MATCHED_SHARE * n_table:
+        if table.index.name == path_col:
+            # the table already names the analysis grain: most assigned paths are
+            # silent (an e-mail campaign), or ids are spelled differently
+            advice = (
+                f"The table is indexed by '{path_col}', so most assigned paths "
+                "never produced an event; if they did, compare how the ids are "
+                "spelled in the table and in the stream."
+            )
+        else:
+            advice = (
+                "That is right when most assigned paths never produced an event, "
+                "and wrong when the ids are spelled differently: index the table "
+                f"by '{path_col}'."
+            )
         warn_user(
-            f"{detail}; the rest count as silent paths (0 for every metric). That is "
-            "right when most assigned paths never produced an event, and wrong when "
-            f"the ids are spelled differently: index the table by '{path_col}'."
+            f"{detail}; the rest count as silent paths (0 for every metric). {advice}"
         )
     return table
+
+
+#: Ids shown per side when an error message quotes an id-list ``diff``.
+MAX_IDS_SHOWN = 10
+
+
+def diff_repr(diff) -> str:
+    """``repr(diff)`` with each id collection cut to ``MAX_IDS_SHOWN`` ids.
+
+    An id-list ``diff`` can hold tens of thousands of ids; an error message quotes
+    the first few and the count.
+    """
+    if diff is None or isinstance(diff, (str, bytes)) or not hasattr(diff, "__iter__"):
+        return repr(diff)
+    try:
+        sides = list(diff)
+    except TypeError:
+        return repr(diff)
+    parts = []
+    for side in sides:
+        if isinstance(side, (str, bytes)) or not hasattr(side, "__iter__"):
+            parts.append(repr(side))
+            continue
+        ids = list(side)
+        if len(ids) <= MAX_IDS_SHOWN:
+            parts.append(repr(ids))
+        else:
+            head = ", ".join(repr(i) for i in ids[:MAX_IDS_SHOWN])
+            parts.append(f"[{head}, ... ({len(ids)} ids)]")
+    return "(" + ", ".join(parts) + ("," if len(parts) == 1 else "") + ")"
 
 
 def _segment_groups(stream, segment_col, v1, v2, path_col, require_constant=True):
@@ -355,7 +397,7 @@ def _assignment_groups(stream, diff, path_col, assignment):
         raise DiffConfigError(
             "with assignment=, diff must be ('segment_col', group1, group2) naming "
             "two arms of the assignment table, e.g. ('arm', 'treatment', 'control'); "
-            f"got {diff!r}"
+            f"got {diff_repr(diff)}"
         )
     segment_col, v1, v2 = diff[0], diff[1], diff[2]
     segment_cols = list(stream.schema.segment_cols)
@@ -496,7 +538,7 @@ def resolve_diff(
         if diff is None or isinstance(diff, (str, bytes)) or len(diff) not in (2, 3):
             raise DiffConfigError(
                 "diff must be ('segment_col', group1, group2) or (ids1, ids2); "
-                f"got {diff!r}"
+                f"got {diff_repr(diff)}"
             )
         if len(diff) == 2 and any(
             isinstance(side, (str, bytes)) or not hasattr(side, "__iter__")
@@ -505,7 +547,7 @@ def resolve_diff(
             # ["exp_group", "treatment"] would otherwise be read as two id lists
             # and iterated character by character
             raise DiffConfigError(
-                f"diff {list(diff)!r} has two elements, so it is read as (ids1, ids2), "
+                f"diff {diff_repr(diff)} has two elements, so it is read as (ids1, ids2), "
                 "two collections of path ids. To compare segment levels pass three: "
                 "('segment_col', group1, group2), e.g. "
                 "('exp_group', 'treatment', 'control')."

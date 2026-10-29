@@ -15,6 +15,9 @@ from retentioneering.utils.clustering_methods import (
     parse_method_args,
 )
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
+from retentioneering.widgets._utils import (
+    custom_columns_catalogue as _custom_columns_catalogue,
+)
 from retentioneering.widgets._utils import distribution_levels as _distribution_levels
 
 
@@ -42,6 +45,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
     path_cols = traitlets.Unicode("[]").tag(sync=True)
     segment_cols = traitlets.Unicode("[]").tag(sync=True)
     segment_levels = traitlets.Unicode("{}").tag(sync=True)
+    custom_cols = traitlets.Unicode("{}").tag(sync=True)  # {col: is_numeric}
 
     # ── result (is_loading/error are inherited from RetentioneeringWidget) ─
     result = traitlets.Unicode("{}").tag(sync=True)
@@ -149,6 +153,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
             self.event_list = "[]"
         self.path_cols = json.dumps(eventstream.schema.path_cols)
         self.segment_cols = json.dumps(eventstream.schema.segment_cols)
+        self.custom_cols = _custom_columns_catalogue(eventstream)
         try:
             self.segment_levels = json.dumps(eventstream.get_segment_levels())
         except Exception:
@@ -592,6 +597,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
             "path_cols": json.loads(self.path_cols or "[]"),
             "segment_cols": json.loads(self.segment_cols or "[]"),
             "segment_levels": json.loads(self.segment_levels or "{}"),
+            "custom_cols": json.loads(self.custom_cols or "{}"),
             "event_list": json.loads(self.event_list or "[]"),
             "height": self.height,
             "sidebar_open": sidebar_open

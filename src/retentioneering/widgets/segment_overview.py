@@ -4,6 +4,9 @@ import traitlets
 
 from retentioneering.exceptions import RetentioneeringError
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
+from retentioneering.widgets._utils import (
+    custom_columns_catalogue as _custom_columns_catalogue,
+)
 from retentioneering.widgets._utils import distribution_levels as _distribution_levels
 
 
@@ -19,6 +22,7 @@ class SegmentOverviewWidget(RetentioneeringWidget):
     # ── catalogues ────────────────────────────────────────────────────────
     segment_cols = traitlets.Unicode("[]").tag(sync=True)
     segment_levels = traitlets.Unicode("{}").tag(sync=True)
+    custom_cols = traitlets.Unicode("{}").tag(sync=True)  # {col: is_numeric}
     path_cols = traitlets.Unicode("[]").tag(sync=True)
     event_list = traitlets.Unicode("[]").tag(sync=True)
 
@@ -71,6 +75,7 @@ class SegmentOverviewWidget(RetentioneeringWidget):
         except Exception:
             self.segment_levels = "{}"
         self.path_cols = json.dumps(eventstream.schema.path_cols)
+        self.custom_cols = _custom_columns_catalogue(eventstream)
 
         self.segment_col = segment_col if segment_col is not _UNSET else ""
         self.path_col = path_col if path_col is not _UNSET else ""
@@ -191,6 +196,7 @@ class SegmentOverviewWidget(RetentioneeringWidget):
             "metrics": json.loads(self.metrics or "[]"),
             "segment_cols": json.loads(self.segment_cols or "[]"),
             "segment_levels": json.loads(self.segment_levels or "{}"),
+            "custom_cols": json.loads(self.custom_cols or "{}"),
             "path_cols": json.loads(self.path_cols or "[]"),
             "event_list": json.loads(self.event_list or "[]"),
             "height": self.height,

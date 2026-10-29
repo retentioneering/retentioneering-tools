@@ -119,7 +119,8 @@ Follow these rules for any new API.
 
 `metrics/metric_builder.py` is the single registry of per-path metrics (`length`, `duration`,
 `event_count`, `has_event`, `time_between`, `first_event_time`, `active_days`,
-`matches_pattern`, `in_segment`). The same `{"metric": ..., "metric_args": ...}` configs feed
+`matches_pattern`, `in_segment`, `column_sum` / `column_mean` / `column_last` over custom
+columns). The same `{"metric": ..., "metric_args": ...}` configs feed
 clustering (`features`), segment comparison (`metrics` / `overview_metrics`), and
 `filter_paths` conditions. Adding a metric also requires updating the JS metric editor and the
 Path Metrics docs page.

@@ -106,10 +106,13 @@ class TestFormatting:
 # ----------------------------------------------------------------- templates
 class TestInconclusive:
     def test_interval_including_zero_after_the_correction(self) -> None:
+        # R3C-03 / R3D-01: the correction is the p-value's, the interval is per
+        # comparison; the multiplier sizes a new test, not this one
         assert _read(_row()) == (
-            "interval [-1.07, +2.28] pp includes 0 after holm (p 0.48); effects "
-            "outside it are unlikely; the design detects 2.39 pp at alpha 0.0125 — "
-            "to detect 1 pp, about 5.7× the paths are needed"
+            "per-comparison interval [-1.07, +2.28] pp includes 0 (p 0.48 after "
+            "holm); effects outside it are unlikely; the design detects 2.39 pp at "
+            "alpha 0.0125 — to detect 1 pp, about 5.7× the paths are needed in a "
+            "new test sized before it starts"
         )
 
     def test_without_an_effective_correction(self) -> None:
@@ -144,8 +147,8 @@ class TestInconclusive:
             _row(delta_ci_low=0.0033, delta_ci_high=0.0222, p_value_adjusted=0.057)
         )
         assert text.startswith(
-            "interval [+0.33, +2.22] pp excludes 0 per comparison but not after holm "
-            "(p 0.057);"
+            "per-comparison interval [+0.33, +2.22] pp excludes 0, but p 0.057 after "
+            "holm is not below alpha 0.05;"
         )
         assert "effects outside it" not in text
 
@@ -166,8 +169,8 @@ class TestInconclusive:
     def test_no_mde_no_design_clause(self) -> None:
         text = _read(_row(mde=float("nan")))
         assert text == (
-            "interval [-1.07, +2.28] pp includes 0 after holm (p 0.48); effects "
-            "outside it are unlikely"
+            "per-comparison interval [-1.07, +2.28] pp includes 0 (p 0.48 after "
+            "holm); effects outside it are unlikely"
         )
 
     def test_no_interval(self) -> None:
@@ -225,8 +228,8 @@ class TestSignificant:
             )
         )
         assert text == (
-            "interval [+1.38, +4.12] pp excludes 0 after holm (p 0.00070); "
-            "relative +12 %"
+            "per-comparison interval [+1.38, +4.12] pp excludes 0 (p 0.00070 after "
+            "holm); relative +12 %"
         )
 
     def test_decrease_small_relative_change_and_no_relative(self) -> None:
@@ -284,8 +287,8 @@ class TestSignificant:
             correction="bonferroni",
         )
         assert text == (
-            "simultaneous interval [+0.04, +3.40] pp excludes 0 after bonferroni "
-            "(p 0.040); relative +31 %"
+            "simultaneous interval [+0.04, +3.40] pp excludes 0 (p 0.040 after "
+            "bonferroni); relative +31 %"
         )
 
 
@@ -341,7 +344,9 @@ class TestFlags:
 
     def test_window_comes_first(self) -> None:
         text = _read(_row(), window="within 28 days of assignment")
-        assert text.startswith("within 28 days of assignment: interval [-1.07, ")
+        assert text.startswith(
+            "within 28 days of assignment: per-comparison interval [-1.07, "
+        )
         none = _read(
             _row(verdict="insufficient_data", support_warning="no_data"),
             support_count=0,
@@ -362,8 +367,26 @@ class TestFlags:
         text = _read(
             _row(exploratory=True, period_complete=False, support_warning="low_support")
         )
-        tail = text.split("are needed; ")[1]
+        tail = text.split("sized before it starts; ")[1]
         assert tail.startswith(EXPLORATORY + "; window not complete; low support:")
+        # R3D-10: a flagged row does not claim that outside effects are unlikely
+        assert "effects outside it" not in text
+
+    def test_flagged_rows_drop_the_plain_claim(self) -> None:
+        for flags in (
+            {"support_warning": "low_support"},
+            {"exploratory": True},
+            {
+                "conditional": True,
+                "group1_support": 50,
+                "group1_paths": 4960,
+                "group2_support": 60,
+                "group2_paths": 5040,
+            },
+        ):
+            text = _read(_row(**flags))
+            assert "includes 0 (p 0.48 after holm); the design" in text, flags
+            assert "effects outside it" not in text, flags
 
 
 # ----------------------------------------------------------------- through the tool
@@ -425,7 +448,7 @@ class TestScorecardColumn:
                 _stream(), DIFF, [CONV], strata_col="platform"
             ).fit()
         assert strata["reading"].str.endswith(EXPLORATORY).all()
-        assert " after holm (p " in strata["reading"].iloc[0]
+        assert " after holm); " in strata["reading"].iloc[0]
         declared = ABTest.from_stream(
             _stream(), DIFF, [CONV], strata_col="platform", strata_pre_exposure=True
         ).fit()
@@ -512,7 +535,7 @@ class TestBundledDataset:
             "over the whole observation period: "
             "interval [-1.07, +2.28] pp includes 0 (p 0.48); effects outside it are "
             "unlikely; the design detects 2.39 pp at alpha 0.05 — to detect 1 pp, "
-            "about 5.7× the paths are needed"
+            "about 5.7× the paths are needed in a new test sized before it starts"
         )
 
     def test_horizon_conversion_is_an_increase(self, data) -> None:
@@ -546,7 +569,9 @@ class TestBundledDataset:
         diff = ("exp_group", "treatment", "control")
         weeks = stream.get_ab_test(diff, metrics, assignment=assignment, period="W")
         week = weeks.set_index("period").loc["2026-03-09/2026-03-15", "reading"]
-        assert week.startswith("calendar week 2026-03-09: interval [+0.52, +2.92] pp")
+        assert week.startswith(
+            "calendar week 2026-03-09: per-comparison interval [+0.52, +2.92] pp"
+        )
         months = stream.get_ab_test(diff, metrics, assignment=assignment, period="M")
         assert months["reading"].iloc[0].startswith("calendar month 2026-03: ")
         since = stream.get_ab_test(

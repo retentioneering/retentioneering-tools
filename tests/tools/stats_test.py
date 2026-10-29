@@ -176,6 +176,24 @@ class TestMultiplicity:
         assert np.isnan(out[1])
         assert out[2] == pytest.approx(0.8)
 
+    def test_benjamini_hochberg_hand_example(self) -> None:
+        p = [0.01, 0.04, 0.03, 0.005]
+        # sorted 0.005, 0.01, 0.03, 0.04 -> *4/1, *4/2, *4/3, *4/4
+        # = 0.02, 0.02, 0.04, 0.04 (step-up minimum already monotone)
+        assert st.benjamini_hochberg(p) == pytest.approx([0.02, 0.04, 0.04, 0.02])
+
+    def test_benjamini_hochberg_matches_scipy(self) -> None:
+        rng = np.random.default_rng(3)
+        p = rng.uniform(0, 0.2, 25)
+        ref = stats.false_discovery_control(p, method="bh")
+        assert st.benjamini_hochberg(p) == pytest.approx(ref, rel=1e-12)
+
+    def test_benjamini_hochberg_nan_and_ties(self) -> None:
+        out = st.benjamini_hochberg([0.02, np.nan, 0.02, 0.5])
+        assert np.isnan(out[1])
+        assert out[[0, 2, 3]] == pytest.approx([0.03, 0.03, 0.5])
+        assert np.isnan(st.benjamini_hochberg([np.nan])).all()
+
     def test_all_nan(self) -> None:
         assert np.isnan(st.holm([np.nan, np.nan])).all()
         assert np.isnan(st.bonferroni([np.nan])).all()

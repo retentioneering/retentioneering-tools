@@ -70,9 +70,9 @@ The small Bernoulli calibration script uses a separate unselected data-generatin
 The ready-to-run package includes the frozen sample; no source dataset is required to execute the tutorial. To rebuild from the parent directory containing `build_receipt.json` and the five source tables:
 
 ```bash
-python scripts/build_sample.py /path/to/v8_1_e3_5/data --output /path/to/empty/new_sample
+python examples/experiments/build_lumeo_sample.py /path/to/v8_1_e3_5/data --output /path/to/empty/new_sample
 ```
 
-Use the recorded environment for byte-identical CSV serialization. The command rejects a nonempty output directory. The full synthetic generator is not bundled here; the parent receipt and hashes identify its selected output, and this builder reproduces the sampling step.
+Run the command from the repository root. New manifests record the Python, pandas, NumPy and zlib versions, CSV settings and deterministic gzip settings under `serialization`. The frozen manifest records a `verified_rebuild_serialization` environment that reproduced all five published table hashes; this is a verified rebuild environment, not an assertion about the original build environment. Use those versions and settings when comparing table bytes. The manifest itself is not byte-identical because new builds include their serialization metadata; compare table hashes and the selection, source, licence and schema fields separately. The command rejects a nonempty output directory. The full synthetic generator is not bundled here; the parent receipt and hashes identify its selected output, and this builder reproduces the sampling step.
 
 Redistribution: this synthetic teaching fixture is contributed with the Retentioneering tutorial under the repository's Apache-2.0 license. It contains no real customer records. The selected-parent limitation and the recorded hashes remain part of its interpretation.

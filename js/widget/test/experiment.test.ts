@@ -87,3 +87,21 @@ test("binary scaled values use percent while their absolute effect uses percenta
   assert.ok(canonical.includes(">0.1</strong>"));
   assert.ok(canonical.includes("proportion difference"));
 });
+
+test("percentage-valued ratios distinguish absolute pp from relative percent", () => {
+  const ratio = {
+    ...row, metric: "purchase_rate", outcome_kind: "ratio", effect_unit: "pp",
+    control: .2, treatment: .3, absolute_effect: .1, relative_effect: .5,
+  };
+  const html = renderToStaticMarkup(React.createElement(ExperimentTable, { rows: [ratio], control: "A", treatment: "B" }));
+  assert.ok(html.includes(">20</strong>"));
+  assert.ok(html.includes(">30</strong>"));
+  assert.ok(html.includes(">+10</strong>"));
+  assert.ok(html.includes(">pp</span>"));
+  assert.ok(html.includes("+50%"));
+  assert.ok(!html.includes("Difference: %"));
+  const explicit = renderToStaticMarkup(React.createElement(ExperimentTable, {
+    rows: [{ ...ratio, effect_unit: "percentage points" }], control: "A", treatment: "B",
+  }));
+  assert.ok(explicit.includes("Difference: percentage points"));
+});

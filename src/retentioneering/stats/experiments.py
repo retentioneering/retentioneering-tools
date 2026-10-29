@@ -69,7 +69,32 @@ def _draw_sums(values, config, rng):
     return result
 
 
-def _interval(draws, point, n_units, config, *, relative=False):
+def _constant_statistic(values):
+    """Whether every defined empirical resample has the same pair-sum ratio.
+
+    Inspect observations, not noisy sums of resampled decimal values. Equal
+    denominators (including means) need exact numerator equality. Unequal
+    denominators require division, so permit only a few floating-point rounding
+    units in the resulting ratios, with no absolute tolerance near zero.
+    """
+    numerator, denominator = values[:, 0], values[:, 1]
+    positive = denominator > 0
+    if not positive.any() or np.any(numerator[~positive] != 0):
+        return False
+    a, b = numerator[positive], denominator[positive]
+    if np.all(b == b[0]):
+        return bool(np.all(a == a[0]))
+    with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+        ratios = a / b
+        return bool(
+            np.isfinite(ratios).all()
+            and np.isclose(
+                ratios, ratios[0], rtol=4 * np.finfo(float).eps, atol=0
+            ).all()
+        )
+
+
+def _interval(draws, point, n_units, config, *, relative=False, degenerate=False):
     invalid = int((~np.isfinite(draws)).sum()) if config else 0
     if not np.isfinite(point):
         return (
@@ -84,7 +109,7 @@ def _interval(draws, point, n_units, config, *, relative=False):
         return np.nan, np.nan, "insufficient_units", invalid
     if invalid:
         return np.nan, np.nan, "unstable_denominator", invalid
-    if np.ptp(draws) == 0:
+    if degenerate or np.ptp(draws) == 0:
         return np.nan, np.nan, "degenerate_distribution", 0
     alpha = (1 - config["confidence_level"]) / 2
     lo, hi = np.quantile(draws, [alpha, 1 - alpha], method="linear")
@@ -103,6 +128,8 @@ def _summary(specs, c, t, dc, dt, nc, nt, config):
         cd = td = dd = rd = np.empty((0, len(specs)))
     rows = []
     for j, spec in enumerate(specs):
+        constant_c = _constant_statistic(c[:, 2 * j : 2 * j + 2])
+        constant_t = _constant_statistic(t[:, 2 * j : 2 * j + 2])
         row = dict(spec)
         row.update(
             control_numerator=float(c[:, 2 * j].sum()),
@@ -129,13 +156,27 @@ def _summary(specs, c, t, dc, dt, nc, nt, config):
             ("relative_effect", relative[j], rd[:, j], min(nc, nt)),
         ):
             lo, hi, status, invalid = _interval(
-                draws, point, n, config, relative=label == "relative_effect"
+                draws,
+                point,
+                n,
+                config,
+                relative=label == "relative_effect",
+                degenerate=constant_c
+                if label == "control"
+                else constant_t
+                if label == "treatment"
+                else constant_c and constant_t,
             )
             if (
                 config
                 and label in {"absolute_effect", "relative_effect"}
                 and status == "ok"
-                and (np.ptp(cd[:, j]) == 0 or np.ptp(td[:, j]) == 0)
+                and (
+                    constant_c
+                    or constant_t
+                    or np.ptp(cd[:, j]) == 0
+                    or np.ptp(td[:, j]) == 0
+                )
             ):
                 lo = hi = np.nan
                 status = "degenerate_component"
@@ -244,6 +285,52 @@ def adjust_pvalues(pvalues):
     return out
 
 
+def _welch(control, treatment):
+    """Welch over stable moments; input constancy precedes variance arithmetic."""
+    constant_c = bool(np.all(control == control[0]))
+    constant_t = bool(np.all(treatment == treatment[0]))
+    if constant_c and constant_t:
+        return np.nan, "degenerate_distribution"
+    # Remove a shared offset before scaling to retain small, representable
+    # differences around a large baseline. Subtraction can itself overflow for
+    # opposite extreme values; only then scale before centering instead.
+    with np.errstate(over="ignore", invalid="ignore"):
+        centered = [control - control[0], treatment - control[0]]
+    if not all(np.isfinite(values).all() for values in centered):
+        magnitude = max(
+            float(np.max(np.abs(control))), float(np.max(np.abs(treatment)))
+        )
+        centered = [
+            control / magnitude - control[0] / magnitude,
+            treatment / magnitude - control[0] / magnitude,
+        ]
+    magnitude = max(float(np.max(np.abs(values))) for values in centered)
+    scaled = [values / magnitude for values in centered]
+    moments = []
+    for values, constant in zip(scaled, (constant_c, constant_t)):
+        # Center each arm before estimating its variance. This also avoids
+        # SciPy's precision-loss warnings for a valid single constant arm.
+        centered = values - values[0]
+        mean_centered = float(centered.mean())
+        mean = float(values[0] + mean_centered)
+        variance = 0.0 if constant else float(np.var(centered, ddof=1))
+        if not np.isfinite(variance) or (not constant and variance <= 0):
+            return np.nan, "numerical_failure"
+        moments.append((mean, np.sqrt(variance), len(values)))
+    cm, cs, nc = moments[0]
+    tm, ts, nt = moments[1]
+    # Normalize spread as well: the Welch-Satterthwaite calculation squares
+    # variances, which can underflow even after the observations were scaled.
+    spread = max(cs, ts)
+    with np.errstate(over="ignore", under="ignore", divide="ignore", invalid="ignore"):
+        result = stats.ttest_ind_from_stats(
+            (tm - cm) / spread, ts / spread, nt, 0.0, cs / spread, nc, equal_var=False
+        )
+    if not np.isfinite(result.statistic) or not np.isfinite(result.pvalue):
+        return np.nan, "numerical_failure"
+    return float(result.pvalue), "ok"
+
+
 def _tests(summary, specs, c, t, config):
     if config is None:
         return
@@ -286,14 +373,10 @@ def _tests(summary, specs, c, t, config):
             summary.loc[j, "test_status"] = "ok"
         elif min(len(c), len(t)) < 2:
             summary.loc[j, "test_status"] = "insufficient_units"
-        elif np.var(c[:, 2 * j]) == np.var(t[:, 2 * j]) == 0:
-            summary.loc[j, "test_status"] = "degenerate_distribution"
         else:
-            res = stats.ttest_ind(
-                t[:, 2 * j], c[:, 2 * j], equal_var=False, alternative="two-sided"
-            )
-            summary.loc[j, "p_value"] = float(res.pvalue)
-            summary.loc[j, "test_status"] = "ok"
+            pvalue, status = _welch(c[:, 2 * j], t[:, 2 * j])
+            summary.loc[j, "p_value"] = pvalue
+            summary.loc[j, "test_status"] = status
     summary.loc[rows, "p_value_adjusted"] = adjust_pvalues(
         summary.loc[rows, "p_value"].to_numpy()
     )

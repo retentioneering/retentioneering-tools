@@ -16,6 +16,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Experiment degeneracy checks use observed contributions, including constant
+  decimal amounts; Welch calculations handle extreme measurement scales and
+  report numerical failures explicitly.
+- Categorical assignment labels work when an entire arm is silent. Percentage
+  ratios distinguish absolute percentage-point changes from relative percent.
+- Ordinary funnels aggregate shared ordered-reach logic inside SQL, avoiding
+  per-path result materialization when uncertainty is not requested.
+- Tutorial figures preserve unavailable intervals and points; the Lumeo loader,
+  rebuild instructions and generated provenance match the included fixture.
 - Experiment Wilson intervals now include the exact 0/1 endpoints for zero/all
   successes; floating-point cancellation could previously exclude a true
   boundary probability. An independent, opt-in coverage audit documents

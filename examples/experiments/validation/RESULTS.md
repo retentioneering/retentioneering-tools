@@ -2,6 +2,10 @@
 
 Read [the protocol, generators and limitations](README.md) before interpreting these tables.
 
+These are the frozen PR #215 audit results. Further fixes in PR #216 have their
+own [revision review and validation record](REVIEWED.md); the numbers here have
+not been relabelled as results for the revised implementation.
+
 All brackets below are pointwise 95% Monte Carlo confidence intervals. Each primary scenario has 2,000 repetitions. Coverage is conditional on interval availability; availability is shown explicitly. Boundary data are deterministic.
 
 ## Absolute treatment-minus-control effect

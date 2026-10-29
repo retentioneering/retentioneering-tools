@@ -6,8 +6,11 @@ import argparse
 import gzip
 import hashlib
 import json
+import platform
+import zlib
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 
@@ -67,7 +70,15 @@ def main():
         "click_window_start": receipt["click_window_from"],
         "source_hashes": source_hashes,
         "source_receipt_sha256": digest(args.source / "build_receipt.json"),
-        "license_status": "Local review pack. Confirm dataset redistribution license before public release.",
+        "license_status": "Apache-2.0; synthetic teaching fixture contributed with the Retentioneering tutorial.",
+        "serialization": {
+            "python": platform.python_version(),
+            "pandas": pd.__version__,
+            "numpy": np.__version__,
+            "zlib": zlib.ZLIB_RUNTIME_VERSION,
+            "csv": {"encoding": "utf-8", "index": False, "lineterminator": "\n"},
+            "gzip": {"mtime": 0, "filename": "", "compresslevel": 9},
+        },
         "files": {},
     }
     for key, name in filenames.items():
@@ -78,9 +89,11 @@ def main():
         # Fix both mtime and embedded filename; retain source row order.
         with (
             output.open("wb") as raw,
-            gzip.GzipFile(fileobj=raw, filename="", mode="wb", mtime=0) as gz,
+            gzip.GzipFile(
+                fileobj=raw, filename="", mode="wb", mtime=0, compresslevel=9
+            ) as gz,
         ):
-            gz.write(df.to_csv(index=False).encode())
+            gz.write(df.to_csv(index=False, lineterminator="\n").encode("utf-8"))
         manifest["files"][key] = {
             "path": output.name,
             "rows": len(df),

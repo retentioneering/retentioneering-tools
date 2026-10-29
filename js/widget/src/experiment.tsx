@@ -8,6 +8,7 @@ export interface ExperimentRow {
   family: string;
   label?: string;
   unit?: string;
+  effect_unit?: string;
   scale?: number;
   outcome_kind?: string;
   role?: string;
@@ -54,9 +55,11 @@ function scale(row: ExperimentRow): number {
 }
 
 function measurementUnit(row: ExperimentRow, effect = false): string {
+  if (effect && row.effect_unit) return row.effect_unit;
   const probability = row.outcome_kind === "binary" || row.family.startsWith("funnel_");
   if (probability && scale(row) === 100) return effect ? "pp" : "%";
   if (probability && scale(row) === 1) return effect ? "proportion difference" : "proportion";
+  if (effect && row.unit === "%") return "pp";
   return row.unit || "canonical units";
 }
 
@@ -218,7 +221,7 @@ export function ExperimentContent({ payload, showDiagnostics = true, family = "s
     <nav aria-label="Experiment views" style={{ display: "flex", gap: 6, padding: "0 0 12px", flexWrap: "wrap" }}>
       {families.map(([name, title]) => <button key={name} type="button" aria-pressed={selected === name} onClick={() => onFamilyChange?.(name)} style={{ ...button, background: selected === name ? "#e9f0f4" : "#fff", fontWeight: selected === name ? 600 : 400 }}>{title}</button>)}
     </nav>
-    <p style={{ ...small, marginTop: 0 }}>Intervals are pointwise. Read the method and status for each estimate; an unavailable interval is not a zero-width interval.</p>
+    <p style={{ ...small, marginTop: 0 }}>Intervals are pointwise. Read the method and status for each estimate; an unavailable interval is not a zero-width interval. Confidence levels are nominal: sparse or heavy-tailed outcomes can have lower coverage even when the calculation status is ok.</p>
     {selected === "funnel_conditional" && <p style={{ ...small, padding: 10, background: "#fff7e9", borderRadius: 6 }}>Conditional rates use the previous-step population, which can change with treatment. The first step uses all assigned units. These contrasts do not isolate a causal mechanism.</p>}
     {selected === "funnel_cumulative" && <p style={small}>Ordered reach divided by all assigned units, including silent assignments.</p>}
     {rows.length > 0 ? <ExperimentTable rows={rows} control={meta.control} treatment={meta.treatment} sharedScale={selected !== "scorecard"} /> : <p>No outcomes in this result.</p>}

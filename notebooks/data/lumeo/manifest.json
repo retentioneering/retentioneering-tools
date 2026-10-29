@@ -145,5 +145,21 @@
         "surface_h"
       ]
     }
+  },
+  "verified_rebuild_serialization": {
+    "python": "3.13.17",
+    "pandas": "3.1.0",
+    "numpy": "2.5.4",
+    "zlib": "1.2.12",
+    "csv": {
+      "encoding": "utf-8",
+      "index": false,
+      "lineterminator": "\n"
+    },
+    "gzip": {
+      "mtime": 0,
+      "filename": "",
+      "compresslevel": 9
+    }
   }
 }

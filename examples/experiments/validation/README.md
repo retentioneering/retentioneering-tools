@@ -3,8 +3,12 @@
 Original PR: https://github.com/retentioneering/retentioneering-tools/pull/214
 
 Audited original head: `aa17374b20407158c687b33abed0fcc3376dbc12`.
-The follow-up branch is based on this exact commit. It does not replace, close,
-or merge the original PR. Review the follow-up against `codex/experiment-inference-v1`.
+The large frozen audit was contributed in PR #215, whose reviewed head is
+`047039a2be9605b791ecfc6df47bec9b2cb51b7f`. PR #216 consolidates that evidence
+with further correctness and presentation fixes. The frozen JSON files below
+describe the original and Wilson-corrected implementations by their recorded
+hashes; they are historical evidence, not a rerun of every later revision.
+See [the revision review](REVIEWED.md) for the current correction scope and checks.
 
 ## What is tested
 
@@ -70,12 +74,13 @@ From the repository root, with project Python dependencies installed:
 
 ```bash
 git show aa17374b20407158c687b33abed0fcc3376dbc12:src/retentioneering/stats/experiments.py > /tmp/pr214-original-experiments.py
+git show 047039a2be9605b791ecfc6df47bec9b2cb51b7f:src/retentioneering/stats/experiments.py > /tmp/pr215-fixed-experiments.py
 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python examples/experiments/coverage_validation.py \
   --stats-file /tmp/pr214-original-experiments.py --output /tmp/original.json
 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python examples/experiments/coverage_validation.py \
-  --output /tmp/fixed.json
+  --stats-file /tmp/pr215-fixed-experiments.py --output /tmp/fixed.json
 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python examples/experiments/coverage_validation.py \
-  --trials 1000 --resamples 9999 --workers 2 \
+  --stats-file /tmp/pr215-fixed-experiments.py --trials 1000 --resamples 9999 --workers 2 \
   --scenarios money_null money_unequal_null ratio_effect --output /tmp/sensitivity.json
 PYTHONPATH=src python -m pytest tests/tools/experiment_coverage_test.py -q
 ```
@@ -90,8 +95,9 @@ loaded directly and never inferred from master.
 
 Large simulations run only on explicit invocation, not in ordinary CI. The new
 44 deterministic/short regression checks take approximately 2–3 seconds locally.
-The production change is limited to exact Wilson endpoints at 0/n successes.
-No interval method is silently replaced to fit these scenarios.
+In that frozen PR #215 comparison, the production change was limited to exact
+Wilson endpoints at 0/n successes. Later numerical corrections are documented
+separately. No interval method is silently replaced to fit these scenarios.
 
 ## Reproducible implementation error
 

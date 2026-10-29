@@ -75,7 +75,7 @@ def make_demo_dataset(n_per_arm=500, seed=20261029, p_control=0.10, p_treatment=
                 user,
                 f"{user}_history",
                 "history_view",
-                pd.Timestamp("2026-01-01 12:00"),
+                pd.Timestamp("2025-12-31 12:00"),
                 np.nan,
                 variant,
             )
@@ -175,7 +175,7 @@ def make_ratio_fixture():
                 user,
                 f"{user}_history",
                 "history_view",
-                pd.Timestamp("2026-01-01 12:00"),
+                pd.Timestamp("2025-12-31 12:00"),
                 np.nan,
                 variant,
             )

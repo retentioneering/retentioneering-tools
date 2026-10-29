@@ -6,7 +6,17 @@ import numpy as np
 CONTROL, TREATMENT, EFFECT = "#42657d", "#bc6532", "#273a42"
 
 
+def _number(value):
+    """Normalize a JSON-null/pandas scalar without treating missing values as zero."""
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return np.nan
+    return value if np.isfinite(value) else np.nan
+
+
 def _mark(ax, x, lo, hi, y, color):
+    x, lo, hi = (_number(value) for value in (x, lo, hi))
     if np.isfinite(lo) and np.isfinite(hi):
         ax.hlines(y, lo, hi, colors=color, linewidth=2.3)
         ax.plot([lo, hi], [y, y], "|", color=color, markersize=9)
@@ -57,7 +67,7 @@ def plot_effects(result, metrics, labels, units, scales=None):
     fig, axes = plt.subplots(
         len(metrics),
         1,
-        figsize=(10, 2.05 * len(metrics)),
+        figsize=(10, max(2.8, 2.05 * len(metrics))),
         squeeze=False,
         layout="constrained",
     )
@@ -67,17 +77,19 @@ def plot_effects(result, metrics, labels, units, scales=None):
         ax.axvline(0, color="#89949b", linestyle="--", linewidth=1)
         _mark(
             ax,
-            r.absolute_effect * scale,
-            r.absolute_effect_ci_low * scale,
-            r.absolute_effect_ci_high * scale,
+            _number(r.absolute_effect) * scale,
+            _number(r.absolute_effect_ci_low) * scale,
+            _number(r.absolute_effect_ci_high) * scale,
             0,
             EFFECT,
         )
         ax.set_yticks([])
         ax.set_ylim(-0.65, 0.65)
         ax.set_xlabel(f"Treatment − control · {unit}")
+        point = _number(r.absolute_effect) * scale
+        estimate = f"{point:+.3g}" if np.isfinite(point) else "unavailable"
         ax.set_title(
-            f"{label}  |  estimate {r.absolute_effect * scale:+.3g}",
+            f"{label}  |  estimate {estimate}",
             loc="left",
             fontsize=12,
         )
@@ -113,33 +125,47 @@ def plot_funnel(result, family="funnel_cumulative", title=None):
         ):
             _mark(
                 axes[0],
-                r[label] * 100,
-                r[f"{label}_ci_low"] * 100,
-                r[f"{label}_ci_high"] * 100,
+                _number(r[label]) * 100,
+                _number(r[f"{label}_ci_low"]) * 100,
+                _number(r[f"{label}_ci_high"]) * 100,
                 j + offset,
                 color,
             )
+            if r[f"{label}_status"] != "ok":
+                axes[0].text(
+                    0.98,
+                    j + offset,
+                    f"{label.title()} CI: {r[f'{label}_status']}",
+                    transform=axes[0].get_yaxis_transform(),
+                    ha="right",
+                    va="center",
+                    fontsize=7,
+                    color=color,
+                )
         _mark(
             axes[1],
-            r.absolute_effect * 100,
-            r.absolute_effect_ci_low * 100,
-            r.absolute_effect_ci_high * 100,
+            _number(r.absolute_effect) * 100,
+            _number(r.absolute_effect_ci_low) * 100,
+            _number(r.absolute_effect_ci_high) * 100,
             j,
             EFFECT,
         )
         if r.absolute_effect_status != "ok":
-            axes[1].annotate(
+            axes[1].text(
+                0.98,
+                j + 0.15,
                 "CI: " + r.absolute_effect_status,
-                (r.absolute_effect * 100, j),
-                xytext=(5, 9),
-                textcoords="offset points",
+                transform=axes[1].get_yaxis_transform(),
+                ha="right",
+                va="top",
                 fontsize=8,
             )
     axes[0].set_yticks(
         range(len(table)),
         [f"{int(r.step_index)}. {r.step}" for _, r in table.iterrows()],
     )
-    axes[0].invert_yaxis()
+    # Missing points still occupy a step row; autoscaling only sees finite marks.
+    axes[0].set_ylim(len(table) - 0.5, -0.5)
     axes[0].set_xlabel("Control / treatment · %")
     axes[1].set_xlabel("Treatment − control · percentage points")
     axes[1].axvline(0, color="#89949b", linestyle="--", linewidth=1)

@@ -130,11 +130,14 @@ def _display(spec, name, kind):
     if not isinstance(value, dict) or set(value) - {
         "label",
         "unit",
+        "effect_unit",
         "scale",
         "direction",
         "role",
     }:
-        raise ValueError("display accepts label, unit, scale, direction, role")
+        raise ValueError(
+            "display accepts label, unit, effect_unit, scale, direction, role"
+        )
     out = {
         "label": name,
         "unit": "proportion" if kind == "binary" else "value",
@@ -160,6 +163,18 @@ def _display(spec, name, kind):
         raise ValueError(
             "Display role must be primary, secondary, guardrail, or exploratory"
         )
+    if "effect_unit" not in out:
+        out["effect_unit"] = (
+            "pp"
+            if kind == "binary" and out["scale"] == 100
+            else "proportion difference"
+            if kind == "binary" and out["scale"] == 1
+            else "pp"
+            if out["unit"] == "%"
+            else out["unit"]
+        )
+    if not isinstance(out["effect_unit"], str) or not out["effect_unit"]:
+        raise ValueError("Display effect_unit must be a nonempty string")
     return out
 
 
@@ -258,6 +273,7 @@ def _metric_contributions(
                         else "ratio",
                         "label": step,
                         "unit": "proportion",
+                        "effect_unit": "proportion difference",
                         "scale": 1.0,
                         "direction": "neutral",
                         "role": "exploratory",
@@ -343,7 +359,8 @@ def experiment_data(
     if (
         segment_col in post_assignment
         and not post_assignment[segment_col]
-        .eq(post_assignment[path_col].map(a[segment_col]))
+        .astype(object)
+        .eq(post_assignment[path_col].map(a[segment_col]).astype(object))
         .all()
     ):
         raise ValueError("Event arm conflicts with assignment roster")
@@ -522,6 +539,7 @@ def session_funnel_data(
                         "outcome_kind": "ratio",
                         "label": step,
                         "unit": "proportion",
+                        "effect_unit": "proportion difference",
                         "scale": 1.0,
                         "direction": "neutral",
                         "role": "exploratory",

@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from retentioneering import Eventstream
-from retentioneering.paths.ordered_reach import ordered_reach
+from retentioneering import Eventstream, engine
+from retentioneering.paths.ordered_reach import ordered_reach, ordered_reach_counts
 
 
 def fixture():
@@ -64,6 +64,8 @@ def test_shared_reach_and_legacy_funnel_against_independent_scanner(path, steps)
     reach = ordered_reach(stream, steps, path_col=path)
     for key, flags in expected.items():
         np.testing.assert_array_equal(reach.loc[key], flags)
+    counts = ordered_reach_counts(stream, steps, path_col=path)
+    np.testing.assert_array_equal(counts, np.sum(list(expected.values()), axis=0))
     native = stream.funnel_data(steps=steps, path_col=path)
     assert [r["unique_paths"] for r in native["steps"]] == list(
         np.sum(list(expected.values()), axis=0)
@@ -97,3 +99,63 @@ def test_unrelated_null_or_empty_event_does_not_break_legacy_diff(extra):
     result = stream.funnel_data(steps=["open", "buy"], diff=(["a"], ["b"]))
     assert result["steps"][-1]["funnel1_unique_paths"] == 1
     assert result["steps"][-1]["funnel2_unique_paths"] == 0
+
+
+@pytest.mark.parametrize("n_paths", [1, 100, 10_000])
+def test_point_funnel_materializes_only_aggregate_counts(monkeypatch, n_paths):
+    """The client output size depends on steps, not on the path population."""
+    steps = ["open", "cart", "buy"]
+    stream = Eventstream(
+        pd.DataFrame(
+            {
+                "user_id": np.repeat(np.arange(n_paths), len(steps)),
+                "event": steps * n_paths,
+                "timestamp": pd.Timestamp("2026-01-01"),
+            }
+        )
+    )
+    outputs = []
+    original = engine.run
+
+    def record_output(sql, **tables):
+        result = original(sql, **tables)
+        outputs.append(result.shape)
+        return result
+
+    monkeypatch.setattr(engine, "run", record_output)
+    result = stream.funnel_data(steps=steps)
+    assert [row["unique_paths"] for row in result["steps"]] == [n_paths] * len(steps)
+    assert outputs == [(1, len(steps))]
+
+
+def test_aggregate_projection_keeps_zero_counts_for_absent_or_empty_input():
+    stream = fixture()
+    steps = ["a", "never"]
+    catalog = {"event": ["never"]}
+    counts = ordered_reach_counts(stream, steps, event_catalog=catalog)
+    expected = ordered_reach(stream, steps, event_catalog=catalog).sum()
+    np.testing.assert_array_equal(counts, expected)
+    assert counts.reach_1 > 0
+    assert counts.reach_2 == 0
+    empty = ordered_reach_counts(
+        stream, steps, frame=stream.df.iloc[:0], event_catalog=catalog
+    )
+    np.testing.assert_array_equal(empty, [0, 0])
+
+
+def test_diff_funnel_materializes_only_each_groups_aggregate_counts(monkeypatch):
+    stream = fixture()
+    outputs = []
+    original = engine.run
+
+    def record_reach_output(sql, **tables):
+        result = original(sql, **tables)
+        if "step_1 AS" in sql:
+            outputs.append(result.shape)
+        return result
+
+    monkeypatch.setattr(engine, "run", record_reach_output)
+    result = stream.funnel_data(steps=["a", "b's"], diff=(["u1"], ["u3"]))
+    assert result["steps"][-1]["funnel1_unique_paths"] == 0
+    assert result["steps"][-1]["funnel2_unique_paths"] == 1
+    assert outputs == [(1, 2), (1, 2)]

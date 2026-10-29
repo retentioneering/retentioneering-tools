@@ -73,3 +73,11 @@ jobs:
         run: |
           uv run --with nbclient --with nbformat --with nbconvert --with ipykernel python examples/experiments/execute_tutorial.py
           uv run --with nbclient --with nbformat --with nbconvert --with ipykernel python examples/experiments/execute_tutorial.py --lumeo
+
+      - name: Upload executed experiment tutorials and diagnostics
+        if: always() && matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: experiment-tutorials-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: ignore

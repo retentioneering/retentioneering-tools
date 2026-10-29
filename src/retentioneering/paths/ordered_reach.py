@@ -38,6 +38,22 @@ def ordered_reach(stream, steps, path_col=None, frame=None, event_catalog=None):
     The catalogue is validated against the original stream, before filtering.
     Duplicate step names remain distinct by ordinal. Empty frames are valid.
     """
+    return _ordered_reach(
+        stream, steps, path_col, frame, event_catalog, aggregate=False
+    )
+
+
+def ordered_reach_counts(stream, steps, path_col=None, frame=None, event_catalog=None):
+    """Aggregate ordered-reach counts without materializing per-path flags.
+
+    The sequence semantics and catalogue validation are identical to
+    :func:`ordered_reach`. Only the final SQL projection differs: point-only
+    consumers receive one count per step instead of every path's contribution.
+    """
+    return _ordered_reach(stream, steps, path_col, frame, event_catalog, aggregate=True)
+
+
+def _ordered_reach(stream, steps, path_col, frame, event_catalog, *, aggregate):
     path_col = path_col or stream.schema.path_col
     if path_col not in stream.schema.path_cols:
         raise ValueError(f"path_col must be in {stream.schema.path_cols}")
@@ -56,6 +72,8 @@ def ordered_reach(stream, steps, path_col=None, frame=None, event_catalog=None):
     df = stream.df if frame is None else frame
     columns = [f"reach_{j}" for j in range(1, len(steps) + 1)]
     if df.empty:
+        if aggregate:
+            return pd.Series(0, index=columns, dtype="int64")
         return pd.DataFrame(
             columns=columns, index=pd.Index([], name=path_col), dtype=float
         )
@@ -65,7 +83,7 @@ def ordered_reach(stream, steps, path_col=None, frame=None, event_catalog=None):
         engine.quote_ident(stream.schema.subindex),
     )
     pos, jpos = event_position(ix, sub), event_position(f"df.{ix}", f"df.{sub}")
-    ctes = [f"paths AS (SELECT DISTINCT {pq} AS path_id FROM df)"]
+    ctes = []
     for j, step in enumerate(steps, 1):
         ev = quote_literal(step)
         if j == 1:
@@ -77,6 +95,17 @@ def ordered_reach(stream, steps, path_col=None, frame=None, event_catalog=None):
                 f"WHERE df.{eq}={ev} AND {jpos}>prev.idx GROUP BY df.{pq}"
             )
         ctes.append(f"step_{j} AS ({sql})")
+    if aggregate:
+        counts = ", ".join(
+            f"(SELECT COUNT(path_id) FROM step_{j}) AS reach_{j}"
+            for j in range(1, len(steps) + 1)
+        )
+        return (
+            engine.run(f"WITH {', '.join(ctes)} SELECT {counts}", df=df)
+            .iloc[0]
+            .astype("int64")
+        )
+    ctes.append(f"paths AS (SELECT DISTINCT {pq} AS path_id FROM df)")
     flags = ", ".join(
         f"CASE WHEN s{j}.path_id IS NULL THEN 0 ELSE 1 END AS reach_{j}"
         for j in range(1, len(steps) + 1)

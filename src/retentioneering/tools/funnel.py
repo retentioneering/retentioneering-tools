@@ -59,13 +59,13 @@ class Funnel:
     def _fit_single(self, steps: list[str], path_col: str, source_stream=None) -> dict:
         if not steps:
             return {"steps": []}
-        from retentioneering.paths.ordered_reach import ordered_reach
+        from retentioneering.paths.ordered_reach import ordered_reach_counts
 
         total_paths = int(self.eventstream.df[path_col].nunique())
         source = self.eventstream if source_stream is None else source_stream
-        counts = ordered_reach(
+        counts = ordered_reach_counts(
             source, steps, path_col=path_col, frame=self.eventstream.df
-        ).sum()
+        )
 
         funnel_data = []
         prev_count = None

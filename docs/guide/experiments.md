@@ -118,6 +118,14 @@ Rows include measurement labels/units, support counts, interval methods and
 unavailable states. Assignments and raw bootstrap draws are not sent to the UI.
 `experiment` presents the same computation in a native notebook widget.
 
+`display` accepts `label`, `unit`, `effect_unit`, `scale`, `role` and `direction`.
+Values and absolute effects use the same display scale, while their unit labels
+can differ. For a ratio shown with `unit='%'` and `scale=100`, a change from .20
+to .30 displays as 20% to 30%, an absolute difference of +10 pp and a relative
+effect of +50%. `effect_unit` overrides the resolved absolute-difference label.
+Display units do not make a ratio binary or enable binary-specific inference.
+The headless payload retains canonical numeric values and the resolved labels.
+
 Display changes do not resample. The initial view is a fixed result snapshot;
 it does not persist/rebind a second input table through `state_file` or expose a
 new MCP assignment-data binding. Re-run the explicit analysis with the same

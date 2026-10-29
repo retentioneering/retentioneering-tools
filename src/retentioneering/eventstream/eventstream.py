@@ -2167,7 +2167,8 @@ class Eventstream:
         metrics : list of dict
             Named scalar path metric configurations with explicit aggregation:
             mean, ratio_of_sums, or mean_of_ratios with eligibility. Optional
-            display metadata labels measurement units without changing estimates.
+            display metadata labels measurement units without changing estimates;
+            effect_unit labels absolute differences separately (percent uses pp).
         observation : dict
             start, end, assignment_time_col and complete=True. All assignments
             must precede or equal start. Complete logging is an explicit input

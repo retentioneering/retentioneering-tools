@@ -8,7 +8,11 @@ import pandas as pd
 
 
 def load_lumeo_tables(data_dir=None):
-    root = Path(data_dir) if data_dir else Path(__file__).resolve().parents[1] / "data"
+    root = (
+        Path(data_dir)
+        if data_dir
+        else Path(__file__).resolve().parent / "data" / "lumeo"
+    )
     metadata = json.loads((root / "manifest.json").read_text())
     tables = {}
     for name, info in metadata["files"].items():

@@ -153,6 +153,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   treatment-only cart loop, novelty since assignment, no AOV shift, a sign flip by
   pre-exposure path length) are listed in the module docstring and each one is
   checked by a test; `with_truth=True` adds the planted `user_type`.
+- A family of bundled A/B datasets: `load_ab_test(name="northwind_home", *,
+  as_dataframe=False, with_truth=False, n_users=None, seed=None)` and
+  `load_ab_test_assignment(name=...)` pick one by name (`None` means the
+  default, Northwind Home, unchanged byte for byte; an unknown name raises
+  `InvalidParameterError` listing the names), and `list_ab_tests()` /
+  `datasets.AB_TESTS` map every name to a one-line description. Six new
+  deterministic generators, each about a second at its default size, no data
+  file: `lumeo_smart_cart` (15,000 users, a smart cart drawer, sessions as a
+  second path column), `srm_platform_bug`, `session_assignment`,
+  `aa_calibration`, `trial_conversion` and `push_campaign` (20,000 users
+  assigned from a marketing table). Some hide an effect in a pre-exposure
+  segment, some are broken tests whose correct conclusion is to reject them.
+  Each generator's docstring states the design — where the treatment sits,
+  which segments are fixed at assignment, what the assignment table is — and
+  ends with a "Solutions (spoilers)" section (Northwind Home's stories moved
+  there too); every planted verdict is checked by a test through the public
+  API, and a slow seed sweep checks that each holds in at least 90 % of 40
+  seeds. User ids do not overlap between datasets. The Eventstream guide has a
+  table of the datasets.
 - Tutorial notebook `notebooks/ab_testing_tutorial.ipynb`: one analysis of the
   Northwind Home experiment from the assignment table to the final readout — SRM,
   a scorecard with two reads declared before any result (the whole window, and

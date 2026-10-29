@@ -1,11 +1,26 @@
-"""Synthetic A/B test dataset "Northwind Home".
+"""Bundled A/B test datasets, and the default one, "Northwind Home".
 
-A deterministic generator (no csv in the repository) producing about 10,000 users over
-eight weeks of an online home-goods store with a randomised 50/50 test of a
-``quick_add`` feature: a one-tap "add to basket" button on catalog and search tiles.
-The dataset is built so that the tutorial's analysis finds the planted structure and
-nothing else; every planted story has an acceptance test in
-``tests/datasets/ab_test_test.py``.
+:func:`load_ab_test` and :func:`load_ab_test_assignment` take a dataset ``name``
+(:data:`AB_TESTS`, or :func:`list_ab_tests`, maps every name to a one-line
+description). Each dataset is a deterministic generator (no data file) with
+stories planted in it: an effect hidden in a pre-exposure segment, a broken test
+that must be rejected, a population or horizon that changes the answer. Each
+generator's docstring describes the design and ends with a "Solutions (spoilers)"
+section. ``northwind_home``, the default, is generated in this module; the others
+live in ``retentioneering.datasets.ab_cases.<name>``. User ids do not overlap
+between datasets (``northwind_home`` 100001+, ``lumeo_smart_cart`` 200001+,
+``srm_platform_bug`` 300001+, ``session_assignment`` 400001+, ``aa_calibration``
+500001+, ``trial_conversion`` 600001+, ``push_campaign`` 700001+, for fewer than
+100,000 users), so an assignment table never matches another dataset's stream.
+
+Northwind Home
+==============
+
+A deterministic generator producing about 10,000 users over eight weeks of an
+online home-goods store with a randomised 50/50 test of a ``quick_add`` feature: a
+one-tap "add to basket" button on the product page. The dataset is built so that
+the tutorial's analysis finds the planted structure and nothing else; every planted
+story has an acceptance test in ``tests/datasets/ab_test_test.py``.
 
 The store and the test
 ----------------------
@@ -20,12 +35,37 @@ browsing (``home``, ``catalog``, ``search``, ``search_filter``, ``product_view``
 ``collections_view``, ``wishlist_add``, ``reviews_view``, ``support_chat``) and may end in
 an add. In control the add is ``add_to_cart``; in treatment 70 % of adds are
 ``quick_add`` (the feature, treatment only) and the rest ``add_to_cart``. After the add
-come ``cart``, ``checkout_start``, ``payment`` and ``order_success``. The browsing
-before a user's first add is generated identically in both arms, so anything
-measured on the window before the first add is a pre-exposure attribute.
+come ``cart``, ``checkout_start``, ``payment`` and ``order_success``.
 
-Planted stories
----------------
+Where the treatment sits: ``quick_add`` follows a ``product_view`` almost every
+time, so users see the button from their first ``product_view``, the strict
+exposure point. The button changes nothing before the first add: the browsing
+before a user's first add is generated identically in both arms, so anything
+measured on the window before the first add is a pre-exposure attribute (the
+tutorial's choice of exposure marker).
+
+Fixed at assignment (pre-exposure, declare ``strata_pre_exposure=True``):
+``platform`` (``"mobile"`` / ``"desktop"``) and ``cohort_week``. Both are constant
+per user.
+
+Schema
+------
+``path_cols=["user_id", "session_id"]``, ``segment_cols=["exp_group", "platform",
+"cohort_week"]``, custom columns ``order_value`` (nullable float, set on
+``order_success`` rows only) and ``order_items`` (nullable int, set on
+``order_success`` rows only). Every segment is constant per user.
+
+Examples
+--------
+>>> from retentioneering import datasets
+>>> stream = datasets.load_ab_test()
+>>> assignment = datasets.load_ab_test_assignment()
+>>> datasets.list_ab_tests()["srm_platform_bug"]  # doctest: +SKIP
+
+Solutions (spoilers)
+--------------------
+The planted stories of Northwind Home:
+
 1. The top-line conversion effect (share of assigned users with ``order_success``) is
    inconclusive: |delta| below half the MDE, p > 0.2; the sample ratio of the
    assignment table is fine (p > 0.05).
@@ -62,33 +102,39 @@ Planted stories
    convert less in treatment, users with longer windows convert more; both bins are
    significant after Holm.
 
-Schema
-------
-``path_cols=["user_id", "session_id"]``, ``segment_cols=["exp_group", "platform",
-"cohort_week"]``, custom columns ``order_value`` (nullable float, set on
-``order_success`` rows only) and ``order_items`` (nullable int, set on
-``order_success`` rows only). Every segment is constant per user.
-
-Examples
---------
->>> from retentioneering import datasets
->>> stream = datasets.load_ab_test()
->>> assignment = datasets.load_ab_test_assignment()
+Correct conclusion (the tutorial's readout): over the whole window the effect on
+conversion is inconclusive; within each user's first 28 days it is positive, and
+it fades after the first two weeks (novelty). The effect differs between
+pre-exposure user types (scanners gain, curators lose, the curators' carts turn
+into a reopen loop): ship or not is a product call on these facts, and the next
+experiment targets the loop.
 """
 
 from __future__ import annotations
 
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 
+from retentioneering.datasets.ab_cases import (
+    aa_calibration,
+    lumeo_smart_cart,
+    push_campaign,
+    session_assignment,
+    srm_platform_bug,
+    trial_conversion,
+)
 from retentioneering.exceptions import InvalidParameterError
 
 if TYPE_CHECKING:
     from retentioneering.eventstream import Eventstream
 
 __all__ = [
+    "AB_TESTS",
+    "DEFAULT_AB_TEST",
+    "list_ab_tests",
     "load_ab_test",
     "load_ab_test_assignment",
     "EVENTS",
@@ -98,6 +144,29 @@ __all__ = [
 
 DEFAULT_N_USERS = 10_000
 DEFAULT_SEED = 2026
+DEFAULT_AB_TEST = "northwind_home"
+
+_CASES = {
+    case.NAME: case
+    for case in (
+        lumeo_smart_cart,
+        srm_platform_bug,
+        session_assignment,
+        aa_calibration,
+        trial_conversion,
+        push_campaign,
+    )
+}
+#: Bundled A/B datasets, name -> one-line description; the first is the default.
+AB_TESTS = MappingProxyType(
+    {
+        DEFAULT_AB_TEST: (
+            "Home-goods store, 50/50 test of a one-tap quick_add button "
+            "(10,000 users, 8 weeks); the tutorial's dataset."
+        ),
+        **{name: case.DESCRIPTION for name, case in _CASES.items()},
+    }
+)
 
 EVENTS = (
     "home",
@@ -642,36 +711,116 @@ def _read_fixture(directory) -> tuple[pd.DataFrame, pd.DataFrame]:
     return events, users
 
 
+def list_ab_tests() -> dict[str, str]:
+    """Return the bundled A/B datasets: name -> one-line description.
+
+    The first entry is the default of :func:`load_ab_test`. The descriptions say what
+    each experiment is, not what it hides; the planted stories and the correct
+    conclusion are in the "Solutions (spoilers)" section of each generator's
+    docstring (``retentioneering.datasets.ab_test`` for ``northwind_home``,
+    ``retentioneering.datasets.ab_cases.<name>`` for the others).
+
+    Returns
+    -------
+    dict
+        ``{name: description}``, in this order: ``"northwind_home"``,
+        ``"lumeo_smart_cart"``, ``"srm_platform_bug"``, ``"session_assignment"``,
+        ``"aa_calibration"``, ``"trial_conversion"``, ``"push_campaign"``.
+
+    Examples
+    --------
+    >>> from retentioneering import datasets
+    >>> for name, description in datasets.list_ab_tests().items():  # doctest: +SKIP
+    ...     print(name, "-", description)
+    """
+    return dict(AB_TESTS)
+
+
+def _resolve(name, n_users, seed):
+    """Validate the loader arguments; return ``(name, n_users, seed)``."""
+    if name is None:
+        name = DEFAULT_AB_TEST
+    if not isinstance(name, str) or name not in AB_TESTS:
+        raise InvalidParameterError("name", name, list(AB_TESTS))
+    if name == DEFAULT_AB_TEST:
+        defaults = (DEFAULT_N_USERS, DEFAULT_SEED)
+    else:
+        defaults = (_CASES[name].DEFAULT_N_USERS, _CASES[name].DEFAULT_SEED)
+    n_users = defaults[0] if n_users is None else n_users
+    seed = defaults[1] if seed is None else seed
+    if (
+        isinstance(n_users, bool)
+        or not isinstance(n_users, (int, np.integer))
+        or n_users < 1
+    ):
+        raise InvalidParameterError("n_users", n_users, ["a positive int"])
+    if isinstance(seed, bool) or not isinstance(seed, (int, np.integer)) or seed < 0:
+        raise InvalidParameterError("seed", seed, ["a non-negative int"])
+    return name, int(n_users), int(seed)
+
+
 def load_ab_test(
+    name: str | None = DEFAULT_AB_TEST,
+    *,
     as_dataframe: bool = False,
     with_truth: bool = False,
-    n_users: int = DEFAULT_N_USERS,
-    seed: int = DEFAULT_SEED,
+    n_users: int | None = None,
+    seed: int | None = None,
 ) -> "Eventstream | pd.DataFrame":
-    """Generate the Northwind Home A/B dataset.
+    """Generate a bundled A/B test dataset (default: "Northwind Home").
 
-    Eight weeks of an online home-goods store with a 50/50 test of the ``quick_add``
-    feature; the planted stories are listed in the module docstring
-    (``retentioneering.datasets.ab_test``).
+    Every dataset is a synthetic randomised experiment generated deterministically
+    (no data file) with stories planted in it. :func:`list_ab_tests` lists the names
+    with a one-line description; each generator's docstring describes the design
+    (where the treatment sits, which segments are fixed at assignment) and ends with
+    the solutions.
 
     Parameters
     ----------
+    name : str, default "northwind_home"
+        The dataset; ``None`` means the default.
+
+        - ``"northwind_home"`` — home-goods store, 50/50 test of a one-tap
+          ``quick_add`` button (about 10,000 users, eight weeks); the tutorial's
+          dataset.
+        - ``"lumeo_smart_cart"`` — home and living store, a smart cart drawer after
+          ``add_to_cart`` (15,000 users, twelve weeks, sessions as a second path
+          column).
+        - ``"srm_platform_bug"`` — a checkout redesign on three platforms (10,000
+          users, five weeks).
+        - ``"session_assignment"`` — a product card redesign assigned by the web
+          experiment service (8,000 users, four weeks).
+        - ``"aa_calibration"`` — an A/A test that calibrates the pipeline (10,000
+          users, four weeks, revenue).
+        - ``"trial_conversion"`` — a 14-day trial of a subscription app and a paywall
+          change (10,000 users, about six weeks).
+        - ``"push_campaign"`` — a push campaign assigned from a marketing table
+          (20,000 users, two weeks).
+
+        Any other value raises ``InvalidParameterError`` listing the names.
     as_dataframe : bool, default False
         Return the raw events frame instead of an ``Eventstream``.
     with_truth : bool, default False
-        Add the planted ``user_type`` column (``scanner`` / ``curator`` / ``other``). For
-        the tutorial's last section only; the analysis must not use it. With an
-        ``Eventstream`` the column is a custom column, not a segment.
-    n_users : int, default 10000
-        Number of assigned users (events exist only for users who visited; about 3 %
-        are silent).
-    seed : int, default 2026
+        Add the dataset's planted truth column (custom column, never a segment), for
+        checking an analysis at the end; the analysis must not use it.
+        ``northwind_home``: ``user_type`` (``scanner`` / ``curator`` / ``other``);
+        the other datasets name theirs in their docstring.
+    n_users : int, optional
+        Number of assigned users; default the dataset's documented size. Users who
+        never produce an event (where a dataset has them) are in the assignment
+        table only.
+    seed : int, optional
         Generator seed; the default reproduces the documented numbers.
 
     Returns
     -------
     Eventstream or pandas.DataFrame
-        Columns:
+        One row per event, sorted by path and time. Every dataset has
+        ``user_id`` (int, the randomised unit unless the dataset says otherwise),
+        ``session_id`` (str ``"<user_id>_<n>"``, the second path column),
+        ``event``, ``timestamp`` and the arm segment ``exp_group``
+        (``"treatment"`` / ``"control"``); the dataset's docstring lists its other
+        segments and custom columns. For ``northwind_home``:
 
         - ``user_id`` — int, constant per user; path column.
         - ``session_id`` — str ``"<user_id>_<n>"``; second path column.
@@ -685,54 +834,98 @@ def load_ab_test(
         - ``order_items`` — nullable int, items on ``order_success`` rows, NA elsewhere.
         - ``user_type`` — only with ``with_truth=True``: the planted type.
 
-        The ``Eventstream`` has ``path_cols=["user_id", "session_id"]``,
-        ``segment_cols=["exp_group", "platform", "cohort_week"]`` and the custom
-        columns ``order_value``, ``order_items`` (and ``user_type``).
+        The ``Eventstream`` has ``path_cols=["user_id", "session_id"]``, the
+        dataset's segment columns and its custom columns (plus the truth column
+        with ``with_truth=True``).
+
+    Raises
+    ------
+    InvalidParameterError
+        Unknown ``name`` (the message lists the names); ``n_users`` not a
+        positive int; ``seed`` not a non-negative int.
 
     Notes
     -----
-    Runs in about one second. The generation is deterministic for a given
-    ``(n_users, seed)`` and NumPy version; tests use a cached fixture of the default
-    call regenerated by ``scripts/refresh_ab_fixture.py``.
+    Each dataset generates in about a second at its default size. The generation is
+    deterministic for a given ``(name, n_users, seed)`` and NumPy version; tests use
+    a cached fixture of the default ``northwind_home`` call regenerated by
+    ``scripts/refresh_ab_fixture.py``.
 
     Examples
     --------
     >>> from retentioneering import datasets
-    >>> stream = datasets.load_ab_test()
+    >>> stream = datasets.load_ab_test()                      # northwind_home
     >>> df = datasets.load_ab_test(as_dataframe=True, with_truth=True)
+    >>> lumeo = datasets.load_ab_test("lumeo_smart_cart")
+    >>> assignment = datasets.load_ab_test_assignment("lumeo_smart_cart")
     """
-    events, users = _generate(n_users, seed)
-    df = _assemble(events, users, with_truth=with_truth)
+    name, n_users, seed = _resolve(name, n_users, seed)
+    if name == DEFAULT_AB_TEST:
+        events, users = _generate(n_users, seed)
+        df = _assemble(events, users, with_truth=with_truth)
+        schema = {key: list(value) for key, value in _SCHEMA.items()}
+        truth = ["user_type"]
+    else:
+        case = _CASES[name]
+        df, _ = case.generate(n_users, seed)
+        schema = {key: list(value) for key, value in case.SCHEMA.items()}
+        truth = list(case.TRUTH_COLS)
+        if not with_truth:
+            df = df.drop(columns=truth)
     if as_dataframe:
         return df
 
     from retentioneering.eventstream.eventstream import Eventstream
 
-    schema = {key: list(value) for key, value in _SCHEMA.items()}
     if with_truth:
-        schema["custom_cols"].append("user_type")
+        schema["custom_cols"].extend(truth)
     return Eventstream(df, schema)
 
 
 def load_ab_test_assignment(
-    n_users: int = DEFAULT_N_USERS, seed: int = DEFAULT_SEED
+    name: str | None = DEFAULT_AB_TEST,
+    *,
+    n_users: int | None = None,
+    seed: int | None = None,
 ) -> pd.DataFrame:
-    """Return the assignment table that generated :func:`load_ab_test`.
+    """Return the assignment table that goes with :func:`load_ab_test`.
 
     Parameters
     ----------
-    n_users : int, default 10000
+    name : str, default "northwind_home"
+        The dataset (see :func:`load_ab_test`); ``None`` means the default; an unknown
+        name raises ``InvalidParameterError`` listing the names.
+    n_users : int, optional
         Must match the ``n_users`` passed to :func:`load_ab_test`.
-    seed : int, default 2026
+    seed : int, optional
         Must match the ``seed`` passed to :func:`load_ab_test`.
 
     Returns
     -------
     pandas.DataFrame
-        Index ``user_id``; columns ``arm`` (``"treatment"`` / ``"control"``) and
-        ``assigned_at`` (Timestamp: the moment of assignment, the user's first app
-        open; the user's tracked events, if any, all come later). Includes silent
-        users, who were assigned but produced no tracked event.
+        Indexed by the assigned unit (``user_id``; ``session_id`` for
+        ``session_assignment``, which assigned sessions); columns ``arm``
+        (``"treatment"`` / ``"control"``) and ``assigned_at`` (Timestamp: the moment
+        of assignment), plus columns fixed at assignment where the dataset's
+        docstring says so (``platform``). For ``northwind_home``: ``assigned_at``
+        is the user's first app open (the user's tracked events, if any, all come
+        later), and the table includes silent users, who were assigned but
+        produced no tracked event. Where a dataset's table differs from the true
+        assignment (a logging bug, a marketing table), its docstring says how.
+
+    Raises
+    ------
+    InvalidParameterError
+        As in :func:`load_ab_test`.
+
+    Examples
+    --------
+    >>> from retentioneering import datasets
+    >>> assignment = datasets.load_ab_test_assignment()
+    >>> push = datasets.load_ab_test_assignment("push_campaign")
     """
-    _, users = _generate(n_users, seed)
-    return _assignment(users)
+    name, n_users, seed = _resolve(name, n_users, seed)
+    if name == DEFAULT_AB_TEST:
+        _, users = _generate(n_users, seed)
+        return _assignment(users)
+    return _CASES[name].generate(n_users, seed)[1]

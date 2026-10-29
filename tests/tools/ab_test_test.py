@@ -1031,6 +1031,25 @@ class TestPooledSupport:
         assert row.support_warning == "one_arm_only"
         assert np.isnan(row.rel_delta_ci_low)  # log ratio undefined at k = 0
 
+    def test_totals_count_paths_with_a_non_zero_total(self) -> None:
+        """M4: every path has a total, so support is the paths whose total is not 0."""
+        rare = {("x", "treatment"): (100, 3), ("x", "control"): (100, 4)}
+        row = ABTest.from_stream(_counts_stream(rare), DIFF, [ORDERS]).fit().iloc[0]
+        assert row.verdict == "insufficient_data" and np.isnan(row.p_value)
+        assert "pooled support 7 < min_support 10" in row.reading
+        assert row.group1_support == 100  # every path has a total
+        one_arm = {("x", "treatment"): (100, 0), ("x", "control"): (100, 30)}
+        row = ABTest.from_stream(_counts_stream(one_arm), DIFF, [ORDERS]).fit().iloc[0]
+        assert row.support_warning == "one_arm_only"
+        assert row.verdict == "decrease"
+        boot = dict(ORDERS, test="bootstrap")
+        row = (
+            ABTest.from_stream(_counts_stream(rare), DIFF, [boot], min_support=1)
+            .fit()
+            .iloc[0]
+        )
+        assert row.support_warning == "low_support"
+
     def test_bootstrap_rows_with_few_supporting_paths_are_flagged(self) -> None:
         out = ABTest.from_stream(_random(n=120), DIFF, [AOV], min_support=1).fit()
         assert out.iloc[0].support_warning == "low_support"

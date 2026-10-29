@@ -1883,12 +1883,17 @@ class ABTest:
         nan = float("nan")
         extra: dict[str, Any] = {"kind": spec.kind}
 
-        # support: numerator events for 0/1 and ratio metrics, paths with a value
-        # otherwise; the rule is pooled over the arms (S-02): a behaviour present in
-        # one arm only is the strongest effect there is, not missing data
+        # support: numerator events for 0/1 and ratio metrics, paths with a
+        # non-zero total for totals (every path has a total, so "a value" would
+        # be every path), paths with a value for values; the rule is pooled over
+        # the arms (S-02): a behaviour present in one arm only is the strongest
+        # effect there is, not missing data
         if spec.kind in ("binary", "ratio"):
             s1 = int(((num > 0) & in1).sum())
             s2 = int(((num > 0) & in2).sum())
+        elif spec.kind == "count":
+            s1 = int(((num != 0) & in1).sum())
+            s2 = int(((num != 0) & in2).sum())
         else:
             s1 = int(((den > 0) & in1).sum())
             s2 = int(((den > 0) & in2).sum())
@@ -1906,11 +1911,7 @@ class ABTest:
             extra["q_support"] = min(s1, s2) >= 10
         # no data: no path of either arm has the behaviour (an event, a non-zero
         # total or numerator, a value); nothing to compare, whatever the metric type
-        if spec.kind == "count":
-            seen = int(((num != 0) & (in1 | in2)).sum())
-        else:
-            seen = s1 + s2
-        if seen == 0:
+        if s1 + s2 == 0:
             support_warning = "no_data"
             extra["support"] = False
         elif min(s1, s2) == 0:

@@ -270,6 +270,66 @@ stream.get_sample_ratio(
 
 Run it on the assignment or on the full stream. On a subset defined by behaviour — users who reached the cart — the shares differ whenever the treatment works, and that difference is an effect, not a bug: the chi-square there is the conversion test in disguise.
 
+### A/B test scorecard
+
+`get_ab_test()` compares two arms of an experiment on a handful of path metrics and returns one row per metric: the value in each arm, the difference with a confidence interval, a p-value, the smallest effect the test could have detected (`mde`) and a verdict. The metrics are ordinary [path metrics](/docs/path-metrics) configs, one number per path, with an optional `name` and an optional `denominator` that turns a metric into a ratio of sums:
+
+```python
+from retentioneering.datasets import load_ab_test, load_ab_test_assignment
+
+stream = load_ab_test()
+assignment = load_ab_test_assignment()        # index user_id; columns arm, assigned_at
+orders = {"metric": "event_count", "metric_args": {"event": "order_success"}}
+
+scorecard = stream.get_ab_test(
+    ("exp_group", "treatment", "control"),
+    metrics=[
+        {"name": "conversion", "metric": "has_event", "metric_args": {"event": "order_success"}},
+        {"name": "orders_per_user", **orders},
+        {"name": "revenue_per_user", "metric": "column_sum", "metric_args": {"column": "order_value"}},
+        {"name": "aov", "metric": "column_sum", "metric_args": {"column": "order_value"},
+         "denominator": orders},
+    ],
+    assignment=assignment,
+)
+```
+
+| metric | group1_value | group2_value | delta | delta_ci_low | delta_ci_high | p_value | mde | verdict | test |
+|---|---|---|---|---|---|---|---|---|---|
+| conversion | 0.2433 | 0.2373 | 0.0060 | -0.0107 | 0.0228 | 0.479 | 0.0239 | inconclusive | z_test |
+| orders_per_user | 0.3034 | 0.2889 | 0.0145 | -0.0086 | 0.0377 | 0.219 | 0.0331 | inconclusive | welch_t_test |
+| revenue_per_user | 20.14 | 18.64 | 1.50 | -0.28 | 3.28 | 0.099 | 2.55 | inconclusive | welch_t_test |
+| aov | 66.39 | 64.53 | 1.86 | -1.30 | 5.03 | 0.262 | 4.64 | inconclusive | bootstrap |
+
+`delta` is group 1 minus group 2. The test follows the metric: a 0/1 metric gets a pooled two-proportion z-test with Wilson and Newcombe intervals, a per-path total or value gets Welch's t-test, a ratio of sums (average order value = revenue / orders) gets a joint path bootstrap — paths are resampled within each arm and every metric is recomputed on the same resample, so the ratio's interval respects that revenue and orders come from the same users. `test=` (or a per-metric `"test"`) overrides the choice where it fits the metric.
+
+**Read an inconclusive row with its interval and `mde`.** Above, conversion moved by +0.60 pp with an interval from -1.07 to +2.28 pp, and the test could only have detected about 2.4 pp: an inconclusive result says the effect is smaller than that, not that it is zero. The verdict is `increase` / `decrease` only when the multiplicity-adjusted p-value is below `1 - ci_level`; `insufficient_data` marks rows with fewer than `min_events` (default 10) events per arm.
+
+**The population.** `assignment=` makes the assignment table the population (intention to treat): users who were assigned but never produced an event count as zeros (`group1_paths_no_events`), events before `assigned_at` are dropped, and stream paths missing from the table are counted in `excluded_paths`. Without it the population is the paths of the stream. Either way the unit is the path: with a user-level assignment, a session `path_col` raises, because per-session intervals of a per-user experiment are too narrow.
+
+**Strata.** `strata_col=` repeats every metric per level of a segment that is constant per path, with each stratum's share in both arms, a share-balance p-value, Cochran's heterogeneity test and a stratum-versus-rest test. The p-values are corrected within each metric (`correction="holm"` by default; `"bonferroni"` also adds simultaneous intervals, `"bh"` controls the false discovery rate), and `correction_family` says what was corrected together. A stratum must be fixed before exposure: find it on a stream truncated before the first exposure and carry it over with [`add_segment(path_values=...)`](/docs/data-processors/add-segment). A stratum computed from behaviour on the full stream (clusters, `metric_bins`) raises a warning and is flagged `strata_pre_exposure=False` — the treatment can move users between such strata, so their rows compare selected groups, not randomised ones. Rows are `exploratory=True` unless the stratum is known to be pre-exposure.
+
+**Periods and windows.** `period="W"` gives one row per calendar week, each on every user assigned by the end of that week (ITT per period). `period_population="active"` restricts each week to users active in it; such rows compare survivors and are marked `descriptive`, with no p-value. `period_basis="since_assignment"` bins events by time since each user's assignment (`"0-13"`, `"14-27"` days for `period="14D"`), and keeps a user in a bin only when the bin's window closed before the data ends (`immature_paths` counts the others). `horizon="28D"` gives every user the same 28-day window from assignment.
+
+### Joint bootstrap replicates
+
+`get_ab_bootstrap()` returns the replicates behind the bootstrap: one row per replicate, metric, stratum and period, with both arms' values and the delta, all computed on the same resampled users. Combine them freely — a novelty effect is the difference between an early and a late window, with an interval that accounts for the same users being in both:
+
+```python
+reps = stream.get_ab_bootstrap(
+    ("exp_group", "treatment", "control"),
+    metrics=[{"name": "conversion", "metric": "has_event",
+              "metric_args": {"event": "order_success"}}],
+    assignment=assignment,
+    period="14D",
+    period_basis="since_assignment",
+    contrast={"novelty": (["0-13"], ["28-41"])},
+)
+novelty = reps.loc[reps["contrast"] == "novelty", "delta"]
+novelty.mean(), novelty.quantile([0.025, 0.975]).tolist()
+# (0.0423, [0.0247, 0.0585])  — the effect fades: +4.2 pp more in days 0-13 than in days 28-41
+```
+
 ### Reproducing an eventstream
 
 Every processor call is recorded, so a derived eventstream can describe how it was built:

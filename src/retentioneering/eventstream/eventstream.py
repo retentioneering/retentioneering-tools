@@ -392,7 +392,12 @@ class Eventstream:
             Index = path id (sorted, named after `path_col`), name = `segment_col`,
             values = the segment value; `"<MULTI>"` when the value is not constant
             within the path (a missing value on some events counts as a second
-            value), `"<MISSING>"` when it is null throughout.
+            value), `"<MISSING>"` when it is null throughout. When this stream's
+            recipe shows how the column was made, `attrs["pre_exposure"]` records it:
+            True for a column computed from behaviour (`add_clusters`,
+            `add_segment(metric_bins=...)`) after a `truncate_paths`, False for one
+            computed without a truncation. `add_segment(path_values=...)` carries the
+            flag to another stream, where `get_ab_test(strata_col=...)` reads it.
 
         Raises
         ------
@@ -420,8 +425,13 @@ class Eventstream:
             raise InvalidParameterError(
                 "path_col", path_col, list(self.schema.path_cols)
             )
+        from retentioneering.tools.ab_test import _strata_provenance
+
         labels = per_path_label(self._df, segment_col, path_col)
         labels.name = segment_col
+        pre_exposure = _strata_provenance(self, segment_col)
+        if pre_exposure is not None:
+            labels.attrs["pre_exposure"] = pre_exposure
         return labels
 
     @_tracked("get_sample_ratio")
@@ -533,6 +543,401 @@ class Eventstream:
             assignment=assignment,
             by=by,
         )
+
+    @_tracked("get_ab_test")
+    def get_ab_test(
+        self,
+        diff: T_Diff,
+        metrics: list,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        strata_col: str | None = None,
+        period=None,
+        period_basis: str = "calendar",
+        period_population: str = "itt",
+        horizon=None,
+        test: str = "auto",
+        correction: str = "holm",
+        ci_level: float = 0.95,
+        power: float = 0.8,
+        n_bootstrap: "int | str" = 1000,
+        bootstrap_weights: str = "multinomial",
+        min_events: int = 10,
+        random_state: int = 42,
+        path_col: str | None = None,
+    ) -> pd.DataFrame:
+        """
+        Compare two arms of an experiment on path metrics: a scorecard.
+
+        Returns one row per metric (and per stratum and per period when requested) with
+        the per-arm estimates, the delta with a confidence interval, a p-value, the
+        multiplicity-adjusted p-value, the minimum detectable effect at the realised
+        sample size and a verdict. The unit of analysis is the path (`path_col`): it
+        must be the unit that was randomised. An inconclusive row is not "no effect":
+        read its interval and `mde` to see which effects the test could have found.
+
+        Parameters
+        ----------
+        diff : tuple
+            `("segment_col", group1_value, group2_value)` or `(ids1, ids2)`. Groups are
+            resolved at path level; a path that falls in both groups raises
+            `DiffConfigError`. `delta = group1 - group2`. A segment form assumes the
+            segment was assigned per path: when the experiment randomised users and
+            `path_col` is a session, the intervals are too narrow (use the user grain,
+            or pass `assignment`, which refuses a finer grain).
+        metrics : list of dict
+            Registry metric configs (as for `get_metrics`, one column per path) with
+            optional keys `name` (row label), `denominator` (a registry config; the
+            metric becomes a ratio of sums, e.g. average order value = revenue / orders)
+            and `test` (per-metric override of `test`). `*_bulk` metrics,
+            `first_event_time` and a `denominator` on a 0/1 metric are rejected. The
+            metric kind sets how silent paths count: 0/1 metrics (`has_event`,
+            `has_any_event`, `has_all_events`, `matches_pattern`, `in_segment`) and
+            totals (`event_count`, `length`, `active_days`, `column_sum`) count a path
+            with no events as 0; values (`duration`, `time_between`, `column_mean`,
+            `column_last`) leave it out of the mean.
+        assignment : pandas.Series or pandas.DataFrame, optional
+            Per-path arm table that defines the intention-to-treat population: a Series
+            `path_id -> arm` or a DataFrame indexed by path id with columns `arm` and
+            optionally `assigned_at`. Paths in the table with no events are in the
+            population (`group*_paths_no_events`); events before `assigned_at` are
+            dropped; stream paths absent from the table are left out
+            (`excluded_paths`). `diff` names the two arms (`("exp_group", "treatment",
+            "control")`); when `diff[0]` is a segment column of the stream, every
+            path's segment must agree with the table. A table of user ids with
+            `path_col` set to a finer column (sessions) raises `InvalidParameterError`:
+            per-session intervals of a per-user experiment are too narrow.
+        strata_col : str, optional
+            A segment column (`schema.segment_cols`) constant per path. Rows are produced
+            per stratum, with shares by arm, a share-balance p-value, a heterogeneity
+            test and a stratum-vs-rest test. Strata must be fixed before exposure (a
+            platform at signup, a cluster found on a stream truncated before the first
+            exposure and carried over with `add_segment(path_values=...)`); a stratum
+            computed from behaviour on a stream that was not truncated triggers a
+            `UserWarning` and `strata_pre_exposure=False`.
+        period : str or pandas offset, optional
+            Rows per period. With `period_basis="calendar"`: a pandas offset alias
+            (`"D"`, `"W"`, `"M"`, `"Q"`, ...), or a fixed length (`"7D"`, `"12h"`)
+            whose bins start at midnight of the stream's first day. With
+            `"since_assignment"`: a fixed length (`"7D"`, `"14D"`, `"W"` = 7 days).
+            Requires the primary path column.
+        period_basis : {"calendar", "since_assignment"}, default "calendar"
+            What `period` bins.
+
+            - `"calendar"` — periods are calendar bins of the event timestamp; the
+              population of a period is every path assigned before the period's end
+              (`assigned_at`, or the path's first event without it; silent paths with
+              no `assigned_at` are in every period).
+            - `"since_assignment"` — bins of `timestamp - assigned_at` (needs an
+              `assignment` DataFrame with `assigned_at`); labels are `"0-6"`, `"7-13"`
+              (days) or `"0-11h"` (hours). A path is in a bin's population only when
+              the bin's window closes before the stream's end; the others are counted
+              in `immature_paths`. This is the basis for novelty effects.
+        period_population : {"itt", "active"}, default "itt"
+            Which paths a period row compares.
+
+            - `"itt"` — every assigned path is in every period (counts 0 when silent);
+              rows are inferential.
+            - `"active"` — only paths with an event in the period; such rows compare
+              survivors, so they are descriptive: `verdict="descriptive"`, `p_value`
+              and `mde` NaN.
+        horizon : str or pandas.Timedelta, optional
+            Observation window per path, e.g. `"14D"`: only events in
+            `[assigned_at, assigned_at + horizon)` count, and paths whose window ends
+            after the stream's last day are left out and counted in `immature_paths`.
+            Needs an `assignment` DataFrame with `assigned_at`. Equalises exposure time
+            between early and late entrants.
+        test : {"auto", "z_test", "welch_t_test", "bootstrap"}, default "auto"
+            - `"auto"` — 0/1 metrics use `"z_test"`, totals and values
+              `"welch_t_test"`, ratio metrics `"bootstrap"`.
+            - `"z_test"` — pooled two-proportion z-test, Wilson intervals per arm,
+              Newcombe interval for the delta (0/1 metrics only).
+            - `"welch_t_test"` — Welch's unequal-variance t-test and t intervals
+              (not for ratio metrics).
+            - `"bootstrap"` — joint path bootstrap: percentile intervals, p-value from
+              the bootstrap standard error.
+            An explicit test that does not fit a metric raises `InvalidMetricConfigError`.
+        correction : {"holm", "bonferroni", "bh", "none"}, default "holm"
+            Multiplicity correction within each metric's family (the rows of one
+            metric: its strata and periods); metrics are separate families.
+            - `"holm"` — Holm step-down (family-wise error).
+            - `"bonferroni"` — Bonferroni; also adds simultaneous `delta_ci_low_adj` /
+              `delta_ci_high_adj`.
+            - `"bh"` — Benjamini-Hochberg (false discovery rate), for many exploratory
+              rows.
+            - `"none"` — no correction.
+        ci_level : float, default 0.95
+            Two-sided confidence level of every interval (per comparison, not adjusted
+            for multiplicity); `1 - ci_level` is the significance level of the verdict.
+        power : float, default 0.8
+            Power used for `mde`.
+        n_bootstrap : int or "auto", default 1000
+            Replicates for bootstrap cells (and for the relative intervals of totals
+            and values), at least 100; `"auto"` = `max(1000, ceil(20 * m / alpha))`
+            where `m` is the largest family size.
+        bootstrap_weights : {"multinomial", "poisson"}, default "multinomial"
+            Resampling scheme of the bootstrap.
+
+            - `"multinomial"` — resample each arm's paths with replacement (arm sizes
+              fixed).
+            - `"poisson"` — independent Poisson(1) weight per path.
+        min_events : int, default 10
+            Support rule per arm: paths with the event for 0/1 metrics, paths with a
+            non-zero numerator for ratios, paths with a value for totals and values.
+            Below it the row is `verdict="insufficient_data"` with no p-value (the
+            estimates stay).
+        random_state : int, default 42
+            Seed of the bootstrap.
+        path_col : str, optional
+            Path grain; defaults to `schema.path_col`. `period` requires the primary
+            path column.
+
+        Returns
+        -------
+        pandas.DataFrame
+            One row per metric × stratum × period. Columns marked * appear only with
+            the argument that produces them:
+
+            - `metric` (str): the entry's `name` or the `get_metrics` column name.
+            - `stratum`* (str): level of `strata_col` (`"<MISSING>"` for paths with no
+              value, e.g. silent paths of an assignment table).
+            - `period`* (str), `period_start`* and `period_end`* (Timestamp for
+              calendar periods, `period_end` exclusive; Timedelta from assignment for
+              since-assignment bins) and `period_complete`* (bool): for calendar
+              periods False when the stream's date range (from midnight of the first
+              event's day to the midnight after the last event's day) cuts the period;
+              for since-assignment bins False when some assigned path's window is not
+              closed.
+            - `group1_paths`, `group2_paths` (int): paths in the row's population.
+            - `group1_paths_no_events`*, `group2_paths_no_events`* (int): paths of the
+              row's population with no event in the analysed window (`assignment`).
+            - `excluded_paths` (int): paths left out by the diff resolution (stream paths
+              outside the assignment table); the same in every row.
+            - `immature_paths`* (int): paths left out because their window is not closed
+              at the stream's end (`horizon`, since-assignment bins).
+            - `group1_value`, `group1_ci_low`, `group1_ci_high`, `group2_value`,
+              `group2_ci_low`, `group2_ci_high` (float): per-arm estimate and interval
+              (Wilson for 0/1, Student t for totals and values, bootstrap percentile for
+              ratios).
+            - `delta`, `delta_se`, `delta_ci_low`, `delta_ci_high` (float):
+              `group1 - group2`, its standard error and interval (Newcombe / Welch /
+              percentile), unadjusted for multiplicity.
+            - `delta_ci_low_adj`*, `delta_ci_high_adj`* (float): simultaneous interval
+              at level `1 - alpha / m` (`correction="bonferroni"` only).
+            - `rel_delta`, `rel_delta_ci_low`, `rel_delta_ci_high` (float):
+              `group1 / group2 - 1`; delta-log-ratio interval for 0/1 metrics,
+              joint-bootstrap percentile of the ratio otherwise.
+            - `p_value` (float): two-sided p of the row's test.
+            - `p_value_adjusted` (float): correction over the finite p-values of the
+              metric's family.
+            - `correction_family` (str): what was corrected together, e.g.
+              `"metric=conversion/strata"`; `"none"` without correction.
+            - `alpha_used` (float): per-comparison level after correction (`alpha / m`
+              for Holm, Bonferroni and BH — the conservative bound used for `mde` —
+              `alpha` for none or a family of one), `m` = finite p-values in the family.
+            - `mde`, `rel_mde` (float): minimum detectable absolute and relative effect
+              at `alpha_used`, `power` and the realised sample sizes.
+            - `verdict` (str): `"increase"` / `"decrease"` when
+              `p_value_adjusted < 1 - ci_level`, with the sign of `delta`; `"inconclusive"` otherwise
+              (including a NaN p-value); `"descriptive"` for active period rows;
+              `"insufficient_data"` below `min_events`.
+            - `test` (str): `"z_test"`, `"welch_t_test"` or `"bootstrap"`.
+            - `ci_basis` (str): `"wilson"`, `"welch"` or `"path_bootstrap"`.
+            - `p_basis` (str): `"pooled_z"`, `"welch"` or `"bootstrap_se"`.
+            - `valid_replicates` (Int64, `<NA>` on closed-form rows), `low_support`
+              (bool): bootstrap rows; more than 1 % of replicates without support sets
+              `low_support`, NaN intervals and no p-value.
+            - `group1_share`*, `group2_share`*, `balance_p_value`* (float): share of the
+              stratum within each arm (within the period) and the chi-square p-value of
+              the stratum × arm table. A share-balance check only: a balanced
+              post-exposure stratum is still selected by the treatment.
+            - `heterogeneity_p_value`* (float), `heterogeneity_df`* (int),
+              `heterogeneity_strata_used`* (int): Cochran's Q over the strata that pass
+              the support guard (>= 5 events and >= 5 non-events per arm for 0/1
+              metrics, >= 10 supported paths per arm otherwise); NaN with fewer than two
+              usable strata. Repeated on every row of the metric (and period).
+            - `stratum_vs_rest_p_value`* (float): normal test of the stratum's delta
+              against the delta of the pooled other strata (unadjusted; NaN on rows
+              without a p-value).
+            - `strata_pre_exposure`* (boolean): True when the recipe shows the stratum
+              was computed after a `truncate_paths`, False when it was computed from
+              behaviour without one, `<NA>` when the recipe cannot tell (a source
+              column, rules).
+            - `exploratory`* (bool): True unless `strata_pre_exposure` is True.
+
+            Missing values: `p_value` is NaN when both arms are constant, on
+            insufficient, descriptive and low-support rows; `rel_delta*` are NaN when
+            `group2_value <= 0`; an arm with no path has NaN estimates;
+            `heterogeneity_*` are NaN with fewer than two usable strata. An absent
+            estimate is NaN, never 0.
+
+        Raises
+        ------
+        DiffConfigError
+            Overlapping or non-constant groups; assignment index not unique; assignment
+            and segment disagree.
+        InvalidMetricConfigError
+            Bad metric entry (unknown metric or event, `*_bulk`, several columns,
+            duplicate name, denominator on a 0/1 metric, test not matching the kind).
+        InvalidParameterError
+            An enum argument outside its values; `strata_col` not a segment column or
+            not constant per path; `period` with a non-primary `path_col`; a path grain
+            finer than the assignment table's unit; `since_assignment` or `horizon`
+            without `assigned_at`; `ci_level` / `power` outside (0, 1); `min_events < 1`.
+        EmptyEventstreamError
+            Either group is empty.
+
+        Examples
+        --------
+            scorecard = stream.get_ab_test(
+                ("exp_group", "treatment", "control"),
+                metrics=[
+                    {"name": "conversion", "metric": "has_event",
+                     "metric_args": {"event": "order_success"}},
+                    {"name": "revenue_per_user", "metric": "column_sum",
+                     "metric_args": {"column": "order_value"}},
+                    {"name": "aov", "metric": "column_sum",
+                     "metric_args": {"column": "order_value"},
+                     "denominator": {"metric": "event_count",
+                                     "metric_args": {"event": "order_success"}}},
+                ],
+                assignment=assignment,          # index user_id, columns arm, assigned_at
+            )
+            scorecard[["metric", "delta", "delta_ci_low", "delta_ci_high", "mde", "verdict"]]
+
+            # pre-exposure strata, Holm within each metric
+            stream.get_ab_test(diff, metrics, strata_col="behaviour")
+
+            # weekly ITT rows, and a fixed 28-day window per user
+            stream.get_ab_test(diff, metrics, assignment=assignment, period="W")
+            stream.get_ab_test(diff, metrics, assignment=assignment, horizon="28D")
+        """
+        from retentioneering.tools.ab_test import ABTest
+
+        return ABTest.from_stream(
+            self,
+            diff,
+            metrics,
+            assignment=assignment,
+            strata_col=strata_col,
+            period=period,
+            period_basis=period_basis,
+            period_population=period_population,
+            horizon=horizon,
+            test=test,
+            correction=correction,
+            ci_level=ci_level,
+            power=power,
+            n_bootstrap=n_bootstrap,
+            bootstrap_weights=bootstrap_weights,
+            min_events=min_events,
+            random_state=random_state,
+            path_col=path_col,
+        ).fit()
+
+    @_tracked("get_ab_bootstrap")
+    def get_ab_bootstrap(
+        self,
+        diff: T_Diff,
+        metrics: list,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        strata_col: str | None = None,
+        period=None,
+        period_basis: str = "calendar",
+        period_population: str = "itt",
+        horizon=None,
+        contrast: dict | None = None,
+        n_bootstrap: int = 1000,
+        bootstrap_weights: str = "multinomial",
+        random_state: int = 42,
+        path_col: str | None = None,
+    ) -> pd.DataFrame:
+        """
+        Return joint path-bootstrap replicates of every metric of an experiment.
+
+        All metrics, strata and periods are evaluated on the same resampled paths, so
+        the replicates can be combined freely: ratios of metrics, differences between
+        periods, custom summaries such as the probability that one arm is better. The
+        replicates are the ones `get_ab_test` uses for its bootstrap rows (same seed,
+        same engine). `contrast` adds rows for named period contrasts, the way to
+        measure a novelty effect with a joint interval.
+
+        Parameters
+        ----------
+        diff, metrics, assignment, strata_col, period, period_basis : see get_ab_test
+            As in `get_ab_test`.
+        period_population, horizon, bootstrap_weights, random_state, path_col : see get_ab_test
+            As in `get_ab_test`.
+        contrast : dict, optional
+            `{"name": (periods_a, periods_b)}` (period labels): for each metric (and
+            stratum), rows with `group*_value = value(a) - value(b)` within each arm
+            and `delta = group1_value - group2_value`, where each side pools the listed
+            periods (summed numerators over summed denominators). Needs `period`.
+            Example: `{"novelty": (["0-13"], ["28-41"])}` with `period="14D",
+            period_basis="since_assignment"`.
+        n_bootstrap : int, default 1000
+            Number of replicates.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Long table, one row per replicate × metric × stratum × period (and per
+            replicate × metric × stratum × contrast):
+
+            - `replicate` (int): replicate number, 0 to `n_bootstrap - 1`.
+            - `metric` (str): metric name.
+            - `stratum`* (str): with `strata_col`.
+            - `period`* (str): with `period`; NaN on contrast rows.
+            - `contrast`* (str): with `contrast`; NaN on plain rows.
+            - `group1_value`, `group2_value` (float): the metric in each arm in this
+              replicate (ratio of weighted sums; the mean for 0/1, totals and values).
+            - `delta` (float): `group1_value - group2_value`.
+
+            NaN where a replicate has no support in a cell (no path with a value or a
+            zero weighted denominator).
+
+        Raises
+        ------
+        DiffConfigError, InvalidMetricConfigError, InvalidParameterError, EmptyEventstreamError
+            As in `get_ab_test`; `contrast` without `period` or naming an unknown period
+            raises `InvalidParameterError`.
+
+        Examples
+        --------
+            reps = stream.get_ab_bootstrap(
+                ("exp_group", "treatment", "control"),
+                metrics=[{"name": "conversion", "metric": "has_event",
+                          "metric_args": {"event": "order_success"}}],
+                assignment=assignment,
+                period="14D",
+                period_basis="since_assignment",
+                contrast={"novelty": (["0-13"], ["28-41"])},
+            )
+            novelty = reps[reps["contrast"] == "novelty"]["delta"]
+            novelty.quantile([0.025, 0.975])
+        """
+        from retentioneering.tools.ab_test import ABTest
+
+        if isinstance(n_bootstrap, str):
+            from retentioneering.exceptions import InvalidParameterError
+
+            raise InvalidParameterError("n_bootstrap", n_bootstrap, ["an int >= 1"])
+        return ABTest.from_stream(
+            self,
+            diff,
+            metrics,
+            assignment=assignment,
+            strata_col=strata_col,
+            period=period,
+            period_basis=period_basis,
+            period_population=period_population,
+            horizon=horizon,
+            n_bootstrap=n_bootstrap,
+            bootstrap_weights=bootstrap_weights,
+            random_state=random_state,
+            path_col=path_col,
+        ).bootstrap(contrast)
 
     @_tracked("headless_describe")
     def describe(

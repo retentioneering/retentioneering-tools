@@ -180,7 +180,7 @@ def describe_tool(tool: str = "") -> dict:
       urls_to_events   sample_paths   split_sessions
 
     Analysis tools (called directly, not as a preprocessor step):
-      get_conversion_rate  get_sample_ratio
+      get_conversion_rate  get_sample_ratio  get_ab_test
 
     Reference topics:
       report_links   (anchor link syntax for analysis text)
@@ -729,6 +729,197 @@ def get_sample_ratio(
             }
             for row in result["by_levels"].to_dict("records")
         ]
+    return out
+
+
+def get_ab_test(
+    session: Any,
+    diff: list,
+    metrics: list,
+    strata_col: str | None = None,
+    period: str | None = None,
+    period_population: str = "itt",
+    correction: str = "holm",
+    ci_level: float = 0.95,
+    path_col: str | None = None,
+    local_preprocessors: list | None = None,
+) -> dict:
+    """
+    Compare two arms of an experiment on path metrics: delta, interval, verdict, MDE.
+
+    Run get_sample_ratio first: if the arms do not have the planned sizes, no
+    metric of the test can be trusted. Returns numbers only (no report tab): quote
+    them in backticks.
+
+    Parameters
+    ----------
+    diff:
+        ["segment_col", "group1", "group2"], e.g. ["exp_group", "treatment",
+        "control"]; delta = group1 - group2. The segment must be constant per path,
+        and path_col must be the randomised unit (per-user experiment -> user paths;
+        session paths would give intervals that are too narrow).
+    metrics:
+        Registry metric configs, one number per path, each with an optional "name"
+        and "denominator" (a second config: the metric becomes a ratio of sums, e.g.
+        revenue / orders = average order value). Examples:
+        {"name": "conversion", "metric": "has_event", "metric_args": {"event": "purchase"}},
+        {"name": "revenue", "metric": "column_sum", "metric_args": {"column": "amount"}}.
+    strata_col:
+        A segment constant per path and fixed BEFORE exposure (platform at signup, a
+        cluster found on a stream truncated before the first exposure). Adds the top
+        three strata by |delta| per metric with Holm-adjusted p-values and a
+        heterogeneity p-value. A stratum defined by post-exposure behaviour compares
+        selected groups, not randomised ones.
+    period:
+        Pandas offset alias ("D", "W", "M"): adds one row per calendar period. ITT by
+        default (every assigned path counts in every period).
+    period_population:
+        "itt" (default, inferential) or "active" (only paths active in the period —
+        survivors; rows are descriptive, no p-value).
+    correction:
+        "holm" (default), "bonferroni", "bh" or "none": within the rows of one metric.
+    ci_level:
+        Confidence level of the intervals (default 0.95).
+    path_col:
+        The randomised unit (default: the primary path column).
+    local_preprocessors:
+        One-off preprocessing. Never filter on post-exposure behaviour (e.g. "reached
+        checkout") before a test: that compares selected groups, not the arms.
+
+    Returns
+    -------
+    diff, path_col, ci_level, correction, excluded_paths, and metrics — one entry per
+    metric: group1_paths, group2_paths, group1_value, group2_value, delta,
+    delta_ci_low, delta_ci_high, rel_delta, p_value, mde (the smallest effect the test
+    could detect), verdict ("increase", "decrease", "inconclusive",
+    "insufficient_data"), test; with strata_col: strata (top 3 by |delta|: stratum,
+    group1_share, group2_share, delta, delta_ci_low, delta_ci_high, p_value_adjusted,
+    verdict), strata_count and heterogeneity_p_value; with period: periods (period,
+    period_complete, delta, delta_ci_low, delta_ci_high, p_value_adjusted, verdict).
+
+    "inconclusive" is NOT "no effect": say which effects the interval still allows
+    and compare it with mde.
+    """
+    if (err := _require_stream(session)) is not None:
+        return err
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
+    diff_t = tuple(diff) if diff else None
+    kwargs = {
+        "correction": correction,
+        "ci_level": ci_level,
+        "path_col": path_col or None,
+    }
+    try:
+        overall = src.get_ab_test(diff_t, metrics, **kwargs)
+        strata = (
+            src.get_ab_test(diff_t, metrics, strata_col=strata_col, **kwargs)
+            if strata_col
+            else None
+        )
+        periods = (
+            src.get_ab_test(
+                diff_t,
+                metrics,
+                period=period,
+                period_population=period_population,
+                **kwargs,
+            )
+            if period
+            else None
+        )
+    except Exception as exc:
+        return {"error": str(exc)}
+
+    def _row(row: dict, columns: tuple) -> dict:
+        out = {}
+        for column in columns:
+            value = row[column]
+            if column.endswith("_paths"):
+                out[column] = int(value)
+            elif column in ("p_value", "p_value_adjusted"):
+                out[column] = _json_number(value, 8)
+            elif isinstance(value, str):
+                out[column] = value
+            elif column == "period_complete":
+                out[column] = bool(value)
+            else:
+                out[column] = _json_number(value, 6)
+        return out
+
+    main_cols = (
+        "group1_paths",
+        "group2_paths",
+        "group1_value",
+        "group2_value",
+        "delta",
+        "delta_ci_low",
+        "delta_ci_high",
+        "rel_delta",
+        "p_value",
+        "mde",
+        "verdict",
+        "test",
+    )
+    entries = []
+    for row in overall.to_dict("records"):
+        entry = {"metric": row["metric"], **_row(row, main_cols)}
+        if strata is not None:
+            part = strata[strata["metric"] == row["metric"]]
+            top = part.reindex(part["delta"].abs().sort_values(ascending=False).index)
+            entry["strata_count"] = int(len(part))
+            entry["heterogeneity_p_value"] = _json_number(
+                part["heterogeneity_p_value"].iloc[0] if len(part) else None, 8
+            )
+            entry["strata"] = [
+                _row(
+                    r,
+                    (
+                        "stratum",
+                        "group1_share",
+                        "group2_share",
+                        "delta",
+                        "delta_ci_low",
+                        "delta_ci_high",
+                        "p_value_adjusted",
+                        "verdict",
+                    ),
+                )
+                for r in top.head(3).to_dict("records")
+            ]
+        if periods is not None:
+            part = periods[periods["metric"] == row["metric"]]
+            entry["periods"] = [
+                _row(
+                    r,
+                    (
+                        "period",
+                        "period_complete",
+                        "delta",
+                        "delta_ci_low",
+                        "delta_ci_high",
+                        "p_value_adjusted",
+                        "verdict",
+                    ),
+                )
+                for r in part.to_dict("records")
+            ]
+        entries.append(entry)
+    out: dict[str, Any] = {
+        "diff": list(diff),
+        "path_col": path_col or src.schema.path_col,
+        "ci_level": ci_level,
+        "correction": correction,
+        "excluded_paths": int(overall["excluded_paths"].iloc[0]),
+        "metrics": entries,
+    }
+    if strata_col:
+        out["strata_col"] = strata_col
+    if period:
+        out["period"] = period
+        out["period_population"] = period_population
     return out
 
 

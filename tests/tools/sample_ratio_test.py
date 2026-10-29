@@ -243,3 +243,52 @@ def test_by_adjusts_over_groups() -> None:
     result = _stream(arms).get_sample_ratio("arm", by="day")
     by = result["by_levels"]
     assert (by["p_value_adjusted"] >= by["p_value"]).all()
+
+
+def test_unit_guard() -> None:
+    # sessions inside users: a per-user table with session paths is refused
+    rows = []
+    for user, arm in _arms(20, 20).items():
+        for s in range(2):
+            rows.append(
+                {
+                    "user_id": user,
+                    "session_id": f"{user}_s{s}",
+                    "event": "visit",
+                    "timestamp": pd.Timestamp("2024-01-01") + pd.Timedelta(hours=s),
+                    "arm": arm,
+                }
+            )
+    stream = Eventstream(
+        pd.DataFrame(rows),
+        {"path_cols": ["user_id", "session_id"], "segment_cols": ["arm"]},
+    )
+    table = pd.Series(_arms(20, 20))
+    with pytest.raises(InvalidParameterError, match="too narrow"):
+        stream.get_sample_ratio("arm", assignment=table, path_col="session_id")
+    assert stream.get_sample_ratio("arm", assignment=table)["silent_paths"] == 0
+
+
+def test_assignment_ids_matched_by_string_form() -> None:
+    arms = {str(i): ("treatment" if i % 2 else "control") for i in range(100)}
+    stream = _stream({int(k): v for k, v in arms.items()})
+    result = stream.get_sample_ratio("arm", assignment=pd.Series(arms), by="day")
+    assert result["silent_paths"] == 0
+    assert result["levels"]["paths"].sum() == 200  # the <ALL> rows + the days
+    assert result["by_levels"]["paths"].sum() == 100
+
+
+def test_assignment_ids_that_match_nothing_raise() -> None:
+    stream = _stream(_arms(50, 50))
+    table = pd.Series({k.upper(): v for k, v in _arms(50, 50).items()})
+    with pytest.raises(DiffConfigError, match="none of the 100"):
+        stream.get_sample_ratio("arm", assignment=table)
+
+
+def test_assignment_ids_mostly_unmatched_warn() -> None:
+    stream = _stream(_arms(20, 20))
+    table = pd.Series(_arms(50, 50))
+    with pytest.warns(UserWarning, match="only 40 of 100") as record:
+        result = stream.get_sample_ratio("arm", assignment=table)
+    assert {w.filename for w in record} == {__file__}
+    assert result["silent_paths"] == 60

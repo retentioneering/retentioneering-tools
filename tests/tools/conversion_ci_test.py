@@ -82,7 +82,7 @@ def test_ci_nan_without_start(stream) -> None:
 
 
 def test_ci_level_validated(stream) -> None:
-    for bad in (0, 1, 1.5, "0.95", True):
+    for bad in (0, 0.3, 1, 1.5, "0.95", True):
         with pytest.raises(InvalidParameterError):
             stream.get_conversion_rate("add_to_cart", "order_success", ci_level=bad)
 
@@ -192,3 +192,12 @@ def test_mcp_mirrors_the_columns(stream) -> None:
         session, "visit", "catalog", diff=["exp_group", "treatment", "control"]
     )
     assert undefined["rows"][0]["p_value"] is None
+
+
+def test_diff_against_itself_raises(stream) -> None:
+    with pytest.raises(DiffConfigError, match="itself"):
+        stream.get_conversion_rate(
+            "add_to_cart",
+            "order_success",
+            diff=("exp_group", "treatment", "treatment"),
+        )

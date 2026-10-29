@@ -54,6 +54,11 @@ class Funnel:
         ci_level = _check_ci_level(ci_level)
         if correction not in CORRECTIONS:
             raise InvalidParameterError("correction", correction, list(CORRECTIONS))
+        if correction != "none" and ci_level is None:
+            # p-values exist only with ci_level: a correction alone would be ignored
+            raise InvalidParameterError(
+                "correction", correction, ["'none' without ci_level", "a ci_level="]
+            )
         path_col = path_col or self.eventstream.schema.path_col
         if path_col not in self.eventstream.schema.path_cols:
             raise InvalidParameterError(

@@ -199,6 +199,8 @@ class TestDiffCi:
             _stream().funnel_data(steps=["home"], ci_level=95)
         with pytest.raises(InvalidParameterError, match="ci_level"):
             _stream().funnel_data(steps=["home"], ci_level=True)
+        with pytest.raises(InvalidParameterError, match="0.5"):
+            _stream().funnel_data(steps=["home"], ci_level=0.3)
         with pytest.raises(InvalidParameterError, match="correction"):
             _stream().funnel_data(
                 steps=["home"], diff=DIFF, ci_level=0.95, correction="sidak"
@@ -252,3 +254,25 @@ class TestDiffCi:
             for s in r["steps"]
             for v in s.values()
         )
+
+
+class TestModeSwitches:
+    def test__correction_needs_ci_level(self) -> None:
+        with pytest.raises(InvalidParameterError, match="without ci_level"):
+            _stream().funnel_data(steps=STEPS, diff=DIFF, correction="holm")
+        with pytest.raises(InvalidParameterError, match="without ci_level"):
+            _stream().funnel(steps=STEPS, diff=DIFF, correction="holm")
+        # the default stays valid
+        _stream().funnel_data(steps=STEPS, diff=DIFF, correction="none")
+
+    def test__sidebar_keeps_its_correction_while_intervals_are_off(self) -> None:
+        widget = _stream().funnel(
+            steps=STEPS, diff=DIFF, ci_level=0.95, correction="holm"
+        )
+        widget.ci_level = 0.0
+        assert widget.error == ""
+        assert "correction" not in json.loads(widget.result)
+
+    def test__diff_against_itself_raises(self) -> None:
+        with pytest.raises(DiffConfigError, match="itself"):
+            _stream().funnel_data(steps=STEPS, diff=("grp", "t", "t"), ci_level=0.95)

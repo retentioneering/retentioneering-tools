@@ -268,7 +268,7 @@ def _build_server(
           urls_to_events   sample_paths   split_sessions
 
         Analysis tools (called directly, not as a preprocessor step):
-          get_conversion_rate  get_sample_ratio
+          get_conversion_rate  get_sample_ratio  get_ab_test
 
         Reference topics:
           report_links   (anchor link syntax for analysis text)
@@ -585,6 +585,69 @@ def _build_server(
             alpha,
             path_col,
             by,
+            local_preprocessors,
+        )
+        return json.dumps(result, ensure_ascii=False, allow_nan=False)
+
+    @_tool()
+    def get_ab_test(
+        diff: list,
+        metrics: list,
+        strata_col: str | None = None,
+        period: str | None = None,
+        period_population: str = "itt",
+        correction: str = "holm",
+        ci_level: float = 0.95,
+        path_col: str | None = None,
+        local_preprocessors: list | None = None,
+    ) -> str:
+        """
+        Compare two arms of an experiment on path metrics: delta, interval, verdict, MDE.
+
+        Run get_sample_ratio first. Numbers only, no report tab: quote in backticks.
+        "inconclusive" is NOT "no effect": report the interval and the mde.
+
+        Parameters
+        ----------
+        diff:
+            ["segment_col", "group1", "group2"]; delta = group1 - group2. The
+            segment must be constant per path; path_col must be the randomised unit.
+        metrics:
+            Registry metric configs (one number per path) with optional "name" and
+            "denominator" (ratio of sums, e.g. revenue / orders).
+        strata_col:
+            A per-path segment fixed BEFORE exposure: adds the top 3 strata by
+            |delta| per metric (Holm) and a heterogeneity p-value.
+        period:
+            "D", "W", "M": adds ITT rows per calendar period.
+        period_population:
+            "itt" (default) or "active" (survivors only; descriptive, no p).
+        correction:
+            "holm" (default), "bonferroni", "bh" or "none", within one metric's rows.
+        ci_level:
+            Interval level, default 0.95.
+        path_col:
+            The randomised unit (default: primary path column).
+        local_preprocessors:
+            One-off preprocessing. Never filter on post-exposure behaviour first.
+
+        Returns
+        -------
+        JSON with excluded_paths and metrics: per metric group sizes and values,
+        delta with delta_ci_low / delta_ci_high, rel_delta, p_value, mde, verdict,
+        test; strata (top 3) and heterogeneity_p_value with strata_col; periods with
+        period.
+        """
+        result = tools.get_ab_test(
+            session,
+            diff,
+            metrics,
+            strata_col,
+            period,
+            period_population,
+            correction,
+            ci_level,
+            path_col,
             local_preprocessors,
         )
         return json.dumps(result, ensure_ascii=False, allow_nan=False)

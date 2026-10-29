@@ -579,7 +579,8 @@ def _build_server(
         Returns
         -------
         JSON with mismatch, p_value, chi2, dof, multi_valued_paths (assignment
-        bug when > 0), unassigned_paths, basis, levels (paths, share,
+        bug when > 0), unassigned_paths, basis, reading (one sentence: expected vs
+        observed split, p and the conclusion; quote it), levels (paths, share,
         expected_share per arm) and, with `by`, by_levels (p_value_adjusted:
         Holm across `by` levels).
         """
@@ -611,8 +612,9 @@ def _build_server(
         Compare two arms of an experiment on path metrics: delta, interval, verdict, MDE.
 
         Run get_sample_ratio first. Numbers only, no report tab: quote in backticks.
-        "inconclusive" is NOT "no effect": report the interval; the mde is not a
-        bound on the effect. Population: stream paths (users with >= 1 event) by
+        "inconclusive" is NOT "no effect": quote the row's reading (what the
+        interval allows, what the design detects, how many more paths a smaller
+        effect needs) and propose a next step; the mde is not a bound on the effect. Population: stream paths (users with >= 1 event) by
         the segment in diff, whole window; silent assigned users are not counted
         and there is no horizon. An ITT analysis over an assignment table
         (assignment=) is not available through MCP, only in the Python API.
@@ -652,7 +654,10 @@ def _build_server(
         delta with delta_ci_low / delta_ci_high, rel_delta, p_value, mde (effect
         detected with 80% power at alpha_used), verdict (increase, decrease,
         inconclusive, descriptive, insufficient_data), test, correction_family,
-        alpha_used, support_warning; warnings; strata (top 3), strata_selection,
+        alpha_used, support_warning, reading (one sentence per row, from its
+        numbers, naming the window it covers; also on strata and periods rows),
+        unit ("pp" or "value": the unit reading quotes; strata and periods rows
+        carry p_value too); warnings; strata (top 3), strata_selection,
         heterogeneity_p_value, strata_correction_family, strata_pre_exposure,
         strata_pre_exposure_source and exploratory with strata_col; periods and
         periods_correction_family with period.

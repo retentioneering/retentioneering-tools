@@ -80,7 +80,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   `strata_pre_exposure=True`, `"recipe"`, or `"not_pre_exposure"`), and a
   stratum column present in the assignment table is read from there so silent
   paths keep their stratum. Support is pooled across the arms: a behaviour seen
-  in one arm only gets a p-value and `support_warning="one_arm_only"`. The
+  in one arm only gets a p-value and `support_warning="one_arm_only"`; a row
+  where no path of either arm has it is `insufficient_data` with
+  `support_warning="no_data"`, and a since-assignment bin with no path in
+  either arm (its window closes after the end of data) is left out. The
   estimate columns are NaN, never 0, when they are undefined. Streams with
   tz-aware timestamps and assignment ids that arrive as strings or ints are
   handled; identical arms, a table whose ids match no path, and a path grain
@@ -96,6 +99,30 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   rows, with `mde`, `correction_family`, `alpha_used`, `exploratory`,
   `strata_pre_exposure` and the call's `warnings`) and an A/B scenario in its
   playbook.
+- `get_ab_test` rows end with a `reading` column: one sentence per row built from
+  the row's own numbers and templated per verdict. It starts with the window the
+  row covers (`over the whole observation period`, `within 28 days of
+  assignment`, `calendar week 2026-03-09`, `days 14-27 since assignment`). An
+  inconclusive row says what its interval includes and after which correction,
+  the p-value, the effect the design detects and how many times the paths a
+  smaller round effect would need (`"over the whole observation period: interval
+  [-1.07, +2.28] pp includes 0 (p 0.48); effects outside it are unlikely; the
+  design detects 2.39 pp at alpha 0.05 — to detect 1 pp, about 5.7× the paths
+  are needed"`); an increase or decrease gives the interval, the p-value and the
+  relative change; `insufficient_data` names the support that fell short;
+  descriptive rows say they are not randomised. Exploratory strata, periods
+  whose window is not complete and a `support_warning` are appended, and with
+  several metrics each row asks for one decision metric (the correction stays
+  within a metric). 0/1 metrics read in percentage points, other metrics in
+  their own unit.
+  `get_sample_ratio` returns a `reading` too (`"expected 50/50, observed
+  5040/4960 (control/treatment), p 0.42: no mismatch"`, or `"mismatch: ... — the
+  test is invalid until the assignment is fixed"`, naming the `by` groups that
+  mismatch). The MCP `get_ab_test` and `get_sample_ratio` tools return it on
+  every row with a `unit` (`"pp"` or `"value"`) and the raw `p_value` on strata
+  and period rows too, and the playbook's A/B scenario tells the agent to quote it for
+  inconclusive rows and to propose a next step (more paths, a longer horizon, a
+  pre-declared stratum, a cheaper metric).
 - `rete.datasets.load_ab_test()` and `load_ab_test_assignment()`: "Northwind Home",
   a synthetic 50/50 A/B test of a `quick_add` feature (about 10,000 users, eight
   weeks, generated deterministically from `seed=2026`, no data file). Segments

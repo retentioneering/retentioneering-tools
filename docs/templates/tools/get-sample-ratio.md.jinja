@@ -9,4 +9,11 @@ and every comparison of the experiment is suspect until the cause is found.
 `by=` repeats the check per day of assignment or per segment fixed at
 assignment; a segment computed after exposure is not a valid `by`.
 
+The result's `reading` puts the check in one sentence: `"expected 50/50,
+observed 5040/4960 (control/treatment), p 0.42: no mismatch"`, or
+`"mismatch: ... — the test is invalid until the assignment is fixed"` when the
+split is off or paths carry two arms. With `by=` it also names the groups that
+mismatch: a logging bug on one platform can hide inside a plausible overall
+split.
+
 {% endblock %}

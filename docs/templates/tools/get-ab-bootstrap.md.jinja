@@ -10,5 +10,7 @@ periods, the share of replicates where one arm wins — therefore has a valid
 joint distribution, and its percentile interval is read straight off the table.
 The replicates match the ones behind the ratio rows of
 [`get_ab_test`](/docs/tools/get-ab-test) for the same `random_state`.
+Replicate rows carry no `reading`: the sentence that reads each metric is on the
+scorecard row of `get_ab_test`.
 
 {% endblock %}

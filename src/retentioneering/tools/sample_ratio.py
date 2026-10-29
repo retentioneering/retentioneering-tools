@@ -40,7 +40,7 @@ from retentioneering.tools.ab_test import prepare_assignment
 if TYPE_CHECKING:
     from retentioneering.eventstream import Eventstream
 
-__all__ = ["SampleRatio", "BY_DAY", "ALL"]
+__all__ = ["SampleRatio", "BY_DAY", "ALL", "sample_ratio_reading"]
 
 #: ``by`` value that splits the check by the day of assignment.
 BY_DAY = "day"
@@ -48,6 +48,75 @@ BY_DAY = "day"
 ALL = "<ALL>"
 
 LEVEL_COLUMNS = ["level", "paths", "share", "expected_share", "expected_paths"]
+
+
+def _p_text(p: float) -> str:
+    return "< 0.0001" if p < 1e-4 else ("1" if p >= 0.995 else f"{p:#.2g}")
+
+
+def _share_text(share: float) -> str:
+    return f"{round(100 * share, 1):g}"
+
+
+#: The consequence of a mismatch, in ``reading``.
+INVALID = "the test is invalid until the assignment is fixed"
+
+
+def sample_ratio_reading(result: dict[str, Any]) -> str:
+    """One sentence that reads a ``get_sample_ratio`` result from its own numbers.
+
+    ``"expected 50/50, observed 4960/5040 (control/treatment), p 0.42: no mismatch"``,
+    or ``"mismatch: ... — the test is invalid until the assignment is fixed"``; paths
+    carrying two arms, uncounted paths and the groups of ``by`` that mismatch are
+    added when present.
+    """
+    levels = result["levels"]
+    if "by" in levels.columns:
+        levels = levels[levels["by"] == ALL]
+    names = "/".join(str(v) for v in levels["level"])
+    split = (
+        f"expected {'/'.join(_share_text(v) for v in levels['expected_share'])}, "
+        f"observed {'/'.join(str(int(v)) for v in levels['paths'])} ({names})"
+    )
+    p = result["p_value"]
+    multi = int(result["multi_valued_paths"])
+    alpha = result["alpha"]
+    problems = []
+    if not np.isfinite(p):
+        problems_text = f"{split}: no path counted, the check cannot run"
+    else:
+        if p < alpha:
+            problems.append(f"{split}, p {_p_text(p)} (alpha {alpha:g})")
+        if multi:
+            problems.append(
+                f"{multi} path(s) carry more than one arm or disagree with the "
+                "assignment table"
+            )
+        if problems:
+            if p >= alpha:
+                problems.insert(0, f"{split}, p {_p_text(p)}")
+            problems_text = f"mismatch: {'; '.join(problems)} — {INVALID}"
+        else:
+            problems_text = f"{split}, p {_p_text(p)}: no mismatch"
+    parts = [problems_text]
+    unassigned = int(result.get("unassigned_paths", 0))
+    if unassigned:
+        parts.append(f"{unassigned} path(s) with no arm in the split are not counted")
+    by_levels = result.get("by_levels")
+    if by_levels is not None:
+        bad = by_levels[by_levels["mismatch"].astype(bool)]
+        if len(bad):
+            shown = ", ".join(
+                f"{key} (adjusted p {_p_text(p)})"
+                for key, p in zip(bad["by"].head(3), bad["p_value_adjusted"].head(3))
+            )
+            more = f" and {len(bad) - 3} more" if len(bad) > 3 else ""
+            parts.append(
+                f"by {result['by']}: mismatch in {shown}{more} — {INVALID} there"
+            )
+        else:
+            parts.append(f"by {result['by']}: no group mismatches")
+    return "; ".join(parts)
 
 
 def _counts_table(arms: pd.Series, levels: list, shares: np.ndarray) -> pd.DataFrame:
@@ -193,6 +262,7 @@ class SampleRatio:
                 self._by_tables(counted, groups, levels, shares, alpha, overall)
             )
             result["by"] = by
+        result["reading"] = sample_ratio_reading(result)
         return result
 
     # ---------------------------------------------------------------- helpers

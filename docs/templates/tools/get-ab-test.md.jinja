@@ -16,6 +16,49 @@ path bootstrap for ratio metrics (an entry with a `denominator`). The
 [A/B Testing guide](/docs/ab-testing) is a walk-through on the bundled synthetic
 experiment, `load_ab_test()`.
 
+### Reading a row
+
+The last column, `reading`, says in one sentence what the row's own numbers
+support, so a scorecard can be read row by row without re-deriving the rules.
+0/1 metrics are read in percentage points (pp), other metrics in their unit;
+negative numbers use a plain `-`, so the text can be parsed back.
+
+Every sentence starts with the window the row covers: `over the whole
+observation period`, `within 28 days of assignment` (with `horizon`),
+`calendar week 2026-03-09` or `days 14-27 since assignment` (period rows). A
+period row describes its window, not the experiment: quote the window with the
+number.
+
+- **inconclusive** — `"over the whole observation period: interval [-1.07,
+  +2.28] pp includes 0 (p 0.48); effects outside it are unlikely; the design
+  detects 2.39 pp at alpha 0.05 — to detect 1 pp, about 5.7× the paths are
+  needed"`. The interval bounds the effect; the
+  `mde` describes the design. The multiplier comes from the design variance: the
+  `mde` shrinks with the square root of the paths, so a round effect (1, 2 or 5
+  times a power of ten) at or below half the `mde` needs `(mde / effect)²` times
+  the paths at the same split. The clause
+  is left out when there is no `mde`. With a correction over several rows the
+  sentence says `after holm` (or `bonferroni`, `bh`), and the p-value is the
+  adjusted one; a row whose interval excludes 0 only before the correction says
+  so.
+- **increase / decrease** — `"within 14 days of assignment: interval [+1.38,
+  +4.12] pp excludes 0 (p < 0.0001); relative +21 %"`.
+- **insufficient_data** — `"calendar day 2026-03-02: pooled support 6 <
+  min_events 10; estimate shown descriptively"`; a row where no path of either
+  arm has the behaviour reads `"no data in either arm"` (`support_warning="no_data"`).
+- **descriptive** — `"active population: not randomised, describes who was
+  active in the period"`.
+
+Then the row's flags, when set: `exploratory: strata not pre-exposure (declare
+strata_pre_exposure=True if they are)`, `window not complete` for a period whose
+window the data does not cover, and the `support_warning`. With several metrics
+and no strata or periods, each row ends with `corrected within this metric only;
+name one decision metric`: the correction never spans metrics, so a decision
+needs one metric named before the test. With `correction="bonferroni"` the
+sentence quotes the simultaneous interval. Since-assignment bins whose window
+closes after the end of data for every path have no population in either arm
+and are left out.
+
 {% endblock %}
 
 {% block extra_params %}

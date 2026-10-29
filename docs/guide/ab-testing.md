@@ -11,7 +11,7 @@ The two meet in the other direction too. A test that reads grey on the top line 
 | Inferential: a randomised comparison with an interval and a test | Descriptive: a picture to generate the next hypothesis |
 |---|---|
 | [`get_sample_ratio()`](/docs/tools/get-sample-ratio) on the assignment or the full stream | `transition_graph`, `step_matrix`, `step_sankey` in [diff mode](/docs/widgets#diff-mode) |
-| [`get_ab_test()`](/docs/tools/get-ab-test) on the assignment table, overall and per stratum fixed before exposure (`strata_pre_exposure=True`: declared, such as a platform fixed at signup, or read from a truncation in the recipe) | `get_ab_test` strata not known to be pre-exposure (`exploratory=True`) |
+| [`get_ab_test()`](/docs/tools/get-ab-test) on the assignment table, overall and per stratum fixed before exposure (declared, such as a platform fixed at signup, or read from a truncation in the recipe) | `get_ab_test` strata not known to be pre-exposure (`exploratory=True`) |
 | `get_ab_test(period=...)` rows over every user assigned by the period's end (ITT per period) | `period_population="active"` rows (`verdict="descriptive"`) |
 | [`get_ab_bootstrap()`](/docs/tools/get-ab-bootstrap) contrasts, such as a novelty effect | step-to-step funnel rates (`step_conditional=True`) |
 | `funnel(ci_level=...)` overall steps | conversion *after* a behaviour the treatment changes, e.g. `get_conversion_rate(diff=...)` from a loop (`conditional=True`) |
@@ -78,7 +78,7 @@ A metric of the scorecard is an ordinary [path metric](/docs/path-metrics) confi
 
 ## A worked example
 
-`load_ab_test()` is "Northwind Home", a synthetic store with a randomised 50/50 test of `quick_add`, a one-tap "add to basket" button on catalog and search tiles. About 10,000 users are assigned at their first app open over six weeks; the data cover eight weeks. The dataset is built so that the analysis below finds the stories planted in it (they are listed in the docstring of `retentioneering.datasets.ab_test`), and nothing else.
+`load_ab_test()` is "Northwind Home", a synthetic store with a randomised 50/50 test of `quick_add`, a one-tap "add to basket" button on the product page, so a user is exposed from their first `product_view`. About 10,000 users are assigned at their first app open over six weeks; the data cover eight weeks. The dataset is built so that the analysis below finds the stories planted in it (the generator's docstring lists them under "Solutions (spoilers)"), and nothing else. `list_ab_tests()` names six more bundled experiments, some of them broken tests, and `load_ab_test(name=...)` loads one.
 
 **First, the sample ratio.** Before reading any metric, check that the arms have the sizes the design promised:
 
@@ -126,7 +126,7 @@ The top line is grey. The rest of this page is about reading that correctly, and
 
 Every row is one metric (and one stratum and one period, when requested). The columns come in groups:
 
-- **Who is compared.** `group1_paths`, `group2_paths`; `group1_silent_paths`, `group2_silent_paths` (silent paths, with `assignment`); `unassigned_paths` (stream paths in neither group: outside the table, or another level of the segment); `immature_paths` (paths left out because their observation window had not closed, with `horizon` or since-assignment periods).
+- **Who is compared.** `population`: `"assignment"` when the rows cover the assignment table (intention to treat), `"stream"` when they cover the paths with events; `group1_paths`, `group2_paths`; `group1_silent_paths`, `group2_silent_paths` (silent paths, with `assignment`); `unassigned_paths` (stream paths in neither group: outside the table, or another level of the segment); `immature_paths` (paths left out because their observation window had not closed, with `horizon` or since-assignment periods).
 - **The estimates.** `group1_value` and `group2_value` with `*_ci_low` / `*_ci_high` per arm; `delta` = group 1 − group 2 with `delta_se`, `delta_ci_low`, `delta_ci_high`; `rel_delta` = group 1 / group 2 − 1 with its own interval (NaN when group 2 is 0 or below).
 - **The test.** `p_value` of the row's test; `p_value_adjusted` after the correction; `correction_family`, the text naming what was corrected together; `mde_alpha`, the level the `mde` is computed at (`alpha / m` under a correction, `alpha = 1 - ci_level`). The verdict does not use `mde_alpha`: it compares `p_value_adjusted` with `1 - ci_level`.
 - **What the test could see.** `mde` and `rel_mde`, the minimum detectable absolute and relative effect at `mde_alpha`, the `power` you asked for (0.8 by default) and the realised sample sizes.
@@ -137,13 +137,13 @@ Every row is one metric (and one stratum and one period, when requested). The co
 - `increase` / `decrease` — `p_value_adjusted < 1 - ci_level`, with the sign of `delta`;
 - `inconclusive` — everything else with a p-value, including a NaN one;
 - `descriptive` — rows that compare selected groups (`period_population="active"`), with no p-value and no `mde`;
-- `insufficient_data` — too little support pooled across both arms: for a 0/1 metric, fewer than `min_support` (default 10) paths with the event, or fewer than `min_support` without it, in the two arms together; for totals and values, fewer than `min_support` supported paths. The estimates stay, the test does not run. Because support is pooled, a behaviour present in one arm only — a loop the feature creates — still gets a p-value and a verdict, flagged `support_warning="one_arm_only"`.
+- `insufficient_data` — too little support pooled across both arms: for a 0/1 metric, fewer than `min_support` (default 10) paths with the event, or fewer than `min_support` without it, in the two arms together; for totals and values, fewer than `min_support` supported paths. The estimates stay, the test does not run. A row where no path of either arm has the behaviour — the silent users' `<MISSING>` stratum, a loop nobody in a stratum enters — is `insufficient_data` with `support_warning="no_data"`, whatever the kind of metric. Because support is pooled, a behaviour present in one arm only — a loop the feature creates — still gets a p-value and a verdict, flagged `support_warning="one_arm_only"`.
 
 **Read an inconclusive row with its interval and `mde`.** Conversion moved by +0.60 pp, with an interval from −1.07 to +2.28 pp. The `mde` of about 2.4 pp is the effect this test detects with 80 % power at the corrected alpha: a design quantity, not a bound on the true effect. The interval is what bounds it, and the honest summary is "an effect larger than about +2.3 pp or below about −1.1 pp is unlikely; a smaller one, in either direction, is possible" — not "the feature does nothing". See [Inconclusive is not "no effect"](#5-inconclusive-is-not-no-effect).
 
 **The interval and the verdict can disagree, on purpose.** The interval is per comparison and never adjusted for multiplicity; the verdict reads the adjusted p-value. A row whose interval excludes 0 can still be `inconclusive` once its family is corrected — the periods section below has one. `correction="bonferroni"` adds a simultaneous interval (`delta_ci_low_adj`, `delta_ci_high_adj`) when you need one that agrees with the verdict.
 
-**The correction family is the rows of one metric** — its strata and its periods — so `correction_family` reads `metric=conversion` on a plain scorecard, `metric=conversion/strata` with `strata_col` and `metric=conversion/periods` with `period`. Metrics are separate families and are **not** corrected against each other: with five independent metrics at 5 % each, the chance that at least one of them reads `increase` or `decrease` when nothing changed is about 23 %. Decide which metric is the decision metric before the test, and read the others as supporting evidence.
+**The correction family is the rows of one metric** — its strata and its periods — so `correction_family` reads `metric=conversion` on a plain scorecard, `metric=conversion/strata` with `strata_col` and `metric=conversion/periods` with `period`. By default (`correction_scope="metric"`) metrics are separate families and are **not** corrected against each other: with five independent metrics at 5 % each, the chance that at least one of them reads `increase` or `decrease` when nothing changed is about 23 %. Decide which metric is the decision metric before the test, and read the others as supporting evidence. `correction_scope="all"` puts every row of the call into one family — for a set of guardrails that must hold together, run them as their own call with it.
 
 ## Funnels with intervals
 
@@ -170,11 +170,11 @@ Every overall step is grey. The step-to-step column (marked †, `step_condition
 
 **Why conditional steps are descriptive.** The denominator of `checkout_start → payment` is the users who started a checkout, and the treatment changed who that is: in Northwind, the treatment build also shows a "checkout now" shortcut after every add that reaches the cart, `quick_add` or not, and it starts checkouts that never pay. The step rate compares two different populations, so its difference is a mixture of the treatment's effect and the change in who got there — of unknown sign. The overall `payment` row, out of every path in each arm, is the randomised comparison, and it is +0.06 pp. The conditional rate is still worth reading: it points at the mechanism (the "checkout now" shortcut), which is a hypothesis for the next test.
 
-Two more things the funnel's numbers assume. **The denominator is the paths with at least one event** — 4,828 and 4,905 paths here, not the 4,960 and 5,040 assigned users; `assignment=` on the funnel is not available yet, so for an ITT read of a step use `get_ab_test` with a 0/1 metric of that step and `assignment=`. **Each path is one unit**, so use the randomised grain as `path_col`.
+Two more things the funnel's numbers assume. **The denominator is the paths with at least one event** — 4,828 and 4,905 paths here, not the 4,960 and 5,040 assigned users of the scorecard (`population="assignment"`); `assignment=` on the funnel is not available yet, so for an ITT read of a step use `get_ab_test` with a 0/1 metric of that step and `assignment=`. **Each path is one unit**, so use the randomised grain as `path_col`.
 
 ## Periods, horizon and novelty
 
-The scorecard above counts every event a user produced after assignment, until the data end. Users who entered in the first week were observed for eight weeks, those who entered in the sixth for two, so the effect it reports is an average over different exposure times, weighted by when users happened to arrive. Three arguments make the time dimension explicit.
+The scorecard above counts every event a user produced after assignment, until the data end. Users who entered in the first week were observed for eight weeks, those who entered in the sixth for two, so the effect it reports is an average over different exposure times, weighted by when users happened to arrive. Three arguments make the time dimension explicit. Different horizons answer different questions, so choose the one that matches the decision before reading any of them.
 
 **`horizon=` gives every user the same window.** Only events in `[assigned_at, assigned_at + horizon)` count, and users whose window had not closed by the stream's last event, where the data end, are left out (`immature_paths`). The estimand becomes "the effect within N days of assignment":
 
@@ -204,9 +204,8 @@ stream.get_ab_test(diff, conversion, assignment=assignment,
 | 0-13 | 4958 | 5037 | 5 | +2.75 pp | [+1.38, +4.12] | 0.0003 | increase |
 | 14-27 | 4323 | 4379 | 1298 | −0.67 pp | [−1.73, +0.39] | 0.213 | inconclusive |
 | 28-41 | 3175 | 3161 | 3664 | −1.48 pp | [−2.63, −0.33] | 0.023 | decrease |
-| 42-55 | 0 | 0 | 10000 | — | — | — | insufficient_data |
 
-The effect is front-loaded: positive in the first two weeks after assignment, negative from the fifth week on. The open-ended scorecard averages these, and the 14- and 28-day horizons read mostly the early part. `period_complete` is False where some assigned user's window had not closed.
+The effect is front-loaded: positive in the first two weeks after assignment, negative from the fifth week on. The open-ended scorecard averages these, and the 14- and 28-day horizons read mostly the early part. `period_complete` is False where some assigned user's window had not closed; a bin whose window closes after the end of data for every user is left out.
 
 **A novelty effect is a contrast between two of those windows**, and it needs an interval of its own. In the table above the windows hold different users — days 0–13 9,995 of the 10,000, days 28–41 only the 6,336 whose six weeks had closed — and a difference between those rows would mix the change of the effect with the change of who is counted. `contrast=` avoids that: it compares the same paths in every contrasted bin, keeping only the paths whose windows closed in all of them, so the library balances the contrast whatever the horizon. `horizon="42D"` below makes that population explicit (with it, every bin of the table above would hold the same 6,336 users); it is a choice of window, not a requirement. The two windows' estimates are correlated, so their intervals cannot be combined by eye; [`get_ab_bootstrap()`](/docs/tools/get-ab-bootstrap) evaluates every period on the same resampled users:
 
@@ -244,14 +243,13 @@ The third week's interval excludes 0 and its verdict is still `inconclusive`: th
 
 ## Blind pre-exposure clusters as strata
 
-A grey top line can hide users for whom the treatment works and users for whom it backfires. `strata_col=` repeats every metric within the levels of a segment — but a split is only a randomised comparison if the treatment could not have changed who is in which level. The level must be fixed **before exposure**: a signup platform, an acquisition channel, or behaviour measured on the part of each path the treatment could not yet touch. Only you know that a column such as `platform` was fixed at signup, so you declare it: `get_ab_test(..., strata_col="platform", strata_pre_exposure=True)`. Without the declaration the library reads the stream's recipe, and a stratum it cannot vouch for is flagged `exploratory=True` with a warning.
+A grey top line can hide users for whom the treatment works and users for whom it backfires. `strata_col=` repeats every metric within the levels of a segment — but a split is only a randomised comparison if the treatment could not have changed who is in which level. The level must be fixed **before exposure**: a signup platform, an acquisition channel, or behaviour measured on the part of each path the treatment could not yet touch. Only you know that a column such as `platform` was fixed at signup (the docstring of each bundled dataset lists its segments fixed at assignment; Northwind's are `platform` and `cohort_week`), so you declare it: `get_ab_test(..., strata_col="platform", strata_pre_exposure=True)`. Without the declaration the library reads the stream's recipe, and a stratum it cannot vouch for is flagged `exploratory=True` with a warning.
 
-In Northwind the browsing before a user's first add is generated identically in both arms, so the window up to the first add is pre-exposure by construction. With real data it is an assumption to declare, not a fact — `quick_add` sits on catalog and search tiles, so a treated user sees it before the first add — and the least you can check is that the window does not differ between the arms (the [tutorial](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_tutorial.ipynb) does, in step 5). Cluster users on that window, without looking at the arm or the outcome, carry the labels onto the full stream, and stratify:
+**The exposure point** is the first event at which the treatment can change what a user sees or does. In Northwind `quick_add` sits on the product page, and the log agrees: 97.7 % of `quick_add` events follow a `product_view` (the rest a `reviews_view`). So exposure starts at a user's first `product_view`, and the window before it is pre-exposure by the product's design — there is no button to see yet. That is still your argument, not something the log proves, and the least you can check is that the window does not differ between the arms (the [tutorial](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_tutorial.ipynb) does, in step 6). The recipe in five steps: cut the window, cluster users on it without looking at the arm or the outcome, read one label per user, carry the labels onto the full stream with your declaration, and stratify:
 
 ```python
 pre_exposure = stream.truncate_paths(
-    "path_start",
-    [{"pattern": "add_to_cart", "offset": -1}, {"pattern": "quick_add", "offset": -1}, "path_end"],
+    "path_start", [{"pattern": "product_view", "offset": -1}, "path_end"]
 )
 clustered = pre_exposure.add_clusters(
     "behaviour",
@@ -266,55 +264,56 @@ labels = clustered.get_path_segments("behaviour")      # one label per user
 flags = pre_exposure.get_metrics([{"metric": "has_event_bulk"}])
 flags.columns = flags.columns.str.removeprefix("has_event_bulk_")
 marker = (flags.groupby(labels).mean() / flags.mean()).idxmax(axis=1)
-names = marker.map(
-    {"search_filter": "scanner", "collections_view": "curator", "wishlist_add": "curator"}
-).fillna("other")
+names = marker.map({"search_filter": "scanner", "collections_view": "curator"}).fillna("other")
 
-strata = stream.add_segment("behaviour", path_values=labels.map(names)).get_ab_test(
-    diff, conversion, assignment=assignment, strata_col="behaviour",
-    strata_pre_exposure=True,          # declared: the window is cut before the first add
-)
+strata = stream.add_segment(
+    "behaviour", path_values=labels.map(names),
+    pre_exposure=True,                 # declared: the window ends before the first product_view
+).get_ab_test(diff, conversion, assignment=assignment, strata_col="behaviour")
 ```
 
-The names come from the clusters' profiles, not from the K-means label numbers, which can change with the data or the library version: one cluster's marker is `collections_view`, tied with `wishlist_add` (both map to the dataset's name `curator`), another's is `search_filter` (`scanner`), and the third, which over-represents plain `catalog` browsing, is `other`. [Cluster Analysis](/docs/widgets/cluster-analysis) shows the same profiles interactively.
+`add_segment(..., pre_exposure=True)` records the declaration with the segment, so every later call on that stream — the scorecard, the [A/B Test widget](/docs/widgets/ab-test) — reads it as `strata_pre_exposure_source="declared"`. The names come from the clusters' profiles, not from the K-means label numbers, which can change with the data or the library version: one cluster's marker is `collections_view` (the dataset's `curator`), another's is `search_filter` (`scanner`), and the third, which over-represents plain `catalog` browsing, is `other`. [Cluster Analysis](/docs/widgets/cluster-analysis) shows the same profiles interactively.
 
 | stratum | group1_paths | group2_paths | group1_share | group2_share | delta | interval | p_value_adjusted | verdict | stratum_vs_rest_p_value |
 |---|---|---|---|---|---|---|---|---|---|
 | `<MISSING>` | 132 | 135 | 0.027 | 0.027 | 0.00 pp | [−2.77, +2.83] | — | insufficient_data | — |
-| curator | 913 | 905 | 0.184 | 0.180 | −6.72 pp | [−9.88, −3.57] | 6·10⁻⁵ | decrease | 1.5·10⁻⁶ |
-| other | 2973 | 3071 | 0.599 | 0.609 | −0.34 pp | [−2.50, +1.83] | 0.760 | inconclusive | 0.169 |
-| scanner | 942 | 929 | 0.190 | 0.184 | +10.71 pp | [+6.35, +15.02] | 5·10⁻⁶ | increase | 1.6·10⁻⁷ |
+| curator | 1147 | 1176 | 0.231 | 0.233 | −5.12 pp | [−8.06, −2.18] | 0.0013 | decrease | 3.9·10⁻⁵ |
+| other | 2653 | 2705 | 0.535 | 0.537 | −0.61 pp | [−2.91, +1.69] | 0.604 | inconclusive | 0.126 |
+| scanner | 1028 | 1024 | 0.207 | 0.203 | +10.00 pp | [+5.85, +14.09] | 7·10⁻⁶ | increase | 2.2·10⁻⁷ |
 
 How to read the strata columns:
 
-- **`group1_share`, `group2_share`, `balance_p_value`** — each stratum's share within each arm and a chi-square test of the stratum × arm table (0.775 here). It is a share-balance check only: a stratum computed after exposure can be perfectly balanced and still selected by the treatment (below).
-- **`heterogeneity_p_value`** — Cochran's Q over the strata that pass a support guard (`heterogeneity_dof`, `heterogeneity_strata_used`): do the effects differ between strata at all? Here p ≈ 1.4·10⁻⁹.
+- **`group1_share`, `group2_share`, `balance_p_value`** — each stratum's share within each arm and a chi-square test of the stratum × arm table (0.966 here). It is a share-balance check only: a stratum computed after exposure can be perfectly balanced and still selected by the treatment (below).
+- **`heterogeneity_p_value`** — Cochran's Q over the strata that pass a support guard (`heterogeneity_dof`, `heterogeneity_strata_used`): do the effects differ between strata at all? Here p ≈ 3.5·10⁻⁸.
 - **`stratum_vs_rest_p_value`** — this stratum's delta against the delta of all the others pooled (unadjusted). Use it, not "significant here, not significant there", to say a stratum is different.
-- **`strata_pre_exposure`**, **`strata_pre_exposure_source`** — whether the stratum counts as fixed before exposure, and why: `"declared"` when you passed `strata_pre_exposure=True`, `"recipe"` when the stream's recipe shows a truncation that ends at the assignment or exposure marker, `"not_pre_exposure"` otherwise (False, with a `UserWarning`). **`exploratory`** is True unless `strata_pre_exposure` is True. Neither source proves the cut sits before exposure: a declaration is your argument, and the recipe only shows where the stream was cut.
+- **`strata_pre_exposure`**, **`strata_pre_exposure_source`** — whether the stratum counts as fixed before exposure, and why: `"declared"` when you declared it (`add_segment(..., pre_exposure=True)` or `strata_pre_exposure=True`), `"recipe"` when the stream's recipe shows a truncation that ends paths at an event before the labels were computed, `"not_pre_exposure"` otherwise (False, with a `UserWarning`). **`exploratory`** is True unless `strata_pre_exposure` is True. Neither source proves the cut sits before exposure: a declaration is your argument, and `"recipe"` means a truncation in the recipe — the library has no notion of an exposure marker and cannot verify that the cut ends at exposure, so for a cut you rely on, declare it.
 - **`<MISSING>`** holds the silent users: they produced no events, so they have no cluster.
 
-The scanners gain about 11 pp and the curators lose about 7 pp; the `other` stratum, about 60 % of the assigned users, shows no detectable change (interval −2.50 to +1.83 pp, which still allows a small effect either way). That is why the top line is grey. Cochran's Q establishes that the effect is not the same for every user; *which* users it helps is a hypothesis — K, the features and the scaler were choices, and the largest of several stratum effects is biased upwards — to be replicated by a test targeted at those users before anyone acts on it (see [pitfall 7](#7-a-discovered-segment-is-a-hypothesis)).
+The scanners gain about 10 pp and the curators lose about 5 pp; the `other` stratum, about 54 % of the assigned users, shows no detectable change (interval −2.91 to +1.69 pp, which still allows a small effect either way). That is why the top line is grey. Cochran's Q establishes that the effect is not the same for every user; *which* users it helps is a hypothesis — the window, K, the features and the scaler were choices, and the largest of several stratum effects is biased upwards — to be replicated by a test targeted at those users before anyone acts on it (see [pitfall 7](#7-a-discovered-segment-is-a-hypothesis)).
 
-**The same split after exposure tells a different story.** Story 7 of the dataset plants a sign flip by path length before the first add. Bin `length` on the pre-exposure stream, and on the full stream:
+**The same split after exposure tells a different story.** Story 7 of the dataset plants a sign flip by path length in the window before the first add. That window is wider than the one above: it contains the product pages, where a treated user already sees the button, so it is pre-exposure only if the button does not change the browsing before the first add — true by construction in Northwind, a claim to argue with real data. Bin `length` on that window, and on the full stream:
 
 ```python
+pre_add = stream.truncate_paths(
+    "path_start",
+    [{"pattern": "add_to_cart", "offset": -1}, {"pattern": "quick_add", "offset": -1}, "path_end"],
+)
 bins = {"metric": {"metric": "length"}, "edges": [10], "segment_levels": ["short", "long"]}
-for source, declared in [(pre_exposure, True), (stream, None)]:
+for source in (pre_add, stream):
     labels = source.add_segment("length_bin", metric_bins=bins).get_path_segments("length_bin")
-    stream.add_segment("length_bin", path_values=labels).get_ab_test(
+    stream.add_segment("length_bin", path_values=labels).get_ab_test(   # nothing declared
         diff, conversion, assignment=assignment, strata_col="length_bin",
-        strata_pre_exposure=declared,  # None: read the recipe
     )
 ```
 
 | length bins computed on | stratum | delta | interval | verdict | balance_p_value | strata_pre_exposure (source) | exploratory |
 |---|---|---|---|---|---|---|---|
-| the pre-exposure stream | short | −3.38 pp | [−5.52, −1.23] | decrease | 0.917 | True (`declared`) | False |
+| the window before the first add | short | −3.38 pp | [−5.52, −1.23] | decrease | 0.917 | True (`recipe`) | False |
 | | long | +6.48 pp | [+3.68, +9.27] | increase | | | |
 | the full stream | short | +0.47 pp | [−0.73, +1.69] | inconclusive | 0.981 | False (`not_pre_exposure`) | True |
 | | long | +0.75 pp | [−1.45, +2.95] | inconclusive | | | |
 
-On the full stream, the bins mix pre-exposure browsing with everything the treatment caused afterwards, and the planted flip disappears; the balance p-value is 0.98 all the same. A post-exposure split can just as well manufacture a difference that is not there. Only the first table is a randomised comparison.
+On the full stream, the bins mix pre-exposure browsing with everything the treatment caused afterwards, and the planted flip disappears; the balance p-value is 0.98 all the same. A post-exposure split can just as well manufacture a difference that is not there. Only the first table is a randomised comparison — and note what vouched for it: the recipe accepted the window before the first add as readily as it would the one before the first product view, because it sees a truncation, not where exposure starts. Here the generator keeps that window identical in both arms; with your own data, make the argument and declare it.
 
 **New users have no history.** In an acquisition or onboarding test the treatment acts from the first screen, so there is no pre-exposure window to cluster on. Blind clusters then collapse to what is known at assignment — platform, channel, country — and clustering on post-exposure behaviour is descriptive only.
 
@@ -333,6 +332,18 @@ stream.get_sample_ratio("exp_group", expected_shares={"control": 0.8, "treatment
 - **`period=`** and **`strata_col=`** repeat the check within groups, with Holm-adjusted p-values over the groups: `period="D"` per day of `assigned_at` (also `"W"`, `"M"`, spelled as in `get_ab_test`) in `periods`, or `strata_col="platform"` per level of a segment fixed at assignment in `strata`. On Northwind all 42 assignment days pass. A mismatch confined to one day or one platform points at a deploy or a client bug that the overall test can dilute. The overall `mismatch` does not include the groups.
 
 Run it on the assignment or on the full stream, and per group only for variables fixed at assignment. On a subset defined by behaviour — users who reached the cart — the arms' shares differ whenever the treatment works, and that difference is an effect, not a bug.
+
+## From scorecard to decision
+
+A scorecard is evidence; the launch call is a decision with a cost of being wrong in each direction. Five rules turn one into the other, most of them fixed before the test starts.
+
+1. **Declare the decision metric and its horizon up front.** One metric (conversion), one window (the whole observation period, or "within 28 days of assignment"), one read date. Every other row is supporting evidence: metrics are not corrected against each other by default, and different horizons answer different questions. The [tutorial](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_tutorial.ipynb) writes its two reads down in step 2, before any table is printed.
+2. **Name the guardrails.** Metrics that must not get worse — revenue per user, refunds, support contacts — read as a set: run them as one call with `correction_scope="all"` so that the set is corrected together, and decide in advance what a `decrease` on one of them means for the launch.
+3. **Gate on the sample ratio.** A `mismatch` from `get_sample_ratio` stops the readout: no metric is trusted until the lost users are explained.
+4. **Read an inconclusive decision metric against the effect that matters.** Compare the interval with the smallest effect worth shipping for. If the whole interval lies below it, the feature does not pay for itself at any size the data allow; if the interval still holds an effect that would matter, the test could not tell — the answer is more users or a longer horizon, not "no effect".
+5. **A discovered segment licenses a follow-up test, not a launch.** Strata found after the main read are hypotheses (pitfall 7). Ship to a segment only after a test targeted at it, with the segment and the decision metric declared before it starts.
+
+On Northwind: the sample ratio passes (p 0.42); the decision metric, conversion over the whole period, is inconclusive at +0.60 pp [−1.07, +2.28], and the early lift fades with exposure age; the pre-exposure strata show a gain for scanners and a loss for curators. The decision these facts support: **do not ship to everyone**; test `quick_add` for search-led users with that stratum declared, and fix what it does to the curators' carts first.
 
 ## Pitfalls
 
@@ -360,7 +371,7 @@ In the library: `get_sample_ratio(period="D")` per day of assignment and `get_sa
 
 Every extra metric, stratum, period, funnel step or edge is another chance of a false positive. Decide what is corrected together, and how: family-wise error control (Holm, Bonferroni) for a few confirmatory comparisons, false discovery rate control (Benjamini–Hochberg) for scans over many exploratory ones ([GrowthBook, multiple corrections](https://docs.growthbook.io/statistics/multiple-corrections); [Optimizely, Stats Engine](https://www.optimizely.com/insights/blog/statistics-for-the-internet-age-the-story-behind-optimizelys-new-stats-engine/); [Spotify, risk-aware decisions with multiple metrics](https://engineering.atspotify.com/2024/3/risk-aware-product-decisions-in-a-b-tests-with-multiple-metrics)).
 
-In the library: the family is the rows of one metric (`correction_family`); `correction="holm"` by default, `"bonferroni"` with simultaneous intervals, `"bh"` for many exploratory rows, `"none"`; the funnel corrects across its steps. Metrics are not corrected against each other — name one decision metric in advance. A practical rule: Holm for a handful of pre-declared strata, BH for discovered clusters and scans.
+In the library: the family is the rows of one metric (`correction_family`); `correction="holm"` by default, `"bonferroni"` with simultaneous intervals, `"bh"` for many exploratory rows, `"none"`; the funnel corrects across its steps. Metrics are not corrected against each other unless you pass `correction_scope="all"` — name one decision metric in advance. A practical rule: Holm for a handful of pre-declared strata, BH for discovered clusters and scans.
 
 ### 5. Inconclusive is not "no effect"
 
@@ -399,20 +410,20 @@ In the library: `period_basis="since_assignment"` bins by exposure age, and `get
 - equivalence and non-inferiority verdicts with a margin;
 - a per-edge transition test between arms with Benjamini–Hochberg over edges, then dose-response;
 - design from history: an A/A replay on past data to size a test and check the planned analysis's false-positive rate;
-- variance reduction (CUPED, linearisation) on pre-exposure metrics;
-- an exposure-based population (`exposure_event=`, `population="exposed"`) and a balance check with a within-strata permutation test;
-- an `ab_test` widget with a forest plot and strata and period panels.
+- variance reduction (CUPED, linearisation) on pre-exposure metrics — there is no `covariates=` parameter; `get_ab_paths()` returns the per-path table behind the scorecard (arm, `assigned_at`, every metric's value), on which you can fit one by hand;
+- an exposure-based population (`exposure_event=`, `population="exposed"`) and a balance check with a within-strata permutation test.
 
 Sequential (always-valid) tests and a bootstrap over a unit coarser than the path are not available either: read a test once, at a horizon fixed in advance, with the randomised unit as `path_col`.
 
 ## Asking an agent instead
 
-The [MCP server](/docs/mcp-server) exposes `get_sample_ratio` and `get_ab_test` as numbers-only tools, and its playbook has an A/B scenario: check the sample ratio first, declare the metrics up front, read `inconclusive` with the interval and the `mde`, and never filter or stratify on post-exposure behaviour. An agent with retentioneering's [skills](/docs/agent-skills) can run the same calls as code.
+The [MCP server](/docs/mcp-server) exposes `get_sample_ratio` and `get_ab_test` as numbers-only tools, and its playbook has an A/B scenario: check the sample ratio first, declare the metrics up front, read `inconclusive` with the interval and the `mde`, and never filter or stratify on post-exposure behaviour. Two habits from this page carry over. When the treatment renames an event — `quick_add` instead of `add_to_cart` — compare the union (`has_any_event` over both), not either event alone. And to find who the treatment helps, test heterogeneity first, then read `stratum_vs_rest_p_value`, with every stratum labelled exploratory unless it was fixed before exposure. `export_report` saves only report tabs, so a numbers-only analysis needs a tab, such as the scorecard via `add_ab_test`, before it can be exported. An agent with retentioneering's [skills](/docs/agent-skills) can run the same calls as code.
 
 ## Next steps
 
-- [A/B testing tutorial](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_tutorial.ipynb) — a ten-step notebook on the built-in `load_ab_test()` dataset: sample ratio, scorecard, funnel, novelty, pre-exposure strata, loops, and example paths per arm.
-- [A/B Test Scorecard](/docs/tools/get-ab-test), [A/B Bootstrap Replicates](/docs/tools/get-ab-bootstrap), [Sample Ratio Check](/docs/tools/get-sample-ratio) — every parameter and output column.
+- [A/B testing tutorial](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_tutorial.ipynb) — an eleven-step notebook on the built-in `load_ab_test()` dataset: sample ratio, scorecard and its widget, funnel, novelty, pre-exposure strata, loops, example paths per arm, and a decision.
+- [A/B Test Scorecard](/docs/tools/get-ab-test), [A/B Bootstrap Replicates](/docs/tools/get-ab-bootstrap), [Sample Ratio Check](/docs/tools/get-sample-ratio) — every parameter and output column; the [A/B Test widget](/docs/widgets/ab-test) draws the scorecard as a table and a forest plot.
+- [A/B test datasets](/docs/eventstream#ab-test-datasets) — `list_ab_tests()` and `load_ab_test(name=...)`: seven synthetic experiments to practise on, some of them broken tests whose right answer is not to read them.
 - [Funnel](/docs/widgets/funnel#confidence-intervals-and-ab-tests) — what each interval and p-value assumes.
 - [Segments](/docs/segments) and [Add Segment](/docs/data-processors/add-segment) — carrying an assignment table or pre-exposure labels onto the event log with `path_values`.
 - [Path Analysis](/docs/path-analysis) — the descriptive views that suggest what to test next.

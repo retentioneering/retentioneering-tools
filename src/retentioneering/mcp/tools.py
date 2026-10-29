@@ -1071,7 +1071,8 @@ def get_ab_test(
     Returns
     -------
     diff, path_col, ci_level, correction, correction_scope, population
-    ("assignment" or "stream"), unassigned_paths (stream paths in neither
+    ("assignment" or "stream"; "active" on period_population="active" rows),
+    unassigned_paths (stream paths in neither
     group of diff, e.g. a third arm), and metrics — one entry per
     metric: population, group1_paths, group2_paths, group1_support,
     group2_support (paths with a value), conditional (true when the metric has a

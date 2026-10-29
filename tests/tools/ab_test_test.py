@@ -259,6 +259,7 @@ class TestMatrix:
         assert list(out["group2_paths"]) == [1, 3, 1]
         assert set(out["verdict"]) == {"descriptive"}
         assert out["p_value"].isna().all() and out["mde"].isna().all()
+        assert set(out["population"]) == {"active"}  # R3C-07: not ITT
 
     def test_since_assignment_periods(self) -> None:
         out = _fit(

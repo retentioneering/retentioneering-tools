@@ -92,11 +92,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   checked by a test; `with_truth=True` adds the planted `user_type`.
 - Tutorial notebook `notebooks/ab_testing_tutorial.ipynb`: one analysis of the
   Northwind Home experiment from the assignment table to the final readout — SRM,
-  the scorecard, funnel intervals and why a conditional step's p-value misleads,
-  calendar weeks versus a fixed exposure age (`horizon=`) versus the
-  since-assignment novelty contrast, blind pre-exposure clusters as strata, the
-  treatment-only cart loop as a descriptive rate and as an ITT metric, pre- versus
-  post-exposure strata, and the planted truth. Every number is printed by a library
+  a scorecard with two reads declared before any result (the whole window, and
+  the first 28 days after assignment), funnel intervals and why a conditional
+  step's p-value misleads, calendar weeks versus the since-assignment novelty
+  contrast, a balance check of the pre-exposure window and blind clusters on it
+  as declared strata, the treatment-only cart loop as a descriptive rate and as
+  an ITT metric, pre- versus post-exposure strata, and the planted truth. Every number is printed by a library
   call, and every step says what it proves and what remains a hypothesis. It runs
   against the development install until this release ships; CI executes it.
 - Docs: a Tools reference section (`get_ab_test`, `get_ab_bootstrap`,

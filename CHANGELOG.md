@@ -40,8 +40,36 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   path, so a path whose segment changes inside it raises `DiffConfigError`
   instead of being counted in both groups. The MCP `get_conversion_rate` tool
   takes the same two arguments.
+- `get_ab_test(diff, metrics, ...)` reads out an experiment: one row per metric
+  (and per stratum with `strata_col`, per period with `period`) with per-arm
+  estimates, the delta with a confidence interval, a relative delta, p-value,
+  multiplicity-adjusted p-value (`correction="holm"` by default, also
+  `"bonferroni"`, `"bh"`, `"none"`, within each metric), the minimum detectable
+  effect and a `verdict` read from the adjusted p-value. The test follows the
+  metric: z-test for 0/1 metrics, Welch for totals and values, a joint path
+  bootstrap for ratio metrics (`denominator`, e.g. average order value).
+  `assignment=` makes the population intention-to-treat (silent paths count,
+  events before `assigned_at` are dropped) and refuses a path grain finer than
+  the assignment unit; `period_basis="since_assignment"` and `horizon=` give
+  every path the same exposure time; strata rows carry shares, balance,
+  heterogeneity and stratum-versus-rest p-values and an `exploratory` flag. See
+  [ADR-0017](docs/adr/0017-ab-testing-tools.md).
+- `get_ab_bootstrap(diff, metrics, ..., contrast=None)` returns the joint
+  bootstrap replicates behind it, one row per replicate × metric × stratum ×
+  period, so ratios of metrics and period contrasts (a novelty effect: days
+  0–13 minus days 28–41) get their own intervals.
+- The MCP server has a numbers-only `get_ab_test` tool (overall rows, the top
+  strata by effect size and period rows) and an A/B scenario in its playbook.
+- Docs: a Tools reference section (`get_ab_test`, `get_ab_bootstrap`,
+  `get_sample_ratio`) rendered from the docstrings and listed in `llms.txt`.
 
 ### Changed
+
+- `get_path_segments` records in `attrs["pre_exposure"]` whether the segment
+  was computed on a stream truncated before exposure, so a stratum carried over
+  with `add_segment(path_values=...)` keeps its provenance.
+- `MetricBuilder.build_metrics` takes `validate=False` to skip the check that
+  the configured events exist, for metrics computed on a slice of a stream.
 
 - Every widget encodes its computed `result` (and distribution results) as
   strict JSON: NaN and infinite values are sent as `null`, which the front end

@@ -1564,6 +1564,7 @@ class ABTest:
             if (
                 not (np.isfinite(se) and se > 0 and np.isfinite(d_s - d_r))
                 or extras[i]["descriptive"]
+                or not extras[i]["support"]
             ):
                 vs_rest.append(np.nan)
             else:

@@ -2,6 +2,8 @@
 
 Status: Accepted (5.0 rewrite; recorded 2026-07)
 
+The **StatTests** item is superseded by [ADR-0017](0017-ab-testing-tools.md).
+
 ## Context
 
 5.0 is a ground-up rewrite, not an incremental port. Carrying every 3.3.0

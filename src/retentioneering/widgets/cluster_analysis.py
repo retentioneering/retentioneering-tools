@@ -394,7 +394,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
                     path_col=path_col,
                 )
 
-            self.result = json.dumps(computed["result"])
+            self.result = self._encode_result(computed["result"])
             params = computed["best_params"]
             self.chosen_params = json.dumps(params)
             if params:
@@ -501,10 +501,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
                 levels=_distribution_levels(req),
                 path_col=self.path_col or None,
             )
-            self.dist_result = json.dumps(
-                result,
-                default=lambda x: None if (isinstance(x, float) and x != x) else x,
-            )
+            self.dist_result = self._encode_result(result)
         except Exception as exc:
             self.dist_result = json.dumps({"error": str(exc)})
         finally:

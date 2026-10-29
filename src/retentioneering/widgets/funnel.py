@@ -122,7 +122,7 @@ class FunnelWidget(RetentioneeringWidget):
             steps = json.loads(self.steps) if self.steps else []
             diff = _parse_diff(self.diff)
             pid = self.path_col or None
-            self.result = json.dumps(
+            self.result = self._encode_result(
                 self._compute_raw(steps=steps, diff=diff, path_col=pid)
             )
         except RetentioneeringError:

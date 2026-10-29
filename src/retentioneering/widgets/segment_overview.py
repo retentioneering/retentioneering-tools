@@ -156,7 +156,7 @@ class SegmentOverviewWidget(RetentioneeringWidget):
         self.error = ""
         try:
             metrics = json.loads(self.metrics) if self.metrics else []
-            self.result = json.dumps(
+            self.result = self._encode_result(
                 self._compute_raw(
                     segment_col=self.segment_col,
                     metrics=metrics,
@@ -214,10 +214,7 @@ class SegmentOverviewWidget(RetentioneeringWidget):
                 path_col=req.get("path_col"),
                 **_distribution_levels(req),
             )
-            self.dist_result = json.dumps(
-                result,
-                default=lambda x: None if (isinstance(x, float) and x != x) else x,
-            )
+            self.dist_result = self._encode_result(result)
         except Exception as exc:
             self.dist_result = json.dumps({"error": str(exc)})
         finally:

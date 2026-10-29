@@ -41,6 +41,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   instead of being counted in both groups. The MCP `get_conversion_rate` tool
   takes the same two arguments.
 
+### Changed
+
+- Every widget encodes its computed `result` (and distribution results) as
+  strict JSON: NaN and infinite values are sent as `null`, which the front end
+  shows as "no estimate", instead of bare `NaN` tokens that the browser's
+  `JSON.parse` rejects.
+
 ### Fixed
 
 - `time_median` and `time_q95` edge weights in `transition_graph` and

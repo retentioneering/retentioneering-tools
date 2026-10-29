@@ -206,7 +206,7 @@ class StepMatrixWidget(RetentioneeringWidget):
                 path_pattern=self.path_pattern or None,
                 anchor=self._anchor_spec(),
             )
-            self.result = json.dumps(result)
+            self.result = self._encode_result(result)
         except RetentioneeringError:
             raise
         except Exception as exc:

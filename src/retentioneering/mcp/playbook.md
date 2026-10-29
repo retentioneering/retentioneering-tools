@@ -180,12 +180,22 @@ times counts once. For a per-visit figure, carve out the subpopulation with
 3. Report per metric: `delta` with `[delta_ci_low, delta_ci_high]`, the `verdict` and
    the `mde`. Quote in backticks (no tab is registered).
 4. Optional: `strata_col=` for a segment fixed before exposure (platform at signup),
-   `period="W"` for stability over time.
+   `period="W"` for stability over time. Strata rows are adjusted with `correction`
+   (`strata_correction_family`); `exploratory=true` (or `strata_pre_exposure` not
+   true) means the strata may be post-exposure: report them as exploratory.
+
+An intention-to-treat analysis over an assignment table (silent assigned users,
+`assigned_at`, `horizon`) is not available through MCP; it needs the Python API
+(`Eventstream.get_ab_test(assignment=...)`).
 
 **Reading the verdict:** `increase` / `decrease` come from the multiplicity-adjusted
-p-value. `inconclusive` is not "no effect": say which effects the interval still allows
-and whether they are smaller than the `mde` (the test could not have seen them).
-`insufficient_data`: too few events per arm to test.
+p-value (`alpha_used` is the per-comparison level after the correction).
+`inconclusive` is not "no effect": the interval says which effects are still
+compatible with the data. The `mde` is the effect the test detects with 80 % power at
+`alpha_used`; an inconclusive result does not bound the effect below it, the interval
+does. `insufficient_data`: fewer than `min_events` supporting paths in one arm, which
+includes a behaviour that exists in one arm only; read it from the estimates.
+`descriptive`: rows of `period_population="active"` (survivors), no p-value.
 
 **Do not:** filter on post-exposure behaviour ("users who reached checkout") before
 the test, or stratify by it — that compares selected groups, not the randomised arms.

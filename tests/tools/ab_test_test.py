@@ -1376,6 +1376,59 @@ class TestUnitGuard:
         ).fit()
         assert out["group1_paths"].iloc[0] == 40
 
+    @staticmethod
+    def _per_user_arms(n_users: int, mixed: int) -> Eventstream:
+        """Two sessions per user, the arm per user; ``mixed`` users carry both."""
+        rows = []
+        for user in range(n_users):
+            arm = "treatment" if user % 2 else "control"
+            for s in range(2):
+                other = "control" if arm == "treatment" else "treatment"
+                session_arm = other if (user < mixed and s == 1) else arm
+                ts = pd.Timestamp("2024-01-01") + pd.Timedelta(hours=user + s)
+                sid = f"u{user}s{s}"
+                rows.append((f"u{user}", sid, "visit", ts, session_arm))
+                if (user + s) % 3 == 0:
+                    order_ts = ts + pd.Timedelta(1, "m")
+                    rows.append((f"u{user}", sid, "order", order_ts, session_arm))
+        df = pd.DataFrame(
+            rows, columns=["user_id", "session_id", "event", "timestamp", "arm"]
+        )
+        return Eventstream(
+            df, {"path_cols": ["user_id", "session_id"], "segment_cols": ["arm"]}
+        )
+
+    def test_a_few_users_with_both_arms_do_not_disable_the_guard(self) -> None:
+        """R3C-02: the guard reads a share, not "every user"."""
+        diff = ("arm", "treatment", "control")
+        stream = self._per_user_arms(200, mixed=1)
+        with pytest.raises(InvalidParameterError, match=r"199 of the 200 user_ids"):
+            ABTest.from_stream(stream, diff, [CONV], path_col="session_id")
+        stream = self._per_user_arms(100, mixed=10)  # 90 % constant: warn
+        with pytest.warns(UserWarning, match="constant within 90 of the 100"):
+            ABTest.from_stream(stream, diff, [CONV], path_col="session_id")
+        stream = self._per_user_arms(100, mixed=30)  # 70 %: not per user
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            ABTest.from_stream(stream, diff, [CONV], path_col="session_id")
+
+    def test_funnel_and_conversion_intervals_use_the_guard(self) -> None:
+        """m4: the inferential funnel and conversion calls refuse the finer grain."""
+        diff = ("arm", "treatment", "control")
+        stream = self._per_user_arms(40, mixed=0)
+        steps = ["visit", "order"]
+        with pytest.raises(InvalidParameterError, match="constant within every"):
+            stream.funnel_data(steps, diff=diff, path_col="session_id", ci_level=0.95)
+        with pytest.raises(InvalidParameterError, match="constant within every"):
+            stream.get_conversion_rate(
+                "visit", "order", diff=diff, path_col="session_id"
+            )
+        # descriptive funnels (no ci_level) keep the event-level split
+        assert stream.funnel_data(steps, diff=diff, path_col="session_id")
+        # the user grain runs
+        assert stream.funnel_data(steps, diff=diff, ci_level=0.95)
+        assert len(stream.get_conversion_rate("visit", "order", diff=diff)) == 1
+
 
 class TestDaylightSaving:
     """R2-02: a naive assigned_at on a tz-aware stream across the autumn change."""

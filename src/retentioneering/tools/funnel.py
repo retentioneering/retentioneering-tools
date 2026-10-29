@@ -83,10 +83,18 @@ class Funnel:
                 # Intervals and tests need disjoint paths: resolve at path level
                 # and refuse a path that falls in both groups.
                 from retentioneering.tools._diff import resolve_diff
+                from retentioneering.tools.ab_test import (
+                    _is_segment_diff,
+                    check_segment_unit,
+                )
 
                 groups = resolve_diff(
                     self.eventstream, diff, path_col, require_constant=True
                 )
+                if _is_segment_diff(diff):
+                    # intervals at a grain finer than the randomised unit are too
+                    # narrow: the same guard as get_ab_test
+                    check_segment_unit(self.eventstream, path_col, diff[0])
                 stream1 = self.eventstream.filter_events(
                     keep={path_col: list(groups.ids1)}
                 )

@@ -221,6 +221,10 @@ class TestContract:
         assert (assigned < first_event).all()
         arm = frame.groupby("user_id")["exp_group"].first()
         assert (assignment["arm"].reindex(arm.index) == arm).all()
+        # the design is a 50/50 split; the realised shares stay within a point of it
+        shares = assignment["arm"].value_counts(normalize=True)
+        assert set(shares.index) == {"treatment", "control"}
+        assert (shares - 0.5).abs().max() < 0.01
 
 
 # ---------------------------------------------------------------------------
@@ -241,6 +245,9 @@ class TestStories:
         assert abs(row["delta"]) < row["mde"] / 2
         assert srm["silent_paths"] > 0
         assert srm["p_value"] > 0.05 and not srm["mismatch"]
+        levels = srm["levels"].set_index("level")
+        assert (levels["expected_share"] == 0.5).all()
+        assert (levels["share"] - 0.5).abs().max() < 0.01
 
     def test_story2_overall_funnel_steps_grey_after_holm(self, stream) -> None:
         funnel = stream.funnel_data(

@@ -2284,7 +2284,11 @@ class ABTest:
             else:
                 rows["immature_paths"] = int(matrix.immature[0])
         rows["valid_replicates"] = pd.array(rows["valid_replicates"], dtype="Int64")
-        rows["population"] = "assignment" if matrix.with_assignment else "stream"
+        if self.period_population == "active":
+            # survivors of the period, not an intention-to-treat population
+            rows["population"] = "active"
+        else:
+            rows["population"] = "assignment" if matrix.with_assignment else "stream"
         # several metrics and no strata or periods: each row is a headline read,
         # and the correction does not span the metrics
         several = (

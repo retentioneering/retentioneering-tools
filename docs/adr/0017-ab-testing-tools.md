@@ -68,10 +68,16 @@ z-test with Wilson / Newcombe intervals for 0/1 metrics, Welch for per-path
 totals and values, a joint path bootstrap for ratios of sums (multinomial
 weights within arm, batched, seeded per arm, percentile interval, p-value from
 the bootstrap standard error). A support rule (`min_events`) marks rows too
-thin to test. Strata carry shares by arm, a share-balance check (not a guard
-against post-exposure strata), Cochran's Q over strata that pass a support
-guard, a stratum-versus-rest test and an `exploratory` flag; a stratum computed
-from behaviour on an untruncated stream warns and is flagged
+thin to test; support is pooled across the arms, so a behaviour present in one
+arm only still gets a p-value, flagged in `support_warning` (a per-arm rule
+hid exactly the effects a new feature creates, and a guardrail that wipes out
+an outcome in one arm). Strata carry shares by arm, a share-balance check (not
+a guard against post-exposure strata), Cochran's Q over strata that pass a
+support guard, a stratum-versus-rest test and an `exploratory` flag. Whether a
+stratum is pre-exposure is declared (`strata_pre_exposure=True`, for a source
+column such as a signup platform) or read from a truncation in the recipe that
+ends at the assignment or exposure marker, and recorded in
+`strata_pre_exposure_source`; any other stratum warns and is flagged
 `strata_pre_exposure=False`. Permutation tests are not part of the scorecard.
 
 **D8 — funnel intervals.** `funnel(ci_level=, correction=)` adds Wilson

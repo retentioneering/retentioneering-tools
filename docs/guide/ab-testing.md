@@ -355,7 +355,7 @@ A scorecard is evidence; the launch call is a decision with a cost of being wron
 4. **Read an inconclusive decision metric against the effect that matters.** Compare the interval with the smallest effect worth shipping for. If the whole interval lies below it, the feature does not pay for itself at any size the data allow; if the interval still holds an effect that would matter, the test could not tell, and "no effect" is not the answer. The answer is a new test sized for the effect that matters, with its horizon and read date fixed before it starts; extending this one, or re-reading it at another horizon, is peeking ([pitfall 6](#6-peeking-and-open-ended-metrics)). The `reading`'s multiplier ("to detect 1 pp, about 5.7× the paths are needed in a new test sized before it starts") is an input to that design.
 5. **A discovered segment licenses a follow-up test, not a launch.** Strata found after the main read are hypotheses (pitfall 7). Ship to a segment only after a test targeted at it, with the segment and the decision metric declared before it starts.
 
-On Northwind, with the plan the tutorial declares in step 2 — decision metric conversion over the whole period, +1 pp the smallest lift worth shipping, and revenue per user as a guardrail that must not drop by more than 1.00 per user (about 5 % of control's 18.64) — the rules read in order:
+On Northwind, with the plan the tutorial declares in step 2 — decision metric conversion over the whole period, +1 pp the smallest lift worth shipping, and revenue per user as a guardrail that must not drop by more than 1.00 per user — the rules read in order:
 
 - the sample ratio passes (p 0.42), so the test can be read;
 - the guardrail passes: revenue per user's interval [−0.28, +3.28] lies above −1.00;

@@ -327,17 +327,17 @@ scorecard = stream.get_ab_test(
 
 `delta` is group 1 minus group 2. The test follows the metric: a 0/1 metric gets a pooled two-proportion z-test with Wilson and Newcombe intervals, a per-path total or value gets Welch's t-test, a ratio of sums (average order value = revenue / orders) gets a joint path bootstrap — paths are resampled within each arm and every metric is recomputed on the same resample, so the ratio's interval respects that revenue and orders come from the same users. `test=` (or a per-metric `"test"`) overrides the choice where it fits the metric.
 
-**Read an inconclusive row with its interval and `mde`.** Above, conversion moved by +0.60 pp with an interval from -1.07 to +2.28 pp: an effect larger than about +2.3 pp or below about -1.1 pp is unlikely, and a smaller one, in either direction, is possible. The `mde` (about 2.4 pp) is the effect the test detects with 80 % power at the corrected alpha — a design quantity, not a bound on the true effect: an inconclusive result does not say the effect is smaller than the `mde`, the interval says how large it can be. The verdict is `increase` / `decrease` only when the multiplicity-adjusted p-value is below `1 - ci_level`; `insufficient_data` marks rows whose support, pooled across both arms, is below `min_support` (default 10), with `support_warning="no_data"` when no path of either arm has the behaviour; a behaviour present in one arm only still gets a p-value, flagged `support_warning="one_arm_only"`.
+**Read an inconclusive row with its interval and `mde`.** Above, conversion moved by +0.60 pp with an interval from -1.07 to +2.28 pp: an effect larger than about +2.3 pp or below about -1.1 pp is unlikely, and a smaller one, in either direction, is possible. The `mde` (about 2.4 pp) is the effect the test detects with 80 % power at alpha 0.05 (`mde_alpha`) — a design quantity, not a bound on the true effect: an inconclusive result does not say the effect is smaller than the `mde`, the interval says how large it can be. The verdict is `increase` / `decrease` only when the multiplicity-adjusted p-value is below `1 - ci_level`; `insufficient_data` marks rows whose support, pooled across both arms, is below `min_support` (default 10; for totals, paths with a non-zero total), with `support_warning="no_data"` when no path of either arm has the behaviour; a behaviour present in one arm only still gets a p-value, flagged `support_warning="one_arm_only"`.
 
-**The population.** `assignment=` makes the assignment table the population (intention to treat): users who were assigned but never produced an event count as zeros (`group1_silent_paths`), events before `assigned_at` are dropped, and stream paths missing from the table are counted in `unassigned_paths`. Without it the population is the paths of the stream; the `population` column of every row says which (`"assignment"` or `"stream"`). Either way the unit is the path: with a user-level assignment, a session `path_col` raises, because per-session intervals of a per-user experiment are too narrow.
+**The population.** `assignment=` makes the assignment table the population (intention to treat): users who were assigned but never produced an event count as zeros (`group1_silent_paths`), events before `assigned_at` are dropped, and stream paths missing from the table are counted in `unassigned_paths`. Without it the population is the paths of the stream; the `population` column of every row says which (`"assignment"` or `"stream"`). Either way the unit is the path: with a user-level assignment table, or an arm segment constant within the users, a session `path_col` raises, because per-session intervals of a per-user experiment are too narrow.
 
-**Strata.** `strata_col=` repeats every metric per level of a segment that is constant per path, with each stratum's share in both arms, a share-balance p-value, Cochran's heterogeneity test and a stratum-versus-rest test. The p-values are corrected within each metric (`correction="holm"` by default; `"bonferroni"` also adds simultaneous intervals, `"bh"` controls the false discovery rate; `correction_scope="all"` corrects every row of the call together instead), and `correction_family` says what was corrected together. A stratum must be fixed before exposure: find it on a stream truncated before the first exposure and carry it over with [`add_segment(path_values=..., pre_exposure=True)`](/docs/data-processors/add-segment), which records your declaration with the segment. A source column fixed at assignment, such as a signup platform, is declared with `strata_pre_exposure=True`. A stratum that is neither declared nor read from a truncation in the stream's recipe — clusters or `metric_bins` on the full stream — raises a warning and is flagged `strata_pre_exposure=False` — the treatment can move users between such strata, so their rows compare selected groups, not randomised ones. `strata_pre_exposure_source` says which case applies (`"declared"`, `"recipe"`, `"not_pre_exposure"`), and rows are `exploratory=True` unless the stratum counts as pre-exposure.
+**Strata.** `strata_col=` repeats every metric per level of a segment that is constant per path, with each stratum's share in both arms, a share-balance p-value, Cochran's heterogeneity test and a stratum-versus-rest test. The p-values are corrected within each metric (`correction="holm"` by default; `"bonferroni"` also adds simultaneous intervals, `"bh"` controls the false discovery rate; `correction_scope="all"` corrects every row of the call together instead, for a scorecard read without one decision metric), and `correction_family` says what was corrected together. A stratum must be fixed before exposure: find it on a stream truncated before the first exposure and carry it over with [`add_segment(path_values=..., pre_exposure=True)`](/docs/data-processors/add-segment), which records your declaration with the segment. A source column fixed at assignment, such as a signup platform, is declared with `strata_pre_exposure=True`. A stratum that is neither declared nor read from a truncation in the stream's recipe — clusters or `metric_bins` on the full stream — raises a warning and is flagged `strata_pre_exposure=False` — the treatment can move users between such strata, so their rows compare selected groups, not randomised ones. `strata_pre_exposure_source` says which case applies (`"declared"`, `"recipe"`, `"not_pre_exposure"`), and rows are `exploratory=True` unless the stratum counts as pre-exposure.
 
 **Periods and windows.** `period="W"` gives one row per calendar week, each on every user assigned by the end of that week (ITT per period). `period_population="active"` restricts each week to users active in it; such rows compare survivors and are marked `descriptive`, with no p-value. `period_basis="since_assignment"` bins events by time since each user's assignment (`"0-13"`, `"14-27"` days for `period="14D"`), and keeps a user in a bin only when the bin's window closed by the stream's last event (`immature_paths` counts the others). `horizon="28D"` gives every user the same 28-day window from assignment. Different horizons answer different questions — choose the one that matches the decision before reading any.
 
 ### Joint bootstrap replicates
 
-`get_ab_bootstrap()` returns the replicates behind the bootstrap: one row per replicate, metric, stratum and period, with both arms' values and the delta, all computed on the same resampled users. Combine them freely — a novelty effect is the difference between an early and a late window, with an interval that accounts for the same users being in both. `contrast=` compares the same paths in every contrasted bin — the library keeps only the paths whose windows closed in all of them — so the horizon below is a choice of window that makes the population explicit, not a requirement:
+`get_ab_bootstrap()` returns the replicates behind the bootstrap: one row per replicate, metric, stratum and period, with both arms' values and the delta, all computed on the same resampled users. Combine them freely — an effect that changes with exposure age is the difference between an early and a late window, with an interval that accounts for the same users being in both. `contrast=` compares the same paths in every contrasted bin — the library keeps only the paths whose windows closed in all of them — so the horizon below is a choice of window that makes the population explicit, not a requirement:
 
 ```python
 reps = stream.get_ab_bootstrap(
@@ -351,9 +351,27 @@ reps = stream.get_ab_bootstrap(
     contrast={"novelty": (["0-13"], ["28-41"])},
 )
 novelty = reps.loc[reps["contrast"] == "novelty", "delta"]
-novelty.mean(), novelty.quantile([0.025, 0.975]).tolist()
-# (0.0479, [0.0284, 0.0675])  — the effect is about 4.8 pp larger in days 0-13 than in days 28-41
+novelty.quantile([0.025, 0.975]).tolist()
+# [0.0284, 0.0675]
 ```
+
+The interval comes from the replicates; the estimate is the same difference on the observed data, +4.86 pp: the effect is larger in days 0-13 than in days 28-41 (`get_ab_test(..., period="14D", period_basis="since_assignment", horizon="42D")` gives +3.38 pp and −1.48 pp for the two bins, and MCP's `get_ab_bootstrap` reports this `delta`).
+
+### Per-path table behind the scorecard
+
+`get_ab_paths()` takes the `diff`, `metrics`, `assignment`, `horizon` and `path_col` of `get_ab_test()` and returns the table its rows are computed from: one row per path of both arms, with the arm, `assigned_at` when the table has it, `silent`, `mature` (False for a path whose `horizon` window had not closed) and every metric's per-path value (a ratio metric as its numerator and denominator columns). Its per-arm means reproduce the scorecard's `group1_value` and `group2_value`. Use it for an analysis the scorecard does not run, such as a covariate adjustment (CUPED) fitted by hand:
+
+```python
+paths = stream.get_ab_paths(
+    ("exp_group", "treatment", "control"),
+    metrics=[{"name": "conversion", "metric": "has_event",
+              "metric_args": {"event": "order_success"}}],
+    assignment=assignment,
+)
+paths.groupby("arm")["conversion"].mean()     # the scorecard's group values
+```
+
+See [A/B Per-Path Table](/docs/tools/get-ab-paths) for every column.
 
 ### Reproducing an eventstream
 

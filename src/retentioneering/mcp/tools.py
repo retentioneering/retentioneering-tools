@@ -503,6 +503,89 @@ def add_segment_overview(
     return summary
 
 
+def add_ab_test(
+    session: Any,
+    label: str,
+    diff: list,
+    metrics: list,
+    strata_col: str | None = None,
+    period: str | None = None,
+    period_population: str = "itt",
+    correction: str = "holm",
+    ci_level: float = 0.95,
+    path_col: str | None = None,
+    strata_pre_exposure: bool | None = None,
+    local_preprocessors: list | None = None,
+) -> dict:
+    """
+    Compute an A/B test scorecard and register it as a tab in the pending report.
+
+    The tab is the ab_test widget: a table and a forest plot of each metric's
+    delta with its interval, coloured by verdict, plus Strata and Periods tabs
+    with strata_col / period. Its numbers are get_ab_test's (same arguments, same
+    population: the stream's paths split by the segment in `diff`). Run
+    get_sample_ratio first. Use get_ab_test instead when you only need numbers.
+
+    Parameters
+    ----------
+    label:
+        Tab label shown in the report. No colons in the label.
+    diff, metrics, strata_col, period, period_population, correction, ci_level,
+    path_col, strata_pre_exposure, local_preprocessors:
+        As in get_ab_test.
+
+    Returns
+    -------
+    tab_id, label, and metrics: per metric (overall rows) verdict, delta,
+    delta_ci_low, delta_ci_high, p_value_adjusted, mde, support_warning and
+    reading (when the library provides it); warnings. Link a metric's row in
+    the analysis as [label:metric_name]. "inconclusive" is NOT "no effect".
+    """
+    if (err := _require_stream(session)) is not None:
+        return err
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
+    try:
+        widget = src.ab_test(
+            tuple(diff) if diff else None,
+            metrics,
+            strata_col=strata_col or None,
+            period=period or None,
+            period_population=period_population if period else None,
+            correction=correction,
+            ci_level=ci_level,
+            path_col=path_col or None,
+            strata_pre_exposure=strata_pre_exposure,
+            sidebar_open=False,
+        )
+    except Exception as exc:
+        return {"error": str(exc), "label": label}
+    if widget.error:
+        return {"error": widget.error, "label": label}
+    data = widget._export_data(sidebar_open=False)
+    tab_id = session.add_tab(label, data, local_preprocessors or [])
+
+    result = data["result"]
+    entries = []
+    for row in result.get("overall") or []:
+        entry = {"metric": row["metric"], "verdict": row["verdict"]}
+        for column in ("delta", "delta_ci_low", "delta_ci_high", "mde"):
+            entry[column] = _json_number(row.get(column), 6)
+        entry["p_value_adjusted"] = _json_number(row.get("p_value_adjusted"), 8)
+        entry["support_warning"] = row.get("support_warning", "")
+        if "reading" in row:
+            entry["reading"] = row["reading"]
+        entries.append(entry)
+    return {
+        "tab_id": tab_id,
+        "label": label,
+        "metrics": entries,
+        "warnings": result.get("warnings", []),
+    }
+
+
 def get_conversion_rate(
     session: Any,
     start_anchor: str | dict | list,

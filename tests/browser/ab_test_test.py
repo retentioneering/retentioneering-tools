@@ -258,3 +258,31 @@ def test_horizon_is_validated_as_a_duration(tmp_path):
             assert json.loads(widget.result)["overall"][0]["group1_paths"] < 4960
         finally:
             browser.close()
+
+
+def test_report_link_rings_the_metric_row(tmp_path):
+    from retentioneering.mcp import tools
+    from retentioneering.mcp._report_session import ReportSession
+
+    session = ReportSession(_stream())
+    tools.add_ab_test(session, "Experiment", list(DIFF), METRICS)
+    path = tmp_path / "report.html"
+    session.export("Report", "Conversion moved: [Experiment:conversion].", str(path))
+
+    with playwright.sync_playwright() as runtime:
+        browser = _launch(runtime)
+        try:
+            page = browser.new_page(viewport={"width": 1300, "height": 800})
+            errors = []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.goto(path.as_uri())
+            page.locator("[data-testid=scorecard]").wait_for(state="visible")
+            page.locator("a.node-link", has_text="conversion").click()
+            page.wait_for_timeout(400)
+            first_cell = page.locator('tr[data-event="conversion"] td').first
+            assert first_cell.evaluate(
+                "el => getComputedStyle(el).outlineColor === 'rgb(245, 158, 11)'"
+            )
+            assert not errors, errors
+        finally:
+            browser.close()

@@ -560,7 +560,8 @@ class Eventstream:
             `"has_event"`, `"event_count_bulk"`, `"has_event_bulk"`,
             `"has_all_events"`, `"has_any_event"`, `"time_between"`,
             `"first_event_time"`, `"active_days"`, `"matches_pattern"`,
-            `"in_segment"`, `"in_segment_bulk"`. See the [Path Metrics](/docs/path-metrics)
+            `"in_segment"`, `"in_segment_bulk"`, `"column_sum"`, `"column_mean"`,
+            `"column_last"`. See the [Path Metrics](/docs/path-metrics)
             documentation page for the full metric reference.
         method : str, default "kmeans"
             Clustering algorithm. One of `"kmeans"` or `"hdbscan"`.

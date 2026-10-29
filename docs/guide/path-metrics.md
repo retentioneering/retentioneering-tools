@@ -24,6 +24,9 @@ Path metrics are scalar values computed per path (see [Key concepts](/docs/event
 | `matches_pattern` | 1 if the path matches a sequence pattern, 0 otherwise. Events are separated by `->` and matched as whole tokens (not substrings); `.*` matches any sequence of whole events, one position can be a class of events (`[a\|b]`, `[^a]`, `.`), a gap can be bounded (`.{0,4}`, `[a\|b]+`), and a group repeats a sequence (`(cart->.*){2}`). Example: `home->.*->[purchase\|cart]`. See [Path Patterns](/docs/path-patterns) for the full syntax. | `pattern`: str |
 | `in_segment` | Checks whether path events belong to a segment level. Mode `any`: at least one event has the level. `all`: all events have the level. `event_share`: at least a threshold share of events have the level. If multiple segment levels are selected, a separate metric is created for each level. | `segment_name`: str, `segment_level`: str or list[str], `mode`: `"any"` \| `"all"` \| `"event_share"`, `threshold`: float (for `event_share`) |
 | `in_segment_bulk` | The same membership check as `in_segment`, expanded into one column per (segment column, level) pair. Omit `segment_levels` for every level of the given segment column; omit `segment_name` as well for every level of **every** segment column. An explicit empty `segment_levels` list is invalid, and `segment_levels` requires a `segment_name` — levels belong to one column. | `segment_name`: str (optional; omit/`None` for all segment columns), `segment_levels`: list[str] (optional; omit/`None` for all levels), `mode`, `threshold`: same as `in_segment` |
+| `column_sum` | Sum of a custom column over the path's events. Empty (null) values count as 0, so a path with no value sums to 0. The column must be numeric. | `column`: str (a column in `schema.custom_cols`) |
+| `column_mean` | Mean of a custom column over the path's non-empty values; `NaN` (no value, not 0) when the path has none. The column must be numeric. | `column`: str |
+| `column_last` | Last non-empty value of a custom column by event order (ties on the timestamp keep the row order); `NaN` when the path has none. Any dtype — a plan name works as well as a price. | `column`: str |
 
 `event_count`/`has_event` are strict single-event metrics — one number per path,
 comparable directly in a Filter Paths condition. Passing a list of events is a
@@ -79,6 +82,30 @@ another column's values.
 
 `in_segment`/`in_segment_bulk` take no `event_col`: they match segment levels,
 not event names, and already name their column with `segment_name`.
+
+## Custom columns: money, quantities, plans
+
+`column_sum`, `column_mean` and `column_last` read a column the schema does not
+interpret — anything listed in `schema.custom_cols`, such as an order amount,
+the number of items in a cart or the plan a user is on. They are ordinary
+registry metrics, so they work in `get_metrics`, Segment Overview, Cluster
+Analysis, `add_segment(metric_bins=...)` and Filter Paths conditions:
+
+```python
+# revenue per user, and the users who spent more than 100
+stream.get_metrics([{"metric": "column_sum", "metric_args": {"column": "revenue"}}])
+stream.filter_paths({
+    "op": ">", "metric": "column_sum",
+    "metric_args": {"column": "revenue"}, "value": 100,
+})
+```
+
+The three differ in what a path with no value gets. A sum of nothing is 0 — a
+user who bought nothing spent 0. A mean or a last value of nothing does not
+exist, so it is `NaN`, not 0: averaging those zeros in would invent orders that
+never happened. Conditions never match a `NaN` path, and `metric_bins` puts it
+in the `"undefined"` level. To restrict the rows first (the revenue of one event
+type only), filter the events before computing the metric.
 
 `in_segment`/`in_segment_bulk` split the same way over segment levels:
 `in_segment` names its levels explicitly (and stays usable in a Filter Paths
@@ -139,13 +166,19 @@ stream.get_metrics([
     {"metric": "in_segment_bulk", "metric_args": {"segment_name": "channel"}},          # every level of "channel"
     {"metric": "in_segment_bulk"},                                                      # every level of every segment column
     {"metric": "in_segment_bulk", "metric_args": {"mode": "event_share", "threshold": 0.5}},
+
+    # custom columns — sum (empty = 0), mean and last value (empty = NaN)
+    {"metric": "column_sum", "metric_args": {"column": "revenue"}},
+    {"metric": "column_mean", "metric_args": {"column": "revenue"}},
+    {"metric": "column_last", "metric_args": {"column": "plan"}},
 ])
 ```
 
 The columns these produce are named after the config: `length`,
 `event_count_purchase`, `has_event_bulk_purchase`,
 `has_all_events_add_to_cart_and_purchase`, `time_from_path_start_to_purchase`,
-`in_segment_channel_mobile_any`, `in_segment_bulk_channel_mobile_any`, and so on.
+`in_segment_channel_mobile_any`, `in_segment_bulk_channel_mobile_any`,
+`column_sum_revenue`, and so on.
 
 ## Metric config format
 
@@ -158,7 +191,7 @@ Metrics appear in two different config formats depending on where they are used:
 | Key | Required | Description |
 |---|---|---|
 | `metric` | yes | Metric name from the table above. |
-| `metric_args` | depends | Additional arguments for the metric. Required for `event_count`, `has_event`, `event_count_bulk`/`has_event_bulk` (unless the wildcard is intended), `has_all_events`/`has_any_event`, `time_between`, `matches_pattern`, and `in_segment`; optional for `active_days` and `in_segment_bulk`. |
+| `metric_args` | depends | Additional arguments for the metric. Required for `event_count`, `has_event`, `event_count_bulk`/`has_event_bulk` (unless the wildcard is intended), `has_all_events`/`has_any_event`, `time_between`, `matches_pattern`, `in_segment` and `column_sum`/`column_mean`/`column_last`; optional for `active_days` and `in_segment_bulk`. |
 | `agg` | yes (Segment Overview `metrics` and Cluster Analysis `overview_metrics` only) | Aggregation function. See aggregations below. |
 
 ```python

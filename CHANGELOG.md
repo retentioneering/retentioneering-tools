@@ -18,6 +18,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   path, `<MULTI>` where the value changes within the path and `<MISSING>` where it
   is null throughout — the inverse of `path_values`, and a quick check that an
   experiment arm is constant per user.
+- Path metrics over custom columns: `column_sum`, `column_mean` and
+  `column_last` take `metric_args={"column": <custom column>}` and work wherever
+  a registry metric does — `get_metrics`, Segment Overview, Cluster Analysis,
+  `add_segment(metric_bins=...)` and Filter Paths conditions. A sum of no values
+  is 0; a mean or last value of no values is `NaN`, not 0. The JS metric editor
+  offers a column dropdown (numeric columns for sum and mean).
 
 ### Fixed
 

@@ -176,7 +176,9 @@ def delta_log_ratio_ci(
 
     Uses the delta method on ``log(p1/p2)``:
     ``var = (1 - p1) / k1 + (1 - p2) / k2`` (the Katz log interval for a risk ratio).
-    Returns ``(nan, nan)`` when ``k1 == 0`` or ``k2 == 0`` (the log ratio is not finite).
+    Returns ``(nan, nan)`` when ``k1 == 0`` or ``k2 == 0`` (the log ratio is not finite)
+    and when ``k1 == n1`` or ``k2 == n2`` (the variance term of that arm is 0, which
+    would collapse the interval to a point however small the arm).
     Only valid for 0/1 metrics; ratio and value metrics use the bootstrap percentile of
     the ratio instead (see :mod:`retentioneering.tools._bootstrap`).
 
@@ -189,7 +191,7 @@ def delta_log_ratio_ci(
     z = _z(ci_level)
     with np.errstate(invalid="ignore", divide="ignore"):
         p1, p2 = k1 / n1, k2 / n2
-        ok = (k1 > 0) & (k2 > 0) & (n1 > 0) & (n2 > 0)
+        ok = (k1 > 0) & (k2 > 0) & (k1 < n1) & (k2 < n2)
         log_ratio = np.log(p1 / p2)
         half = z * np.sqrt((1 - p1) / k1 + (1 - p2) / k2)
         low = np.where(ok, np.expm1(log_ratio - half), np.nan)
@@ -270,10 +272,13 @@ def mde_from_se(se, alpha: float = 0.05, power: float = 0.8) -> np.ndarray:
     """Minimum detectable effect from a standard error of the delta.
 
     ``(z_{1-alpha/2} + z_{power}) * se``. Used for bootstrap cells where ``se`` is the
-    bootstrap standard deviation of the delta.
+    bootstrap standard deviation of the delta. NaN when ``se`` is not positive and
+    finite: a zero spread (a constant metric) says nothing about detectable effects.
     """
     (se,) = _floats(se)
-    return _out(_mde_factor(alpha, power) * se)
+    with np.errstate(invalid="ignore"):
+        ok = np.isfinite(se) & (se > 0)
+    return _out(np.where(ok, _mde_factor(alpha, power) * se, np.nan))
 
 
 # ------------------------------------------------------------------ multiplicity

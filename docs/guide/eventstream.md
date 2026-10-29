@@ -248,7 +248,7 @@ stream.get_path_segments("platform").value_counts()
 stream.get_path_segments("platform", path_col="session_id").value_counts()   # no <MULTI>
 ```
 
-It is the inverse of [`add_segment(name, path_values=...)`](/docs/data-processors/add-segment), which broadcasts one value per path onto every event — together they carry an assignment table onto the event log, or clusters found on a truncated stream back onto the full one. `<MULTI>` paths are what the inferential methods (`get_conversion_rate(diff=...)`, `get_sample_ratio`) refuse to split.
+It is the inverse of [`add_segment(name, path_values=...)`](/docs/data-processors/add-segment), which broadcasts one value per path onto every event — together they carry an assignment table onto the event log, or clusters found on a truncated stream back onto the full one. `<MULTI>` paths are what the inferential methods (`get_ab_test`, `get_ab_bootstrap`, `get_conversion_rate(diff=...)`, `funnel(ci_level=...)`) refuse to split, with `DiffConfigError`; `get_sample_ratio` counts them as `multi_valued_paths` and reports a mismatch, because for a sample ratio check a path with two arms is the finding.
 
 ### Sample ratio mismatch
 
@@ -303,7 +303,7 @@ scorecard = stream.get_ab_test(
 
 `delta` is group 1 minus group 2. The test follows the metric: a 0/1 metric gets a pooled two-proportion z-test with Wilson and Newcombe intervals, a per-path total or value gets Welch's t-test, a ratio of sums (average order value = revenue / orders) gets a joint path bootstrap — paths are resampled within each arm and every metric is recomputed on the same resample, so the ratio's interval respects that revenue and orders come from the same users. `test=` (or a per-metric `"test"`) overrides the choice where it fits the metric.
 
-**Read an inconclusive row with its interval and `mde`.** Above, conversion moved by +0.60 pp with an interval from -1.07 to +2.28 pp, and the test could only have detected about 2.4 pp: an inconclusive result says the effect is smaller than that, not that it is zero. The verdict is `increase` / `decrease` only when the multiplicity-adjusted p-value is below `1 - ci_level`; `insufficient_data` marks rows with fewer than `min_events` (default 10) events per arm.
+**Read an inconclusive row with its interval and `mde`.** Above, conversion moved by +0.60 pp with an interval from -1.07 to +2.28 pp: an effect larger than about +2.3 pp or below about -1.1 pp is unlikely, and a smaller one, in either direction, is possible. The `mde` (about 2.4 pp) is the effect the test detects with 80 % power at the corrected alpha — a design quantity, not a bound on the true effect: an inconclusive result does not say the effect is smaller than the `mde`, the interval says how large it can be. The verdict is `increase` / `decrease` only when the multiplicity-adjusted p-value is below `1 - ci_level`; `insufficient_data` marks rows with fewer than `min_events` (default 10) supporting paths in either arm, so a behaviour that exists in one arm only is `insufficient_data` and is read from its estimates.
 
 **The population.** `assignment=` makes the assignment table the population (intention to treat): users who were assigned but never produced an event count as zeros (`group1_paths_no_events`), events before `assigned_at` are dropped, and stream paths missing from the table are counted in `excluded_paths`. Without it the population is the paths of the stream. Either way the unit is the path: with a user-level assignment, a session `path_col` raises, because per-session intervals of a per-user experiment are too narrow.
 
@@ -313,7 +313,7 @@ scorecard = stream.get_ab_test(
 
 ### Joint bootstrap replicates
 
-`get_ab_bootstrap()` returns the replicates behind the bootstrap: one row per replicate, metric, stratum and period, with both arms' values and the delta, all computed on the same resampled users. Combine them freely — a novelty effect is the difference between an early and a late window, with an interval that accounts for the same users being in both:
+`get_ab_bootstrap()` returns the replicates behind the bootstrap: one row per replicate, metric, stratum and period, with both arms' values and the delta, all computed on the same resampled users. Combine them freely — a novelty effect is the difference between an early and a late window, with an interval that accounts for the same users being in both (`horizon="42D"` keeps only the users observed for every window, so both windows hold the same users):
 
 ```python
 reps = stream.get_ab_bootstrap(
@@ -323,11 +323,12 @@ reps = stream.get_ab_bootstrap(
     assignment=assignment,
     period="14D",
     period_basis="since_assignment",
+    horizon="42D",
     contrast={"novelty": (["0-13"], ["28-41"])},
 )
 novelty = reps.loc[reps["contrast"] == "novelty", "delta"]
 novelty.mean(), novelty.quantile([0.025, 0.975]).tolist()
-# (0.0423, [0.0247, 0.0585])  — the effect fades: +4.2 pp more in days 0-13 than in days 28-41
+# (0.0490, [0.0281, 0.0692])  — the effect is 4.9 pp larger in days 0-13 than in days 28-41
 ```
 
 ### Reproducing an eventstream

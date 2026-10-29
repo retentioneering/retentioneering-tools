@@ -6,7 +6,7 @@ An experiment tells you whether a change moved a metric; path analysis shows how
 
 Path analysis is good at finding hypotheses: a loop that exists in one arm only, a group of users who behave differently, a funnel step where the two arms part ways. It cannot confirm them, because every path view compares whoever happened to do something, and the treatment itself changes who does what. An experiment is how a hypothesis is confirmed — the order the Retentioneering team followed in its [2019 case](https://habr.com/ru/post/468721/), where path analysis found the idea and a split test confirmed it.
 
-The two meet in the other direction too. A test that reads grey on the top line often hides opposite effects in different users, or an effect that fades after the first weeks, and paths are where you look for them. The tools on this page keep the line between the two visible:
+The two meet in the other direction too. A test that reads grey on the top line often hides opposite effects in different users, or an effect that fades or reverses after the first weeks, and paths are where you look for them. The tools on this page keep the line between the two visible:
 
 | Inferential: a randomised comparison with an interval and a test | Descriptive: a picture to generate the next hypothesis |
 |---|---|
@@ -137,9 +137,9 @@ Every row is one metric (and one stratum and one period, when requested). The co
 - `increase` / `decrease` — `p_value_adjusted < 1 - ci_level`, with the sign of `delta`;
 - `inconclusive` — everything else with a p-value, including a NaN one;
 - `descriptive` — rows that compare selected groups (`period_population="active"`), with no p-value and no `mde`;
-- `insufficient_data` — fewer than `min_events` (default 10) supporting paths in an arm; the estimates stay, the test does not run.
+- `insufficient_data` — fewer than `min_events` (default 10) supporting paths in an arm; the estimates stay, the test does not run. The rule is `min(support in arm 1, support in arm 2) >= min_events`, so a behaviour that exists in one arm only — a loop the feature creates — is `insufficient_data` however large the difference; read its estimates and interval descriptively.
 
-**Read an inconclusive row with its interval and `mde`.** Conversion moved by +0.60 pp, with an interval from −1.07 to +2.28 pp, and the smallest effect this test could reliably detect was about 2.4 pp. The honest summary is "an effect larger than about +2.3 pp or below about −1.1 pp is unlikely; a smaller one, in either direction, is possible" — not "the feature does nothing". See [Inconclusive is not "no effect"](#5-inconclusive-is-not-no-effect).
+**Read an inconclusive row with its interval and `mde`.** Conversion moved by +0.60 pp, with an interval from −1.07 to +2.28 pp. The `mde` of about 2.4 pp is the effect this test detects with 80 % power at the corrected alpha: a design quantity, not a bound on the true effect. The interval is what bounds it, and the honest summary is "an effect larger than about +2.3 pp or below about −1.1 pp is unlikely; a smaller one, in either direction, is possible" — not "the feature does nothing". See [Inconclusive is not "no effect"](#5-inconclusive-is-not-no-effect).
 
 **The interval and the verdict can disagree, on purpose.** The interval is per comparison and never adjusted for multiplicity; the verdict reads the adjusted p-value. A row whose interval excludes 0 can still be `inconclusive` once its family is corrected — the periods section below has one. `correction="bonferroni"` adds a simultaneous interval (`delta_ci_low_adj`, `delta_ci_high_adj`) when you need one that agrees with the verdict.
 
@@ -168,7 +168,7 @@ A funnel by arm is the first place most people look when the top line is grey. W
 
 Every overall step is grey. The step-to-step column (marked †, `step_conditional=True`) looks dramatic: of the users who started a checkout, 4.5 pp fewer paid in treatment. A naive two-proportion test on those two rates — what a tool that tests every number would report — gives p ≈ 5·10⁻⁹. The funnel computes no p-value for it, and never colours it.
 
-**Why conditional steps are descriptive.** The denominator of `checkout_start → payment` is the users who started a checkout, and the treatment changed who that is: in Northwind, `quick_add`'s mini-cart offers "checkout now", which starts checkouts that never pay. The step rate compares two different populations, so its difference is a mixture of the treatment's effect and the change in who got there — of unknown sign. The overall `payment` row, out of every path in each arm, is the randomised comparison, and it is +0.06 pp. The conditional rate is still worth reading: it points at the mechanism (the mini-cart), which is a hypothesis for the next test.
+**Why conditional steps are descriptive.** The denominator of `checkout_start → payment` is the users who started a checkout, and the treatment changed who that is: in Northwind, the treatment build also shows a "checkout now" shortcut after every add that reaches the cart, `quick_add` or not, and it starts checkouts that never pay. The step rate compares two different populations, so its difference is a mixture of the treatment's effect and the change in who got there — of unknown sign. The overall `payment` row, out of every path in each arm, is the randomised comparison, and it is +0.06 pp. The conditional rate is still worth reading: it points at the mechanism (the "checkout now" shortcut), which is a hypothesis for the next test.
 
 Two more things the funnel's numbers assume. **The denominator is the paths with at least one event** — 4,828 and 4,905 paths here, not the 4,960 and 5,040 assigned users; `assignment=` on the funnel is not available yet, so for an ITT read of a step use `get_ab_test` with a 0/1 metric of that step and `assignment=`. **Each path is one unit**, so use the randomised grain as `path_col`.
 
@@ -208,20 +208,20 @@ stream.get_ab_test(diff, conversion, assignment=assignment,
 
 The effect is front-loaded: positive in the first two weeks after assignment, negative from the fifth week on. The open-ended scorecard averages these, and the 14- and 28-day horizons read mostly the early part. `period_complete` is False where some assigned user's window had not closed.
 
-**A novelty effect is a contrast between two of those windows**, and it needs an interval of its own: the two windows contain the same users, so their intervals cannot be combined by eye. [`get_ab_bootstrap()`](/docs/tools/get-ab-bootstrap) evaluates every period on the same resampled users:
+**A novelty effect is a contrast between two of those windows**, and it needs an interval of its own. In the table above the windows hold different users — days 0–13 all 10,000, days 28–41 only the 6,374 whose six weeks had closed — so a difference between them would mix the change of the effect with the change of who is counted. `horizon="42D"` keeps only the users observed for all three windows, and then the two windows contain the same users: their estimates are correlated, and their intervals cannot be combined by eye. [`get_ab_bootstrap()`](/docs/tools/get-ab-bootstrap) evaluates every period on the same resampled users:
 
 ```python
 reps = stream.get_ab_bootstrap(
     diff, conversion, assignment=assignment,
-    period="14D", period_basis="since_assignment",
+    period="14D", period_basis="since_assignment", horizon="42D",
     contrast={"novelty": (["0-13"], ["28-41"])},
 )
 novelty = reps.loc[reps["contrast"] == "novelty", "delta"]
 novelty.mean(), novelty.quantile([0.025, 0.975]).tolist()
-# (0.0423, [0.0247, 0.0585])
+# (0.0490, [0.0281, 0.0692])
 ```
 
-The treatment's effect in days 0–13 exceeds its effect in days 28–41 by 4.2 pp, with an interval that excludes 0: a novelty effect, measured by exposure age.
+For the same 6,374 users, the treatment's effect in days 0–13 exceeds its effect in days 28–41 by 4.9 pp, with an interval that excludes 0: a novelty effect, measured by exposure age.
 
 **Calendar periods** (`period="W"`, the default `period_basis="calendar"`) answer a different question: did the effect hold over the calendar weeks of the test? Each week's row includes every user assigned by the end of that week, active or not (ITT per period), and the weeks of one metric are one correction family:
 
@@ -259,15 +259,21 @@ clustered = pre_exposure.add_clusters(
     method="kmeans",
     method_args={"n_clusters": 3, "n_init": 4, "random_state": 42},
     scaler="minmax",
-).rename_segment_levels("behaviour", {"cluster_0": "curator", "cluster_1": "other", "cluster_2": "scanner"})
-
+)
 labels = clustered.get_path_segments("behaviour")      # one label per user
-strata = stream.add_segment("behaviour", path_values=labels).get_ab_test(
+
+# Name each cluster after its marker: the event most over-represented in it.
+flags = pre_exposure.get_metrics([{"metric": "has_event_bulk"}])
+flags.columns = flags.columns.str.removeprefix("has_event_bulk_")
+marker = (flags.groupby(labels).mean() / flags.mean()).idxmax(axis=1)
+names = marker.map({"search_filter": "scanner", "collections_view": "curator"}).fillna("other")
+
+strata = stream.add_segment("behaviour", path_values=labels.map(names)).get_ab_test(
     diff, conversion, assignment=assignment, strata_col="behaviour"
 )
 ```
 
-The names come from profiling the clusters first ([Cluster Analysis](/docs/widgets/cluster-analysis) or `get_metrics` by label): one cluster uses `collections_view` and `wishlist_add`, another runs about eight `search_filter` events before its first add, the third does neither.
+The names come from the clusters' profiles, not from the K-means label numbers, which can change with the data or the library version: one cluster's marker is `collections_view` (it also adds to wishlists) and gets the dataset's name `curator`, another's is `search_filter` (`scanner`), and the third, which over-represents plain `catalog` browsing, is `other`. [Cluster Analysis](/docs/widgets/cluster-analysis) shows the same profiles interactively.
 
 | stratum | group1_paths | group2_paths | group1_share | group2_share | delta | interval | p_value_adjusted | verdict | stratum_vs_rest_p_value |
 |---|---|---|---|---|---|---|---|---|---|
@@ -284,7 +290,7 @@ How to read the strata columns:
 - **`strata_pre_exposure`** — True when the stratum was computed on a stream that went through `truncate_paths`, False when it was computed from behaviour without one (with a `UserWarning`), `<NA>` when the recipe cannot tell (a source column, rules). **`exploratory`** is True unless `strata_pre_exposure` is True. The flag reads the recipe: it knows that a truncation happened, not that the cut sits before exposure — that part is your argument.
 - **`<MISSING>`** holds the silent users: they produced no events, so they have no cluster.
 
-The scanners gain about 11 pp and the curators lose about 7 pp; the other two thirds of users are unaffected. That is why the top line is grey — and it is a hypothesis about *who* the feature helps, to be confirmed by a test targeted at those users, not a result to ship on (see [pitfall 7](#7-a-discovered-segment-is-a-hypothesis)).
+The scanners gain about 11 pp and the curators lose about 7 pp; the `other` stratum, about 60 % of the assigned users, shows no detectable change (interval −2.50 to +1.83 pp, which still allows a small effect either way). That is why the top line is grey — and it is a hypothesis about *who* the feature helps, to be confirmed by a test targeted at those users, not a result to ship on (see [pitfall 7](#7-a-discovered-segment-is-a-hypothesis)).
 
 **The same split after exposure tells a different story.** Story 7 of the dataset plants a sign flip by path length before the first add. Bin `length` on the pre-exposure stream, and on the full stream:
 
@@ -374,7 +380,7 @@ In the library: `heterogeneity_p_value` (do strata differ at all) and `stratum_v
 
 A new feature can look better (novelty) or worse (change aversion) in its first days than in the long run. The question is how the effect depends on how long a user has been exposed, and calendar weeks mix exposure ages — users who entered at launch and users who entered yesterday ([Statsig, Pulse time series](https://statsig.com/blog/using-pulse-time-series-for-deeper-insights); [Chen, Liu & Xu, LinkedIn](https://arxiv.org/pdf/1808.00114); Sadeghi et al., "Novelty and primacy: a long-term estimator for online experiments").
 
-In the library: `period_basis="since_assignment"` bins by exposure age, and `get_ab_bootstrap(contrast=...)` gives an early-minus-late contrast a joint interval. Report the effect for the horizon that matters; do not "correct" for novelty by dropping the first days.
+In the library: `period_basis="since_assignment"` bins by exposure age, and `get_ab_bootstrap(contrast=...)` gives an early-minus-late contrast a joint interval. Report the effect for the horizon that matters; do not "correct" novelty statistically. If the early days are not representative, drop them: bin since assignment and read the later bins ([Statsig, novelty effects](https://statsig.com/blog/novelty-effects)).
 
 ### Two caveats
 

@@ -212,10 +212,39 @@ def describe_tool(tool: str = "") -> dict:
                         else ""
                     )
                 )
+            if t in _MCP_RESULT_NOTES:
+                out["mcp_tool"] = _MCP_RESULT_NOTES[t]
+                out["mcp_docs"] = inspect.getdoc(globals()[t])
             out["docs"] = doc
             return out
         return {"preprocessor": t, "docs": doc}
     return {"error": f"Unknown tool {t!r}.", **_tool_docs_index()}
+
+
+#: Analysis tools whose MCP result differs from the Python method's: describe_tool
+#: says so and adds the MCP tool's own docs (``mcp_docs``).
+_MCP_RESULT_NOTES = {
+    "get_ab_bootstrap": (
+        "Through MCP get_ab_bootstrap returns a contrast summary, not the "
+        "replicate table the Python docs below describe: one row per metric (and "
+        "stratum) and contrast with each arm's change between the two sides, delta "
+        "(the point estimate on the observed data), its percentile interval at "
+        "ci_level, a bootstrap-SE p-value and share_positive. period and contrast "
+        "are required (contrast={'name': [periods_a, periods_b]}); see mcp_docs."
+    ),
+}
+
+
+def _with_table_hint(message: str, session: Any, horizon, period_basis) -> str:
+    """An error about a missing ``assigned_at`` names where MCP gets the table."""
+    needs_table = bool(horizon) or period_basis == "since_assignment"
+    if needs_table and getattr(session, "assignment", None) is None:
+        return (
+            f"{message}. This session has no assignment table: horizon and "
+            "since-assignment periods need one with assigned_at, passed when the "
+            "server starts: serve(stream, assignment=table)."
+        )
+    return message
 
 
 def _python_only_parameters(name: str) -> list[str]:
@@ -638,9 +667,13 @@ def add_ab_test(
 
     Returns
     -------
-    tab_id, label, and metrics: per metric (overall rows) verdict, delta,
-    delta_ci_low, delta_ci_high, p_value_adjusted, mde, support_warning and
-    reading (when the library provides it); warnings. Link a metric's row in
+    tab_id, label, correction, correction_scope, and metrics: per metric
+    (overall rows) unit ("pp" or "value"), verdict, population ("assignment" or
+    "stream"), group1_paths, group2_paths, conditional, delta, delta_ci_low,
+    delta_ci_high, p_value_adjusted, mde, mde_alpha, correction_family,
+    support_warning, reading and scope (what the row is corrected against);
+    with strata_col also strata_pre_exposure, strata_pre_exposure_source,
+    exploratory and strata_correction_family; warnings. Link a metric's row in
     the analysis as [label:metric_name]. "inconclusive" is NOT "no effect".
     """
     if (err := _require_stream(session)) is not None:
@@ -668,26 +701,55 @@ def add_ab_test(
             sidebar_open=False,
         )
     except Exception as exc:
-        return {"error": str(exc), "label": label}
+        message = _with_table_hint(str(exc), session, horizon, period_basis)
+        return {"error": message, "label": label}
     if widget.error:
-        return {"error": widget.error, "label": label}
+        message = _with_table_hint(widget.error, session, horizon, period_basis)
+        return {"error": message, "label": label}
     data = widget._export_data(sidebar_open=False)
     tab_id = session.add_tab(label, data, local_preprocessors or [])
 
     result = data["result"]
+    kinds = result.get("metric_kinds") or {}
+    scope = _scope_text(correction, correction_scope, "this metric's row")
+    strata_rows = result.get("strata") or []
     entries = []
     for row in result.get("overall") or []:
-        entry = {"metric": row["metric"], "verdict": row["verdict"]}
+        name = row["metric"]
+        entry: dict[str, Any] = {
+            "metric": name,
+            "unit": "pp" if kinds.get(name) == "binary" else "value",
+            "verdict": row["verdict"],
+            "population": row.get("population"),
+        }
+        for column in ("group1_paths", "group2_paths"):
+            if row.get(column) is not None:
+                entry[column] = int(row[column])
+        entry["conditional"] = bool(row.get("conditional", False))
         for column in ("delta", "delta_ci_low", "delta_ci_high", "mde"):
             entry[column] = _json_number(row.get(column), 6)
         entry["p_value_adjusted"] = _json_number(row.get("p_value_adjusted"), 8)
+        entry["mde_alpha"] = _json_number(row.get("mde_alpha"), 8)
+        entry["correction_family"] = row.get("correction_family", "")
         entry["support_warning"] = row.get("support_warning", "")
         if "reading" in row:
             entry["reading"] = row["reading"]
+        entry["scope"] = scope
+        own = [r for r in strata_rows if r.get("metric") == name]
+        if own:
+            flag = own[0].get("strata_pre_exposure")
+            entry["strata_pre_exposure"] = None if flag is None else bool(flag)
+            entry["strata_pre_exposure_source"] = own[0].get(
+                "strata_pre_exposure_source"
+            )
+            entry["exploratory"] = all(bool(r.get("exploratory")) for r in own)
+            entry["strata_correction_family"] = own[0].get("correction_family")
         entries.append(entry)
     return {
         "tab_id": tab_id,
         "label": label,
+        "correction": correction,
+        "correction_scope": correction_scope,
         "metrics": entries,
         "warnings": result.get("warnings", []),
     }
@@ -1159,7 +1221,8 @@ def get_ab_test(
                 else None
             )
     except Exception as exc:
-        return {"error": str(exc)}
+        basis = period_basis if period else None
+        return {"error": _with_table_hint(str(exc), session, horizon, basis)}
     messages = list(dict.fromkeys(str(w.message) for w in caught))
     from retentioneering.tools.ab_test import parse_metrics
 
@@ -1363,7 +1426,8 @@ def get_ab_bootstrap(
     diff, period, period_basis, contrast, n_bootstrap, population, warnings and
     rows — one per metric (and stratum) and contrast: metric, [stratum],
     contrast, group1_value and group2_value (each arm's change between the sides),
-    delta, delta_ci_low, delta_ci_high (percentile, unadjusted), p_value (from the
+    delta (the point estimate on the observed data, not the replicates' mean),
+    delta_ci_low, delta_ci_high (percentile of the replicates, unadjusted), p_value (from the
     bootstrap standard error, unadjusted), share_positive (share of replicates
     with delta > 0; not a p-value), valid_replicates, unit ("pp" or "value").
     """
@@ -1400,7 +1464,7 @@ def get_ab_bootstrap(
             )
             table = test.contrast_summary(sides)
     except Exception as exc:
-        return {"error": str(exc)}
+        return {"error": _with_table_hint(str(exc), session, horizon, period_basis)}
     units = {s.name: "pp" if s.kind == "binary" else "value" for s in test.specs}
     rows = []
     for row in table.to_dict("records"):

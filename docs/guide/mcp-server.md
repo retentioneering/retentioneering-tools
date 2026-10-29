@@ -80,6 +80,7 @@ See also [Agent Skills](/docs/agent-skills) — instruction packages for coding 
 | `add_step_matrix(label, ...)` | Compute a step matrix and register it as a report tab. |
 | `add_segment_overview(label, ...)` | Compute a segment overview and register it as a report tab. |
 | `get_conversion_rate(start_anchor, end_anchor, within, ...)` | How often one event is followed by another, with the denominator and the baseline lift. Returns numbers, not a tab — the agent quotes them in backticks. |
+| `get_sample_ratio(segment_col, expected_shares, alpha, path_col, by, ...)` | Sample ratio mismatch check of an experiment's arms: paths per arm against the expected split, a chi-square p-value, a `mismatch` flag and the count of paths with more than one arm. Numbers only. |
 | `check_analysis(analysis)` | Validate analysis text before export. |
 | `export_report(title, analysis, path)` | Generate a self-contained HTML report. |
 

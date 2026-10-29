@@ -268,7 +268,7 @@ def _build_server(
           urls_to_events   sample_paths   split_sessions
 
         Analysis tools (called directly, not as a preprocessor step):
-          get_conversion_rate
+          get_conversion_rate  get_sample_ratio
 
         Reference topics:
           report_links   (anchor link syntax for analysis text)
@@ -524,6 +524,55 @@ def _build_server(
             session, start_anchor, end_anchor, within, path_col, local_preprocessors
         )
         return json.dumps(result, ensure_ascii=False)
+
+    @_tool()
+    def get_sample_ratio(
+        segment_col: str,
+        expected_shares: dict | None = None,
+        alpha: float = 0.001,
+        path_col: str | None = None,
+        by: str | None = None,
+        local_preprocessors: list | None = None,
+    ) -> str:
+        """
+        Check an A/B test's arm sizes against the expected split (sample ratio mismatch).
+
+        Run this FIRST on any experiment, before reading a metric: if the arms do
+        not have the planned sizes, paths were lost from one arm and every
+        comparison is suspect. Numbers only, no report tab: quote in backticks.
+
+        Parameters
+        ----------
+        segment_col:
+            Segment column holding the arm (see describe()).
+        expected_shares:
+            {arm: share} summing to 1; omit for an equal split.
+        alpha:
+            Mismatch threshold, default 0.001.
+        path_col:
+            The randomised unit (default: primary path column).
+        by:
+            Repeat per group: a segment fixed at assignment, or "day".
+        local_preprocessors:
+            One-off preprocessing. Never filter on behaviour before an SRM
+            check: on such a subset a share difference is an effect, not a bug.
+
+        Returns
+        -------
+        JSON with mismatch, p_value, chi2, dof, multi_valued_paths (assignment
+        bug when > 0), unassigned_paths, basis, levels (paths, share,
+        expected_share per arm) and, with `by`, by_levels (Holm-adjusted p).
+        """
+        result = tools.get_sample_ratio(
+            session,
+            segment_col,
+            expected_shares,
+            alpha,
+            path_col,
+            by,
+            local_preprocessors,
+        )
+        return json.dumps(result, ensure_ascii=False, allow_nan=False)
 
     @_tool()
     def check_analysis(analysis: str) -> str:

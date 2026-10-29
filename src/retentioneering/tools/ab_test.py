@@ -39,6 +39,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 import warnings
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -59,9 +60,11 @@ from retentioneering.tools._diff import (
     MISSING,
     MULTI,
     DiffGroups,
+    align_assignment,
     normalize_assignment,
     per_path_label,
     resolve_diff,
+    warn_user,
 )
 
 if TYPE_CHECKING:
@@ -369,36 +372,168 @@ def _coverage(ts: pd.Series) -> tuple[pd.Timestamp, pd.Timestamp]:
     return ts.min().floor("D"), ts.max().floor("D") + _DAY
 
 
-def _fixed_length(value: Any, param: str) -> pd.Timedelta:
-    """A positive fixed-length duration from an offset alias, Timedelta or offset."""
+_MONTHS = (
+    "JAN",
+    "FEB",
+    "MAR",
+    "APR",
+    "MAY",
+    "JUN",
+    "JUL",
+    "AUG",
+    "SEP",
+    "OCT",
+    "NOV",
+    "DEC",
+)
+_WEEKDAYS = ("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN")
+_NUMBER = re.compile(r"\s*[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?\s*")
+
+
+def _reject_bare_number(value: Any, param: str) -> None:
+    """A duration needs a unit: ``14`` or ``"14"`` would otherwise be read as ns."""
+    if isinstance(value, (bool, int, float, np.number)) or (
+        isinstance(value, str) and _NUMBER.fullmatch(value)
+    ):
+        raise InvalidParameterError(
+            param, value, ["pass a duration such as '14D' (a bare number has no unit)"]
+        )
+
+
+def _to_offset(value: Any):
+    """A pandas offset from an offset alias, a period alias (``"M"``, ``"Q"``, ``"Y"``
+    on pandas 3) or an offset object; None when ``value`` is neither."""
     from pandas.tseries.frequencies import to_offset
 
+    try:
+        with warnings.catch_warnings():
+            # pandas 2.2 still parses "M" / "Q" / "Y" as offsets, with a FutureWarning
+            warnings.simplefilter("ignore", FutureWarning)
+            return to_offset(value)
+    except (TypeError, ValueError):
+        pass
+    if isinstance(value, str):
+        try:
+            return pd.PeriodDtype(value).freq
+        except (TypeError, ValueError):
+            pass
+    return None
+
+
+def _fixed_length(value: Any, param: str) -> pd.Timedelta:
+    """A positive fixed-length duration from an offset alias, Timedelta or offset."""
     allowed = ["a fixed-length duration such as '7D', '14D', '12h' or 'W'"]
+    _reject_bare_number(value, param)
     if isinstance(value, pd.Timedelta):
         length = value
     else:
-        try:
-            offset = to_offset(value)
-        except (TypeError, ValueError):
+        offset = _to_offset(value)
+        if offset is None:
             try:
                 length = pd.Timedelta(value)
             except (TypeError, ValueError):
                 raise InvalidParameterError(param, value, allowed) from None
+        elif isinstance(offset, pd.offsets.Week):
+            length = pd.Timedelta(days=7 * offset.n)
         else:
-            if isinstance(offset, pd.offsets.Week):
-                length = pd.Timedelta(days=7 * offset.n)
-            else:
-                try:
-                    length = pd.Timedelta(offset.nanos, unit="ns")
-                except ValueError:
-                    raise InvalidParameterError(param, value, allowed) from None
+            try:
+                length = pd.Timedelta(offset.nanos, unit="ns")
+            except ValueError:
+                raise InvalidParameterError(param, value, allowed) from None
     if length <= pd.Timedelta(0):
         raise InvalidParameterError(param, value, allowed)
     return length
 
 
+def _calendar_period(period: Any) -> tuple[pd.Timedelta | None, str | None, int]:
+    """Resolve a calendar ``period``.
+
+    Returns ``(length, None, 1)`` for a fixed length (``"7D"``, ``"12h"``), or
+    ``(None, freq, n)`` for a calendar unit, where ``freq`` is the pandas period
+    frequency of one unit (``"M"``, ``"Q-DEC"``, ``"Y-DEC"``, ``"W-SUN"``) and ``n`` the
+    number of units per bin. Offset aliases map to period frequencies (``"ME"``,
+    ``"MS"`` -> ``"M"``; ``"QE-*"`` -> ``"Q-*"``; ``"QS"`` -> the quarters that start in
+    January, ``"Q-DEC"``; ``"YE"``, ``"YS"`` -> ``"Y-*"``).
+    """
+    allowed = ["a pandas offset alias such as 'D', 'W', 'M', 'Q', 'Y', '7D', '12h'"]
+    _reject_bare_number(period, "period")
+    offset = _to_offset(period)
+    if offset is None or offset.n < 1:
+        raise InvalidParameterError("period", period, allowed)
+    n = int(offset.n)
+    offsets = pd.offsets
+    if isinstance(offset, offsets.Week):
+        if offset.weekday is None:
+            return pd.Timedelta(days=7 * n), None, 1
+        return None, f"W-{_WEEKDAYS[offset.weekday]}", n
+    if isinstance(offset, (offsets.MonthEnd, offsets.MonthBegin)):
+        return None, "M", n
+    if isinstance(offset, offsets.QuarterEnd):
+        return None, f"Q-{_MONTHS[offset.startingMonth - 1]}", n
+    if isinstance(offset, offsets.QuarterBegin):
+        return None, f"Q-{_MONTHS[(offset.startingMonth - 2) % 12]}", n
+    if isinstance(offset, offsets.YearEnd):
+        return None, f"Y-{_MONTHS[offset.month - 1]}", n
+    if isinstance(offset, offsets.YearBegin):
+        return None, f"Y-{_MONTHS[(offset.month - 2) % 12]}", n
+    try:
+        length = pd.Timedelta(offset.nanos, unit="ns")
+    except ValueError:
+        length = None
+    if length is not None:
+        if length <= pd.Timedelta(0):
+            raise InvalidParameterError("period", period, allowed)
+        return length, None, 1
+    if n != 1:
+        raise InvalidParameterError(
+            "period",
+            period,
+            [
+                "a multiple of a fixed length, weeks, months, quarters or years "
+                "('14D', '2W', '3M'); other calendar units take no multiple"
+            ],
+        )
+    freq = offset.rule_code
+    try:
+        pd.PeriodDtype(freq)
+    except (TypeError, ValueError):
+        raise InvalidParameterError("period", period, allowed) from None
+    return None, freq, 1
+
+
+def _align_assigned_at(assigned_at: pd.Series, ts: pd.Series) -> pd.Series:
+    """``assigned_at`` in the stream's timezone.
+
+    A naive table on a tz-aware stream is read as wall time in the stream's timezone;
+    a tz-aware table is converted to it. A tz-aware table on a naive stream is refused:
+    the stream's timestamps carry no timezone to convert to.
+    """
+    tz = getattr(ts.dt, "tz", None)
+    at_tz = assigned_at.dt.tz
+    if tz is None and at_tz is None:
+        return assigned_at
+    if tz is not None:
+        if at_tz is None:
+            return assigned_at.dt.tz_localize(tz)
+        return assigned_at.dt.tz_convert(tz)
+    raise InvalidParameterError(
+        "assignment",
+        f"assigned_at in timezone {at_tz} on a stream with naive timestamps",
+        [
+            "naive assigned_at in the stream's local time, e.g. "
+            "assigned_at.dt.tz_convert('<stream tz>').dt.tz_localize(None)"
+        ],
+    )
+
+
 def _check_unit(stream, path_col: str, table: pd.DataFrame | None) -> None:
-    """Refuse a path grain finer than the assigned unit (Deng et al. 2018)."""
+    """Refuse a path grain finer than the assigned unit (Deng et al. 2018).
+
+    The table's unit is read from its index name when that names a coarser path
+    column (a table indexed by ``user_id`` with ``path_col="session_id"``), and
+    otherwise from id overlap: more table ids found among a coarser column's ids than
+    among ``path_col``'s.
+    """
     if table is None:
         return
     cols = list(stream.schema.path_cols)
@@ -408,8 +543,9 @@ def _check_unit(stream, path_col: str, table: pd.DataFrame | None) -> None:
     ids = table.index
     own = int(ids.isin(pd.unique(stream.df[path_col])).sum())
     for coarser in cols[:position]:
-        hits = int(ids.isin(pd.unique(stream.df[coarser])).sum())
-        if hits > own:
+        named = ids.name == coarser
+        hits = 0 if named else int(ids.isin(pd.unique(stream.df[coarser])).sum())
+        if named or hits > own:
             raise InvalidParameterError(
                 "path_col",
                 path_col,
@@ -431,6 +567,12 @@ def _strata_provenance(stream, strata_col: str) -> bool | None:
     behaviour (``add_clusters``, ``add_segment(metric_bins=|funnel_events=)``) with no
     truncation before it, and None when the recipe cannot tell (a source column, rules,
     a function, SQL).
+
+    Limitation: any ``truncate_paths`` earlier in the recipe counts as a pre-exposure
+    cut. The recipe does not record where the cut fell relative to the assignment or
+    the first exposure, so a truncation that ends after exposure (e.g. at the first
+    order of a treatment-driven funnel) is still read as pre-exposure; the caller
+    vouches for the cut-off.
     """
     lineage = stream.recipe()
     for position in range(len(lineage) - 1, -1, -1):
@@ -572,10 +714,11 @@ class MetricMatrix:
                 )
         keep = df[path_col].isin(path_ids).to_numpy()
         horizon_immature = 0
+        length = None
         if assigned_at is not None:
             row_assigned = df[path_col].map(assigned_at)
             keep = (
-                keep & (df[ts_col] >= row_assigned.fillna(pd.Timestamp.min)).to_numpy()
+                keep & ((df[ts_col] >= row_assigned) | row_assigned.isna()).to_numpy()
             )
             if horizon is not None:
                 length = _fixed_length(horizon, "horizon")
@@ -635,13 +778,18 @@ class MetricMatrix:
 
         # ---- period populations
         if periods is not None and since:
-            ends = periods["period_end"].to_numpy()
-            at = assigned_at.to_numpy()
             mature = np.stack(
-                [(at + end <= np.datetime64(cov_end)) for end in ends], axis=1
+                [
+                    (assigned_at + end <= cov_end).to_numpy()
+                    for end in periods["period_end"]
+                ],
+                axis=1,
             )
             immature = (~mature).sum(axis=0)
             periods["period_complete"] = immature == 0
+            if length is not None:
+                # a bin that the horizon cuts covers less than its label says
+                periods["period_complete"] &= periods["period_end"] <= length
         if periods is None:
             pops = np.ones((len(path_ids), 1), dtype=bool)
         elif period_population == "active":
@@ -657,10 +805,12 @@ class MetricMatrix:
                     .min()
                     .reindex(path_ids)
                 )
-            entry = entry.to_numpy()
-            ends = periods["period_end"].to_numpy()
             pops = np.stack(
-                [pd.isna(entry) | (entry < np.datetime64(end)) for end in ends], axis=1
+                [
+                    (entry.isna() | (entry < end)).to_numpy()
+                    for end in periods["period_end"]
+                ],
+                axis=1,
             )
         if horizon is not None:
             base = np.zeros(n_periods, dtype=int) if immature is None else immature
@@ -684,13 +834,11 @@ class MetricMatrix:
             strata_levels = sorted(pd.unique(strata), key=str)
             pre_exposure = _strata_provenance(stream, strata_col)
             if pre_exposure is False:
-                warnings.warn(
+                warn_user(
                     f"strata_col '{strata_col}' was computed from the paths' behaviour "
                     "on a stream that was not truncated before exposure: the stratum "
                     "may be post-exposure, so its rows compare selected subgroups, not "
-                    "randomised ones (strata_pre_exposure=False).",
-                    UserWarning,
-                    stacklevel=4,
+                    "randomised ones (strata_pre_exposure=False)."
                 )
 
         # ---- segments and cells
@@ -798,8 +946,6 @@ def _period_keys(
     cov_start: pd.Timestamp,
 ) -> tuple[np.ndarray, pd.DataFrame]:
     """Integer period key per row and the period table (sorted chronologically)."""
-    from pandas.tseries.frequencies import to_offset
-
     ts = df[ts_col]
     if basis == "since_assignment":
         length = _fixed_length(period, "period")
@@ -828,16 +974,7 @@ def _period_keys(
             )
         return keys, pd.DataFrame(rows, index=pd.Index(uniq, name="key"))
 
-    try:
-        offset = to_offset(period)
-    except (TypeError, ValueError):
-        raise InvalidParameterError(
-            "period", period, ["a pandas offset alias such as 'D', 'W', 'M', '7D'"]
-        ) from None
-    try:
-        length = pd.Timedelta(offset.nanos, unit="ns")
-    except ValueError:
-        length = None
+    length, freq, n = _calendar_period(period)
     if length is not None:
         keys = ((ts - cov_start) // length).to_numpy().astype(np.int64)
         uniq = np.unique(keys)
@@ -855,24 +992,24 @@ def _period_keys(
                 label = f"{start:%Y-%m-%d %H:%M}"
             rows.append({"period": label, "period_start": start, "period_end": end})
     else:
-        try:
-            per = ts.dt.to_period(offset.freqstr)
-        except (TypeError, ValueError):
-            raise InvalidParameterError(
-                "period", period, ["a pandas offset alias such as 'D', 'W', 'M', '7D'"]
-            ) from None
-        keys = per.array.asi8.astype(np.int64)
+        # calendar units in the stream's timezone: bin the local wall time
+        tz = getattr(ts.dt, "tz", None)
+        local = ts.dt.tz_localize(None) if tz is not None else ts
+        keys = local.dt.to_period(freq).array.asi8.astype(np.int64)
+        if n > 1:
+            # n units per bin, counted from the unit holding the stream's first day
+            first = cov_start.tz_localize(None) if tz is not None else cov_start
+            origin = pd.Period(first, freq=freq).ordinal
+            keys = origin + (keys - origin) // n * n
         uniq = np.unique(keys)
         rows = []
         for k in uniq:
-            p = pd.Period(ordinal=int(k), freq=per.dt.freq)
-            rows.append(
-                {
-                    "period": str(p),
-                    "period_start": p.start_time,
-                    "period_end": (p + 1).start_time,
-                }
-            )
+            p = pd.Period(ordinal=int(k), freq=freq)
+            start, end = p.start_time, (p + n).start_time
+            if tz is not None:
+                start, end = start.tz_localize(tz), end.tz_localize(tz)
+            label = str(p) if n == 1 else f"{start:%Y-%m-%d}/{end - _DAY:%Y-%m-%d}"
+            rows.append({"period": label, "period_start": start, "period_end": end})
     table = pd.DataFrame(rows, index=pd.Index(uniq, name="key"))
     data_start, data_end = cov_start, ts.max().floor("D") + _DAY
     table["period_complete"] = (table["period_start"] >= data_start) & (
@@ -997,13 +1134,17 @@ class ABTest:
         ):
             if not isinstance(value, str) or value not in allowed:
                 raise InvalidParameterError(name, value, list(allowed))
-        for name, value in (("ci_level", ci_level), ("power", power)):
+        for name, value, low, allowed in (
+            ("ci_level", ci_level, 0.5, "a float in [0.5, 1), e.g. 0.95"),
+            ("power", power, 0.0, "a float in (0, 1)"),
+        ):
             if (
                 isinstance(value, bool)
                 or not isinstance(value, (int, float))
-                or not 0 < value < 1
+                or not low <= value < 1
+                or value <= 0
             ):
-                raise InvalidParameterError(name, value, ["a float in (0, 1)"])
+                raise InvalidParameterError(name, value, [allowed])
         if isinstance(min_events, bool) or not isinstance(
             min_events, (int, np.integer)
         ):
@@ -1013,10 +1154,13 @@ class ABTest:
         if n_bootstrap != "auto" and (
             isinstance(n_bootstrap, bool)
             or not isinstance(n_bootstrap, (int, np.integer))
-            or n_bootstrap < 1
+            or n_bootstrap < bs.MIN_REPLICATES
         ):
+            # Fewer replicates give NaN intervals on every bootstrap row.
             raise InvalidParameterError(
-                "n_bootstrap", n_bootstrap, ["an int >= 1", "auto"]
+                "n_bootstrap",
+                n_bootstrap,
+                [f"an int >= {bs.MIN_REPLICATES}", "auto"],
             )
         if isinstance(random_state, bool) or not isinstance(
             random_state, (int, np.integer)
@@ -1025,6 +1169,16 @@ class ABTest:
         path_col = path_col or schema.path_col
         if path_col not in schema.path_cols:
             raise InvalidParameterError("path_col", path_col, list(schema.path_cols))
+        if period is None:
+            # mode switches of period rows mean nothing without period= (ADR-0008)
+            for name, value, default in (
+                ("period_basis", period_basis, "calendar"),
+                ("period_population", period_population, "itt"),
+            ):
+                if value != default:
+                    raise InvalidParameterError(
+                        name, value, [f"'{default}' without period", "a period="]
+                    )
         if period is not None and path_col != schema.path_cols[0]:
             raise InvalidParameterError(
                 "path_col",
@@ -1060,6 +1214,12 @@ class ABTest:
         if horizon is not None:
             _fixed_length(horizon, "horizon")
         _check_unit(stream, path_col, table)
+        if table is not None:
+            table = align_assignment(table, stream, path_col)
+            if has_time:
+                table["assigned_at"] = _align_assigned_at(
+                    table["assigned_at"], stream.df[schema.timestamp_col]
+                )
         specs = parse_metrics(metrics, test)
         _validate_on_stream(stream, specs)
         groups = resolve_diff(
@@ -1108,13 +1268,6 @@ class ABTest:
 
     def fit(self) -> pd.DataFrame:
         """Return the scorecard (columns in ``COLUMNS`` order, optional ones dropped)."""
-        if self.resolved_n_bootstrap() < bs.MIN_REPLICATES:
-            # Fewer replicates give NaN intervals on every bootstrap row.
-            raise InvalidParameterError(
-                "n_bootstrap",
-                self.n_bootstrap,
-                [f"an int >= {bs.MIN_REPLICATES}", "auto"],
-            )
         cells = self.matrix.cells
         boot_cells = [
             i
@@ -1387,8 +1540,10 @@ class ABTest:
                 se_f, a, self.power
             )
             if low_support:
-                l1 = h1 = l2 = h2 = dl = dh = rl = rh = p = nan
+                # an absent estimate is NaN: no interval, no p, no SE, no MDE
+                l1 = h1 = l2 = h2 = dl = dh = rl = rh = p = se = nan
                 extra["ci_at"] = lambda lv: (nan, nan)
+                extra["mde_at"] = lambda a: nan
 
         delta = g1 - g2
         if not (isinstance(g2, float) and g2 > 0):

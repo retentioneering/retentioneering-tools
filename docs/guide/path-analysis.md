@@ -159,6 +159,7 @@ Also, treating sessions as paths might help: [Path as a sequence of sessions](/d
 | What share reaches these milestones in order? | [Funnel](/docs/widgets/funnel) | Ignores everything between them, on purpose |
 | If Y happened, how often does X follow — and is that different from usual? | [`get_conversion_rate()`](/docs/eventstream#conversion-from-one-event-to-another) | One row per pair, carrying the denominator and the base rate the number has to beat |
 | Do two groups behave differently? | Any of the above with [`diff`](/docs/widgets#diff-mode) | Renders group1 − group2 in place |
+| Is the difference between two groups real? | [`get_ab_test()`](/docs/tools/get-ab-test) | An interval, a p-value and the smallest detectable effect per metric, over whole paths; see [A/B Testing](/docs/ab-testing) |
 | Which of many segment levels stands out? | [Segment Overview](/docs/widgets/segment-overview) | Scans every level on metrics at once, so you know which pair to diff |
 | Which behaviors exist at all? | [Cluster Analysis](/docs/widgets/cluster-analysis) | Groups paths by metrics instead of by shape, and saves the result as a segment |
 

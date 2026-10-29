@@ -15,7 +15,8 @@ same result — and the widget makes up to three calls to it:
 | **Periods** (when `period` is set) | the same call with `period`, `period_basis` and `period_population` | one per metric × period |
 
 Every other argument — `assignment`, `horizon`, `test`, `correction`,
-`ci_level`, `path_col`, ... — applies to all three. Each tab therefore holds
+`correction_scope`, `ci_level`, `path_col`, ... — applies to all three
+(`correction_scope` is set in code; the sidebar does not show it). Each tab therefore holds
 exactly the rows `get_ab_test` returns for that call, so any number in the
 widget can be reproduced, and quoted, from code.
 
@@ -48,7 +49,9 @@ Below the table, a forest plot puts every delta on one line:
 
 The interval is **per comparison and never adjusted**; the verdict reads the
 **adjusted** p-value (`correction` within the rows of one metric). So a row can
-have an interval that excludes 0 and still be `inconclusive` — trust the
+have an interval that excludes 0 and still be `inconclusive`. Metrics are not
+corrected against each other unless `correction_scope="all"`: name one decision
+metric before reading the plot — trust the
 verdict for the decision, and `correction="bonferroni"` when you need a
 simultaneous interval (`delta_ci_low_adj` / `delta_ci_high_adj` in the
 headless result).

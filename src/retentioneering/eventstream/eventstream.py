@@ -919,9 +919,9 @@ class Eventstream:
               not 0).
             - `support_warning` (str), the first that applies: `"no_data"` when no
               path of either arm has the behaviour (no event, no non-zero total or
-              numerator, no value), or when a value or ratio metric has no value in
-              one arm (no estimate there): the row is `"insufficient_data"`,
-              whatever the metric type; `"invalid_replicates"` on bootstrap rows where more than
+              numerator, no value), or when an arm has no estimate (no path in the
+              row, or no value for a value or ratio metric): the row is
+              `"insufficient_data"`, whatever the metric type; `"invalid_replicates"` on bootstrap rows where more than
               1 % of the replicates have no value in an arm: the intervals, p-value,
               `delta_se` and `mde` are NaN (the point estimates stay);
               `"one_arm_only"` when an arm has no supporting path (the p-value

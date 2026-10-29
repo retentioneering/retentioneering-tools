@@ -1416,6 +1416,14 @@ class TestEmptyArmAndConstantRows:
         assert conv.verdict == "decrease"
         assert conv.support_warning == "one_arm_only"
 
+    def test_stratum_with_no_path_in_an_arm(self) -> None:
+        out = ABTest.from_stream(
+            _random(), DIFF, [CONV, ORDERS], strata_col="arm", strata_pre_exposure=True
+        ).fit()
+        assert set(out["verdict"]) == {"insufficient_data"}
+        assert set(out["support_warning"]) == {"no_data"}
+        assert out["reading"].str.contains("no path in group").all()
+
     def test_constant_metric_has_no_standard_error(self) -> None:
         stream = _random()
         ratio = {

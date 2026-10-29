@@ -173,6 +173,14 @@ def test_sidebar_changes_recompute_through_python(tmp_path):
             assert json.loads(widget.result)["ci_level"] == 0.99
             page.get_by_label("Correction").select_option("bh")
             page.get_by_text("adjusted with bh").first.wait_for(state="visible")
+            # the correction family: the note says which rows were corrected together
+            page.get_by_label("Corrected together").select_option("all")
+            page.get_by_text("bh across every row of every metric").first.wait_for(
+                state="visible"
+            )
+            assert widget.correction_scope == "all"
+            rows = json.loads(widget.result)["overall"]
+            assert {row["correction_family"] for row in rows} == {"all_metrics"}
 
             # periods
             page.get_by_label("Period").select_option("W")

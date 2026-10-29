@@ -295,7 +295,7 @@ function Sidebar({ host, isStatic, isLoading, params, segLevels, segmentCols, pa
         <select aria-label="Correction" value={params.correction} disabled={disabled} style={sel} onChange={set("correction")}>
           {options(CORRECTIONS, params.correction)}
         </select>
-        <select aria-label="Correction family" value={params.correction_scope} disabled={disabled} style={{ ...sel, marginTop: 6 }} onChange={set("correction_scope")}>
+        <select aria-label="Corrected together" value={params.correction_scope} disabled={disabled} style={{ ...sel, marginTop: 6 }} onChange={set("correction_scope")}>
           {options(SCOPES, params.correction_scope)}
         </select>
         <Hint>{params.correction_scope === "all"

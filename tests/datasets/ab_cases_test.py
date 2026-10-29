@@ -18,7 +18,6 @@ import math
 import time
 import warnings
 
-import numpy as np
 import pandas as pd
 import pytest
 
@@ -30,7 +29,6 @@ from retentioneering.datasets import (
 )
 from retentioneering.datasets.ab_cases import (
     aa_calibration,
-    lumeo_smart_cart,
     push_campaign,
     session_assignment,
     srm_platform_bug,
@@ -43,7 +41,6 @@ DIFF = ("exp_group", "treatment", "control")
 CASES = {
     case.NAME: case
     for case in (
-        lumeo_smart_cart,
         srm_platform_bug,
         session_assignment,
         aa_calibration,
@@ -75,49 +72,6 @@ def _row(frame: pd.DataFrame, key: str = "metric") -> dict:
 # ---------------------------------------------------------------------------
 # Story checks: {planted verdict: held}, one function per dataset
 # ---------------------------------------------------------------------------
-
-
-LOOP = "smart_cart_open->smart_cart_open->smart_cart_open"
-PRE_LUMEO = [{"pattern": "add_to_cart", "offset": -1}, "path_end"]
-
-
-def lumeo_builders(stream: Eventstream) -> pd.Series:
-    """Pre-exposure rule: collections and a wishlist add before the first add."""
-    pre = stream.truncate_paths("path_start", PRE_LUMEO)
-    flag = pre.get_metrics(
-        [
-            {
-                "metric": "has_all_events",
-                "metric_args": {"events": ["collections", "wishlist_add"]},
-            }
-        ]
-    ).iloc[:, 0]
-    return pd.Series(np.where(flag.astype(bool), "builder", "rest"), index=flag.index)
-
-
-def check_lumeo_smart_cart(stream: Eventstream, assignment: pd.DataFrame) -> dict:
-    conv = _has("order_success", "conversion")
-    overall = stream.get_ab_test(DIFF, [conv], assignment=assignment).iloc[0]
-    strata = stream.add_segment(
-        "builder", path_values=lumeo_builders(stream)
-    ).get_ab_test(
-        DIFF,
-        [conv],
-        assignment=assignment,
-        strata_col="builder",
-        strata_pre_exposure=True,
-    )
-    rows = strata.set_index("stratum")
-    srm = stream.get_sample_ratio("exp_group", assignment=assignment)
-    _, treatment, control = stream.transition_graph_data(edge_weight="count", diff=DIFF)
-    reopen = treatment.loc["smart_cart_open", "smart_cart_open"]
-    return {
-        "sample_ratio_fine": not srm["mismatch"],
-        "top_line_inconclusive": overall["verdict"] == "inconclusive",
-        "builders_increase": rows.loc["builder", "verdict"] == "increase",
-        "reopen_loop_in_treatment_only": reopen > 0
-        and control.get("smart_cart_open", pd.Series(dtype=float)).sum() == 0,
-    }
 
 
 def check_srm_platform_bug(stream: Eventstream, assignment: pd.DataFrame) -> dict:
@@ -318,7 +272,6 @@ def check_push_campaign(stream: Eventstream, assignment: pd.DataFrame) -> dict:
 
 
 CHECKS = {
-    "lumeo_smart_cart": check_lumeo_smart_cart,
     "srm_platform_bug": check_srm_platform_bug,
     "session_assignment": check_session_assignment,
     "aa_calibration": check_aa_calibration,
@@ -347,11 +300,6 @@ def case(request):
 
 def _loaded(name: str):
     return load_ab_test(name, with_truth=True), load_ab_test_assignment(name)
-
-
-@pytest.fixture(scope="module")
-def lumeo():
-    return _loaded("lumeo_smart_cart")
 
 
 @pytest.fixture(scope="module")
@@ -495,7 +443,9 @@ class TestContract:
         assert ids.min() >= first
         assert ids.max() < first + 100_000
         assert first % 100_000 == 1
-        assert len({c.FIRST_USER_ID for c in CASES.values()} | {100_001}) == 7
+        assert (
+            len({c.FIRST_USER_ID for c in CASES.values()} | {100_001}) == len(CASES) + 1
+        )
 
     def test__assignment_table(self, case) -> None:
         name, stream, assignment = case
@@ -560,68 +510,6 @@ def test_planted_verdicts_hold_at_the_default_seed(case) -> None:
     held = _quiet(CHECKS[name], stream, assignment)
 
     assert held and all(held.values()), {k: v for k, v in held.items() if not v}
-
-
-class TestLumeoSmartCart:
-    def test__builder_rule_recovers_the_planted_segment(self, lumeo) -> None:
-        stream, _ = lumeo
-        rule = lumeo_builders(stream)
-        truth = stream.to_dataframe().groupby("user_id")["user_type"].first()
-        truth = truth.reindex(rule.index) == "collection_builder"
-        found = rule == "builder"
-
-        assert (found & truth).sum() / truth.sum() > 0.95  # recall
-        assert (found & truth).sum() / found.sum() > 0.85  # precision
-
-    def test__planted_effects(self, lumeo) -> None:
-        stream, assignment = lumeo
-        rows = _quiet(
-            stream.add_segment("user_type").get_ab_test,
-            DIFF,
-            [_has("order_success", "conversion")],
-            assignment=assignment,
-            strata_col="user_type",
-            strata_pre_exposure=True,
-        ).set_index("stratum")
-
-        assert 0.06 < rows.loc["collection_builder", "delta"] < 0.18
-        assert -0.04 < rows.loc["other", "delta"] < 0.015
-
-    def test__loopers_are_builders_who_convert_less(self, lumeo) -> None:
-        stream, _ = lumeo
-        frame = stream.to_dataframe()
-        loop = {
-            "metric": "matches_pattern",
-            "metric_args": {"pattern": LOOP},
-        }
-        metrics = stream.get_metrics([loop, _has("order_success")])
-        users = frame.groupby("user_id")[["user_type", "exp_group", "platform"]].first()
-        users = users.join(metrics.set_axis(["loop", "order"], axis=1))
-        builders = users[
-            (users["user_type"] == "collection_builder")
-            & (users["exp_group"] == "treatment")
-        ]
-        loopers = users[users["loop"].astype(bool)]
-
-        assert (loopers["user_type"] == "collection_builder").mean() > 0.8
-        assert loopers["platform"].isin(["ios", "android"]).mean() > 0.75
-        # descriptive, post-exposure: loopers convert below the builders who do not loop
-        by_loop = builders.groupby(builders["loop"].astype(bool))["order"].mean()
-        assert by_loop[True] < by_loop[False] - 0.08
-
-    def test__platform_fixed_at_signup(self, lumeo) -> None:
-        stream, assignment = lumeo
-        rows = stream.get_ab_test(
-            DIFF,
-            [_has("order_success", "conversion")],
-            assignment=assignment,
-            strata_col="platform",
-            strata_pre_exposure=True,
-        )
-
-        assert set(rows["stratum"]) == {"ios", "android", "web"}
-        assert set(rows["strata_pre_exposure_source"]) == {"declared"}
-        assert not rows["exploratory"].any()
 
 
 class TestSrmPlatformBug:

@@ -55,7 +55,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   marks conditional step deltas with † and colours a delta only when its
   interval excludes 0 — never a conditional one. A sidebar selector switches
   intervals Off / 90% / 95% / 99% and picks the correction; both are saved with
-  the widget state and kept, read-only, in HTML exports.
+  the widget state and kept, read-only, in HTML exports. The Funnel docs page
+  explains what each number assumes and has a live example.
 
 ### Changed
 

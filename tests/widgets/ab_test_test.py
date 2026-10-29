@@ -218,7 +218,7 @@ class TestTraitlets:
         w = ABTestWidget(_stream(), diff=DIFF, metrics=METRICS)
         params = w._params()
         sig = inspect.signature(Eventstream.get_ab_test).parameters
-        for name in ("test", "correction", "ci_level", "power", "min_events"):
+        for name in ("test", "correction", "ci_level", "power", "min_support"):
             assert params[name] == sig[name].default, name
         assert params["n_bootstrap"] == 1000
 
@@ -241,7 +241,7 @@ class TestTraitlets:
         df = stream.to_dataframe()
         df = df[~((df["grp"] == "c") & (df["event"] == "buy"))]
         sparse = Eventstream(df, {"segment_cols": ["grp", "platform"]})
-        w = sparse.ab_test(DIFF, METRICS[:1], min_events=1000)
+        w = sparse.ab_test(DIFF, METRICS[:1], min_support=1000)
         row = _strict(w.result)["overall"][0]
         assert row["verdict"] == "insufficient_data"
         assert row["p_value"] is None and row["valid_replicates"] is None

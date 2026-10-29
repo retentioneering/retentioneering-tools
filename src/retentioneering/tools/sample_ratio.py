@@ -29,23 +29,24 @@ import pandas as pd
 from retentioneering.exceptions import InvalidParameterError
 from retentioneering.tools import _stats
 from retentioneering.tools._diff import (
+    ASSIGNMENT_ARM,
     MISSING,
     MULTI,
     coerce_level,
     normalize_assignment,
     per_path_label,
 )
-from retentioneering.tools.ab_test import prepare_assignment
+from retentioneering.tools.ab_test import _calendar_period, prepare_assignment
 
 if TYPE_CHECKING:
     from retentioneering.eventstream import Eventstream
 
-__all__ = ["SampleRatio", "BY_DAY", "ALL", "sample_ratio_reading"]
+__all__ = ["SampleRatio", "ALL", "sample_ratio_reading"]
 
-#: ``by`` value that splits the check by the day of assignment.
-BY_DAY = "day"
-#: ``by`` label of the overall rows in ``levels``.
+#: ``stratum`` / ``period`` label of the overall rows in ``levels``.
 ALL = "<ALL>"
+#: Names of the calendar units ``period`` accepts, for ``reading``.
+_UNIT_NAMES = {"D": "day", "W": "week", "M": "month", "Q": "quarter", "Y": "year"}
 
 LEVEL_COLUMNS = ["level", "paths", "share", "expected_share", "expected_paths"]
 
@@ -67,12 +68,13 @@ def sample_ratio_reading(result: dict[str, Any]) -> str:
 
     ``"expected 50/50, observed 4960/5040 (control/treatment), p 0.42: no mismatch"``,
     or ``"mismatch: ... — the test is invalid until the assignment is fixed"``; paths
-    carrying two arms, uncounted paths and the groups of ``by`` that mismatch are
+    carrying two arms, uncounted paths and the strata or periods that mismatch are
     added when present.
     """
     levels = result["levels"]
-    if "by" in levels.columns:
-        levels = levels[levels["by"] == ALL]
+    for key in ("stratum", "period"):
+        if key in levels.columns:
+            levels = levels[levels[key] == ALL]
     names = "/".join(str(v) for v in levels["level"])
     split = (
         f"expected {'/'.join(_share_text(v) for v in levels['expected_share'])}, "
@@ -102,21 +104,45 @@ def sample_ratio_reading(result: dict[str, Any]) -> str:
     unassigned = int(result.get("unassigned_paths", 0))
     if unassigned:
         parts.append(f"{unassigned} path(s) with no arm in the split are not counted")
-    by_levels = result.get("by_levels")
-    if by_levels is not None:
-        bad = by_levels[by_levels["mismatch"].astype(bool)]
+    for table_key, key, name in (
+        ("strata", "stratum", result.get("strata_col")),
+        ("periods", "period", _period_name(result.get("period"))),
+    ):
+        groups = result.get(table_key)
+        if groups is None:
+            continue
+        bad = groups[groups["mismatch"].astype(bool)]
         if len(bad):
             shown = ", ".join(
-                f"{key} (adjusted p {_p_text(p)})"
-                for key, p in zip(bad["by"].head(3), bad["p_value_adjusted"].head(3))
+                f"{label} (adjusted p {_p_text(p)})"
+                for label, p in zip(bad[key].head(3), bad["p_value_adjusted"].head(3))
             )
             more = f" and {len(bad) - 3} more" if len(bad) > 3 else ""
-            parts.append(
-                f"by {result['by']}: mismatch in {shown}{more} — {INVALID} there"
-            )
+            parts.append(f"by {name}: mismatch in {shown}{more} — {INVALID} there")
         else:
-            parts.append(f"by {result['by']}: no group mismatches")
+            parts.append(f"by {name}: no group mismatches")
     return "; ".join(parts)
+
+
+def _period_name(period: Any) -> str:
+    """``"day"``, ``"week"``, ``"month"``; the value itself for another spelling."""
+    if period is None:
+        return ""
+    text = str(period)
+    return _UNIT_NAMES.get(text.split("-")[0].rstrip("SE") or text, text)
+
+
+def _period_freq(period: Any) -> str:
+    """The pandas period frequency of one calendar unit (``"D"``, ``"W-SUN"``, ``"M"``)."""
+    allowed = ["one calendar unit: 'D', 'W' (or 'W-MON'...), 'M', 'Q', 'Y'"]
+    length, freq, n = _calendar_period(period)
+    if length is not None:
+        if length != pd.Timedelta(days=1):
+            raise InvalidParameterError("period", period, allowed)
+        return "D"
+    if n != 1:
+        raise InvalidParameterError("period", period, allowed)
+    return str(freq)
 
 
 def _counts_table(arms: pd.Series, levels: list, shares: np.ndarray) -> pd.DataFrame:
@@ -143,20 +169,23 @@ class SampleRatio:
 
     def fit(
         self,
-        segment_col: str,
+        segment_col: str | None = None,
         expected_shares: dict[str, float] | None = None,
         alpha: float = 0.001,
         path_col: str | None = None,
         assignment: pd.Series | pd.DataFrame | None = None,
-        by: str | None = None,
+        strata_col: str | None = None,
+        period: Any = None,
     ) -> dict[str, Any]:
         """Compare arm sizes against expected shares.
 
         Parameters
         ----------
-        segment_col : str
-            Segment column holding the arm (must be in ``schema.segment_cols``; with
-            ``assignment`` it may be absent from the stream and only labels the check).
+        segment_col : str, optional
+            Segment column holding the arm (``schema.segment_cols``). Required without
+            ``assignment``. With ``assignment`` it is optional (``None`` or ``"arm"``:
+            the table alone); a segment column of the stream must then agree with the
+            table path by path.
         expected_shares : dict, optional
             ``{level: share}``; shares must sum to 1 within 1e-9. Default: equal split over
             the column's levels (or over the assignment table's arms). Levels of the
@@ -169,13 +198,15 @@ class SampleRatio:
         assignment : pandas.Series or pandas.DataFrame, optional
             Per-path arm table; when given the counts are the table's rows (silent paths
             included) and ``silent_paths`` reports how many have no events in the stream.
-        by : str, optional
-            Repeat the check within groups: a segment column that is constant per path
-            (a column of the assignment DataFrame is used first), or ``"day"`` — the
-            calendar day of ``assigned_at`` (or of the path's first event without an
-            assignment table). Valid only for a variable fixed at assignment time:
-            per-group shares on a variable the treatment can change are an effect, not
-            a bug check.
+        strata_col : str, optional
+            Repeat the check within strata: a column of the assignment DataFrame (used
+            first) or a segment column constant per path. Valid only for a variable
+            fixed at assignment time: per-stratum shares on a variable the treatment
+            can change are an effect, not a bug check.
+        period : str, optional
+            Repeat the check per calendar unit of ``assigned_at`` (or of the path's
+            first event without an assignment table): ``"D"``, ``"W"``, ``"M"``,
+            ``"Q"``, ``"Y"``, spelled as in ``get_ab_test``. Not with ``strata_col``.
 
         Returns
         -------
@@ -189,17 +220,30 @@ class SampleRatio:
             raise InvalidParameterError("path_col", path_col, list(schema.path_cols))
         if not isinstance(alpha, (int, float)) or not 0 < alpha < 1:
             raise InvalidParameterError("alpha", alpha, ["a float in (0, 1)"])
-        in_stream = segment_col in schema.segment_cols
-        if assignment is None and not in_stream:
+        segment_cols = list(schema.segment_cols)
+        if assignment is None:
+            if segment_col not in segment_cols:
+                raise InvalidParameterError("segment_col", segment_col, segment_cols)
+        elif segment_col is not None and segment_col not in segment_cols:
+            if segment_col != ASSIGNMENT_ARM:
+                raise InvalidParameterError(
+                    "segment_col", segment_col, [None, ASSIGNMENT_ARM] + segment_cols
+                )
+        if strata_col is not None and period is not None:
             raise InvalidParameterError(
-                "segment_col", segment_col, list(schema.segment_cols)
+                "period",
+                period,
+                ["None when strata_col is given (one split per check)"],
             )
+        freq = _period_freq(period) if period is not None else None
+        in_stream = segment_col is not None and segment_col in segment_cols
 
         stream_labels = (
             per_path_label(stream.df, segment_col, path_col) if in_stream else None
         )
         silent = 0
         multi = 0
+        outside = 0
         if assignment is None:
             labels = stream_labels
             multi = int((labels == MULTI).sum())
@@ -217,10 +261,12 @@ class SampleRatio:
                 stream, path_col, normalize_assignment(assignment)
             )
             if isinstance(assignment, pd.DataFrame):
-                # `by` reads the caller's columns: keep them on the matched ids
+                # `strata_col` reads the caller's columns: keep them on the matched ids
                 assignment = assignment.set_axis(table.index, axis=0)
             stream_paths = pd.Index(pd.unique(stream.df[path_col]))
             silent = int((~table.index.isin(stream_paths)).sum())
+            # stream paths the table does not list have no arm
+            outside = int((~stream_paths.isin(table.index)).sum())
             if stream_labels is not None:
                 common = stream_labels.index.intersection(table.index)
                 seen = stream_labels.reindex(common)
@@ -240,7 +286,7 @@ class SampleRatio:
         levels, shares = self._levels_and_shares(candidates, expected_shares)
         arms = arms.astype(object)
         counted = arms[arms.isin(levels)]
-        unassigned = int(len(arms) - len(counted)) + n_missing
+        unassigned = int(len(arms) - len(counted)) + n_missing + outside
 
         overall = _counts_table(counted, levels, shares)
         chi2, p_value, dof = _stats.srm_chi2(overall["paths"].to_numpy(), shares)
@@ -256,12 +302,22 @@ class SampleRatio:
             "unassigned_paths": unassigned,
             "basis": basis,
         }
-        if by is not None:
-            groups = self._by_groups(by, path_col, table, counted.index, assignment)
+        if strata_col is not None:
+            groups = self._strata(strata_col, path_col, counted.index, assignment)
             result.update(
-                self._by_tables(counted, groups, levels, shares, alpha, overall)
+                self._split_tables(
+                    counted, groups, levels, shares, alpha, overall, "stratum", "strata"
+                )
             )
-            result["by"] = by
+            result["strata_col"] = strata_col
+        if freq is not None:
+            groups = self._periods(freq, path_col, table, counted.index)
+            result.update(
+                self._split_tables(
+                    counted, groups, levels, shares, alpha, overall, "period", "periods"
+                )
+            )
+            result["period"] = period
         result["reading"] = sample_ratio_reading(result)
         return result
 
@@ -300,59 +356,66 @@ class SampleRatio:
             )
         return levels, shares_arr
 
-    def _by_groups(self, by, path_col, table, ids, assignment) -> pd.Series:
+    def _periods(self, freq, path_col, table, ids) -> pd.Series:
         stream = self.stream
-        if by == BY_DAY:
-            if table is not None and "assigned_at" in table.columns:
-                day = table["assigned_at"].dt.floor("D")
-            else:
-                ts = stream.schema.timestamp_col
-                first = stream.df.groupby(path_col, observed=True)[ts].min()
-                day = first.dt.floor("D")
-                if table is not None:
-                    day = day.reindex(table.index)
-            labels = day.dt.strftime("%Y-%m-%d").where(day.notna(), MISSING)
-            return labels.reindex(ids).fillna(MISSING).astype(object)
-        if isinstance(assignment, pd.DataFrame) and by in assignment.columns:
-            labels = assignment[by].astype(object)
+        if table is not None and "assigned_at" in table.columns:
+            at = table["assigned_at"]
+        else:
+            ts = stream.schema.timestamp_col
+            at = stream.df.groupby(path_col, observed=True)[ts].min()
+            if table is not None:
+                at = at.reindex(table.index)
+        # calendar units in the timestamps' own timezone: bin the local wall time
+        if getattr(at.dt, "tz", None) is not None:
+            at = at.dt.tz_localize(None)
+        known = at.notna()
+        labels = pd.Series(MISSING, index=at.index, dtype=object)
+        labels[known] = at[known].dt.to_period(freq).astype(str)
+        return labels.reindex(ids).fillna(MISSING).astype(object)
+
+    def _strata(self, strata_col, path_col, ids, assignment) -> pd.Series:
+        stream = self.stream
+        if isinstance(assignment, pd.DataFrame) and strata_col in assignment.columns:
+            labels = assignment[strata_col].astype(object)
             labels = labels.where(labels.notna(), MISSING)
             return labels.reindex(ids).fillna(MISSING).astype(object)
-        allowed = [BY_DAY] + list(stream.schema.segment_cols)
-        if by not in stream.schema.segment_cols:
-            raise InvalidParameterError("by", by, allowed)
-        labels = per_path_label(stream.df, by, path_col)
+        allowed = list(stream.schema.segment_cols)
+        if isinstance(assignment, pd.DataFrame):
+            allowed += [c for c in assignment.columns if c not in allowed]
+        if strata_col not in stream.schema.segment_cols:
+            raise InvalidParameterError("strata_col", strata_col, allowed)
+        labels = per_path_label(stream.df, strata_col, path_col)
         multi = labels.index[labels == MULTI]
         if len(multi):
             raise InvalidParameterError(
-                "by",
-                f"'{by}' changes within {len(multi)} path(s), e.g. {list(multi[:3])}",
-                ["a segment constant per path and fixed at assignment", BY_DAY],
+                "strata_col",
+                f"'{strata_col}' changes within {len(multi)} path(s), "
+                f"e.g. {list(multi[:3])}",
+                ["a segment constant per path and fixed at assignment"],
             )
         return labels.reindex(ids).fillna(MISSING).astype(object)
 
     @staticmethod
-    def _by_tables(counted, groups, levels, shares, alpha, overall):
-        frames = [overall.assign(by=ALL)]
+    def _split_tables(counted, groups, levels, shares, alpha, overall, key, name):
+        frames = [overall.assign(**{key: ALL})]
         rows = []
-        keys = sorted(pd.unique(groups), key=str)
-        for key in keys:
-            part = counted[(groups == key).to_numpy()]
+        labels = sorted(pd.unique(groups), key=str)
+        for label in labels:
+            part = counted[(groups == label).to_numpy()]
             table = _counts_table(part, levels, shares)
-            frames.append(table.assign(by=key))
+            frames.append(table.assign(**{key: label}))
             chi2, p, dof = _stats.srm_chi2(table["paths"].to_numpy(), shares)
             rows.append(
                 {
-                    "by": key,
+                    key: label,
                     "paths": int(len(part)),
                     "chi2": chi2,
                     "dof": dof,
                     "p_value": p,
                 }
             )
-        by_levels = pd.DataFrame(
-            rows, columns=["by", "paths", "chi2", "dof", "p_value"]
-        )
-        by_levels["p_value_adjusted"] = _stats.holm(by_levels["p_value"].to_numpy())
-        by_levels["mismatch"] = by_levels["p_value_adjusted"] < alpha
-        levels_df = pd.concat(frames, ignore_index=True)[["by"] + LEVEL_COLUMNS]
-        return {"levels": levels_df, "by_levels": by_levels}
+        split = pd.DataFrame(rows, columns=[key, "paths", "chi2", "dof", "p_value"])
+        split["p_value_adjusted"] = _stats.holm(split["p_value"].to_numpy())
+        split["mismatch"] = split["p_value_adjusted"] < alpha
+        levels_df = pd.concat(frames, ignore_index=True)[[key] + LEVEL_COLUMNS]
+        return {"levels": levels_df, name: split}

@@ -90,8 +90,8 @@ funnel live and reads its numbers.
 Headless, `funnel_data(..., ci_level=0.95)` returns the same numbers: a
 `*_ci_low` / `*_ci_high` pair next to every rate and delta,
 `delta_conversion_rate_p_value` and `delta_conversion_rate_p_value_adjusted`,
-`step_conditional`, and at the top level `ci_level`, `ci_basis`, `correction`,
-`correction_family` and `excluded_paths`. Every funnel result also carries its
+`step_conditional`, and at the top level `ci_level`, `ci_basis`, `correction`
+and `correction_family`. Every funnel result also carries its
 denominators: `total_paths`, or `funnel1_total_paths` / `funnel2_total_paths`.
 An estimate that does not exist (an interval over zero paths, a test where both
 groups convert at 0% or 100%) is `NaN`, never 0.

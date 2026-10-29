@@ -104,7 +104,7 @@ def test_diff_matches_hand_counts(stream) -> None:
     z = (k1 / n1 - k2 / n2) / np.sqrt(pooled * (1 - pooled) * (1 / n1 + 1 / n2))
     assert row.p_value == pytest.approx(2 * stats.norm.sf(abs(z)))
     assert row.delta_ci_low < row.delta < row.delta_ci_high
-    assert row.excluded_paths == 0
+    assert "unassigned_paths" not in row.index  # overlapping groups raise instead
     ref = stats.binomtest(int(k1), int(n1)).proportion_ci(0.95, method="wilson")
     assert row.group1_conversion_rate_ci_low == pytest.approx(ref.low)
 

@@ -169,8 +169,8 @@ times counts once. For a per-visit figure, carve out the subpopulation with
 1. `get_sample_ratio(segment_col="<arm col>")` — before any metric. Quote its
    `reading`. `mismatch=true` (arms off the planned split, or paths carrying two arms)
    means the assignment or the logging is broken; report that and stop. With
-   `by="day"` or `by="<segment fixed at assignment>"` the `reading` also names the
-   groups that mismatch — a mismatch in one platform or from one day on voids the test
+   `period="D"` or `strata_col="<segment fixed at assignment>"` the `reading` also
+   names the days or strata that mismatch — a mismatch in one platform or from one day on voids the test
    even when the overall split looks fine.
 2. `get_ab_test(diff=["<arm col>", "treatment", "control"], metrics=[...])` with a few
    metrics decided up front, each with a `name`:
@@ -205,14 +205,16 @@ assigned users, `assigned_at`, `horizon`) needs the Python API
 (`Eventstream.get_ab_test(assignment=...)`). Quote `warnings` if the call returns any.
 
 **Reading the verdict:** `increase` / `decrease` come from the multiplicity-adjusted
-p-value (`alpha_used` is the per-comparison level after the correction).
+p-value: `p_value_adjusted` below `1 - ci_level` (`mde_alpha` is only the level the
+`mde` is computed at; do not compare p-values with it).
 `inconclusive` is not "no effect": report the interval as the range of effects the
 data still allow, by quoting the row's `reading`. The `mde` is the effect the test detects with 80 % power at the
 corrected alpha, a design quantity: never say the effect is smaller than the `mde`.
-`insufficient_data`: pooled support below `min_events`; report its estimates
+`insufficient_data`: pooled support (paths, not events) below `min_support`; report its estimates
 descriptively. `support_warning="no_data"`: no path of either arm has the
 behaviour — say "no data in either arm", not "one arm only". `support_warning="one_arm_only"`: the behaviour exists in one arm only;
-the test stands, say so next to it. `descriptive`: rows of
+the test stands, say so next to it. `support_warning="invalid_replicates"`: a
+bootstrap row with no interval or p-value; report its estimate descriptively. `descriptive`: rows of
 `period_population="active"` (survivors), no p-value. Strata are the top 3 by |delta|
 (`strata_selection`): exploratory unless `strata_pre_exposure` is true.
 

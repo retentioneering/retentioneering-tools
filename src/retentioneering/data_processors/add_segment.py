@@ -342,6 +342,48 @@ def _broadcast_path_values(ids: pd.Series, series: pd.Series) -> pd.Series:
     return mapped
 
 
+#: Below this share of `path_values` ids found among the eventstream's paths,
+#: `add_segment` warns (the same rule as `get_ab_test(assignment=...)`).
+MIN_MATCHED_SHARE = 0.5
+
+
+def _check_path_value_ids(ids: pd.Series, series: pd.Series, pid_col: str) -> None:
+    """Raise when no `path_values` id is a path id, warn when under half are.
+
+    A mapping keyed by another column or grain (user ids with `path_col` set to
+    sessions) would otherwise leave every path `<MISSING>` without a word.
+    """
+    from retentioneering.tools._diff import warn_user
+
+    n_keys = len(series)
+    if n_keys == 0:
+        return
+    stream_ids = pd.Index(pd.unique(ids.astype(object)))
+    keys = pd.Index(series.index)
+    matched = keys.isin(stream_ids)
+    if not matched.any() and all(isinstance(k, str) for k in keys):
+        matched = keys.isin(stream_ids.astype(str))
+    n_matched = int(matched.sum())
+    detail = (
+        f"only {n_matched} of {n_keys} path_values ids "
+        f"({n_matched / n_keys:.0%}) match a '{pid_col}' id of the eventstream "
+        f"(path_values ids e.g. {list(keys[:3])}, eventstream ids e.g. "
+        f"{list(stream_ids[:3])})"
+    )
+    if n_matched == 0:
+        raise InvalidParameterError(
+            "path_values",
+            f"{detail}; every path would get no value",
+            [f"one value per '{pid_col}' id (set path_col to the mapping's grain)"],
+        )
+    if n_matched < MIN_MATCHED_SHARE * n_keys:
+        warn_user(
+            f"{detail}; the rest are ignored. That is right when the mapping covers "
+            "more paths than this eventstream holds, and wrong when it is keyed by "
+            f"another column: index it by '{pid_col}' or set path_col."
+        )
+
+
 class AddSegment(DataProcessor):
     name: str
     rules: Collection | None
@@ -550,6 +592,7 @@ class AddSegment(DataProcessor):
                     PROCESSOR_NAME,
                     f"path_col '{pid_col}' must be one of schema.path_cols: {schema.path_cols}.",
                 )
+            _check_path_value_ids(df[pid_col], self.path_values, pid_col)
             mapped = _broadcast_path_values(df[pid_col], self.path_values)
             new_df = df.copy()
             if isinstance(self.path_values.dtype, pd.CategoricalDtype):

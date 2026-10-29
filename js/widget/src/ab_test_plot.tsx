@@ -32,20 +32,19 @@ export interface ABRow {
   rel_delta_ci_high?: number | null;
   p_value?: number | null;
   p_value_adjusted?: number | null;
-  alpha_used?: number | null;
+  mde_alpha?: number | null;
   correction_family?: string;
   mde?: number | null;
   rel_mde?: number | null;
   verdict?: string;
   test?: string;
   support_warning?: string;
-  low_support?: boolean;
   reading?: string | null;
   group1_share?: number | null;
   group2_share?: number | null;
   balance_p_value?: number | null;
   heterogeneity_p_value?: number | null;
-  heterogeneity_df?: number | null;
+  heterogeneity_dof?: number | null;
   heterogeneity_strata_used?: number | null;
   stratum_vs_rest_p_value?: number | null;
   exploratory?: boolean;
@@ -124,6 +123,7 @@ export const VERDICT_LABELS: Record<string, string> = {
 
 const SUPPORT_NOTES: Record<string, string> = {
   one_arm_only: "The behaviour exists in one arm only: the pooled test is valid, the behaviour is new.",
+  invalid_replicates: "More than 1 % of bootstrap replicates had no value in an arm: no interval or p-value, the estimate is descriptive.",
   low_support: "Few supporting paths behind a bootstrap interval: percentile intervals under-cover here.",
 };
 
@@ -403,7 +403,7 @@ export function ScorecardTable({ rows, result }: { rows: ABRow[]; result: ABResu
             <th style={th}>Δ ({g1} − {g2})</th>
             <th style={th}>Relative</th>
             <th style={th} title="p-value after the correction within the metric's family">p adj</th>
-            <th style={th} title="Minimum detectable effect at alpha_used and the requested power: a design quantity, not a bound on the effect">MDE</th>
+            <th style={th} title="Minimum detectable effect at mde_alpha and the requested power: a design quantity, not a bound on the effect">MDE</th>
             <th style={{ ...th, textAlign: "left" }}>Verdict</th>
             {hasWarning && <th style={{ ...th, textAlign: "left" }}>Support</th>}
             {hasReading && <th style={{ ...th, textAlign: "left" }}>Reading</th>}
@@ -426,7 +426,7 @@ export function ScorecardTable({ rows, result }: { rows: ABRow[]; result: ABResu
                 </td>
                 <td style={td}>{fmtRel(row.rel_delta)}
                   <div style={sub}>[{fmtRel(row.rel_delta_ci_low)}, {fmtRel(row.rel_delta_ci_high)}]</div></td>
-                <td style={td} title={`raw ${formatPValue(row.p_value)}; ${row.correction_family ?? ""}; alpha_used ${isNum(row.alpha_used) ? +row.alpha_used.toFixed(4) : "n/a"}`}>
+                <td style={td} title={`raw ${formatPValue(row.p_value)}; ${row.correction_family ?? ""}; mde_alpha ${isNum(row.mde_alpha) ? +row.mde_alpha.toFixed(4) : "n/a"}`}>
                   {fmtP(row.p_value_adjusted)}
                 </td>
                 <td style={td}>{fmtMagnitude(row.mde, f)}</td>

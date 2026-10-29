@@ -6,7 +6,7 @@ import pytest
 from scipy import stats
 
 from retentioneering.eventstream.eventstream import Eventstream
-from retentioneering.exceptions import DiffConfigError, InvalidParameterError
+from retentioneering.exceptions import InvalidParameterError
 
 
 def _stream(arms: dict, extra=None, platform=None) -> Eventstream:
@@ -133,11 +133,29 @@ def test_assignment_disagreement_counts_as_multi_valued() -> None:
 
 
 def test_assignment_validation() -> None:
+    # a malformed table is an invalid `assignment`, as in get_ab_test
     stream = _stream(_arms(3, 3))
-    with pytest.raises(DiffConfigError):
+    with pytest.raises(InvalidParameterError, match="'assignment'"):
         stream.get_sample_ratio(
             "arm", assignment=pd.Series(["t", "c"], index=["t0", "t0"])
         )
+    with pytest.raises(InvalidParameterError, match="no 'arm'"):
+        stream.get_sample_ratio(assignment=pd.DataFrame({"group": ["t"]}, index=["t0"]))
+
+
+def test_segment_col_with_assignment() -> None:
+    stream = _stream(_arms(3, 3))
+    table = pd.Series(_arms(3, 3))
+    # the table alone: no segment column needed, or the table's own "arm"
+    alone = stream.get_sample_ratio(assignment=table)
+    assert alone["levels"]["paths"].sum() == 6
+    assert stream.get_sample_ratio("arm", assignment=table)["chi2"] == alone["chi2"]
+    # a typo would silently skip the stream-vs-table check
+    with pytest.raises(InvalidParameterError, match="'segment_col'"):
+        stream.get_sample_ratio("amr", assignment=table)
+    # without a table the column is required
+    with pytest.raises(InvalidParameterError, match="'segment_col'"):
+        stream.get_sample_ratio()
 
 
 def test_filtered_stream_with_inherited_shares() -> None:
@@ -168,26 +186,44 @@ def test_unassigned_paths() -> None:
     assert result["levels"]["paths"].sum() == 20
 
 
-def test_by_segment_and_day() -> None:
+def test_unassigned_paths_count_stream_paths_outside_the_table() -> None:
+    # 4 stream users have no row in the table: they have no arm, as get_ab_test says
+    stream = _stream(_arms(10, 10))
+    table = pd.Series(
+        {k: v for k, v in _arms(10, 10).items() if k not in "t0 t1 c0 c1"}
+    )
+    result = stream.get_sample_ratio("arm", assignment=table)
+    assert result["unassigned_paths"] == 4
+    assert result["levels"]["paths"].sum() == 16
+    scorecard = stream.get_ab_test(
+        ("arm", "treatment", "control"),
+        [{"metric": "has_event", "metric_args": {"event": "view"}}],
+        assignment=table,
+    )
+    assert scorecard["unassigned_paths"].iloc[0] == 4
+
+
+def test_strata_and_periods() -> None:
     arms = _arms(300, 300)
     platform = {u: ("ios" if i % 2 else "web") for i, u in enumerate(arms)}
     stream = _stream(arms, platform=platform)
-    result = stream.get_sample_ratio("arm", by="platform")
+    result = stream.get_sample_ratio("arm", strata_col="platform")
     levels = result["levels"]
     assert list(levels.columns) == [
-        "by",
+        "stratum",
         "level",
         "paths",
         "share",
         "expected_share",
         "expected_paths",
     ]
-    assert levels[levels.by == "<ALL>"]["paths"].sum() == 600
-    by_levels = result["by_levels"]
-    assert by_levels["by"].tolist() == ["ios", "web"]
-    assert by_levels["paths"].tolist() == [300, 300]
-    assert list(by_levels.columns) == [
-        "by",
+    assert levels[levels.stratum == "<ALL>"]["paths"].sum() == 600
+    strata = result["strata"]
+    assert result["strata_col"] == "platform"
+    assert strata["stratum"].tolist() == ["ios", "web"]
+    assert strata["paths"].tolist() == [300, 300]
+    assert list(strata.columns) == [
+        "stratum",
         "paths",
         "chi2",
         "dof",
@@ -197,12 +233,35 @@ def test_by_segment_and_day() -> None:
     ]
     assert result["chi2"] == pytest.approx(stream.get_sample_ratio("arm")["chi2"])
 
-    by_day = stream.get_sample_ratio("arm", by="day")["by_levels"]
-    assert by_day["by"].tolist() == ["2024-01-01", "2024-01-02", "2024-01-03"]
-    assert by_day["paths"].sum() == 600
+    days = stream.get_sample_ratio("arm", period="D")
+    assert days["period"] == "D"
+    assert days["periods"]["period"].tolist() == [
+        "2024-01-01",
+        "2024-01-02",
+        "2024-01-03",
+    ]
+    assert days["periods"]["paths"].sum() == 600
+    assert "by day: no group mismatches" in days["reading"]
+    weeks = stream.get_sample_ratio("arm", period="W")["periods"]
+    assert weeks["period"].tolist() == ["2024-01-01/2024-01-07"]
+    months = stream.get_sample_ratio("arm", period="M")["periods"]
+    assert months["period"].tolist() == ["2024-01"]
 
 
-def test_by_day_uses_assigned_at_and_assignment_columns() -> None:
+@pytest.mark.parametrize("period", ["2W", "7D", "12h", 3])
+def test_period_is_one_calendar_unit(period) -> None:
+    with pytest.raises(InvalidParameterError, match="'period'"):
+        _stream(_arms(5, 5)).get_sample_ratio("arm", period=period)
+
+
+def test_strata_and_period_together_are_refused() -> None:
+    arms = _arms(4, 4)
+    stream = _stream(arms, platform={u: "web" for u in arms})
+    with pytest.raises(InvalidParameterError, match="'period'"):
+        stream.get_sample_ratio("arm", strata_col="platform", period="D")
+
+
+def test_period_uses_assigned_at_and_strata_use_assignment_columns() -> None:
     stream = _stream(_arms(4, 4))
     users = [f"t{i}" for i in range(4)] + [f"c{i}" for i in range(4)]
     table = pd.DataFrame(
@@ -213,18 +272,18 @@ def test_by_day_uses_assigned_at_and_assignment_columns() -> None:
         },
         index=users,
     )
-    by_day = stream.get_sample_ratio("arm", assignment=table, by="day")["by_levels"]
-    assert by_day.set_index("by")["paths"].to_dict() == {
+    days = stream.get_sample_ratio("arm", assignment=table, period="D")["periods"]
+    assert days.set_index("period")["paths"].to_dict() == {
         "2024-03-01": 6,
         "2024-03-02": 2,
     }
-    by_country = stream.get_sample_ratio("arm", assignment=table, by="country")[
-        "by_levels"
+    countries = stream.get_sample_ratio("arm", assignment=table, strata_col="country")[
+        "strata"
     ]
-    assert by_country["paths"].tolist() == [4, 4]
+    assert countries["paths"].tolist() == [4, 4]
 
 
-def test_by_rejects_non_constant_segment() -> None:
+def test_strata_reject_a_non_constant_segment() -> None:
     arms = _arms(2, 2)
     stream = _stream(arms, platform={u: "web" for u in arms})
     df = stream.to_dataframe()
@@ -232,17 +291,17 @@ def test_by_rejects_non_constant_segment() -> None:
     df.loc[0, "platform"] = "ios"
     changed = Eventstream(df, {"segment_cols": ["arm", "platform"]})
     with pytest.raises(InvalidParameterError, match="changes within"):
-        changed.get_sample_ratio("arm", by="platform")
-    with pytest.raises(InvalidParameterError):
-        changed.get_sample_ratio("arm", by="event")
+        changed.get_sample_ratio("arm", strata_col="platform")
+    with pytest.raises(InvalidParameterError, match="'strata_col'"):
+        changed.get_sample_ratio("arm", strata_col="event")
 
 
-def test_by_adjusts_over_groups() -> None:
+def test_periods_are_adjusted_over_the_periods() -> None:
     rng = np.random.default_rng(0)
     arms = {f"u{i}": rng.choice(["a", "b"]) for i in range(400)}
-    result = _stream(arms).get_sample_ratio("arm", by="day")
-    by = result["by_levels"]
-    assert (by["p_value_adjusted"] >= by["p_value"]).all()
+    result = _stream(arms).get_sample_ratio("arm", period="D")
+    periods = result["periods"]
+    assert (periods["p_value_adjusted"] >= periods["p_value"]).all()
 
 
 def test_unit_guard() -> None:
@@ -272,16 +331,16 @@ def test_unit_guard() -> None:
 def test_assignment_ids_matched_by_string_form() -> None:
     arms = {str(i): ("treatment" if i % 2 else "control") for i in range(100)}
     stream = _stream({int(k): v for k, v in arms.items()})
-    result = stream.get_sample_ratio("arm", assignment=pd.Series(arms), by="day")
+    result = stream.get_sample_ratio("arm", assignment=pd.Series(arms), period="D")
     assert result["silent_paths"] == 0
     assert result["levels"]["paths"].sum() == 200  # the <ALL> rows + the days
-    assert result["by_levels"]["paths"].sum() == 100
+    assert result["periods"]["paths"].sum() == 100
 
 
 def test_assignment_ids_that_match_nothing_raise() -> None:
     stream = _stream(_arms(50, 50))
     table = pd.Series({k.upper(): v for k, v in _arms(50, 50).items()})
-    with pytest.raises(DiffConfigError, match="only 0 of 100"):
+    with pytest.raises(InvalidParameterError, match="only 0 of 100"):
         stream.get_sample_ratio("arm", assignment=table)
 
 

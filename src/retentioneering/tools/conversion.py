@@ -64,7 +64,6 @@ DIFF_COLUMNS = (
         "delta_ci_high",
         "p_value",
         "conditional",
-        "excluded_paths",
     ]
 )
 
@@ -199,7 +198,6 @@ class ConversionRate:
         out["conditional"] = [
             not _is_path_start(spec) for spec in starts for _ in range(n_ends)
         ]
-        out["excluded_paths"] = groups.excluded_paths
         return out[DIFF_COLUMNS].reset_index(drop=True)
 
     def _fit_single(

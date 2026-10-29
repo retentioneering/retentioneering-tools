@@ -115,9 +115,9 @@ COLUMNS: tuple[str, ...] = (
     "period_complete",
     "group1_paths",
     "group2_paths",
-    "group1_paths_no_events",
-    "group2_paths_no_events",
-    "excluded_paths",
+    "group1_silent_paths",
+    "group2_silent_paths",
+    "unassigned_paths",
     "immature_paths",
     "group1_value",
     "group1_ci_low",
@@ -137,7 +137,7 @@ COLUMNS: tuple[str, ...] = (
     "p_value",
     "p_value_adjusted",
     "correction_family",
-    "alpha_used",
+    "mde_alpha",
     "mde",
     "rel_mde",
     "verdict",
@@ -145,13 +145,12 @@ COLUMNS: tuple[str, ...] = (
     "ci_basis",
     "p_basis",
     "valid_replicates",
-    "low_support",
     "support_warning",
     "group1_share",
     "group2_share",
     "balance_p_value",
     "heterogeneity_p_value",
-    "heterogeneity_df",
+    "heterogeneity_dof",
     "heterogeneity_strata_used",
     "stratum_vs_rest_p_value",
     "strata_pre_exposure",
@@ -189,8 +188,17 @@ _BOOTSTRAP_CHUNK = 128
 #: Below this many supporting paths in an arm a bootstrap row gets
 #: ``support_warning="low_support"``: percentile intervals under-cover there.
 LOW_SUPPORT_PATHS = 30
-#: ``support_warning`` values.
-SUPPORT_WARNINGS = ("", "no_data", "one_arm_only", "low_support")
+#: Above this share of bootstrap replicates with no value in an arm, a bootstrap row
+#: gets ``support_warning="invalid_replicates"`` and NaN intervals, p-value and SE.
+MAX_INVALID_REPLICATES = 0.01
+#: ``support_warning`` values, in order of precedence.
+SUPPORT_WARNINGS = (
+    "",
+    "no_data",
+    "invalid_replicates",
+    "one_arm_only",
+    "low_support",
+)
 _DAY = pd.Timedelta(days=1)
 _HOUR = pd.Timedelta(hours=1)
 
@@ -730,7 +738,7 @@ class MetricMatrix:
         ``"declared"``, ``"recipe"`` or ``"not_pre_exposure"`` (see :func:`_strata_flag`).
     with_assignment : bool
         Whether an assignment table defined the population.
-    excluded_paths : int
+    unassigned_paths : int
         From the diff resolution.
     """
 
@@ -748,7 +756,7 @@ class MetricMatrix:
     strata_pre_exposure: bool | None = None
     strata_pre_exposure_source: str | None = None
     with_assignment: bool = False
-    excluded_paths: int = 0
+    unassigned_paths: int = 0
 
     # ------------------------------------------------------------------ build
     @classmethod
@@ -1015,7 +1023,7 @@ class MetricMatrix:
             strata_pre_exposure=pre_exposure,
             strata_pre_exposure_source=source,
             with_assignment=assignment is not None,
-            excluded_paths=int(groups.excluded_paths),
+            unassigned_paths=int(groups.unassigned_paths),
         )
 
     # ------------------------------------------------------------------ access
@@ -1215,7 +1223,7 @@ class ABTest:
     correction: str = "holm"
     n_bootstrap: int | str = 1000
     bootstrap_weights: str = "multinomial"
-    min_events: int = 10
+    min_support: int = 10
     random_state: int = 42
     period_population: str = "itt"
     has_horizon: bool = False
@@ -1244,7 +1252,7 @@ class ABTest:
         power: float = 0.8,
         n_bootstrap: int | str = 1000,
         bootstrap_weights: str = "multinomial",
-        min_events: int = 10,
+        min_support: int = 10,
         random_state: int = 42,
         path_col: str | None = None,
         strata_pre_exposure: bool | None = None,
@@ -1271,12 +1279,12 @@ class ABTest:
                 or value <= 0
             ):
                 raise InvalidParameterError(name, value, [allowed])
-        if isinstance(min_events, bool) or not isinstance(
-            min_events, (int, np.integer)
+        if isinstance(min_support, bool) or not isinstance(
+            min_support, (int, np.integer)
         ):
-            raise InvalidParameterError("min_events", min_events, ["an int >= 1"])
-        if min_events < 1:
-            raise InvalidParameterError("min_events", min_events, ["an int >= 1"])
+            raise InvalidParameterError("min_support", min_support, ["an int >= 1"])
+        if min_support < 1:
+            raise InvalidParameterError("min_support", min_support, ["an int >= 1"])
         if n_bootstrap != "auto" and (
             isinstance(n_bootstrap, bool)
             or not isinstance(n_bootstrap, (int, np.integer))
@@ -1395,7 +1403,7 @@ class ABTest:
             correction=correction,
             n_bootstrap=n_bootstrap,
             bootstrap_weights=bootstrap_weights,
-            min_events=int(min_events),
+            min_support=int(min_support),
             random_state=int(random_state),
             period_population=period_population if period is not None else "itt",
             has_horizon=horizon is not None,
@@ -1614,8 +1622,8 @@ class ABTest:
         record["group2_paths"] = int(in2.sum())
         if matrix.with_assignment:
             silent = ~matrix.has_events
-            record["group1_paths_no_events"] = int((in1 & silent).sum())
-            record["group2_paths_no_events"] = int((in2 & silent).sum())
+            record["group1_silent_paths"] = int((in1 & silent).sum())
+            record["group2_silent_paths"] = int((in2 & silent).sum())
         level = self.ci_level
         test = spec.test
         nan = float("nan")
@@ -1630,14 +1638,14 @@ class ABTest:
         else:
             s1 = int(((den > 0) & in1).sum())
             s2 = int(((den > 0) & in2).sum())
-        extra["support"] = s1 + s2 >= self.min_events
+        extra["support"] = s1 + s2 >= self.min_support
         extra["support_count"] = s1 + s2
         extra["non_support_count"] = None
         if spec.kind == "binary":
             n1, n2 = int(in1.sum()), int(in2.sum())
             extra["non_support_count"] = (n1 - s1) + (n2 - s2)
             extra["support"] = extra["support"] and (
-                (n1 - s1) + (n2 - s2) >= self.min_events
+                (n1 - s1) + (n2 - s2) >= self.min_support
             )
             extra["q_support"] = min(s1, s2) >= 5 and min(n1 - s1, n2 - s2) >= 5
         else:
@@ -1659,7 +1667,7 @@ class ABTest:
             support_warning = ""
 
         valid = pd.NA
-        low_support = False
+        invalid_replicates = False
         if test == "z_test":
             k1, n1 = float(num[in1].sum()), float(in1.sum())
             k2, n2 = float(num[in2].sum()), float(in2.sum())
@@ -1708,7 +1716,7 @@ class ABTest:
             g2 = sn2 / sd2 if sd2 > 0 else nan
             r1, r2, valid = reps
             n_boot = len(r1)
-            low_support = (n_boot - valid) > 0.01 * n_boot
+            invalid_replicates = (n_boot - valid) > MAX_INVALID_REPLICATES * n_boot
             d_reps = (r1 - r2)[:, None]
             l1, h1 = (x[0] for x in bs.percentile_ci(r1, level))
             l2, h2 = (x[0] for x in bs.percentile_ci(r2, level))
@@ -1726,7 +1734,7 @@ class ABTest:
             extra["mde_at"] = lambda a, se_f=se_f: _stats.mde_from_se(
                 se_f, a, self.power
             )
-            if low_support:
+            if invalid_replicates:
                 # an absent estimate is NaN: no interval, no p, no SE, no MDE
                 l1 = h1 = l2 = h2 = dl = dh = rl = rh = p = se = nan
                 extra["ci_at"] = lambda lv: (nan, nan)
@@ -1761,8 +1769,11 @@ class ABTest:
             ci_basis=_CI_BASIS[test],
             p_basis=_P_BASIS[test],
             valid_replicates=valid if test == "bootstrap" else pd.NA,
-            low_support=bool(low_support),
-            support_warning=support_warning,
+            support_warning=(
+                "invalid_replicates"
+                if invalid_replicates and support_warning != "no_data"
+                else support_warning
+            ),
         )
         return record, extra
 
@@ -1788,7 +1799,7 @@ class ABTest:
         return f"metric={metric}" + (f"/{' x '.join(dims)}" if dims else "")
 
     def _adjust(self, rows: pd.DataFrame, extras: list[dict]) -> pd.DataFrame:
-        """Apply the correction per family, add ``alpha_used``, ``mde`` at ``alpha_used``
+        """Apply the correction per family, add ``mde_alpha``, ``mde`` at ``mde_alpha``
         and ``verdict``."""
         adjust = {
             "holm": _stats.holm,
@@ -1799,17 +1810,17 @@ class ABTest:
         rows = rows.copy()
         rows["p_value_adjusted"] = np.nan
         rows["correction_family"] = ""
-        rows["alpha_used"] = self.alpha
+        rows["mde_alpha"] = self.alpha
         for metric, index in rows.groupby("metric", sort=False).groups.items():
             p = rows.loc[index, "p_value"].to_numpy(dtype=float)
             rows.loc[index, "p_value_adjusted"] = adjust(p)
             m = int(np.isfinite(p).sum())
             if self.correction != "none" and m > 1:
-                rows.loc[index, "alpha_used"] = self.alpha / m
+                rows.loc[index, "mde_alpha"] = self.alpha / m
             rows.loc[index, "correction_family"] = self._family_label(metric)
         mde, low_adj, high_adj = [], [], []
         for pos, extra in enumerate(extras):
-            a = float(rows["alpha_used"].iloc[pos])
+            a = float(rows["mde_alpha"].iloc[pos])
             mde.append(
                 float("nan") if extra["descriptive"] else float(extra["mde_at"](a))
             )
@@ -1896,7 +1907,7 @@ class ABTest:
             )
             het_p[pos], het_df[pos], het_used[pos] = p_q, df_q, used
         rows["heterogeneity_p_value"] = het_p
-        rows["heterogeneity_df"] = het_df
+        rows["heterogeneity_dof"] = het_df
         rows["heterogeneity_strata_used"] = het_used
 
         vs_rest = []
@@ -1948,7 +1959,7 @@ class ABTest:
     def _finalise(self, rows: pd.DataFrame, extras: list[dict]) -> pd.DataFrame:
         matrix = self.matrix
         rows = rows.copy()
-        rows["excluded_paths"] = matrix.excluded_paths
+        rows["unassigned_paths"] = matrix.unassigned_paths
         if matrix.periods is not None:
             meta = matrix.periods.set_index("period")
             rows["period_start"] = rows["period"].map(meta["period_start"])
@@ -1974,7 +1985,7 @@ class ABTest:
                 kind=extra["kind"],
                 correction=self.correction,
                 alpha=self.alpha,
-                min_events=self.min_events,
+                min_support=self.min_support,
                 support_count=extra["support_count"],
                 non_support_count=extra["non_support_count"],
                 window=self._window(row),
@@ -2077,7 +2088,7 @@ def row_reading(
     kind: str,
     correction: str,
     alpha: float,
-    min_events: int,
+    min_support: int,
     support_count: int,
     non_support_count: int | None = None,
     window: str | None = None,
@@ -2103,7 +2114,7 @@ def row_reading(
         The scorecard's ``correction``.
     alpha : float
         ``1 - ci_level``.
-    min_events : int
+    min_support : int
         The support threshold.
     support_count, non_support_count : int
         Pooled support (paths with the event, a non-zero numerator or a value) and,
@@ -2119,8 +2130,8 @@ def row_reading(
     verdict = row["verdict"]
     adjusted = (
         correction != "none"
-        and _finite(row["alpha_used"])
-        and row["alpha_used"] < alpha * (1 - 1e-12)
+        and _finite(row["mde_alpha"])
+        and row["mde_alpha"] < alpha * (1 - 1e-12)
     )
     after = f" after {correction}" if adjusted else ""
     p_adj = row["p_value_adjusted"]
@@ -2149,12 +2160,12 @@ def row_reading(
             "active population: not randomised, describes who was active in the period"
         )
     elif verdict == "insufficient_data":
-        if support_count < min_events:
-            parts.append(f"pooled support {support_count} < min_events {min_events}")
+        if support_count < min_support:
+            parts.append(f"pooled support {support_count} < min_support {min_support}")
         else:
             parts.append(
                 f"pooled paths without the event {non_support_count} < "
-                f"min_events {min_events}"
+                f"min_support {min_support}"
             )
         parts.append("estimate shown descriptively")
     elif verdict in ("increase", "decrease"):
@@ -2173,10 +2184,10 @@ def row_reading(
             parts.append(f"relative {_signed(pct, 1 if abs(pct) < 10 else 0)} %")
     else:  # inconclusive
         if not _finite(p_adj):
-            if row.get("low_support"):
+            if row.get("support_warning") == "invalid_replicates":
                 parts.append(
                     "no interval or p-value: more than 1 % of bootstrap replicates "
-                    "had no supporting path (low_support); estimate shown descriptively"
+                    "had no value in an arm; estimate shown descriptively"
                 )
             elif _finite(row["delta_se"]) and row["delta_se"] == 0:
                 parts.append("no p-value: the metric is constant in both arms")
@@ -2207,7 +2218,7 @@ def row_reading(
             dec = 2 if kind == "binary" else _decimals(mde_s)
             design = (
                 f"the design detects {abs(mde_s):.{dec}f}{unit} at alpha "
-                f"{row['alpha_used']:.4g}"
+                f"{row['mde_alpha']:.4g}"
             )
             needed = _paths_needed(mde_s)
             if needed is not None:

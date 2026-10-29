@@ -235,7 +235,7 @@ def run(data_dir: Path, report: Report) -> None:
 
     with report.step("get_ab_test: 5 metrics, assignment table (ITT)"):
         itt = stream.get_ab_test(DIFF, METRICS, assignment=groups)
-        print(itt[SHOW + ["group1_paths_no_events"]].to_string(index=False))
+        print(itt[SHOW + ["group1_silent_paths"]].to_string(index=False))
 
     with report.step('get_ab_test: period="W", assignment table'):
         weekly = stream.get_ab_test(DIFF, METRICS, assignment=groups, period="W")

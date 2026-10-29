@@ -95,7 +95,7 @@ class TestSingleCi:
             assert s["step_conversion_rate_ci_low"] == pytest.approx(float(lo))
             assert s["step_conversion_rate_ci_high"] == pytest.approx(float(hi))
             prev = s["unique_paths"]
-        assert "correction" not in r and "excluded_paths" not in r
+        assert "correction" not in r
 
     def test__step_rate_after_an_empty_step_stays_zero_with_a_nan_interval(
         self,
@@ -128,7 +128,7 @@ class TestDiffCi:
             "p_value": "pooled_z",
         }
         assert r["correction"] == "none" and r["correction_family"] == "none"
-        assert r["excluded_paths"] == 0
+        assert "unassigned_paths" not in r  # overlapping groups raise instead
         s = r["steps"][1]
         k1, k2 = s["funnel1_unique_paths"], s["funnel2_unique_paths"]
         lo, hi = wilson_ci(k1, n1, 0.95)

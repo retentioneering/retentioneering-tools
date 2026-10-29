@@ -19,7 +19,7 @@ with no value and ``<REST>`` (second value only) means every other level.
 Examples
 --------
 >>> groups = resolve_diff(stream, ("exp_group", "treatment", "control"))
->>> groups.n1(), groups.n2(), groups.excluded_paths
+>>> groups.n1(), groups.n2(), groups.unassigned_paths
 (19954, 20046, 0)
 """
 
@@ -38,6 +38,7 @@ import pandas as pd
 from retentioneering.exceptions import (
     DiffConfigError,
     EmptyEventstreamError,
+    InvalidParameterError,
     PathIdNotFoundError,
     SegmentLevelNotFoundError,
 )
@@ -58,6 +59,8 @@ __all__ = [
 REST = "<REST>"
 MISSING = "<MISSING>"
 MULTI = "<MULTI>"
+#: The arm column of an assignment table; also a valid ``diff[0]`` with ``assignment``.
+ASSIGNMENT_ARM = "arm"
 
 _HINT = (
     "An experiment compares paths, so every path must sit in exactly one group: "
@@ -98,11 +101,10 @@ class DiffGroups:
     label1, label2 : str
         Human labels (segment values, ``"group1"``/``"group2"`` for id lists, or arm
         names from an assignment table; ``<REST>`` for the complement).
-    excluded_paths : int
-        Paths that cannot be attributed to one group. Segment and id forms: paths that
-        matched both groups or carry a non-constant segment value (always 0 with
-        ``require_constant=True``, which raises instead). Assignment form: paths of the
-        stream that the assignment table does not list (outside the ITT population).
+    unassigned_paths : int
+        Paths of the stream (at ``path_col``) that fall in neither group: another
+        segment level, ids in neither list, or (assignment form) paths the table does
+        not list or lists under a third arm. They are outside the compared population.
     basis : str
         ``"segment"``, ``"ids"`` or ``"assignment"``.
     """
@@ -111,7 +113,7 @@ class DiffGroups:
     ids2: pd.Index
     label1: str
     label2: str
-    excluded_paths: int
+    unassigned_paths: int
     basis: str
 
     def n1(self) -> int:
@@ -198,33 +200,35 @@ def normalize_assignment(assignment: pd.Series | pd.DataFrame) -> pd.DataFrame:
 
     Raises
     ------
-    DiffConfigError
+    InvalidParameterError
         Not a Series/DataFrame, no ``arm`` column, empty, or a non-unique index.
     """
+    shape = [
+        "a Series path id -> arm, or a DataFrame indexed by path id with an 'arm' column"
+    ]
     if isinstance(assignment, pd.Series):
         table = assignment.to_frame("arm")
     elif isinstance(assignment, pd.DataFrame):
         if "arm" not in assignment.columns:
-            raise DiffConfigError(
-                "assignment DataFrame needs an 'arm' column (index = path id); "
-                f"got columns {list(assignment.columns)}"
+            raise InvalidParameterError(
+                "assignment",
+                f"a DataFrame with columns {list(assignment.columns)} and no 'arm'",
+                shape,
             )
         cols = ["arm"] + (
             ["assigned_at"] if "assigned_at" in assignment.columns else []
         )
         table = assignment[cols].copy()
     else:
-        raise DiffConfigError(
-            "assignment must be a pandas Series (path id -> arm) or a DataFrame "
-            f"with an 'arm' column, got {type(assignment).__name__}"
-        )
+        raise InvalidParameterError("assignment", type(assignment).__name__, shape)
     if table.empty:
-        raise DiffConfigError("assignment table is empty")
+        raise InvalidParameterError("assignment", "an empty table", shape)
     if not table.index.is_unique:
         dup = table.index[table.index.duplicated()].unique()
-        raise DiffConfigError(
-            f"assignment index must be unique (one arm per path); {len(dup)} path id(s) "
-            f"repeat, e.g. {list(dup[:5])}"
+        raise InvalidParameterError(
+            "assignment",
+            f"{len(dup)} path id(s) repeat in the index, e.g. {list(dup[:5])}",
+            ["an index with one row per path (one arm per path)"],
         )
     arm = table["arm"].astype(object)
     table["arm"] = arm.where(arm.notna(), MISSING)
@@ -249,7 +253,7 @@ def align_assignment(
 
     Raises
     ------
-    DiffConfigError
+    InvalidParameterError
         No table id matches a path id of ``path_col`` even by string form: the table
         is keyed by another column or grain (a session table analysed per user), or
         the ids are spelled differently.
@@ -283,9 +287,10 @@ def align_assignment(
         f"{list(stream_ids[:3])})"
     )
     if n_matched == 0 and n_table:
-        raise DiffConfigError(
-            f"{detail}; every path would count as silent. Index the table by "
-            f"'{path_col}', the grain the analysis runs at."
+        raise InvalidParameterError(
+            "assignment",
+            f"{detail}; every path would count as silent",
+            [f"a table indexed by '{path_col}' ids, the grain the analysis runs at"],
         )
     if n_matched < MIN_MATCHED_SHARE * n_table:
         warn_user(
@@ -352,6 +357,14 @@ def _assignment_groups(stream, diff, path_col, assignment):
             "arms of the assignment table"
         )
     segment_col, v1, v2 = diff[0], diff[1], diff[2]
+    segment_cols = list(stream.schema.segment_cols)
+    if segment_col != ASSIGNMENT_ARM and segment_col not in segment_cols:
+        # a typo here would silently skip the check that the stream agrees with the table
+        raise DiffConfigError(
+            f"with assignment=, diff[0] must be {ASSIGNMENT_ARM!r} (the table's arm "
+            "column) or a segment column of the stream whose arm must agree with "
+            f"the table; got {segment_col!r}, segment columns: {segment_cols}"
+        )
     table = normalize_assignment(assignment)
     arms = set(table["arm"].unique().tolist())
     v1 = coerce_level(v1, arms)
@@ -384,9 +397,6 @@ def _assignment_groups(stream, diff, path_col, assignment):
     paths1 = table.index[table["arm"] == v1]
     paths2 = table.index[table["arm"].isin(v2_vals)]
 
-    stream_paths = pd.Index(pd.unique(stream.df[path_col]))
-    excluded = int((~stream_paths.isin(table.index)).sum())
-
     if segment_col in stream.schema.segment_cols:
         labels = per_path_label(stream.df, segment_col, path_col)
         labels = labels[labels != MISSING]
@@ -406,7 +416,7 @@ def _assignment_groups(stream, diff, path_col, assignment):
                 f"{len(disagree)} path(s), e.g. {list(disagree[:5])}: the arm a path "
                 "was assigned to must be the arm its events carry."
             )
-    return paths1, paths2, str(v1), str(v2), excluded
+    return paths1, paths2, str(v1), str(v2)
 
 
 def resolve_diff(
@@ -433,13 +443,14 @@ def resolve_diff(
         segment that is not constant per path) raises ``DiffConfigError`` with the
         counts and the hint to use ``path_col="session_id"`` or a path-level segment.
         When False (legacy event-level behaviour used by ``Eventstream._split_two``),
-        such paths are counted in ``excluded_paths`` and kept in both groups.
+        such paths are kept in both groups.
     assignment : pandas.Series or pandas.DataFrame, optional
         Per-path arm table (index = path id; values or column ``arm``). When given, the
         populations are the table's rows for the two labels (including paths with no
         events in ``stream``), and ``diff`` must be the segment form whose values are the
         two arms; a path whose segment disagrees with the table raises ``DiffConfigError``.
-        The agreement check runs only when ``diff[0]`` is a segment column of ``stream``.
+        ``diff[0]`` is ``"arm"`` (the table alone) or a segment column of ``stream``,
+        whose per-path value must then agree with the table.
 
     Returns
     -------
@@ -449,8 +460,11 @@ def resolve_diff(
     ------
     DiffConfigError
         Malformed ``diff``; overlapping groups or both values naming the same level
-        (or arm) with ``require_constant=True``; assignment index not unique;
-        assignment and segment disagree.
+        (or arm) with ``require_constant=True``; with ``assignment``, ``diff[0]``
+        neither ``"arm"`` nor a segment column, or a segment that disagrees with the
+        table.
+    InvalidParameterError
+        A malformed assignment table (see :func:`normalize_assignment`).
     SegmentLevelNotFoundError
         A segment value does not occur (and is not ``<REST>``/``<MISSING>``).
     PathIdNotFoundError
@@ -466,7 +480,7 @@ def resolve_diff(
         )
 
     if assignment is not None:
-        paths1, paths2, label1, label2, excluded = _assignment_groups(
+        paths1, paths2, label1, label2 = _assignment_groups(
             stream, diff, path_col, assignment
         )
         basis = "assignment"
@@ -489,7 +503,6 @@ def resolve_diff(
                     f"{overlap} path(s) fall in both groups ({label1!r} and "
                     f"{label2!r}). {_HINT}"
                 )
-            excluded = non_constant
             basis = "segment"
         else:
             ids1, ids2 = list(diff[0]), list(diff[1])
@@ -504,7 +517,6 @@ def resolve_diff(
                     f"{overlap} path id(s) appear in both groups "
                     f"(group1: {len(paths1)}, group2: {len(paths2)}). {_HINT}"
                 )
-            excluded = overlap
             label1, label2 = "group1", "group2"
             basis = "ids"
 
@@ -512,11 +524,13 @@ def resolve_diff(
         raise EmptyEventstreamError("first diff group is empty")
     if len(paths2) == 0:
         raise EmptyEventstreamError("second diff group is empty")
+    stream_paths = pd.Index(pd.unique(stream.df[path_col]))
+    grouped = pd.Index(paths1).append(pd.Index(paths2))
     return DiffGroups(
         ids1=_sorted_index(paths1),
         ids2=_sorted_index(paths2),
         label1=label1,
         label2=label2,
-        excluded_paths=int(excluded),
+        unassigned_paths=int((~stream_paths.isin(grouped)).sum()),
         basis=basis,
     )

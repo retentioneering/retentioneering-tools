@@ -1652,6 +1652,57 @@ class ABTest:
         columns = [c for c in BOOTSTRAP_COLUMNS if c in out.columns]
         return out[columns]
 
+    def contrast_summary(
+        self, contrast: dict[str, tuple[list[str], list[str]]]
+    ) -> pd.DataFrame:
+        """One row per metric (× stratum) × contrast: the point estimate of each
+        arm's change between the two sides, its delta, the percentile interval at
+        ``ci_level`` and the bootstrap-SE p-value of the joint replicates, and the
+        share of replicates with a positive delta (the numbers-only MCP view of
+        :meth:`bootstrap`)."""
+        if not contrast:
+            raise InvalidParameterError(
+                "contrast", contrast, ["{'name': (periods_a, periods_b)}"]
+            )
+        num, den, sides = self._contrast_columns(contrast)
+        arm = self.matrix.arm
+        with np.errstate(invalid="ignore", divide="ignore"):
+            v1 = num[arm == 0].sum(axis=0) / den[arm == 0].sum(axis=0)
+            v2 = num[arm == 1].sum(axis=0) / den[arm == 1].sum(axis=0)
+        keys = ["metric"] + (["stratum"] if "stratum" in sides.columns else [])
+        reps = self.bootstrap(contrast)
+        reps = reps[reps["contrast"].notna()]
+        rows = []
+        for name in contrast:
+            part = sides[sides["contrast"] == name]
+            for key, group in part.groupby(keys, sort=False, dropna=False):
+                key = key if isinstance(key, tuple) else (key,)
+                a = sides.index.get_loc(group.index[group["side"] == "a"][0])
+                b = sides.index.get_loc(group.index[group["side"] == "b"][0])
+                g1, g2 = float(v1[a] - v1[b]), float(v2[a] - v2[b])
+                mask = reps["contrast"] == name
+                for col, value in zip(keys, key):
+                    mask &= reps[col].isna() if pd.isna(value) else reps[col] == value
+                d = reps.loc[mask, "delta"].to_numpy(dtype=float)
+                low, high = bs.percentile_ci(d[:, None], self.ci_level)
+                finite = d[np.isfinite(d)]
+                row = dict(zip(keys, key))
+                row.update(
+                    contrast=name,
+                    group1_value=g1,
+                    group2_value=g2,
+                    delta=g1 - g2,
+                    delta_ci_low=float(low[0]),
+                    delta_ci_high=float(high[0]),
+                    p_value=float(bs.bootstrap_p(np.array([g1 - g2]), d[:, None])[0]),
+                    share_positive=(
+                        float((finite > 0).mean()) if len(finite) else float("nan")
+                    ),
+                    valid_replicates=int(len(finite)),
+                )
+                rows.append(row)
+        return pd.DataFrame(rows)
+
     def paths(self) -> pd.DataFrame:
         """The per-path table behind the scorecard (see :func:`ab_paths`)."""
         matrix = self.matrix

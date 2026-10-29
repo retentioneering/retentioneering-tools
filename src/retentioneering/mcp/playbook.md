@@ -173,7 +173,9 @@ times counts once. For a per-visit figure, carve out the subpopulation with
    names the days or strata that mismatch — a mismatch in one platform or from one day on voids the test
    even when the overall split looks fine.
 2. `get_ab_test(diff=["<arm col>", "treatment", "control"], metrics=[...])` with a few
-   metrics decided up front, each with a `name`:
+   metrics decided up front, each with a `name` (arguments under `metric_args`;
+   `describe_tool("metrics")` lists the registry, `describe()` the arm names in
+   `segment_levels` and the money columns in `value_columns`):
    ```json
    [{"name": "conversion", "metric": "has_event", "metric_args": {"event": "purchase"}},
     {"name": "revenue", "metric": "column_sum", "metric_args": {"column": "amount"}},
@@ -190,19 +192,48 @@ times counts once. For a per-visit figure, carve out the subpopulation with
    "days 14-27 since assignment"): a period row is not the test's result, so
    always name the window when you quote a number. With several metrics each
    reading ends "corrected within this metric only; name one decision metric": ask
-   the user which metric decides before calling any row a win. `unit` says whether
+   the user which metric decides before calling any row a win (or pass
+   `correction_scope="all"` for a declared set of guardrails; every row's `scope`
+   says what it is corrected against). `unit` says whether
    the reading is in percentage points (`pp`, a 0/1 metric whose `delta` fields
    are shares) or in the metric's own unit (`value`).
 4. Optional: `strata_col=` for a segment fixed before exposure (platform at signup),
    `period="W"` for stability over time. Strata rows are adjusted with `correction`
    (`strata_correction_family`); `exploratory=true` (or `strata_pre_exposure` not
    true) means the strata may be post-exposure: report them as exploratory.
+5. Time: with the assignment table, `horizon="28D"` reads each user's first 28 days
+   (choose the window before reading: different horizons answer different
+   questions), and `period="14D", period_basis="since_assignment"` gives rows by
+   days since assignment. `get_ab_bootstrap(..., contrast={"novelty": [["0-13"],
+   ["28-41"]]})` puts one interval on "the early effect minus the late one".
+6. Finish: `export_report` needs at least one tab, and the numbers-only tools
+   register none. Add the scorecard as a tab with `add_ab_test(label=..., same
+   arguments)` (or an `add_segment_overview` by arm) before `check_analysis` and
+   `export_report`.
 
-Population through MCP: the stream's paths (users with at least one event) split by
-the arm segment, over the whole window; silent assigned users are not counted and
-there is no horizon. An intention-to-treat analysis over an assignment table (silent
-assigned users, `assigned_at`, `horizon`) needs the Python API
-(`Eventstream.get_ab_test(assignment=...)`). Quote `warnings` if the call returns any.
+Population (`population` on every row): with an assignment table in the session
+(`serve(stream, assignment=...)`; `describe()` shows `assignment`) every assigned
+user, silent ones included (intention to treat, `"assignment"`), and `horizon` /
+since-assignment periods work. Without one, the stream's paths (users with at least
+one event) split by the arm segment, over the whole window: silent assigned users
+are not counted, there is no horizon, and the funnel and the scorecard can differ
+from an ITT read. Say which population a number is about. Quote `warnings` if the
+call returns any.
+
+**A treatment that renames an event:** when the treatment logs a new event instead of
+an old one (`quick_add` instead of `add_to_cart`), a metric on the old event alone
+shows a huge, meaningless drop (`support_warning="one_arm_only"` on the new one).
+Compare the union: `{"metric": "has_any_event", "metric_args": {"events":
+["add_to_cart", "quick_add"]}}`.
+
+**Who does it help** (in this order): (1) SRM gate (`get_sample_ratio`, also by
+`period="D"` and by a signup stratum); (2) the scorecard on the decision metric;
+(3) strata declared before looking — segments fixed at signup
+(`segments_constant_per_path` in `describe()`) with `strata_pre_exposure=true`, and
+read `heterogeneity_p_value` before any single stratum; (4) only then descriptive
+looks at loops and conditional steps (`add_transition_graph` with `diff`,
+`get_conversion_rate`), labelled descriptive. A stratum found by looking is a
+hypothesis for a targeted follow-up test, not a result.
 
 **Reading the verdict:** `increase` / `decrease` come from the multiplicity-adjusted
 p-value: `p_value_adjusted` below `1 - ci_level` (`mde_alpha` is only the level the
@@ -212,9 +243,15 @@ data still allow, by quoting the row's `reading`. The `mde` is the effect the te
 corrected alpha, a design quantity: never say the effect is smaller than the `mde`.
 `insufficient_data`: pooled support (paths, not events) below `min_support`; report its estimates
 descriptively. `support_warning="no_data"`: no path of either arm has the
-behaviour — say "no data in either arm", not "one arm only". `support_warning="one_arm_only"`: the behaviour exists in one arm only;
+behaviour — say "no data in either arm", not "one arm only" — or a value / ratio
+metric has no value in one arm (the reading says which). `conditional=true`: the
+metric exists only for some paths (`time_between`, `column_mean`, order value), so
+the row compares those paths (`group1_support` of `group1_paths`), not the arms —
+never report it as the treatment's effect on everyone. `support_warning="one_arm_only"`: the behaviour exists in one arm only;
 the test stands, say so next to it. `support_warning="invalid_replicates"`: a
-bootstrap row with no interval or p-value; report its estimate descriptively. `descriptive`: rows of
+bootstrap row with no interval or p-value; report its estimate descriptively.
+`support_warning="low_support"`: a bootstrap row under 30 supporting paths per arm;
+its interval covers less than nominal, so call it tentative. `descriptive`: rows of
 `period_population="active"` (survivors), no p-value. Strata are the top 3 by |delta|
 (`strata_selection`): exploratory unless `strata_pre_exposure` is true.
 
@@ -225,7 +262,8 @@ bootstrap row with no interval or p-value; report its estimate descriptively. `d
   effect matters to the business.
 - **A longer horizon** — when the metric arrives late (a trial that converts after 14
   days, `period_complete=false` on the last periods, "window not complete" in the
-  `reading`), rerun with a declared observation window (`horizon=`, Python API).
+  `reading`), rerun with a declared observation window (`horizon=`, needs the
+  session's assignment table).
 - **A pre-declared stratum** — when the effect plausibly lives in one segment fixed
   before exposure (a platform at signup), call again with `strata_col=` and
   `strata_pre_exposure=true`, and say the stratum was chosen before looking; a

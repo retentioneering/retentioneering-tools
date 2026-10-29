@@ -293,3 +293,200 @@ class TestReading:
             inspect.getsource(_prompts).replace('",', "").replace('"', "").split()
         )
         assert "quote the row's reading and propose a next step" in prompts
+
+
+# ── wave 5: assignment table, horizon, scope, bootstrap, describe ────────────
+
+
+def _itt_session(n: int = 400) -> ReportSession:
+    """Users assigned over 20 days; every 10th user is silent (table only)."""
+    rows, table = [], {}
+    for i in range(n):
+        arm = "treatment" if i % 2 == 0 else "control"
+        at = pd.Timestamp("2024-01-01") + pd.Timedelta(hours=12 * (i % 40))
+        table[f"u{i}"] = (arm, at)
+        if i % 10 == 9:
+            continue
+        rows.append([f"u{i}", "visit", at + pd.Timedelta(hours=1), arm, "ios"])
+        buys = i % 4 in (0, 1) or (arm == "treatment" and i % 10 == 2)
+        if buys:
+            rows.append([f"u{i}", "order", at + pd.Timedelta(days=i % 9), arm, "ios"])
+            rows.append(
+                [f"u{i}", "order", at + pd.Timedelta(days=i % 9, hours=1), arm, "ios"]
+            )
+    df = pd.DataFrame(
+        rows, columns=["user_id", "event", "timestamp", "arm", "platform"]
+    )
+    df["value"] = [
+        10.0 + (i % 7) if e == "order" else None for i, e in enumerate(df["event"])
+    ]
+    stream = Eventstream(
+        df, {"segment_cols": ["arm", "platform"], "custom_cols": ["value"]}
+    )
+    assignment = pd.DataFrame.from_dict(
+        table, orient="index", columns=["arm", "assigned_at"]
+    )
+    return ReportSession(stream, {}, assignment=assignment)
+
+
+class TestAssignmentThroughMcp:
+    """U10: serve(stream, assignment=) reaches the A/B tools."""
+
+    def test_sample_ratio_counts_the_table(self) -> None:
+        session = _itt_session()
+        result = tools.get_sample_ratio(session)
+        json.dumps(result, allow_nan=False)
+        assert result["silent_paths"] == 40
+        assert sum(row["paths"] for row in result["levels"]) == 400
+        assert result["basis"].startswith("assignment table")
+        # the stream's arm segment is checked against the table
+        assert tools.get_sample_ratio(session, "arm")["multi_valued_paths"] == 0
+
+    def test_itt_scorecard_horizon_and_scope(self) -> None:
+        session = _itt_session()
+        metrics = _METRICS + [
+            {
+                "name": "aov",
+                "metric": "column_sum",
+                "metric_args": {"column": "value"},
+                "denominator": {
+                    "metric": "event_count",
+                    "metric_args": {"event": "order"},
+                },
+            }
+        ]
+        result = tools.get_ab_test(
+            session, ["arm", "treatment", "control"], metrics, horizon="14D"
+        )
+        json.dumps(result, allow_nan=False)
+        assert "error" not in result, result
+        assert result["population"] == "assignment"
+        assert result["immature_paths"] > 0
+        direct = session.active_stream.get_ab_test(
+            ("arm", "treatment", "control"),
+            metrics,
+            assignment=session.assignment,
+            horizon="14D",
+        )
+        conv, orders, aov = result["metrics"]
+        assert conv["group1_paths"] == direct["group1_paths"].iloc[0]
+        assert conv["reading"] == direct["reading"].iloc[0]
+        assert conv["reading"].startswith("within 14 days of assignment: ")
+        assert conv["population"] == "assignment"
+        assert not conv["conditional"] and aov["conditional"]
+        assert aov["group1_support"] < aov["group1_paths"]
+        for entry in result["metrics"]:
+            assert "not corrected against each other" in entry["scope"]
+            assert "p_value" in entry
+        joint = tools.get_ab_test(
+            session,
+            ["arm", "treatment", "control"],
+            _METRICS,
+            correction_scope="all",
+            test="auto",
+            period="7D",
+            period_basis="since_assignment",
+        )
+        assert "error" not in joint, joint
+        assert joint["metrics"][0]["correction_family"] == "all_metrics"
+        assert joint["metrics"][0]["scope"].startswith("holm across every row")
+        assert joint["metrics"][0]["periods"][0]["period"] == "0-6"
+        assert all(p["scope"] for p in joint["metrics"][0]["periods"])
+
+    def test_without_a_table_horizon_is_an_error(self) -> None:
+        result = tools.get_ab_test(
+            _ab_session(), ["arm", "treatment", "control"], _METRICS, horizon="7D"
+        )
+        assert "error" in result and "horizon" in result["error"]
+
+    def test_add_ab_test_uses_the_table(self) -> None:
+        session = _itt_session()
+        result = tools.add_ab_test(
+            session, "AB", ["arm", "treatment", "control"], _METRICS, horizon="7D"
+        )
+        assert "error" not in result, result
+        tab = session.pending_tabs[0]["data"]
+        assert tab["result"]["overall"][0]["population"] == "assignment"
+        assert tab["horizon"] == "7D"
+
+    def test_bootstrap_contrast(self) -> None:
+        session = _itt_session()
+        result = tools.get_ab_bootstrap(
+            session,
+            ["arm", "treatment", "control"],
+            _METRICS[:1],
+            period="7D",
+            contrast={"early_late": [["0-6"], ["7-13"]]},
+            period_basis="since_assignment",
+            n_bootstrap=200,
+        )
+        json.dumps(result, allow_nan=False)
+        assert "error" not in result, result
+        (row,) = result["rows"]
+        assert row["contrast"] == "early_late" and row["unit"] == "pp"
+        assert row["delta"] == pytest.approx(
+            row["group1_value"] - row["group2_value"], abs=1e-5
+        )
+        assert row["delta_ci_low"] <= row["delta_ci_high"]
+        assert 0 <= row["share_positive"] <= 1
+        assert result["population"] == "assignment"
+        assert "error" in tools.get_ab_bootstrap(
+            session, ["arm", "treatment", "control"], _METRICS[:1], "7D", {}
+        )
+
+    def test_load_data_drops_the_table(self, tmp_path) -> None:
+        session = _itt_session()
+        path = tmp_path / "events.csv"
+        session.active_stream.to_dataframe().to_csv(path, index=False)
+        assert "error" not in tools.load_data(session, str(path))
+        assert session.assignment is None
+
+
+class TestDescribeForExperiments:
+    def test_levels_values_constant_flags_and_table(self) -> None:
+        session = _itt_session()
+        result = tools.describe(session, {})
+        json.dumps(result)
+        assert result["segment_levels"]["arm"] == ["control", "treatment"]
+        assert result["segments_constant_per_path"]["arm"] == ["user_id"]
+        assert result["value_columns"] == ["value"]
+        assert result["assignment"]["paths"] == 400
+        assert result["assignment"]["arms"] == {"control": 200, "treatment": 200}
+        assert result["assignment"]["has_assigned_at"] is True
+        assert "assignment" not in tools.describe(_ab_session(), {})
+
+    def test_metrics_topic_lists_the_registry(self) -> None:
+        from retentioneering.metrics.metric_builder import VALID_METRICS
+
+        docs = tools.describe_tool("metrics")["docs"]
+        for metric in VALID_METRICS:
+            assert metric in docs, metric
+        assert "metric_args" in docs
+
+    def test_python_only_parameters_are_named(self) -> None:
+        out = tools.describe_tool("get_ab_test")
+        note = out["through_mcp"]
+        for name in ("assignment", "n_bootstrap", "min_support", "power"):
+            assert name in note, name
+        for name in ("horizon", "period_basis", "correction_scope"):
+            assert name not in note.split("available: ")[1].split(".")[0], name
+        assert tools.describe_tool("get_ab_bootstrap")["method"] == "get_ab_bootstrap"
+
+
+class TestServerWrappersInSync:
+    """ADR-0009: each A/B server wrapper takes the tool's parameters."""
+
+    def test_signatures(self) -> None:
+        from retentioneering.mcp.server import _build_server
+
+        server = _build_server(None, {})
+        registered = {t.name: t for t in server._tool_manager.list_tools()}
+        for name in (
+            "get_sample_ratio",
+            "get_ab_test",
+            "add_ab_test",
+            "get_ab_bootstrap",
+        ):
+            tool_params = list(inspect.signature(getattr(tools, name)).parameters)[1:]
+            schema = registered[name].parameters["properties"]
+            assert list(schema) == tool_params, name

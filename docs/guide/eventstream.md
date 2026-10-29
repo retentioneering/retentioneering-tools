@@ -221,6 +221,55 @@ stream.get_conversion_rate(
 
 **The unit is the path, not the occurrence.** A path where the start event happened three times counts once in the denominator, so "of 23,000 visits to this page, how many were entrances" is a different question this method does not answer — the per-visit figure can differ from the per-path one by several points. `path_col="session_id"` is usually the right lever: at session grain "added to cart" and "purchased" describe the same visit rather than the same person, and the lift stops being washed out by everything a user ever did.
 
+**Intervals and two-group comparisons.** `ci_level` adds a Wilson interval of the rate, and `diff` compares two groups of paths in one row:
+
+```python
+stream.get_conversion_rate("add_to_cart", "purchase", ci_level=0.95)
+# ... conversion_rate 0.569, conversion_rate_ci_low 0.526, conversion_rate_ci_high 0.611 ...
+
+stream.get_conversion_rate(
+    "add_to_cart", "purchase", path_col="session_id", diff=("platform", "mobile", "desktop")
+)
+```
+
+| group1_conversion_rate | group2_conversion_rate | delta | delta_ci_low | delta_ci_high | p_value |
+|---|---|---|---|---|---|
+| 0.240 | 0.330 | -0.090 | -0.144 | -0.034 | 0.0018 |
+
+Every per-path column comes once per group (`group1_paths_with_start`, `group1_converted`, `group1_conversion_rate` with its interval, `group1_base_rate`, `group1_lift`, and the same for `group2_`), followed by `delta` (group 1 minus group 2) with a Newcombe interval and a pooled two-proportion `p_value` (`NaN` when it is undefined). The groups are whole paths: on `load_ecom()` 180 users switch platform between sessions, so the same call at user grain raises `DiffConfigError` instead of counting those users in both groups — compare sessions, or carry a per-path label with `add_segment(path_values=...)`. The interval treats every path as an independent unit, which is right only when `path_col` is the unit that was assigned: sessions of a user-level experiment give intervals that are too narrow.
+
+### Path-level labels
+
+`get_path_segments(segment_col)` returns one value of a segment column per path, `<MULTI>` where it changes inside the path and `<MISSING>` where it is empty throughout:
+
+```python
+stream.get_path_segments("platform").value_counts()
+# desktop 229, <MULTI> 180, mobile 146, tablet 45
+stream.get_path_segments("platform", path_col="session_id").value_counts()   # no <MULTI>
+```
+
+It is the inverse of [`add_segment(name, path_values=...)`](/docs/data-processors/add-segment), which broadcasts one value per path onto every event — together they carry an assignment table onto the event log, or clusters found on a truncated stream back onto the full one. `<MULTI>` paths are what the inferential methods (`get_conversion_rate(diff=...)`, `get_sample_ratio`) refuse to split.
+
+### Sample ratio mismatch
+
+Before reading any metric of an experiment, check that the arms have the sizes the design promised. `get_sample_ratio()` counts paths per arm and tests them against the expected shares (chi-square goodness of fit):
+
+```python
+check = stream.get_sample_ratio("exp_group")                 # equal split expected
+check["mismatch"], check["p_value"], check["levels"]
+
+stream.get_sample_ratio(
+    "exp_group",
+    expected_shares={"control": 0.8, "treatment": 0.2},
+    assignment=groups,         # index user_id; columns arm and, optionally, assigned_at
+    by="day",                  # per assignment day, Holm-adjusted
+)
+```
+
+`levels` has one row per arm (`level`, `paths`, `share`, `expected_share`, `expected_paths`). `mismatch` is raised when `p_value < alpha` (default `0.001` — an SRM alarm gates every other result, so it is set strict) **or** when any path carries more than one arm (`multi_valued_paths`), which is an assignment bug whatever the shares say. With `assignment=` the counts come from the table, including users who never produced an event (`silent_paths`); without it they come from the stream. `by=` repeats the check per day of assignment or per segment fixed at assignment (`by_levels`, with Holm-adjusted p-values).
+
+Run it on the assignment or on the full stream. On a subset defined by behaviour — users who reached the cart — the shares differ whenever the treatment works, and that difference is an effect, not a bug: the chi-square there is the conversion test in disguise.
+
 ### Reproducing an eventstream
 
 Every processor call is recorded, so a derived eventstream can describe how it was built:

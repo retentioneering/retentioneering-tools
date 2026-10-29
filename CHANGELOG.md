@@ -50,6 +50,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- The source tree no longer carries a zero-byte `datasets/.!51949!ecom.csv.gz`,
+  a leftover of an interrupted copy that was tracked next to the real dataset.
 - `time_median` and `time_q95` edge weights in `transition_graph` and
   `transition_graph_data` measure the exact gap between events instead of
   counting whole-second boundaries, so a 125 ms span no longer reads as 0 s or

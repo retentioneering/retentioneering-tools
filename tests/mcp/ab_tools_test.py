@@ -427,7 +427,10 @@ class TestAssignmentThroughMcp:
         assert entry["population"] == "assignment"
         json.dumps(result, allow_nan=False)
         strata = tools.add_ab_test(
-            _itt_session(), "AB", ["arm", "treatment", "control"], _METRICS,
+            _itt_session(),
+            "AB",
+            ["arm", "treatment", "control"],
+            _METRICS,
             strata_col="platform",
         )
         entry = strata["metrics"][0]

@@ -277,6 +277,17 @@ class TestTraitlets:
         assert w.assignment_info == "arm,assigned_at"
         assert ABTestWidget(stream, assignment=table["arm"]).assignment_info == "arm"
 
+    def test__table_arms_offered_as_the_arm_column(self) -> None:
+        """R3C-05: diff=("arm", ...) names the table's arms; the sidebar lists them."""
+        stream = load_ab_test()
+        table = load_ab_test_assignment()
+        w = stream.ab_test(
+            ("arm", "treatment", "control"), NORTHWIND_METRICS[:1], assignment=table
+        )
+        assert json.loads(w.segment_levels)["arm"] == ["control", "treatment"]
+        assert "arm" not in json.loads(stream.ab_test(NORTHWIND_DIFF).segment_levels)
+        assert not w.error and _strict(w.result)["overall"]
+
 
 # ── state file and static export ─────────────────────────────────────────────
 

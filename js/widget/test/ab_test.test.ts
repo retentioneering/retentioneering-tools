@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import React from 'react';
 import { createRequire } from 'node:module';
 import {
-  ForestPlot, PeriodChart, ScorecardTable, StrataView,
+  ForestPlot, PeriodChart, ScorecardTable, ScorecardView, StrataView, SUPPORT_NOTES, familyText,
   fmtDelta, fmtInterval, fmtMagnitude, fmtRel, fmtValue, markerStyle, verdictColor, pointTitle,
   type ABRow, type ABResult,
 } from '../src/ab_test_plot';
-import { AB_METRIC_NAMES, isValidDuration, validateAbMetric } from '../src/ab_test';
+import { AB_METRIC_NAMES, armColumnChoices, isValidDuration, validateAbMetric } from '../src/ab_test';
 
 const { renderToStaticMarkup } = createRequire(import.meta.url)('react-dom/server');
 const count = (html: string, id: string) => html.split(`data-testid="${id}"`).length - 1;
@@ -185,4 +185,29 @@ test('metric editor offers one-number-per-path metrics and refuses what get_ab_t
   assert.equal(validateAbMetric({ metric: 'column_sum', metric_args: { column: 'v' }, denominator: { metric: 'length' } }, []), null);
   assert.ok(validateAbMetric({ metric: 'column_sum', metric_args: {} }, []));
   assert.ok(validateAbMetric({ name: 'x', metric: 'length' }, ['x', 'x']));
+});
+
+test('every support_warning value has a tooltip, no_data included', () => {
+  for (const warning of ['no_data', 'one_arm_only', 'invalid_replicates', 'low_support']) {
+    assert.ok(SUPPORT_NOTES[warning], warning);
+  }
+  const html = renderToStaticMarkup(React.createElement(ScorecardTable, {
+    rows: [{ ...loop, support_warning: 'no_data' }], result,
+  }));
+  assert.match(html, /title="No path of either arm has the behaviour/);
+});
+
+test('the interval note names the correction family of correction_scope', () => {
+  assert.equal(familyText(undefined), "within each metric's rows");
+  assert.equal(familyText('all'), 'across every row of every metric');
+  const all = renderToStaticMarkup(React.createElement(ScorecardView, { result: { ...result, correction_scope: 'all' } }));
+  assert.match(all, /holm across every row of every metric/);
+  const metric = renderToStaticMarkup(React.createElement(ScorecardView, { result }));
+  assert.match(metric, /holm within each metric&#x27;s rows/);
+});
+
+test('an assignment table adds its arm column to the arm choices', () => {
+  assert.deepEqual(armColumnChoices(['platform'], ''), ['platform']);
+  assert.deepEqual(armColumnChoices(['platform'], 'arm,assigned_at'), ['arm', 'platform']);
+  assert.deepEqual(armColumnChoices(['arm', 'platform'], 'arm'), ['arm', 'platform']);
 });

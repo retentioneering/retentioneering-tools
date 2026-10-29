@@ -21,6 +21,7 @@ const CI_LEVELS = [0.9, 0.95, 0.99];
 const CORRECTIONS: [string, string][] = [
   ["holm", "Holm"], ["bonferroni", "Bonferroni"], ["bh", "Benjamini–Hochberg"], ["none", "None"],
 ];
+const SCOPES: [string, string][] = [["metric", "Each metric"], ["all", "All metrics together"]];
 const TESTS: [string, string][] = [
   ["auto", "Auto (by metric kind)"], ["z_test", "z-test (0/1 metrics)"],
   ["welch_t_test", "Welch t-test"], ["bootstrap", "Bootstrap"],
@@ -200,6 +201,12 @@ interface SidebarProps {
   onOpenMetrics: () => void;
 }
 
+/** Columns that can name the arms: the stream's segments and, with an assignment
+ *  table, its `arm` column (`diff=("arm", ...)`, the table-only form). */
+export function armColumnChoices(segmentCols: string[], assignmentInfo: string): string[] {
+  return assignmentInfo && !segmentCols.includes("arm") ? ["arm", ...segmentCols] : segmentCols;
+}
+
 function Sidebar({ host, isStatic, isLoading, params, segLevels, segmentCols, pathCols, assignmentInfo, metricsCount, onOpenMetrics }: SidebarProps) {
   const disabled = isLoading || isStatic;
   const diff: unknown[] | null = params.diff;
@@ -228,6 +235,7 @@ function Sidebar({ host, isStatic, isLoading, params, segLevels, segmentCols, pa
     (list.some(([v]) => v === current) ? list : [...list, [current, current] as [string, string]])
       .map(([v, label]) => <option key={v} value={v}>{label}</option>);
   const strataChoices = segmentCols.filter(c => c !== segmentDiff?.[0]);
+  const armChoices = armColumnChoices(segmentCols, assignmentInfo);
 
   return (
     <div data-testid="ab-sidebar" style={{ width: SIDEBAR_W, minWidth: SIDEBAR_W, height: "100%", background: "#fff", borderLeft: "1px solid #e5e7eb", display: "flex", flexDirection: "column", overflow: "hidden", fontFamily: "system-ui, sans-serif" }}>
@@ -244,7 +252,7 @@ function Sidebar({ host, isStatic, isLoading, params, segLevels, segmentCols, pa
             <select aria-label="Arm column" value={seg} disabled={disabled} style={{ ...sel, marginBottom: 6 }}
               onChange={e => { const c = e.target.value; setSeg(c); const l = (segLevels[c] ?? []).map(String); setV1(l[0] ?? ""); setV2(l[1] ?? ""); }}>
               <option value="">— select —</option>
-              {segmentCols.map(c => <option key={c} value={c}>{c}</option>)}
+              {armChoices.map(c => <option key={c} value={c}>{c === "arm" && !segmentCols.includes("arm") ? "arm (assignment table)" : c}</option>)}
             </select>
             {seg && (
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -287,7 +295,12 @@ function Sidebar({ host, isStatic, isLoading, params, segLevels, segmentCols, pa
         <select aria-label="Correction" value={params.correction} disabled={disabled} style={sel} onChange={set("correction")}>
           {options(CORRECTIONS, params.correction)}
         </select>
-        <Hint>Within each metric's rows (its strata, its periods); metrics are separate families.</Hint>
+        <select aria-label="Correction family" value={params.correction_scope} disabled={disabled} style={{ ...sel, marginTop: 6 }} onChange={set("correction_scope")}>
+          {options(SCOPES, params.correction_scope)}
+        </select>
+        <Hint>{params.correction_scope === "all"
+          ? "One family over every row of every metric: a scorecard read without one decision metric."
+          : "Within each metric's rows (its strata, its periods); metrics are separate families."}</Hint>
         <div style={{ marginTop: 10 }}><SH>Test</SH></div>
         <select aria-label="Test" value={params.test} disabled={disabled} style={sel} onChange={set("test")}>
           {options(TESTS, params.test)}
@@ -364,7 +377,7 @@ function SidebarToggle({ onClick }: { onClick: () => void }) {
 
 const PARAM_KEYS = [
   "diff", "metrics", "strata_col", "strata_pre_exposure", "period", "period_basis", "period_population",
-  "horizon", "test", "correction", "ci_level", "path_col",
+  "horizon", "test", "correction", "correction_scope", "ci_level", "path_col",
 ];
 
 function readParams(host: RenderContext["host"]): Record<string, any> {
@@ -375,6 +388,7 @@ function readParams(host: RenderContext["host"]): Record<string, any> {
   }
   out.ci_level = Number(out.ci_level) || 0.95;
   out.correction = out.correction || "holm";
+  out.correction_scope = out.correction_scope || "metric";
   out.test = out.test || "auto";
   out.period_basis = out.period_basis || "calendar";
   return out;

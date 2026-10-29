@@ -62,6 +62,7 @@ export interface ABResult {
   group2_label?: string;
   ci_level?: number;
   correction?: string;
+  correction_scope?: string;
   strata_col?: string | null;
   period?: string | null;
   period_basis?: string | null;
@@ -121,7 +122,8 @@ export const VERDICT_LABELS: Record<string, string> = {
   descriptive: "descriptive",
 };
 
-const SUPPORT_NOTES: Record<string, string> = {
+export const SUPPORT_NOTES: Record<string, string> = {
+  no_data: "No path of either arm has the behaviour, or an arm has no estimate (no path, or no value): nothing to compare, no test.",
   one_arm_only: "The behaviour exists in one arm only: the pooled test is valid, the behaviour is new.",
   invalid_replicates: "More than 1 % of bootstrap replicates had no value in an arm: no interval or p-value, the estimate is descriptive.",
   low_support: "Few supporting paths behind a bootstrap interval: percentile intervals under-cover here.",
@@ -442,13 +444,18 @@ export function ScorecardTable({ rows, result }: { rows: ABRow[]; result: ABResu
   );
 }
 
-function intervalNote(result: ABResult) {
+/** Which rows one correction family holds, in words (`correction_scope`). */
+export function familyText(scope: string | undefined): string {
+  return scope === "all" ? "across every row of every metric" : "within each metric's rows";
+}
+
+export function intervalNote(result: ABResult) {
   const level = result.ci_level ?? 0.95;
   const correction = result.correction ?? "holm";
   return (
     <>
       {`${+(level * 100).toFixed(1)}%`} intervals, per comparison and never adjusted. The verdict reads the
-      p-value adjusted with {correction === "none" ? "no correction" : correction} within each metric's rows,
+      p-value adjusted with {correction === "none" ? "no correction" : correction} {familyText(result.correction_scope)},
       against {+(1 - level).toFixed(4)}; an interval can exclude 0 while the verdict stays inconclusive.
       Inconclusive is not "no effect": the interval shows which effects remain possible.
     </>

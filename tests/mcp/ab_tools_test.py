@@ -224,3 +224,68 @@ class TestAbDocsInSync:
         assert {p["verdict"] for p in result["metrics"][0]["periods"]} == {
             "descriptive"
         }
+
+
+class TestReading:
+    """The `reading` sentence reaches the agent on every row."""
+
+    def test__get_ab_test_rows_carry_the_reading(self) -> None:
+        session = _ab_session()
+        direct = session.active_stream.get_ab_test(
+            ("arm", "treatment", "control"), _METRICS
+        )
+        result = tools.get_ab_test(
+            session,
+            ["arm", "treatment", "control"],
+            _METRICS,
+            strata_col="platform",
+            period="W",
+        )
+        json.dumps(result, allow_nan=False)
+        for entry, expected in zip(result["metrics"], direct["reading"]):
+            assert entry["reading"] == expected
+            assert all(s["reading"] for s in entry["strata"])
+            assert all(p["reading"] for p in entry["periods"])
+        conv, orders = result["metrics"]
+        assert conv["reading"].startswith(
+            "over the whole observation period: interval ["
+        )
+        assert "excludes 0 (p " in conv["reading"]
+        assert conv["reading"].endswith("name one decision metric")
+        assert all("exploratory:" in s["reading"] for s in conv["strata"])
+        assert conv["periods"][0]["reading"].startswith("calendar week 2024-01-01: ")
+        assert conv["unit"] == "pp" and orders["unit"] == "value"
+        for row in conv["strata"] + conv["periods"]:
+            assert row["unit"] == "pp"
+            assert row["p_value"] <= row["p_value_adjusted"]
+
+    def test__sample_ratio_reading(self) -> None:
+        result = tools.get_sample_ratio(_session(), "arm")
+        assert result["reading"].startswith(
+            "expected 50/50, observed 40/60 (control/treatment), p "
+        )
+        assert result["reading"].endswith(": no mismatch")
+
+    def test__descriptions_and_playbook_ask_to_quote_it(self) -> None:
+        from retentioneering.mcp import _prompts, server
+
+        server_src = inspect.getsource(server)
+        for doc in (
+            tools.get_ab_test.__doc__,
+            tools.get_sample_ratio.__doc__,
+            server_src,
+        ):
+            assert "reading" in doc
+        text = " ".join(str(tools.playbook("ab_test")).split())
+        assert "quote its `reading` verbatim" in text
+        for step in (
+            "More paths",
+            "A longer horizon",
+            "A pre-declared stratum",
+            "A cheaper metric",
+        ):
+            assert step in text, step
+        prompts = " ".join(
+            inspect.getsource(_prompts).replace('",', "").replace('"', "").split()
+        )
+        assert "quote the row's reading and propose a next step" in prompts

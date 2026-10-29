@@ -19,6 +19,8 @@ Design (plan v2, lead decisions D3, D5, D6, D12, D13)
 * Statistical dispatch: 0/1 metric -> pooled z-test with Wilson/Newcombe intervals;
   per-path count or value metric -> Welch t; ratio-of-sums metric -> joint path bootstrap
   (percentile CI, p from the bootstrap SE).
+* Every row ends with ``reading`` (:func:`row_reading`): one sentence built from the
+  row's own numbers, templated per verdict, with the row's flags appended.
 
 Examples
 --------
@@ -83,6 +85,7 @@ __all__ = [
     "PERIOD_BASES",
     "PERIOD_POPULATIONS",
     "BOOTSTRAP_WEIGHTS",
+    "row_reading",
 ]
 
 TESTS = ("auto", "z_test", "welch_t_test", "bootstrap")
@@ -154,6 +157,7 @@ COLUMNS: tuple[str, ...] = (
     "strata_pre_exposure",
     "strata_pre_exposure_source",
     "exploratory",
+    "reading",
 )
 
 #: Column order of ``get_ab_bootstrap``.
@@ -186,7 +190,7 @@ _BOOTSTRAP_CHUNK = 128
 #: ``support_warning="low_support"``: percentile intervals under-cover there.
 LOW_SUPPORT_PATHS = 30
 #: ``support_warning`` values.
-SUPPORT_WARNINGS = ("", "one_arm_only", "low_support")
+SUPPORT_WARNINGS = ("", "no_data", "one_arm_only", "low_support")
 _DAY = pd.Timedelta(days=1)
 _HOUR = pd.Timedelta(hours=1)
 
@@ -913,6 +917,24 @@ class MetricMatrix:
                 ],
                 axis=1,
             )
+        if since:
+            # a bin whose window closes after the end of data for every path has
+            # no population in either arm: not a row, there is nothing to compare
+            filled = pops.any(axis=0)
+            if not filled.any():
+                raise EmptyEventstreamError(
+                    "no since-assignment bin has a path whose window is closed at "
+                    "the stream's end"
+                )
+            if not filled.all():
+                periods = periods[filled]
+                pops = pops[:, filled]
+                immature = None if immature is None else immature[filled]
+                values = {
+                    name: (num[:, filled], None if den is None else den[:, filled])
+                    for name, (num, den) in values.items()
+                }
+                n_periods = int(filled.sum())
         if horizon is not None:
             base = np.zeros(n_periods, dtype=int) if immature is None else immature
             immature = base + horizon_immature
@@ -1198,6 +1220,8 @@ class ABTest:
     period_population: str = "itt"
     has_horizon: bool = False
     period_basis: str = "calendar"
+    period: Any = None
+    horizon: pd.Timedelta | None = None
     _replicates_cache: dict = field(default_factory=dict, repr=False)
 
     # ------------------------------------------------------------------ factory
@@ -1376,6 +1400,8 @@ class ABTest:
             period_population=period_population if period is not None else "itt",
             has_horizon=horizon is not None,
             period_basis=period_basis if period is not None else "calendar",
+            period=period,
+            horizon=None if horizon is None else _fixed_length(horizon, "horizon"),
         )
 
     # ------------------------------------------------------------------ public
@@ -1414,7 +1440,7 @@ class ABTest:
         table = self._adjust(table, extras)
         if self.matrix.strata is not None:
             table = self._strata_columns(table, extras, rest)
-        return self._finalise(table)
+        return self._finalise(table, extras)
 
     def bootstrap(
         self, contrast: dict[str, tuple[list[str], list[str]]] | None = None
@@ -1605,15 +1631,27 @@ class ABTest:
             s1 = int(((den > 0) & in1).sum())
             s2 = int(((den > 0) & in2).sum())
         extra["support"] = s1 + s2 >= self.min_events
+        extra["support_count"] = s1 + s2
+        extra["non_support_count"] = None
         if spec.kind == "binary":
             n1, n2 = int(in1.sum()), int(in2.sum())
+            extra["non_support_count"] = (n1 - s1) + (n2 - s2)
             extra["support"] = extra["support"] and (
                 (n1 - s1) + (n2 - s2) >= self.min_events
             )
             extra["q_support"] = min(s1, s2) >= 5 and min(n1 - s1, n2 - s2) >= 5
         else:
             extra["q_support"] = min(s1, s2) >= 10
-        if min(s1, s2) == 0:
+        # no data: no path of either arm has the behaviour (an event, a non-zero
+        # total or numerator, a value); nothing to compare, whatever the metric type
+        if spec.kind == "count":
+            seen = int(((num != 0) & (in1 | in2)).sum())
+        else:
+            seen = s1 + s2
+        if seen == 0:
+            support_warning = "no_data"
+            extra["support"] = False
+        elif min(s1, s2) == 0:
             support_warning = "one_arm_only"
         elif test == "bootstrap" and min(s1, s2) < LOW_SUPPORT_PATHS:
             support_warning = "low_support"
@@ -1888,7 +1926,26 @@ class ABTest:
         rows["exploratory"] = flag is not True
         return rows
 
-    def _finalise(self, rows: pd.DataFrame) -> pd.DataFrame:
+    def _window(self, row: dict) -> str:
+        """The window a row reads: the whole period, a horizon, a period row."""
+        horizon = (
+            None
+            if self.horizon is None
+            else f"within {_duration_text(self.horizon)} of assignment"
+        )
+        if self.matrix.periods is None:
+            return horizon or "over the whole observation period"
+        label = row["period"]
+        if self.period_basis == "since_assignment":
+            hours = label.endswith("h")
+            text = (
+                f"{'hours' if hours else 'days'} {label.rstrip('h')} since assignment"
+            )
+        else:
+            text = _calendar_text(self.period, label, row["period_start"])
+        return text if horizon is None else f"{text}, {horizon}"
+
+    def _finalise(self, rows: pd.DataFrame, extras: list[dict]) -> pd.DataFrame:
         matrix = self.matrix
         rows = rows.copy()
         rows["excluded_paths"] = matrix.excluded_paths
@@ -1906,8 +1963,279 @@ class ABTest:
             else:
                 rows["immature_paths"] = int(matrix.immature[0])
         rows["valid_replicates"] = pd.array(rows["valid_replicates"], dtype="Int64")
+        # several metrics and no strata or periods: each row is a headline read,
+        # and the correction does not span the metrics
+        several = (
+            len(self.specs) > 1 and matrix.strata is None and matrix.periods is None
+        )
+        rows["reading"] = [
+            row_reading(
+                row,
+                kind=extra["kind"],
+                correction=self.correction,
+                alpha=self.alpha,
+                min_events=self.min_events,
+                support_count=extra["support_count"],
+                non_support_count=extra["non_support_count"],
+                window=self._window(row),
+                several_metrics=several,
+            )
+            for row, extra in zip(rows.to_dict("records"), extras)
+        ]
         present = [c for c in COLUMNS if c in rows.columns]
         return rows[present].reset_index(drop=True)
+
+
+# ======================================================================= reading
+#: Text of the ``support_warning`` values in ``reading``.
+_SUPPORT_WARNING_TEXT = {
+    "one_arm_only": "one_arm_only: the behaviour exists in one arm only",
+    "low_support": (
+        f"low_support: under {LOW_SUPPORT_PATHS} supporting paths in an arm, the "
+        "bootstrap interval may under-cover"
+    ),
+}
+
+
+def _finite(*values: Any) -> bool:
+    try:
+        return all(math.isfinite(float(v)) for v in values)
+    except (TypeError, ValueError):
+        return False
+
+
+def _decimals(*values: float) -> int:
+    """Decimals that show the largest magnitude with three significant digits."""
+    top = max((abs(v) for v in values if _finite(v)), default=0.0)
+    if top == 0:
+        return 2
+    return int(min(6, max(0, 2 - math.floor(math.log10(top)))))
+
+
+def _signed(value: float, decimals: int) -> str:
+    """``+1.23`` / ``-1.07`` / ``0.00`` (ASCII minus, so the text parses as numbers)."""
+    text = f"{value:+.{decimals}f}"
+    return text[1:] if float(text) == 0 else text
+
+
+def _p_text(p: float) -> str:
+    """Two significant digits, ``< 0.0001`` below."""
+    if p < 1e-4:
+        return "< 0.0001"
+    if p >= 0.995:
+        return "1"
+    return f"{p:#.2g}"
+
+
+def _round_down_125(value: float) -> float:
+    """The largest 1, 2 or 5 times a power of ten that is <= ``value``."""
+    power = 10.0 ** math.floor(math.log10(value))
+    for step in (5, 2, 1):
+        if step * power <= value * (1 + 1e-12):
+            return step * power
+    return power
+
+
+def _paths_needed(mde: float) -> tuple[float, float] | None:
+    """``(target, multiplier)``: a round effect at or below half the ``mde`` and the factor
+    on the number of paths (same split) that makes it the new ``mde``.
+
+    The ``mde`` scales as ``sqrt(1/n1 + 1/n2)`` at the design variance, so detecting
+    ``target`` needs ``(mde / target) ** 2`` times the paths.
+    """
+    if not (_finite(mde) and mde > 0):
+        return None
+    target = _round_down_125(mde / 2)
+    return target, (mde / target) ** 2
+
+
+def _duration_text(length: pd.Timedelta) -> str:
+    """``28 days``, ``1 day``, ``12 hours``; another length as pandas prints it."""
+    for unit, name in ((_DAY, "day"), (_HOUR, "hour")):
+        if length % unit == pd.Timedelta(0):
+            n = int(length // unit)
+            return f"{n} {name}{'' if n == 1 else 's'}"
+    return str(length)
+
+
+def _calendar_text(period: Any, label: str, start: Any) -> str:
+    """``calendar week 2026-03-09``, ``calendar month 2026-03``, ``calendar day ...``."""
+    length, freq, n = _calendar_period(period)
+    if freq is None:
+        unit = "day" if length == _DAY else "period"
+        return f"calendar {unit} {label}"
+    names = (("W", "week"), ("M", "month"), ("Q", "quarter"), ("Y", "year"))
+    unit = next((name for code, name in names if freq.startswith(code)), "period")
+    if unit == "week" and n == 1:
+        return f"calendar week {pd.Timestamp(start):%Y-%m-%d}"
+    return f"calendar {unit}{'s' if n > 1 else ''} {label}"
+
+
+def row_reading(
+    row: dict,
+    *,
+    kind: str,
+    correction: str,
+    alpha: float,
+    min_events: int,
+    support_count: int,
+    non_support_count: int | None = None,
+    window: str | None = None,
+    several_metrics: bool = False,
+) -> str:
+    """One sentence that reads a scorecard row from its own numbers.
+
+    Starts with the row's window (``window: ...``), then the template of its
+    ``verdict`` (``increase`` / ``decrease``, ``inconclusive``, ``insufficient_data``,
+    ``descriptive``; ``"no data in either arm"`` when no path of either arm supports
+    the metric), then the row's flags: an exploratory stratum, a period whose window
+    is not complete, a ``support_warning``, and with ``several_metrics`` a reminder
+    that the correction stays within each metric. 0/1 metrics are read in percentage
+    points (pp), the others in their own unit.
+
+    Parameters
+    ----------
+    row : dict
+        A scorecard row (the columns of ``Eventstream.get_ab_test``).
+    kind : str
+        ``"binary"``, ``"count"``, ``"value"`` or ``"ratio"``.
+    correction : str
+        The scorecard's ``correction``.
+    alpha : float
+        ``1 - ci_level``.
+    min_events : int
+        The support threshold.
+    support_count, non_support_count : int
+        Pooled support (paths with the event, a non-zero numerator or a value) and,
+        for 0/1 metrics, pooled paths without the event.
+    window : str, optional
+        What the row covers: ``"over the whole observation period"``, ``"within 28
+        days of assignment"``, ``"calendar week 2026-03-09"``, ``"days 14-27 since
+        assignment"``.
+    several_metrics : bool
+        The scorecard has several metrics and no strata or periods.
+    """
+    scale, unit = (100.0, " pp") if kind == "binary" else (1.0, "")
+    verdict = row["verdict"]
+    adjusted = (
+        correction != "none"
+        and _finite(row["alpha_used"])
+        and row["alpha_used"] < alpha * (1 - 1e-12)
+    )
+    after = f" after {correction}" if adjusted else ""
+    p_adj = row["p_value_adjusted"]
+    p_part = f"p {_p_text(p_adj)}" if _finite(p_adj) else "no p-value"
+
+    simultaneous = _finite(row.get("delta_ci_low_adj"), row.get("delta_ci_high_adj"))
+    if simultaneous:
+        low, high = row["delta_ci_low_adj"], row["delta_ci_high_adj"]
+        label = "simultaneous interval"
+    else:
+        low, high = row["delta_ci_low"], row["delta_ci_high"]
+        label = "interval"
+    has_ci = _finite(low, high)
+    if has_ci:
+        lo, hi = low * scale, high * scale
+        dec = 2 if kind == "binary" else _decimals(lo, hi)
+        interval = f"{label} [{_signed(lo, dec)}, {_signed(hi, dec)}]{unit}"
+        covers_zero = lo <= 0 <= hi
+
+    parts: list[str] = []
+    no_data = row.get("support_warning") == "no_data"
+    if no_data:
+        parts.append("no data in either arm")
+    elif verdict == "descriptive":
+        parts.append(
+            "active population: not randomised, describes who was active in the period"
+        )
+    elif verdict == "insufficient_data":
+        if support_count < min_events:
+            parts.append(f"pooled support {support_count} < min_events {min_events}")
+        else:
+            parts.append(
+                f"pooled paths without the event {non_support_count} < "
+                f"min_events {min_events}"
+            )
+        parts.append("estimate shown descriptively")
+    elif verdict in ("increase", "decrease"):
+        if not has_ci:
+            parts.append(f"{p_part}{after}")
+        elif covers_zero:
+            parts.append(
+                f"{p_part}{after} is below alpha {alpha:.4g}, though the {interval} "
+                "includes 0 (borderline: test and interval disagree at the threshold)"
+            )
+        else:
+            parts.append(f"{interval} excludes 0{after} ({p_part})")
+        rel = row["rel_delta"]
+        if _finite(rel):
+            pct = rel * 100
+            parts.append(f"relative {_signed(pct, 1 if abs(pct) < 10 else 0)} %")
+    else:  # inconclusive
+        if not _finite(p_adj):
+            if row.get("low_support"):
+                parts.append(
+                    "no interval or p-value: more than 1 % of bootstrap replicates "
+                    "had no supporting path (low_support); estimate shown descriptively"
+                )
+            elif _finite(row["delta_se"]) and row["delta_se"] == 0:
+                parts.append("no p-value: the metric is constant in both arms")
+            else:
+                parts.append(
+                    "no p-value: the spread cannot be estimated (an arm has fewer "
+                    "than two paths with a value)"
+                )
+        elif not has_ci:
+            parts.append(f"no interval; {p_part}{after}")
+        elif covers_zero:
+            parts.append(
+                f"{interval} includes 0{after} ({p_part}); effects outside it are "
+                "unlikely"
+            )
+        elif after:
+            parts.append(
+                f"{interval} excludes 0 per comparison but not{after} ({p_part})"
+            )
+        else:
+            parts.append(
+                f"{interval} excludes 0 but {p_part} is not below alpha "
+                f"{alpha:.4g} (borderline: test and interval disagree at the threshold)"
+            )
+        mde = row["mde"]
+        if _finite(p_adj) and _finite(mde):
+            mde_s = mde * scale
+            dec = 2 if kind == "binary" else _decimals(mde_s)
+            design = (
+                f"the design detects {abs(mde_s):.{dec}f}{unit} at alpha "
+                f"{row['alpha_used']:.4g}"
+            )
+            needed = _paths_needed(mde_s)
+            if needed is not None:
+                target, factor = needed
+                design += (
+                    f" — to detect {target:g}{unit}, about {factor:.1f}× the paths "
+                    "are needed"
+                )
+            parts.append(design)
+
+    if bool(row.get("exploratory", False)):
+        parts.append(
+            "exploratory: strata not pre-exposure (declare strata_pre_exposure=True "
+            "if they are)"
+        )
+    if not bool(row.get("period_complete", True)):
+        parts.append("window not complete")
+    warning = row.get("support_warning") or ""
+    if warning in _SUPPORT_WARNING_TEXT:
+        parts.append(_SUPPORT_WARNING_TEXT[warning])
+    if several_metrics:
+        parts.append(
+            "corrected within this metric only; name one decision metric"
+            if correction != "none"
+            else "not corrected across metrics; name one decision metric"
+        )
+    text = "; ".join(parts)
+    return f"{window}: {text}" if window else text
 
 
 def _cell_key(key: tuple) -> tuple:

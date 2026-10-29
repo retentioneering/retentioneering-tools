@@ -679,9 +679,12 @@ def get_sample_ratio(
     -------
     segment_col, path_col, mismatch (bool), p_value, chi2, dof, alpha,
     multi_valued_paths (paths with >1 arm: an assignment bug), unassigned_paths,
-    basis, and levels — one row per arm with paths, share, expected_share. With
-    `by`: by_levels, one row per group with paths, chi2, p_value,
-    p_value_adjusted (Holm across `by` levels) and mismatch.
+    basis, reading (one sentence: the expected and observed split, the p-value and
+    the conclusion, e.g. "expected 50/50, observed 5040/4960 (control/treatment),
+    p 0.42: no mismatch"; quote it), and levels — one row per arm with paths, share,
+    expected_share. With `by`: by_levels, one row per group with paths, chi2,
+    p_value, p_value_adjusted (Holm across `by` levels) and mismatch; reading names
+    the groups that mismatch.
     """
     if (err := _require_stream(session)) is not None:
         return err
@@ -714,6 +717,7 @@ def get_sample_ratio(
         "multi_valued_paths": int(result["multi_valued_paths"]),
         "unassigned_paths": int(result["unassigned_paths"]),
         "basis": result["basis"],
+        "reading": result["reading"],
         "levels": [
             {
                 "level": str(row["level"]),
@@ -813,22 +817,31 @@ def get_ab_test(
     delta_ci_low, delta_ci_high, rel_delta, p_value, mde (the effect the test detects
     with 80% power at alpha_used), verdict ("increase", "decrease", "inconclusive",
     "descriptive", "insufficient_data"), test, correction_family (what was adjusted
-    together), alpha_used (per-comparison level after the correction); with
+    together), alpha_used (per-comparison level after the correction), reading
+    (one sentence built from the row's numbers: the window it covers, what the
+    interval includes or excludes after the correction, the p-value, for an
+    inconclusive row the effect the design detects and the paths needed for a
+    smaller one, and the row's flags; quote it) and unit ("pp": a 0/1 metric whose
+    delta fields are shares and whose reading is in percentage points; "value":
+    the metric's own unit); with
     strata_col: strata (top 3 by |delta|: stratum, group1_share, group2_share, delta,
-    delta_ci_low, delta_ci_high, p_value_adjusted, alpha_used,
-    stratum_vs_rest_p_value, verdict), strata_selection ("top 3 by |delta| of N"),
+    delta_ci_low, delta_ci_high, p_value, p_value_adjusted, alpha_used,
+    stratum_vs_rest_p_value, verdict, reading, unit), strata_selection ("top 3 by |delta| of N"),
     strata_count, heterogeneity_p_value, strata_correction_family,
     strata_pre_exposure, strata_pre_exposure_source ("declared", "recipe",
     "not_pre_exposure") and exploratory (true unless the strata count as
-    pre-exposure); support_warning per metric ("one_arm_only": the behaviour exists
-    in one arm only; "low_support": few paths behind a bootstrap interval);
+    pre-exposure); support_warning per metric ("no_data": no path of either arm
+    has the behaviour; "one_arm_only": the behaviour exists in one arm only;
+    "low_support": few paths behind a bootstrap interval);
     warnings (the library's warnings for this call); with period: periods (period,
-    period_complete, delta, delta_ci_low, delta_ci_high, p_value_adjusted,
-    alpha_used, verdict) and periods_correction_family. "descriptive" marks
+    period_complete, delta, delta_ci_low, delta_ci_high, p_value,
+    p_value_adjusted, alpha_used, verdict, reading, unit) and
+    periods_correction_family. "descriptive" marks
     period_population="active" rows (survivors, no p-value).
 
-    "inconclusive" is NOT "no effect": say which effects the interval still allows;
-    the mde is not a bound on the effect.
+    "inconclusive" is NOT "no effect": quote the row's `reading` (it says which
+    effects the interval still allows and what the design could detect) and propose
+    the next step; the mde is not a bound on the effect.
     """
     if (err := _require_stream(session)) is not None:
         return err
@@ -871,6 +884,14 @@ def get_ab_test(
     except Exception as exc:
         return {"error": str(exc)}
     messages = list(dict.fromkeys(str(w.message) for w in caught))
+    from retentioneering.tools.ab_test import parse_metrics
+
+    # the unit `reading` quotes: 0/1 metrics in percentage points (their delta and
+    # interval fields are shares), every other metric in its own unit
+    units = {
+        spec.name: "pp" if spec.kind == "binary" else "value"
+        for spec in parse_metrics(metrics)
+    }
 
     def _row(row: dict, columns: tuple) -> dict:
         out = {}
@@ -904,10 +925,12 @@ def get_ab_test(
         "correction_family",
         "alpha_used",
         "support_warning",
+        "reading",
     )
     entries = []
     for row in overall.to_dict("records"):
-        entry = {"metric": row["metric"], **_row(row, main_cols)}
+        unit = units.get(row["metric"], "value")
+        entry = {"metric": row["metric"], "unit": unit, **_row(row, main_cols)}
         if strata is not None:
             part = strata[strata["metric"] == row["metric"]]
             top = part.reindex(part["delta"].abs().sort_values(ascending=False).index)
@@ -937,12 +960,15 @@ def get_ab_test(
                         "delta",
                         "delta_ci_low",
                         "delta_ci_high",
+                        "p_value",
                         "p_value_adjusted",
                         "alpha_used",
                         "stratum_vs_rest_p_value",
                         "verdict",
+                        "reading",
                     ),
                 )
+                | {"unit": unit}
                 for r in top.head(3).to_dict("records")
             ]
         if periods is not None:
@@ -959,11 +985,14 @@ def get_ab_test(
                         "delta",
                         "delta_ci_low",
                         "delta_ci_high",
+                        "p_value",
                         "p_value_adjusted",
                         "alpha_used",
                         "verdict",
+                        "reading",
                     ),
                 )
+                | {"unit": unit}
                 for r in part.to_dict("records")
             ]
         entries.append(entry)

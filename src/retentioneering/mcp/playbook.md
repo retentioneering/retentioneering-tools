@@ -166,9 +166,12 @@ times counts once. For a per-visit figure, carve out the subpopulation with
 
 **Steps:**
 
-1. `get_sample_ratio(segment_col="<arm col>")` — before any metric. `mismatch=true`
-   (arms off the planned split, or paths carrying two arms) means the assignment or the
-   logging is broken; report that and stop.
+1. `get_sample_ratio(segment_col="<arm col>")` — before any metric. Quote its
+   `reading`. `mismatch=true` (arms off the planned split, or paths carrying two arms)
+   means the assignment or the logging is broken; report that and stop. With
+   `by="day"` or `by="<segment fixed at assignment>"` the `reading` also names the
+   groups that mismatch — a mismatch in one platform or from one day on voids the test
+   even when the overall split looks fine.
 2. `get_ab_test(diff=["<arm col>", "treatment", "control"], metrics=[...])` with a few
    metrics decided up front, each with a `name`:
    ```json
@@ -178,7 +181,18 @@ times counts once. For a per-visit figure, carve out the subpopulation with
      "denominator": {"metric": "event_count", "metric_args": {"event": "purchase"}}}]
    ```
 3. Report per metric: `delta` with `[delta_ci_low, delta_ci_high]`, the `verdict` and
-   the `mde`. Quote in backticks (no tab is registered).
+   the `mde`. Quote in backticks (no tab is registered). Every row has a `reading`:
+   one sentence built from its numbers. For an `inconclusive` row, quote its `reading`
+   verbatim (in backticks) — it says what the interval includes, after which
+   correction, what the design detects and how many more paths a smaller effect needs
+   — and then propose the next step (below). The `reading` starts with the window
+   it covers ("over the whole observation period", "calendar week 2026-03-09",
+   "days 14-27 since assignment"): a period row is not the test's result, so
+   always name the window when you quote a number. With several metrics each
+   reading ends "corrected within this metric only; name one decision metric": ask
+   the user which metric decides before calling any row a win. `unit` says whether
+   the reading is in percentage points (`pp`, a 0/1 metric whose `delta` fields
+   are shares) or in the metric's own unit (`value`).
 4. Optional: `strata_col=` for a segment fixed before exposure (platform at signup),
    `period="W"` for stability over time. Strata rows are adjusted with `correction`
    (`strata_correction_family`); `exploratory=true` (or `strata_pre_exposure` not
@@ -193,13 +207,32 @@ assigned users, `assigned_at`, `horizon`) needs the Python API
 **Reading the verdict:** `increase` / `decrease` come from the multiplicity-adjusted
 p-value (`alpha_used` is the per-comparison level after the correction).
 `inconclusive` is not "no effect": report the interval as the range of effects the
-data still allow. The `mde` is the effect the test detects with 80 % power at the
+data still allow, by quoting the row's `reading`. The `mde` is the effect the test detects with 80 % power at the
 corrected alpha, a design quantity: never say the effect is smaller than the `mde`.
 `insufficient_data`: pooled support below `min_events`; report its estimates
-descriptively. `support_warning="one_arm_only"`: the behaviour exists in one arm only;
+descriptively. `support_warning="no_data"`: no path of either arm has the
+behaviour — say "no data in either arm", not "one arm only". `support_warning="one_arm_only"`: the behaviour exists in one arm only;
 the test stands, say so next to it. `descriptive`: rows of
 `period_population="active"` (survivors), no p-value. Strata are the top 3 by |delta|
 (`strata_selection`): exploratory unless `strata_pre_exposure` is true.
+
+**Next step after an inconclusive row** (propose one, tied to the `reading`):
+
+- **More paths** — the `reading` says how many times the paths a smaller effect needs
+  ("to detect 1 pp, about 5.7× the paths"): run longer or on more traffic, if that
+  effect matters to the business.
+- **A longer horizon** — when the metric arrives late (a trial that converts after 14
+  days, `period_complete=false` on the last periods, "window not complete" in the
+  `reading`), rerun with a declared observation window (`horizon=`, Python API).
+- **A pre-declared stratum** — when the effect plausibly lives in one segment fixed
+  before exposure (a platform at signup), call again with `strata_col=` and
+  `strata_pre_exposure=true`, and say the stratum was chosen before looking; a
+  stratum picked because its delta looked large is exploratory and needs its own test.
+- **A cheaper metric** — when the outcome is rare (a low base rate gives a large `mde`),
+  test a more frequent behaviour closer to the change (adds to cart instead of orders)
+  as a leading indicator, decided up front.
+
+Never turn an inconclusive row into "no effect", and never rerun until a row flips.
 
 **Do not:** filter on post-exposure behaviour ("users who reached checkout") before
 the test, or stratify by it — that compares selected groups, not the randomised arms.

@@ -260,17 +260,18 @@ class TestMatrix:
             period_basis="since_assignment",
         )
         conv = out[out.metric == "conv"]
-        assert list(conv["period"]) == ["0-6", "7-13"]
-        assert list(conv["period_start"]) == [pd.Timedelta(0), pd.Timedelta(days=7)]
-        assert list(conv["period_end"]) == [pd.Timedelta(days=7), pd.Timedelta(days=14)]
         # the data end at the last event (01-16 12:00): c3's first window (from
-        # 01-10) closes after it, and no path's second window closes in time
-        assert list(conv["immature_paths"]) == [1, 7]
-        assert list(conv["period_complete"]) == [False, False]
-        assert list(conv["group1_paths"]) == [4, 0]
-        assert list(conv["group2_paths"]) == [2, 0]
+        # 01-10) closes after it, and no path's second window closes in time, so
+        # the bin "7-13" is empty in both arms and is not a row
+        assert list(conv["period"]) == ["0-6"]
+        assert list(conv["period_start"]) == [pd.Timedelta(0)]
+        assert list(conv["period_end"]) == [pd.Timedelta(days=7)]
+        assert list(conv["immature_paths"]) == [1]
+        assert list(conv["period_complete"]) == [False]
+        assert list(conv["group1_paths"]) == [4]
+        assert list(conv["group2_paths"]) == [2]
         orders = out[out.metric == "orders"]
-        np.testing.assert_allclose(orders["group2_value"], [1 / 2, np.nan])
+        np.testing.assert_allclose(orders["group2_value"], [1 / 2])
 
     def test_horizon(self) -> None:
         out = _fit(_tiny(), [CONV, ORDERS], assignment=_table(), horizon="7D")
@@ -441,6 +442,7 @@ class TestScorecard:
             "valid_replicates",
             "low_support",
             "support_warning",
+            "reading",
         ]
 
     def test_z_test_matches_the_stats_core(self) -> None:

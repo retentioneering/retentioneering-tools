@@ -1521,82 +1521,35 @@ class Eventstream:
         )
 
     def _split_two(self, split, path_col: str | None = None):
-        from retentioneering.exceptions import (
-            EmptyEventstreamError,
-            DiffConfigError,
-            SegmentLevelNotFoundError,
-            PathIdNotFoundError,
-        )
+        """Event-level split used by the existing widgets' `diff`.
 
+        Validation and level resolution are delegated to
+        `tools._diff.resolve_diff(require_constant=False)`, so every `diff` reports
+        the same errors. The split itself stays event-level for the segment form
+        (a path whose segment changes contributes its events to both groups);
+        inferential methods call `resolve_diff` directly and refuse such paths.
+        """
+        from retentioneering.exceptions import DiffConfigError
+        from retentioneering.tools._diff import coerce_level, resolve_diff
+
+        if split is None or isinstance(split, (str, bytes)):
+            raise DiffConfigError("diff must be (seg, v1, v2) or (ids1, ids2)")
         if len(split) == 3:
+            resolve_diff(self, split, require_constant=False)
             segment_col, v1, v2 = split[0], split[1], split[2]
-            if segment_col not in self.schema.segment_cols:
-                raise DiffConfigError(f"'{segment_col}' is not a segment column")
             all_vals = set(self.get_segment_levels().get(segment_col, []))
-
-            def _coerce(value):
-                """Match a value that arrived as a string (the JS widget, MCP
-                and any JSON round-trip stringify everything) back to the
-                actual typed segment level: 'false' -> False, '5' -> 5.
-                Returns the value unchanged when there is no unambiguous
-                match — the caller then raises its normal error."""
-                if value in all_vals or not isinstance(value, str):
-                    return value
-                matches = []
-                for candidate in all_vals:
-                    if isinstance(candidate, str):
-                        continue
-                    try:
-                        candidate_json = json.dumps(candidate)
-                    except (TypeError, ValueError):
-                        candidate_json = None
-                    if value in (candidate_json, str(candidate)):
-                        matches.append(candidate)
-                return matches[0] if len(matches) == 1 else value
-
-            v1 = _coerce(v1)
-            if v1 not in all_vals:
-                raise SegmentLevelNotFoundError(
-                    segment_level=v1,
-                    segment_col=segment_col,
-                    available_levels=sorted(all_vals),
-                )
-            s1 = self._filter_by_segment_levels(segment_col, [v1])
+            v1 = coerce_level(v1, all_vals)
             if v2 == "<REST>":
                 v2_vals = list(all_vals - {v1})
-                if not v2_vals:
-                    raise DiffConfigError(
-                        f"'{segment_col}' has no other levels besides '{v1}'; "
-                        "'<REST>' requires at least one complementary level."
-                    )
             else:
-                v2 = _coerce(v2)
-                if v2 not in all_vals:
-                    raise SegmentLevelNotFoundError(
-                        segment_level=v2,
-                        segment_col=segment_col,
-                        available_levels=sorted(all_vals),
-                    )
-                v2_vals = [v2]
+                v2_vals = [coerce_level(v2, all_vals)]
+            s1 = self._filter_by_segment_levels(segment_col, [v1])
             s2 = self._filter_by_segment_levels(segment_col, v2_vals)
-        elif len(split) == 2:
-            ids1, ids2 = split[0], split[1]
-            path_col = path_col or self.schema.path_col
-            available_ids = set(self._df[path_col].unique().tolist())
-            missing1 = [i for i in ids1 if i not in available_ids]
-            missing2 = [i for i in ids2 if i not in available_ids]
-            if missing1 or missing2:
-                raise PathIdNotFoundError(
-                    sorted(set(missing1 + missing2), key=str), path_col
-                )
-            s1 = self.filter_events(keep={path_col: list(ids1)})
-            s2 = self.filter_events(keep={path_col: list(ids2)})
         else:
-            raise DiffConfigError("diff must be (seg, v1, v2) or (ids1, ids2)")
-        if s1.is_empty():
-            raise EmptyEventstreamError("first diff group is empty")
-        if s2.is_empty():
-            raise EmptyEventstreamError("second diff group is empty")
+            path_col = path_col or self.schema.path_col
+            groups = resolve_diff(self, split, path_col, require_constant=False)
+            s1 = self.filter_events(keep={path_col: list(groups.ids1)})
+            s2 = self.filter_events(keep={path_col: list(groups.ids2)})
         return s1, s2
 
     def _restrict_to_pattern(

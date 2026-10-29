@@ -66,16 +66,15 @@ DEFAULT_CI_LEVEL = 0.95
 
 
 def _check_ci_level(ci_level) -> float | None:
+    """``None`` or a confidence level in [0.5, 1): a lower level would call an
+    interval narrower than the point's own coin flip a confidence interval."""
     if ci_level is None:
         return None
+    allowed = ["a float in [0.5, 1), e.g. 0.95"]
     if isinstance(ci_level, bool) or not isinstance(ci_level, (int, float)):
-        raise InvalidParameterError(
-            "ci_level", ci_level, ["a float in (0, 1), e.g. 0.95"]
-        )
-    if not 0 < ci_level < 1:
-        raise InvalidParameterError(
-            "ci_level", ci_level, ["a float in (0, 1), e.g. 0.95"]
-        )
+        raise InvalidParameterError("ci_level", ci_level, allowed)
+    if not 0.5 <= ci_level < 1:
+        raise InvalidParameterError("ci_level", ci_level, allowed)
     return float(ci_level)
 
 

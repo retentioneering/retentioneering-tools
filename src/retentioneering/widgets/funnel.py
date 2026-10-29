@@ -181,7 +181,8 @@ class FunnelWidget(RetentioneeringWidget):
             diff=diff,
             path_col=path_col,
             ci_level=ci_level,
-            correction=correction,
+            # the sidebar keeps its correction while intervals are off
+            correction=correction if ci_level else "none",
         )
         if diff:
             if len(diff) == 3:

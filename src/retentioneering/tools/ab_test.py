@@ -2006,9 +2006,9 @@ class ABTest:
             # a zero standard error is not an estimate of the spread (S-13)
             se = nan
         extra["constant"] = constant
-        # values and ratios: an arm with no value has no estimate; nothing to
-        # compare (R2-03), whatever the pooled support
-        if spec.kind in ("value", "ratio") and support_warning != "no_data":
+        # an arm with no estimate (no path in the row, or no value for a value or
+        # ratio metric): nothing to compare (R2-03), whatever the pooled support
+        if support_warning != "no_data":
             if not (_finite(g1) and _finite(g2)):
                 support_warning = "no_data"
                 extra["support"] = False
@@ -2478,6 +2478,8 @@ def row_reading(
         ]
         if support_count == 0 or len(empty) != 1:
             parts.append("no data in either arm")
+        elif row.get(f"{empty[0]}_paths") == 0:
+            parts.append(f"no path in {empty[0]}: there is nothing to compare")
         else:
             parts.append(
                 f"no value in {empty[0]}: the metric is undefined in that arm, so "

@@ -162,6 +162,51 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   and period rows too, and the playbook's A/B scenario tells the agent to quote it for
   inconclusive rows and to propose a next step (more paths, a longer horizon, a
   pre-declared stratum, a cheaper metric).
+- `get_ab_test` says which population and which family each row belongs to:
+  `population` (`"assignment"`, intention to treat over the table, or
+  `"stream"`, paths with at least one event); `group1_support` /
+  `group2_support` (paths with a value) and `conditional` (a metric such as
+  `time_between`, `column_mean` or an order value compares the paths that have
+  a value, not the arms; `reading` says so); `correction_scope="metric"`
+  (default: metrics are separate families, name one decision metric) or
+  `"all"` (one family over every row of every metric, `correction_family`
+  `"all_metrics"`), also on `ab_test_data`, the `ab_test` widget and
+  `get_ab_bootstrap` (where it sizes `n_bootstrap="auto"`). An arm with no
+  estimate (no path in the row, or no value for a value or ratio metric) is
+  `insufficient_data` with `support_warning="no_data"`; a metric constant in
+  both arms has NaN `delta_se` and `mde`; `low_support` bootstrap rows keep their
+  verdict and their `reading` says "coverage below nominal".
+- `get_ab_paths(diff, metrics, *, assignment=None, horizon=None, path_col=None)`
+  returns the per-path table behind the scorecard — arm, `assigned_at`,
+  `silent`, `mature` and every metric's per-path value in the analysed window
+  (numerator and denominator for ratios) — whose per-arm aggregation reproduces
+  `get_ab_test`: the starting point for CUPED, regression adjustment or a
+  custom test.
+- `add_segment(..., pre_exposure=True)` declares a segment fixed before
+  exposure; the declaration is kept in the recipe, and `get_ab_test(strata_col=)`
+  reads it as `strata_pre_exposure_source="declared"` without a warning.
+  `get_metrics` honours a metric's `name` as `get_ab_test` does.
+- The A/B unit guard also refuses a table indexed by a finer path column (a
+  session table read per user; an unnamed one whose ids are more often session
+  ids warns) and, without a table, a session `path_col` when the arm segment is
+  constant within every user. A naive `assigned_at` that falls in the hour the
+  clocks go back raises `InvalidParameterError` asking for a tz-aware column
+  (a skipped wall time moves forward). Error messages name the fix: metric
+  arguments go under `metric_args`, a two-element segment `diff` needs
+  `(segment_col, group1, group2)`, an unknown arm names the table's arm column,
+  and `PathIdNotFoundError` quotes at most 10 ids.
+- MCP: `serve(stream, assignment=...)` attaches an assignment table; the A/B
+  tools then count every assigned user (ITT) and accept `horizon=` and
+  `period_basis="since_assignment"`. `get_ab_test` / `add_ab_test` take
+  `horizon`, `period_basis`, `test` and `correction_scope`, and every row
+  carries `population`, the supports, `conditional`, the raw `p_value`, `unit`
+  and a `scope` sentence. A numbers-only `get_ab_bootstrap` tool contrasts
+  periods (a novelty effect) with a joint interval. `describe()` lists segment
+  levels, the path columns each segment is constant on, value columns and the
+  assignment table's size; `describe_tool("metrics")` lists the registry and
+  `describe_tool("get_ab_test")` names the Python-only parameters. The playbook
+  covers a treatment that renames an event, the order of a "who does it help"
+  analysis and the tab `export_report` needs.
 - `rete.datasets.load_ab_test()` and `load_ab_test_assignment()`: "Northwind Home",
   a synthetic 50/50 A/B test of a `quick_add` feature (about 10,000 users, eight
   weeks, generated deterministically from `seed=2026`, no data file). Segments

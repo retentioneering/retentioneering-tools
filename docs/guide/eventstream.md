@@ -309,7 +309,7 @@ scorecard = stream.get_ab_test(
 
 **Strata.** `strata_col=` repeats every metric per level of a segment that is constant per path, with each stratum's share in both arms, a share-balance p-value, Cochran's heterogeneity test and a stratum-versus-rest test. The p-values are corrected within each metric (`correction="holm"` by default; `"bonferroni"` also adds simultaneous intervals, `"bh"` controls the false discovery rate), and `correction_family` says what was corrected together. A stratum must be fixed before exposure: find it on a stream truncated before the first exposure and carry it over with [`add_segment(path_values=...)`](/docs/data-processors/add-segment). A source column fixed at assignment, such as a signup platform, is declared with `strata_pre_exposure=True`. A stratum that is neither declared nor read from a truncation in the stream's recipe — clusters or `metric_bins` on the full stream — raises a warning and is flagged `strata_pre_exposure=False` — the treatment can move users between such strata, so their rows compare selected groups, not randomised ones. `strata_pre_exposure_source` says which case applies (`"declared"`, `"recipe"`, `"not_pre_exposure"`), and rows are `exploratory=True` unless the stratum counts as pre-exposure.
 
-**Periods and windows.** `period="W"` gives one row per calendar week, each on every user assigned by the end of that week (ITT per period). `period_population="active"` restricts each week to users active in it; such rows compare survivors and are marked `descriptive`, with no p-value. `period_basis="since_assignment"` bins events by time since each user's assignment (`"0-13"`, `"14-27"` days for `period="14D"`), and keeps a user in a bin only when the bin's window closed before the data ends (`immature_paths` counts the others). `horizon="28D"` gives every user the same 28-day window from assignment.
+**Periods and windows.** `period="W"` gives one row per calendar week, each on every user assigned by the end of that week (ITT per period). `period_population="active"` restricts each week to users active in it; such rows compare survivors and are marked `descriptive`, with no p-value. `period_basis="since_assignment"` bins events by time since each user's assignment (`"0-13"`, `"14-27"` days for `period="14D"`), and keeps a user in a bin only when the bin's window closed by the stream's last event (`immature_paths` counts the others). `horizon="28D"` gives every user the same 28-day window from assignment.
 
 ### Joint bootstrap replicates
 
@@ -328,7 +328,7 @@ reps = stream.get_ab_bootstrap(
 )
 novelty = reps.loc[reps["contrast"] == "novelty", "delta"]
 novelty.mean(), novelty.quantile([0.025, 0.975]).tolist()
-# (0.0490, [0.0281, 0.0692])  — the effect is 4.9 pp larger in days 0-13 than in days 28-41
+# (0.0479, [0.0284, 0.0675])  — the effect is about 4.8 pp larger in days 0-13 than in days 28-41
 ```
 
 ### Reproducing an eventstream

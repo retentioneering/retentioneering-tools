@@ -78,6 +78,38 @@ def _infer_caller_var_name(
         del frame
 
 
+def _numpydoc_split(doc: str) -> tuple[str, dict[str, str]]:
+    """Split a numpy-style docstring into its summary and ``{section: body}``.
+
+    Used to build the docstrings of `ab_test` and `ab_test_data` from the one of
+    `get_ab_test`, so the widget, its headless twin and the getter can never
+    document the same parameter differently.
+    """
+    lines = inspect.cleandoc(doc).splitlines()
+    summary: list[str] = []
+    sections: dict[str, list[str]] = {}
+    current = summary
+    i = 0
+    while i < len(lines):
+        nxt = lines[i + 1] if i + 1 < len(lines) else ""
+        if lines[i].strip() and nxt.strip() and set(nxt.strip()) == {"-"}:
+            current = sections.setdefault(lines[i].strip(), [])
+            i += 2
+            continue
+        current.append(lines[i])
+        i += 1
+    return "\n".join(summary).strip(), {
+        name: "\n".join(body).strip("\n") for name, body in sections.items()
+    }
+
+
+def _numpydoc_join(summary: str, sections: list[tuple[str, str]]) -> str:
+    parts = [summary.strip()]
+    for name, body in sections:
+        parts.append(f"{name}\n{'-' * len(name)}\n{body.strip(chr(10))}")
+    return "\n\n".join(parts) + "\n"
+
+
 try:
     from retentioneering._tracking import tracked as _tracked
 except Exception:
@@ -3266,6 +3298,171 @@ class Eventstream:
             metrics=metrics or [],
             path_col=path_col,
         )
+
+    @_tracked("widget_ab_test")
+    def ab_test(
+        self,
+        diff: T_Diff = None,
+        metrics: list | None = None,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        strata_col: str | None = None,
+        period=None,
+        period_basis: str | None = None,
+        period_population: str | None = None,
+        horizon=None,
+        test: str | None = None,
+        correction: str | None = None,
+        ci_level: float | None = None,
+        power: float | None = None,
+        n_bootstrap: "int | str | None" = None,
+        bootstrap_weights: str | None = None,
+        min_events: int | None = None,
+        random_state: int | None = None,
+        path_col: str | None = None,
+        strata_pre_exposure: bool | None = None,
+        height: int | None = None,
+        sidebar_open: bool | None = None,
+        state_file: str | None = None,
+    ):
+        # The docstring is assembled below from get_ab_test's: one text per parameter.
+        from retentioneering.widgets.ab_test import ABTestWidget, _UNSET
+
+        args = {
+            "diff": diff,
+            "metrics": metrics,
+            "strata_col": strata_col,
+            "period": period,
+            "period_basis": period_basis,
+            "period_population": period_population,
+            "horizon": horizon,
+            "test": test,
+            "correction": correction,
+            "ci_level": ci_level,
+            "power": power,
+            "n_bootstrap": n_bootstrap,
+            "bootstrap_weights": bootstrap_weights,
+            "min_events": min_events,
+            "random_state": random_state,
+            "path_col": path_col,
+            "strata_pre_exposure": strata_pre_exposure,
+            "height": height,
+            "sidebar_open": sidebar_open,
+        }
+        return ABTestWidget(
+            eventstream=self,
+            assignment=assignment,
+            state_file=state_file,
+            **{k: v if v is not None else _UNSET for k, v in args.items()},
+        )
+
+    @_tracked("headless_ab_test")
+    def ab_test_data(
+        self,
+        diff: T_Diff,
+        metrics: list,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        strata_col: str | None = None,
+        period=None,
+        period_basis: str = "calendar",
+        period_population: str = "itt",
+        horizon=None,
+        test: str = "auto",
+        correction: str = "holm",
+        ci_level: float = 0.95,
+        power: float = 0.8,
+        n_bootstrap: "int | str" = 1000,
+        bootstrap_weights: str = "multinomial",
+        min_events: int = 10,
+        random_state: int = 42,
+        path_col: str | None = None,
+        strata_pre_exposure: bool | None = None,
+    ) -> pd.DataFrame:
+        # The docstring is get_ab_test's with an alias note, assembled below.
+        return self.get_ab_test(
+            diff,
+            metrics,
+            assignment=assignment,
+            strata_col=strata_col,
+            period=period,
+            period_basis=period_basis,
+            period_population=period_population,
+            horizon=horizon,
+            test=test,
+            correction=correction,
+            ci_level=ci_level,
+            power=power,
+            n_bootstrap=n_bootstrap,
+            bootstrap_weights=bootstrap_weights,
+            min_events=min_events,
+            random_state=random_state,
+            path_col=path_col,
+            strata_pre_exposure=strata_pre_exposure,
+        )
+
+    _ab_summary, _ab_sections = _numpydoc_split(get_ab_test.__doc__ or "")
+    _ab_title, _, _ab_rest = _ab_summary.partition("\n\n")
+    ab_test_data.__doc__ = _numpydoc_join(
+        f"{_ab_title}\n\n"
+        "Documented alias of `get_ab_test`, under the name of the `ab_test`\n"
+        "widget's headless twin: the same computation, arguments and result.\n"
+        "The docs and the tutorial use `get_ab_test`; the widget calls this\n"
+        f"method, so its numbers are the getter's.\n\n{_ab_rest}",
+        list(_ab_sections.items()),
+    )
+    ab_test.__doc__ = _numpydoc_join(
+        """Interactive A/B test scorecard for Jupyter notebooks.
+
+The numbers of `get_ab_test`, drawn: a **Scorecard** tab with one row per metric
+(each arm's value, the delta with its interval, the adjusted p-value, the MDE, the
+verdict and any `support_warning`) and a forest plot of the deltas; a **Strata**
+tab when `strata_col` is set (one row per stratum, with the share-balance and
+heterogeneity p-values; exploratory rows marked); a **Periods** tab when `period`
+is set (the delta and its interval over time; incomplete periods drawn hollow,
+descriptive rows marked). An `inconclusive` verdict is not "no effect": its
+interval shows which effects the data still allow.
+
+The Scorecard is `ab_test_data(...)` without `strata_col` and `period`; the
+Strata tab adds `strata_col` and `strata_pre_exposure`; the Periods tab adds
+`period`, `period_basis` and `period_population`. Every other argument applies to
+all three. `ab_test_data` is the widget's headless twin, an alias of
+`get_ab_test`. The arms, the metrics, `ci_level`, `correction`, `test`,
+`strata_col`, `period`, `period_basis` and `horizon` are also editable in the
+sidebar; every change recomputes. `diff` and `metrics` may be left out and set
+there (or restored from `state_file`).""",
+        [
+            (
+                "Parameters",
+                _ab_sections.get("Parameters", "")
+                + """
+height : int, default 560
+    Widget height in pixels.
+sidebar_open : bool, default True
+    Whether the sidebar starts open.
+state_file : str, optional
+    JSON file the widget state is bound to; see
+    [Saving widget state](/docs/widgets#saving-widget-state). `assignment` is a
+    table, not state: pass it again when you reopen the widget.""",
+            ),
+            (
+                "Examples",
+                """    diff = ("exp_group", "treatment", "control")
+    metrics = [
+        {"name": "conversion", "metric": "has_event",
+         "metric_args": {"event": "order_success"}},
+        {"name": "revenue_per_user", "metric": "column_sum",
+         "metric_args": {"column": "order_value"}},
+    ]
+    stream.ab_test(diff, metrics, assignment=assignment)
+
+    # strata fixed at signup, and weekly ITT rows
+    stream.ab_test(diff, metrics, strata_col="platform",
+                   strata_pre_exposure=True, period="W")""",
+            ),
+        ],
+    )
+    del _ab_summary, _ab_sections, _ab_title, _ab_rest
 
     @_tracked("widget_cluster_analysis")
     def cluster_analysis(

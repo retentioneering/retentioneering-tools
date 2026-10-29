@@ -94,6 +94,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   period, so ratios of metrics and period contrasts (a novelty effect: days
   0–13 minus days 28–41) get their own intervals; a contrast compares the same
   paths in every contrasted period.
+- `ab_test(diff, metrics, ...)`: an A/B Test widget that draws `get_ab_test`'s
+  scorecard — a table (each arm's value, the delta with its interval, the
+  relative delta, the adjusted p-value, the MDE, the verdict, `support_warning`
+  and, when the rows carry it, `reading`) and a forest plot of the deltas
+  coloured by verdict (red increase, blue decrease, grey inconclusive, hollow
+  `insufficient_data`), with a Strata tab when `strata_col` is set
+  (heterogeneity and balance p-values, exploratory rows marked) and a Periods
+  tab when `period` is set (an interval band, incomplete periods hollow,
+  descriptive rows as squares). 0/1 metrics read in percentage points, the
+  others in their unit. Its data parameters are `get_ab_test`'s; the sidebar
+  edits the arms, the metrics (the registry editor, with row names, a
+  ratio-of-sums denominator and custom-column metrics), the confidence level,
+  the correction, the test, the strata column and its pre-exposure
+  declaration, the period and its basis, and the horizon, and every change
+  recomputes. State persists with `state_file` (the `assignment` table is
+  passed again); HTML exports keep every tab, read-only. Its headless twin
+  `ab_test_data` is a documented alias of `get_ab_test`, which stays the name
+  the docs use. The MCP server's `add_ab_test` registers it as a report tab
+  (`[label:metric]` links focus a metric's row). Docs: an A/B Test widget page
+  with live demos on `load_ab_test()`.
 - The MCP server has a numbers-only `get_ab_test` tool (overall rows, the top
   strata by effect size — labelled as such in `strata_selection` — and period
   rows, with `mde`, `correction_family`, `alpha_used`, `exploratory`,

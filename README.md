@@ -311,7 +311,7 @@ stream.get_ab_test(
 )
 ```
 
-The [A/B testing guide](https://retentioneering.com/docs/ab-testing) explains how to read the scorecard, which comparisons are randomised and which only describe, and the pitfalls of mixing the two.
+The [A/B testing guide](https://retentioneering.com/docs/ab-testing) explains how to read the scorecard, which comparisons are randomised and which only describe, and the pitfalls of mixing the two. The [tutorial notebook](notebooks/ab_testing_tutorial.ipynb) walks through the bundled dataset in ten steps.
 
 ## Explore agent runs, conversations and other event sequences
 

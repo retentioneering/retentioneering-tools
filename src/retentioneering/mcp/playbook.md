@@ -213,3 +213,13 @@ Confirm with the user, then call `update_base_stream` with one or more of:
 {"type": "filter_paths", "op": ">", "metric": "length", "value": 3}
 {"type": "filter_events", "drop": {"event": ["noise_event"]}}
 ```
+
+
+## Experiments (Python source API)
+
+The development Python API provides `Eventstream.experiment_data` and
+`Eventstream.experiment`. It requires a separate complete assignment dataframe;
+the current MCP report session does not register this second source. Do not
+synthesize a roster from observed paths or claim an experiment tool is available
+in MCP. Use the Python workflow documented in /docs/experiments; keep a
+behavioral segment diff descriptive until a valid assignment design is supplied.

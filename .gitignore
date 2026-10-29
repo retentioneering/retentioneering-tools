@@ -37,3 +37,7 @@ docs/build/
 !.claude/skills/
 typings
 .DS_Store
+
+# Generated experiment tutorial outputs
+/artifacts/
+/notebooks/artifacts/

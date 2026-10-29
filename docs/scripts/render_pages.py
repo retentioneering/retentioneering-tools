@@ -57,6 +57,7 @@ GUIDES = [
     ("segments", "Segments"),
     ("path-metrics", "Path Metrics"),
     ("path-patterns", "Path Patterns"),
+    ("experiments", "Experiments"),
     ("mcp-server", "MCP Server"),
     ("agent-skills", "Agent Skills"),
     ("recipes", "Recipes"),
@@ -85,6 +86,7 @@ WIDGETS = [
     ("widgets/step-matrix.md.jinja", "step_matrix", "step_matrix_data"),
     ("widgets/step-sankey.md.jinja", "step_sankey", "step_sankey_data"),
     ("widgets/funnel.md.jinja", "funnel", "funnel_data"),
+    ("widgets/experiment.md.jinja", "experiment", "experiment_data"),
     ("widgets/segment-overview.md.jinja", "segment_overview", "segment_overview_data"),
     ("widgets/cluster-analysis.md.jinja", "cluster_analysis", "cluster_analysis_data"),
 ]

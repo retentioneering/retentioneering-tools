@@ -62,3 +62,9 @@ jobs:
       - name: Run widget rendering tests
         if: matrix.python-version == '3.12'
         run: uv run --with playwright pytest tests/browser -v
+
+      - name: Execute experiment tutorials
+        if: matrix.python-version == '3.12'
+        run: |
+          uv run --with nbclient --with nbformat --with nbconvert --with ipykernel python examples/experiments/execute_tutorial.py
+          uv run --with nbclient --with nbformat --with nbconvert --with ipykernel python examples/experiments/execute_tutorial.py --lumeo

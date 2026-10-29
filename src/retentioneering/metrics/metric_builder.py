@@ -6,6 +6,8 @@ Supports metrics:
 - duration - duration in seconds between first and last event
 - event_count - event count for a single event (one number per path)
   - event: event name (string, required)
+- event_value_sum - sum of finite numeric values on matching events
+  - event, value_col: required; missing matching amounts raise an error
 - has_event - event presence (0/1) for a single event (one number per path)
   - event: event name (string, required)
 - event_count_bulk - event count for one or more events, expanded into one column per event
@@ -58,8 +60,9 @@ resolves against the eventstream's own events. in_segment/in_segment_bulk take
 no 'event_col': they match segment levels, not event names.
 """
 
-from typing import Any, Dict, List, Set
+from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from retentioneering import engine
@@ -73,12 +76,12 @@ from retentioneering.exceptions import (
 from retentioneering.paths import anchors
 from retentioneering.utils.sql_quoting import quote_list, quote_literal
 
-
 # Valid metric names
 VALID_METRICS = {
     "length",
     "duration",
     "event_count",
+    "event_value_sum",
     "has_event",
     "event_count_bulk",
     "has_event_bulk",
@@ -110,8 +113,46 @@ IN_SEGMENT_BULK_ARGS = {"segment_name", "segment_levels", "mode", "threshold"}
 # Special synthetic events that don't need to exist in the eventstream
 SYNTHETIC_EVENTS = {EventTypes().PATH_START.name, EventTypes().PATH_END.name}
 
+# Scalar outcome semantics are declared, never guessed from observed ranges.
+# Other registry metrics may have undefined empty-path values or bulk outputs.
+SCALAR_OUTCOME_CAPABILITIES = {
+    "has_event": {"kind": "binary", "empty_value": 0.0},
+    "matches_pattern": {"kind": "binary", "empty_value": 0.0},
+    "event_count": {"kind": "count", "empty_value": 0.0},
+    "event_value_sum": {"kind": "continuous", "empty_value": 0.0},
+}
 
-def _normalize_event_col(metric_args: Dict[str, Any], metric_name: str) -> str | None:
+
+def compile_scalar_outcome(spec):
+    """Compile supported finite scalar outcomes through the common parser.
+
+    This capability boundary rejects duration/bulk outcomes until their missing
+    and eligibility policies are explicitly defined. Dataset vocabulary is
+    validated by the consumer against its observed plus declared catalogue.
+    """
+    metric = spec.get("metric")
+    if metric not in SCALAR_OUTCOME_CAPABILITIES:
+        raise InvalidMetricConfigError(
+            f"Unsupported scalar outcome '{metric}'; valid metrics: "
+            f"{sorted(SCALAR_OUTCOME_CAPABILITIES)}"
+        )
+    allowed = (
+        {"event", "value_col", "event_col"}
+        if metric == "event_value_sum"
+        else {"pattern", "event_col"}
+        if metric == "matches_pattern"
+        else {"event", "event_col"}
+    )
+    args = spec.get("metric_args", {})
+    if not isinstance(args, dict) or set(args) - allowed:
+        raise InvalidMetricConfigError(
+            f"'{metric}' valid metric_args keys: {sorted(allowed)}"
+        )
+    parsed = MetricConfig([spec]).parsed_configs[0]
+    return parsed, dict(SCALAR_OUTCOME_CAPABILITIES[metric])
+
+
+def _normalize_event_col(metric_args: dict[str, Any], metric_name: str) -> str | None:
     """
     Normalizes the optional 'event_col' metric_args key.
 
@@ -150,7 +191,24 @@ def _normalize_single_event(event: Any, metric_name: str) -> str:
     return event
 
 
-def _normalize_events_bulk(events: Any, metric_name: str) -> List[str] | None:
+def _normalize_event_value_sum(metric_args: dict[str, Any]) -> tuple[str, str]:
+    """Numeric sum on matching events; missing matching values are errors."""
+    unknown = set(metric_args) - {"event", "value_col", "event_col"}
+    if unknown:
+        raise InvalidMetricConfigError(
+            f"'event_value_sum' got unknown keys {sorted(unknown)}; "
+            "valid keys: event, value_col, event_col"
+        )
+    event = _normalize_single_event(metric_args.get("event"), "event_value_sum")
+    value_col = metric_args.get("value_col")
+    if not isinstance(value_col, str) or not value_col:
+        raise InvalidMetricConfigError(
+            "'event_value_sum' requires a value_col column name"
+        )
+    return event, value_col
+
+
+def _normalize_events_bulk(events: Any, metric_name: str) -> list[str] | None:
     """Normalizes the 'events' metric_args value for has_event_bulk/event_count_bulk.
 
     Omitting the key, or passing None, means "all events" (returns None, resolved to
@@ -171,7 +229,7 @@ def _normalize_events_bulk(events: Any, metric_name: str) -> List[str] | None:
     )
 
 
-def _normalize_events_required(events: Any, metric_name: str) -> List[str]:
+def _normalize_events_required(events: Any, metric_name: str) -> list[str]:
     """Normalizes the 'events' metric_args value for has_all_events/has_any_event:
     a non-empty list is required - there's no wildcard, since AND/OR over "every
     event in the stream" isn't a meaningful condition."""
@@ -182,7 +240,7 @@ def _normalize_events_required(events: Any, metric_name: str) -> List[str]:
     return events
 
 
-def _normalize_time_between(metric_args: Dict[str, Any]) -> tuple[str, str]:
+def _normalize_time_between(metric_args: dict[str, Any]) -> tuple[str, str]:
     """Normalizes 'start_event'/'end_event' metric_args for time_between: both required."""
     start_event = metric_args.get("start_event")
     end_event = metric_args.get("end_event")
@@ -193,7 +251,7 @@ def _normalize_time_between(metric_args: Dict[str, Any]) -> tuple[str, str]:
     return start_event, end_event
 
 
-def _normalize_pattern(metric_args: Dict[str, Any]) -> str:
+def _normalize_pattern(metric_args: dict[str, Any]) -> str:
     """Normalizes the 'pattern' metric_args value for matches_pattern: required, non-empty."""
     pattern = metric_args.get("pattern")
     if not pattern:
@@ -204,9 +262,9 @@ def _normalize_pattern(metric_args: Dict[str, Any]) -> str:
 
 
 def _reject_unknown_in_segment_args(
-    metric_args: Dict[str, Any],
+    metric_args: dict[str, Any],
     metric_name: str,
-    allowed: Set[str],
+    allowed: set[str],
     level_key: str,
     rename_hint: str = "",
 ) -> None:
@@ -229,7 +287,7 @@ def _reject_unknown_in_segment_args(
     )
 
 
-def _normalize_in_segment(metric_args: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_in_segment(metric_args: dict[str, Any]) -> dict[str, Any]:
     """Normalizes in_segment's metric_args shape: 'segment_name'/'mode' (required,
     valid mode) and 'segment_level' (None | scalar | non-empty list, normalized to
     'segment_levels' - a list, or None meaning "all values", resolved at build time).
@@ -290,7 +348,7 @@ def _normalize_in_segment(metric_args: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _normalize_in_segment_bulk(metric_args: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_in_segment_bulk(metric_args: dict[str, Any]) -> dict[str, Any]:
     """Normalizes in_segment_bulk's metric_args shape - the wildcard-friendly
     sibling of `_normalize_in_segment`.
 
@@ -342,7 +400,7 @@ def _normalize_in_segment_bulk(metric_args: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _normalize_in_segment_threshold(
-    metric_args: Dict[str, Any], metric_name: str = "in_segment"
+    metric_args: dict[str, Any], metric_name: str = "in_segment"
 ) -> Any:
     """Normalizes the 'threshold' metric_args value for in_segment's 'event_share'
     mode: required when present. Range checking (0-1) needs no real-eventstream
@@ -357,7 +415,7 @@ def _normalize_in_segment_threshold(
 
 
 def combined_metric_name(
-    metric: str, events: List[str], event_col: str | None = None
+    metric: str, events: list[str], event_col: str | None = None
 ) -> str:
     """Canonical column name for has_all_events/has_any_event: the one piece of
     metric-naming *logic* (as opposed to plain interpolation) shared across
@@ -374,8 +432,8 @@ class MetricConfig:
 
     def __init__(
         self,
-        config_items: List[Dict[str, Any]],
-        available_events: Set[str] | List[str] | None = None,
+        config_items: list[dict[str, Any]],
+        available_events: set[str] | list[str] | None = None,
     ):
         """
         Args:
@@ -390,7 +448,7 @@ class MetricConfig:
         self.available_events = available_events
         self.parsed_configs = self._parse_configs()
 
-    def get_enriched_configs(self) -> List[Dict[str, Any]]:
+    def get_enriched_configs(self) -> list[dict[str, Any]]:
         """
         Returns original configs enriched with 'cols' key containing column names.
 
@@ -411,7 +469,7 @@ class MetricConfig:
             enriched.append(original)
         return enriched
 
-    def _parse_configs(self) -> List[Dict[str, Any]]:
+    def _parse_configs(self) -> list[dict[str, Any]]:
         """Parses configuration items into structured format"""
         configs = []
 
@@ -426,7 +484,7 @@ class MetricConfig:
 
         return configs
 
-    def _parse_dict_config(self, config_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def _parse_dict_config(self, config_dict: dict[str, Any]) -> dict[str, Any]:
         """Parses a dict-based configuration. Raises InvalidMetricConfigError on invalid config."""
         metric = config_dict.get("metric")
         metric_args = config_dict.get("metric_args", {})
@@ -470,6 +528,19 @@ class MetricConfig:
                 "pattern": pattern,
                 "event_col": event_col,
                 "metric_names": [f"matches_pattern_{_prefix(event_col)}{pattern}"],
+                "original": config_dict,
+            }
+        elif metric == "event_value_sum":
+            event, value_col = _normalize_event_value_sum(metric_args)
+            event_col = _normalize_event_col(metric_args, metric)
+            return {
+                "type": metric,
+                "event_names": [event],
+                "value_col": value_col,
+                "event_col": event_col,
+                "metric_names": [
+                    f"event_value_sum_{_prefix(event_col)}{event}_{value_col}"
+                ],
                 "original": config_dict,
             }
         elif metric == "has_event":
@@ -648,8 +719,8 @@ class MetricBuilder:
 
     def validate_metric_config(
         self,
-        metric: Dict[str, Any],
-        available_events: Set[str] | List[str] | None = None,
+        metric: dict[str, Any],
+        available_events: set[str] | list[str] | None = None,
     ) -> None:
         """
         Validate a single metric configuration.
@@ -692,7 +763,29 @@ class MetricBuilder:
                 )
             available_events = set(self.df[metric_event_col].unique().tolist())
 
-        if metric_name in ("event_count", "has_event"):
+        if metric_name == "event_value_sum":
+            event, value_col = _normalize_event_value_sum(metric_args)
+            if event not in available_events:
+                raise InvalidMetricConfigError(
+                    f"Event '{event}' not found. Available events: {sorted(available_events)}"
+                )
+            if value_col not in self.df:
+                raise InvalidMetricConfigError(f"Unknown value_col '{value_col}'")
+            matching = self.df[
+                (self.df[metric_event_col or self.schema.event_col] == event)
+            ]
+            try:
+                numeric = pd.to_numeric(matching[value_col], errors="raise")
+                finite = np.isfinite(numeric.to_numpy(dtype=float)).all()
+            except (TypeError, ValueError) as exc:
+                raise InvalidMetricConfigError(
+                    "event_value_sum requires finite numeric matching values"
+                ) from exc
+            if not finite:
+                raise InvalidMetricConfigError(
+                    "event_value_sum matching values must not be missing or nonfinite"
+                )
+        elif metric_name in ("event_count", "has_event"):
             event = _normalize_single_event(metric_args.get("event"), metric_name)
             if event not in available_events:
                 raise InvalidMetricConfigError(
@@ -831,7 +924,7 @@ class MetricBuilder:
                     )
 
     def build_metrics(
-        self, config: List[Dict[str, Any]], path_col: str | None = None
+        self, config: list[dict[str, Any]], path_col: str | None = None
     ) -> pd.DataFrame:
         """
         Main method for building metrics
@@ -861,7 +954,7 @@ class MetricBuilder:
 
         path_ids = self.df[path_col].unique()
 
-        metric_dfs: List[pd.DataFrame] = []
+        metric_dfs: list[pd.DataFrame] = []
 
         # Build metrics for each configuration
         for config_item in metric_config.parsed_configs:
@@ -884,7 +977,7 @@ class MetricBuilder:
         return result_df
 
     def _build_metric(
-        self, config: Dict[str, Any], path_col: str, event_col: str
+        self, config: dict[str, Any], path_col: str, event_col: str
     ) -> pd.DataFrame:
         """Builds specific metric according to configuration"""
 
@@ -892,7 +985,9 @@ class MetricBuilder:
         # argument is the stream's own event column, the default for the rest.
         event_col = config.get("event_col") or event_col
 
-        if config["type"] == "event_count":
+        if config["type"] == "event_value_sum":
+            return self._build_event_value_sum(config, path_col, event_col)
+        elif config["type"] == "event_count":
             return self._build_event_count(config, path_col, event_col)
         elif config["type"] == "has_event":
             return self._build_has(config, path_col, event_col)
@@ -921,7 +1016,20 @@ class MetricBuilder:
         else:
             raise InvalidMetricConfigError(f"Unknown metric type: '{config['type']}'")
 
-    def _resolve_event_names(self, config: Dict[str, Any], event_col: str) -> List[str]:
+    def _build_event_value_sum(self, config, path_col, event_col):
+        path = engine.quote_ident(path_col)
+        event = engine.quote_ident(event_col)
+        value = engine.quote_ident(config["value_col"])
+        output = engine.quote_ident(config["metric_names"][0])
+        selected = quote_literal(config["event_names"][0])
+        return engine.run(
+            f"SELECT {path}, SUM(CASE WHEN {event} = {selected} "
+            f"THEN CAST({value} AS DOUBLE) ELSE 0 END) AS {output} "
+            f"FROM df GROUP BY {path}",
+            df=self.df,
+        ).set_index(path_col)
+
+    def _resolve_event_names(self, config: dict[str, Any], event_col: str) -> list[str]:
         """Resolves a possibly-wildcard (None) 'event_names' config entry to an
         explicit, sorted list of event names."""
         event_names = config["event_names"]
@@ -932,7 +1040,7 @@ class MetricBuilder:
 
     def _build_count_pivot(
         self,
-        event_names: List[str],
+        event_names: list[str],
         path_col: str,
         event_col: str,
         col_prefix: str,
@@ -970,7 +1078,7 @@ class MetricBuilder:
         return metrics_df
 
     def _build_event_count(
-        self, config: Dict[str, Any], path_col: str, event_col: str
+        self, config: dict[str, Any], path_col: str, event_col: str
     ) -> pd.DataFrame:
         """Builds the event count metric for a single event"""
         event_names = self._resolve_event_names(config, event_col)
@@ -978,7 +1086,7 @@ class MetricBuilder:
         return self._build_count_pivot(event_names, path_col, event_col, prefix)
 
     def _build_has(
-        self, config: Dict[str, Any], path_col: str, event_col: str
+        self, config: dict[str, Any], path_col: str, event_col: str
     ) -> pd.DataFrame:
         """Builds the event presence metric (0/1) for a single event"""
         counts = self._build_event_count(config, path_col, event_col)
@@ -987,7 +1095,7 @@ class MetricBuilder:
         return has
 
     def _build_event_count_bulk(
-        self, config: Dict[str, Any], path_col: str, event_col: str
+        self, config: dict[str, Any], path_col: str, event_col: str
     ) -> pd.DataFrame:
         """Builds event count metrics for one or more events, one column per event"""
         event_names = self._resolve_event_names(config, event_col)
@@ -995,7 +1103,7 @@ class MetricBuilder:
         return self._build_count_pivot(event_names, path_col, event_col, prefix)
 
     def _build_has_bulk(
-        self, config: Dict[str, Any], path_col: str, event_col: str
+        self, config: dict[str, Any], path_col: str, event_col: str
     ) -> pd.DataFrame:
         """Builds event presence metrics (0/1) for one or more events, one column per event"""
         counts = self._build_event_count_bulk(config, path_col, event_col)
@@ -1006,7 +1114,7 @@ class MetricBuilder:
         return has
 
     def _build_has_all_or_any(
-        self, config: Dict[str, Any], path_col: str, event_col: str
+        self, config: dict[str, Any], path_col: str, event_col: str
     ) -> pd.DataFrame:
         """Builds has_all_events (AND) / has_any_event (OR) - a single 0/1 column
         per path. Reuses the count pivot with a throwaway internal prefix, then
@@ -1022,7 +1130,7 @@ class MetricBuilder:
         return reduced.astype(int).to_frame(metric_name)
 
     def _build_time_from_to(
-        self, config: Dict[str, Any], path_col: str, event_col: str
+        self, config: dict[str, Any], path_col: str, event_col: str
     ) -> pd.DataFrame:
         """Builds time difference metric between two events (in seconds)"""
         start_event = config["start_event"]
@@ -1130,7 +1238,7 @@ class MetricBuilder:
         return result.set_index(path_col)
 
     def _build_matches(
-        self, config: Dict[str, Any], path_col: str, event_col: str
+        self, config: dict[str, Any], path_col: str, event_col: str
     ) -> pd.DataFrame:
         """Builds pattern matching metric (0/1) for each path.
 
@@ -1166,7 +1274,7 @@ class MetricBuilder:
         all_paths = pd.Index(self.df_with_start_end[path_col].unique(), name=path_col)
         return pd.DataFrame({metric_name: all_paths.isin(matched)}, index=all_paths)
 
-    def _build_in_segment(self, config: Dict[str, Any], path_col: str) -> pd.DataFrame:
+    def _build_in_segment(self, config: dict[str, Any], path_col: str) -> pd.DataFrame:
         """
         Builds in_segment metric (0/1) for each path.
 
@@ -1188,7 +1296,7 @@ class MetricBuilder:
         )
 
     def _build_in_segment_bulk(
-        self, config: Dict[str, Any], path_col: str
+        self, config: dict[str, Any], path_col: str
     ) -> pd.DataFrame:
         """
         Builds in_segment_bulk metrics (0/1) - the same per-level membership
@@ -1220,7 +1328,7 @@ class MetricBuilder:
             return frames[0]
         return pd.concat(frames, axis=1)
 
-    def _resolve_segment_levels(self, segment_name: str) -> List[Any]:
+    def _resolve_segment_levels(self, segment_name: str) -> list[Any]:
         """Every level actually present in a segment column, sorted by string
         representation for a stable column order. Missing values are skipped -
         NaN can't be compared with `=` in SQL, so a NaN "level" would only ever
@@ -1231,7 +1339,7 @@ class MetricBuilder:
     def _build_in_segment_columns(
         self,
         segment_name: str,
-        segment_levels: List[Any] | None,
+        segment_levels: list[Any] | None,
         mode: str,
         threshold: Any,
         path_col: str,

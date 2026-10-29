@@ -31,11 +31,14 @@ of a widget (ADR-0006); when an `ab_test` widget ships, `ab_test_data` becomes
 its twin and an alias of `get_ab_test`.
 
 **D2 — path-level groups.** `tools/_diff.py::resolve_diff` resolves a `diff`
-into two disjoint sets of path ids (`DiffGroups`). Every inferential method
-(`get_ab_test`, `get_ab_bootstrap`, `get_sample_ratio`,
-`get_conversion_rate(diff=)`, `funnel(ci_level=)`) refuses a path that would
+into two disjoint sets of path ids (`DiffGroups`). The inferential methods
+that compare two arms (`get_ab_test`, `get_ab_bootstrap`,
+`get_conversion_rate(diff=)`, `funnel(ci_level=)`) refuse a path that would
 land in both groups with `DiffConfigError`, counting them and pointing at a
-finer `path_col` or a path-level segment (`add_segment(path_values=)`). The
+finer `path_col` or a path-level segment (`add_segment(path_values=)`).
+`get_sample_ratio` does not refuse such paths: it counts them as
+`multi_valued_paths` and raises `mismatch`, because for a sample ratio check a
+path that carries two arms is the finding, not an input error. The
 existing widgets keep their event-level split; migrating them is a later,
 announced behaviour change. An `assignment=` table (path id → arm, optionally
 `assigned_at`) defines the intention-to-treat population: silent paths count as
@@ -93,7 +96,15 @@ and `tools/_bootstrap.py` are pure functions without an `Eventstream`.
   is which.
 - Pre-assignment comparisons (an A/A strip before assignment) are not produced
   by `get_ab_test`, which drops events before `assigned_at`; they are built on a
-  stream truncated at assignment.
+  separate stream of the events before each path's `assigned_at` (a pandas filter
+  on the event table: `truncate_paths` cannot anchor on a per-path timestamp
+  column).
+- The tutorial's pre-assignment A/A strip is deferred: the bundled
+  `load_ab_test()` dataset assigns users at their first app open and has no
+  pre-history, so there is nothing before assignment to compare. A future
+  revision of the dataset may plant a few days of pre-assignment history; the
+  generator is unchanged in this release, and the tutorial says why the check
+  is missing.
 
 ## Roadmap (not in this release)
 

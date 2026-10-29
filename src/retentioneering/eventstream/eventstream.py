@@ -622,6 +622,8 @@ class Eventstream:
             `"since_assignment"`: a fixed length (`"7D"`, `"14D"`, `"W"` = 7 days).
             Requires the primary path column.
         period_basis : {"calendar", "since_assignment"}, default "calendar"
+            What `period` bins.
+
             - `"calendar"` — periods are calendar bins of the event timestamp; the
               population of a period is every path assigned before the period's end
               (`assigned_at`, or the path's first event without it; silent paths with
@@ -632,6 +634,8 @@ class Eventstream:
               the bin's window closes before the stream's end; the others are counted
               in `immature_paths`. This is the basis for novelty effects.
         period_population : {"itt", "active"}, default "itt"
+            Which paths a period row compares.
+
             - `"itt"` — every assigned path is in every period (counts 0 when silent);
               rows are inferential.
             - `"active"` — only paths with an event in the period; such rows compare
@@ -672,6 +676,8 @@ class Eventstream:
             and values); `"auto"` = `max(1000, ceil(20 * m / alpha))` where `m` is the
             largest family size.
         bootstrap_weights : {"multinomial", "poisson"}, default "multinomial"
+            Resampling scheme of the bootstrap.
+
             - `"multinomial"` — resample each arm's paths with replacement (arm sizes
               fixed).
             - `"poisson"` — independent Poisson(1) weight per path.
@@ -731,8 +737,8 @@ class Eventstream:
               `alpha` for none or a family of one), `m` = finite p-values in the family.
             - `mde`, `rel_mde` (float): minimum detectable absolute and relative effect
               at `alpha_used`, `power` and the realised sample sizes.
-            - `verdict` (str): `"increase"` / `"decrease"` when `p_value_adjusted <
-              1 - ci_level`, with the sign of `delta`; `"inconclusive"` otherwise
+            - `verdict` (str): `"increase"` / `"decrease"` when
+              `p_value_adjusted < 1 - ci_level`, with the sign of `delta`; `"inconclusive"` otherwise
               (including a NaN p-value); `"descriptive"` for active period rows;
               `"insufficient_data"` below `min_events`.
             - `test` (str): `"z_test"`, `"welch_t_test"` or `"bootstrap"`.
@@ -751,7 +757,8 @@ class Eventstream:
               metrics, >= 10 supported paths per arm otherwise); NaN with fewer than two
               usable strata. Repeated on every row of the metric (and period).
             - `stratum_vs_rest_p_value`* (float): normal test of the stratum's delta
-              against the delta of the pooled other strata.
+              against the delta of the pooled other strata (unadjusted; NaN on rows
+              without a p-value).
             - `strata_pre_exposure`* (boolean): True when the recipe shows the stratum
               was computed after a `truncate_paths`, False when it was computed from
               behaviour without one, `<NA>` when the recipe cannot tell (a source
@@ -858,7 +865,9 @@ class Eventstream:
 
         Parameters
         ----------
-        diff, metrics, assignment, strata_col, period, period_basis, period_population, horizon, bootstrap_weights, random_state, path_col
+        diff, metrics, assignment, strata_col, period, period_basis : see get_ab_test
+            As in `get_ab_test`.
+        period_population, horizon, bootstrap_weights, random_state, path_col : see get_ab_test
             As in `get_ab_test`.
         contrast : dict, optional
             `{"name": (periods_a, periods_b)}` (period labels): for each metric (and

@@ -42,8 +42,11 @@ Solutions (spoilers)
    split is a clean 50/50 (``get_sample_ratio`` with the table and
    ``path_col="session_id"``: no mismatch).
 2. ``get_ab_test`` at the user grain refuses: with the stream's segment
-   (``DiffConfigError``: a user in both groups), and with the session table
-   (``InvalidParameterError``: no session id of the table is a user id).
+   (``DiffConfigError``: "'exp_group' is not constant within 2454 of the
+   compared paths (user_id)" at the default seed: users in both groups), and with
+   the session table (``InvalidParameterError``: "the assignment table is indexed
+   by 'session_id', a finer path column", so every user would take the arm of a
+   session).
 3. At the session grain (``path_col="session_id"``) the scorecard runs, and the
    add rate per session reads as a clear increase, but its interval is too
    narrow: it treats every session as an independent unit while the effect of the

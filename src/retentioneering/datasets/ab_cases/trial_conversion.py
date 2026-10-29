@@ -50,9 +50,11 @@ Solutions (spoilers)
    period_basis="since_assignment"`` the ``"0-6"`` bin increases and the
    ``"14-20"`` bin decreases.
 
-Correct conclusion: declare the horizon (21 days) before reading a trial test;
-at 21 days the offer brings conversions forward and does not add subscribers.
-The whole-window lift is an artefact of immature cohorts.
+Correct conclusion: declare the horizon (21 days) before reading a trial test.
+At 21 days the offer brings conversions forward; a change in the number of
+subscribers is not detectable (+0.9 pp, interval -1.1 to +2.9 pp at the default
+seed), which is not the same as no change. The whole-window lift is an artefact
+of immature cohorts.
 """
 
 from __future__ import annotations

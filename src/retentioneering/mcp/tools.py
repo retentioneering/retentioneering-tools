@@ -1120,8 +1120,9 @@ def get_ab_test(
         "holm" (default), "bonferroni", "bh" or "none".
     correction_scope:
         "metric" (default): the correction runs within one metric's rows, metrics
-        are not corrected against each other — name one decision metric. "all":
-        every row of every metric in one family (a declared set of guardrails).
+        are not corrected against each other — name one decision metric, and read
+        each guardrail alone against a declared harm margin. "all": every row of
+        every metric in one family (a scorecard read without one decision metric).
     ci_level:
         Confidence level of the intervals (default 0.95).
     path_col:
@@ -1146,10 +1147,10 @@ def get_ab_test(
     test, correction_family (what was adjusted together), mde_alpha (the level the
     mde is computed at, alpha / m under a correction; the verdict compares
     p_value_adjusted with 1 - ci_level), reading (one sentence built from the
-    row's numbers: the window it covers, what the interval includes or excludes
-    after the correction, the p-value, for an inconclusive row the effect the
-    design detects and the paths needed for a smaller one, and the row's flags;
-    quote it), unit ("pp": a 0/1 metric whose delta fields are shares and whose
+    row's numbers: the window it covers, what the per-comparison interval
+    includes or excludes, the p-value after the correction, for an inconclusive
+    row the effect the design detects and the paths a new test needs for a
+    smaller one, and the row's flags; quote it), unit ("pp": a 0/1 metric whose delta fields are shares and whose
     reading is in percentage points; "value": the metric's own unit) and scope
     (what the row is corrected against: e.g. "holm within this metric's rows
     only; metrics are not corrected against each other ...; intervals are per
@@ -1173,8 +1174,9 @@ def get_ab_test(
     "descriptive" marks period_population="active" rows (survivors, no p-value).
 
     "inconclusive" is NOT "no effect": quote the row's `reading` (it says which
-    effects the interval still allows and what the design could detect) and propose
-    the next step; the mde is not a bound on the effect.
+    effects the interval still allows and what the design could detect); a smaller
+    effect needs a new test sized before it starts, never this test run longer or
+    re-read at another horizon. The mde is not a bound on the effect.
     """
     if (err := _require_stream(session)) is not None:
         return err

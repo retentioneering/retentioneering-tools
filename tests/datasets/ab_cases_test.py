@@ -191,11 +191,16 @@ def check_session_assignment(stream: Eventstream, assignment: pd.DataFrame) -> d
     srm_session = stream.get_sample_ratio(
         "exp_group", assignment=assignment, path_col="session_id"
     )
+    refuses = []
     try:
         stream.get_ab_test(DIFF, [adds])
-        refuses = False
-    except DiffConfigError:
-        refuses = True
+    except DiffConfigError as exc:
+        refuses.append("is not constant within" in str(exc))
+    try:
+        stream.get_ab_test(DIFF, [adds], assignment=assignment)
+    except InvalidParameterError as exc:
+        # the message the Solutions quote (story 2)
+        refuses.append("indexed by 'session_id', a finer path column" in str(exc))
     session = stream.get_ab_test(
         DIFF, [adds], assignment=assignment, path_col="session_id"
     ).iloc[0]
@@ -206,7 +211,7 @@ def check_session_assignment(stream: Eventstream, assignment: pd.DataFrame) -> d
         "users_in_both_arms": srm_user["multi_valued_paths"] > 0
         and bool(srm_user["mismatch"]),
         "session_split_fine": not srm_session["mismatch"],
-        "user_grain_refuses": refuses,
+        "user_grain_refuses": refuses == [True, True],
         "session_grain_increase": session["verdict"] == "increase",
         "session_interval_too_narrow": se / session["delta_se"] >= 1.3,
         "first_session_increase": first_row["verdict"] == "increase",
@@ -670,7 +675,10 @@ class TestSessionAssignment:
 
     def test__session_table_refused_at_user_grain(self, per_session) -> None:
         stream, assignment = per_session
-        with pytest.raises(InvalidParameterError, match="'assignment'"):
+        with pytest.raises(
+            InvalidParameterError,
+            match="indexed by 'session_id', a finer path column",
+        ):
             stream.get_ab_test(DIFF, [_has("add_to_cart")], assignment=assignment)
 
     def test__clustered_se_ratio(self, per_session) -> None:

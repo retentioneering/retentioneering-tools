@@ -710,14 +710,17 @@ def _build_server(
         Compare two arms of an experiment on path metrics: delta, interval, verdict, MDE.
 
         Run get_sample_ratio first. Numbers only, no report tab: quote in backticks.
-        "inconclusive" is NOT "no effect": quote the row's reading (what the
-        interval allows, what the design detects, how many more paths a smaller
-        effect needs) and propose a next step; the mde is not a bound on the
-        effect. Population (`population`): with the session's assignment table
+        Ask for the decision metric BEFORE this call. "inconclusive" is NOT "no
+        effect": quote the row's reading (what the interval allows, what the
+        design detects, the paths a new test needs for a smaller effect); never
+        propose running this test longer or re-reading it at another horizon
+        (peeking): a smaller effect needs a new test sized before it starts. The
+        mde is not a bound on the effect. Population (`population`): with the session's assignment table
         (serve(stream, assignment=...)) every assigned user, silent ones included;
         without one the stream paths (users with >= 1 event) by the segment in
         diff, so silent assigned users are not counted. Metrics are not corrected
-        against each other (correction_scope="metric"): name one decision metric.
+        against each other (correction_scope="metric"): read the decision metric,
+        and each guardrail on its own against a harm margin declared up front.
 
         Parameters
         ----------
@@ -751,7 +754,8 @@ def _build_server(
             "holm" (default), "bonferroni", "bh" or "none".
         correction_scope:
             "metric" (default: within one metric's rows) or "all" (every row of
-            every metric in one family).
+            every metric in one family: a scorecard read without one decision
+            metric; never for guardrails, which are read alone).
         ci_level:
             Interval level, default 0.95.
         path_col:

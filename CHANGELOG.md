@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- MCP `describe_tool("")` discovers `rename_segment_levels` and derives its
+  preprocessor index from `registered_ops()` to prevent omissions (#198).
+  `add_start_end_events` remains an explicit discovery-only exclusion pending
+  the boundary/deprecation decision in #174; its execution is unchanged.
 - `time_median` and `time_q95` edge weights in `transition_graph` and
   `transition_graph_data` measure the exact gap between events instead of
   counting whole-second boundaries, so a 125 ms span no longer reads as 0 s or

@@ -259,13 +259,11 @@ def _build_server(
         Call this before using any preprocessor you are not 100% sure about —
         do NOT guess parameters or read source files.
 
-        Pass "" (empty) to list all documented tools.
-
-        Preprocessors (use as {"type": "<name>", ...} in update_base_stream / local_preprocessors):
-          collapse_events  filter_paths   filter_events   truncate_paths
-          rename_events    edit_events    drop_events     add_events
-          to_daily_states  add_segment    drop_segment    add_clusters
-          urls_to_events   sample_paths   split_sessions
+        Pass "" (empty) for the discovery index. Its preprocessors come from the
+        operation registry; use them as {"type": "<name>", ...} in
+        update_base_stream / local_preprocessors. The index intentionally omits
+        add_start_end_events: analysis tools insert boundaries for their own
+        path_col. Explicit documentation lookup remains available.
 
         Analysis tools (called directly, not as a preprocessor step):
           get_conversion_rate

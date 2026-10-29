@@ -7,10 +7,10 @@ transport concerns (see `server.py`).
 
 from __future__ import annotations
 
-import inspect
 import pathlib
 
 from retentioneering.eventstream.eventstream import Eventstream
+from retentioneering.ops import registered_ops
 
 
 def _load_playbook() -> dict[str, str]:
@@ -68,6 +68,18 @@ def _playbook_index() -> dict:
     }
 
 
+# Discovery exclusions only: explicit documentation lookup and execution via
+# apply_ops remain available. Every exclusion needs a reason; tests check that
+# it still names a registered op so removals cannot leave stale policy behind.
+_PREPROCESSOR_INDEX_EXCLUSIONS = {
+    "add_start_end_events": (
+        "Tools add path boundaries for their own path_col. Keep this operation "
+        "out of discovery pending the boundary/deprecation decision in PR #174: "
+        "https://github.com/retentioneering/retentioneering-tools/pull/174"
+    ),
+}
+
+
 # Eventstream methods documented through describe_tool that are NOT
 # preprocessors — they compute an answer instead of returning a new stream, so
 # they are called as their own MCP tool rather than as a step in a
@@ -76,34 +88,11 @@ _ANALYSIS_METHODS = frozenset({"get_conversion_rate"})
 
 
 def _tool_docs_index() -> dict:
-    preprocessors = sorted(
-        m
-        for m in dir(Eventstream)
-        if not m.startswith("_")
-        and callable(getattr(Eventstream, m))
-        and inspect.getdoc(getattr(Eventstream, m))
-        and m
-        in {
-            "filter_events",
-            "filter_paths",
-            "add_segment",
-            "collapse_events",
-            "truncate_paths",
-            "rename_events",
-            "edit_events",
-            "drop_events",
-            "add_events",
-            "to_daily_states",
-            "drop_segment",
-            "add_clusters",
-            "urls_to_events",
-            "sample_paths",
-            "split_sessions",
-        }
-    )
     return {
         "usage": "Call describe_tool(topic) with one of the keys below.",
-        "preprocessors": preprocessors,
+        "preprocessors": sorted(
+            registered_ops().difference(_PREPROCESSOR_INDEX_EXCLUSIONS)
+        ),
         "analysis_tools": sorted(_ANALYSIS_METHODS),
         "reference_topics": sorted(_STATIC_TOOL_DOCS.keys()),
     }

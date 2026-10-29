@@ -83,6 +83,16 @@ See also [Agent Skills](/docs/agent-skills) — instruction packages for coding 
 | `check_analysis(analysis)` | Validate analysis text before export. |
 | `export_report(title, analysis, path)` | Generate a self-contained HTML report. |
 
+Call `describe_tool("")` to discover preprocessors, then
+`describe_tool("rename_segment_levels")` (for example) for the corresponding
+`Eventstream` method's parameter documentation. The preprocessor index follows
+`registered_ops()` with explicit discovery exclusions. Currently the only
+exclusion is `add_start_end_events`: analysis tools insert path boundaries for
+their own `path_col`, and its future behavior is tracked in
+[PR #174](https://github.com/retentioneering/retentioneering-tools/pull/174).
+This exclusion only affects discovery; explicit documentation lookup and
+execution remain available.
+
 ## Documentation MCP server
 
 Everything above describes the server that runs **on your machine, over your

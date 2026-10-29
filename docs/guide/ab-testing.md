@@ -401,6 +401,7 @@ The [MCP server](/docs/mcp-server) exposes `get_sample_ratio` and `get_ab_test` 
 
 ## Next steps
 
+- [A/B testing tutorial](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_tutorial.ipynb) — a ten-step notebook on the built-in `load_ab_test()` dataset: sample ratio, scorecard, funnel, novelty, pre-exposure strata, loops, and example paths per arm.
 - [A/B Test Scorecard](/docs/tools/get-ab-test), [A/B Bootstrap Replicates](/docs/tools/get-ab-bootstrap), [Sample Ratio Check](/docs/tools/get-sample-ratio) — every parameter and output column.
 - [Funnel](/docs/widgets/funnel#confidence-intervals-and-ab-tests) — what each interval and p-value assumes.
 - [Segments](/docs/segments) and [Add Segment](/docs/data-processors/add-segment) — carrying an assignment table or pre-exposure labels onto the event log with `path_values`.

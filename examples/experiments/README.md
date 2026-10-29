@@ -42,3 +42,12 @@ it. Lumeo is not used as a coverage oracle.
 `build_lumeo_sample.py` reproduces the deterministic whole-user sampling stage
 from the parent dataset and receipt. Runtime tutorials use the frozen tables
 and verify their hashes; they do not regenerate or modify that parent dataset.
+
+## Independent statistical audit of PR #214
+
+The larger, opt-in [coverage audit](validation/README.md) uses known-parameter
+DGPs, 2,000 repetitions per scenario, exact binomial Monte Carlo intervals,
+separate interval/test rejection rates, and exact binary-count enumeration.
+It includes heavy-tailed money, correlated ratio-of-sums, unequal groups and
+silent assignments. The checked-in report documents failures of nominal coverage
+as well as successes; these runs are deliberately excluded from routine CI.

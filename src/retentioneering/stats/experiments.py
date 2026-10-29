@@ -186,7 +186,12 @@ def _wilson(successes, n, confidence_level):
     divisor = 1 + z * z / n
     center = (p + z * z / (2 * n)) / divisor
     radius = z * np.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / divisor
-    return max(0.0, float(center - radius)), min(1.0, float(center + radius))
+    # Score inversion includes the exact parameter-space endpoint when all
+    # observations agree. Cancellation can otherwise produce e.g. 8e-19 at
+    # zero successes, or 1 - 2e-16 at n successes, excluding the true boundary.
+    lower = 0.0 if successes == 0 else max(0.0, float(center - radius))
+    upper = 1.0 if successes == n else min(1.0, float(center + radius))
+    return lower, upper
 
 
 def _binary_intervals(summary, specs, c, t, config):

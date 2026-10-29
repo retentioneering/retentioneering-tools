@@ -84,6 +84,28 @@ for sparse or heavy-tailed outcomes. Tests are requested by name before reading
 the results, and Holm uses the declared family. Bootstrap tails are not p-values.
 No automatic winner, observed power or unrequested test selection is reported.
 
+### Nominal confidence is not a coverage guarantee
+
+An `ok` interval status means that the computation is defined, not that its
+finite-sample coverage has been certified. Percentile bootstrap can substantially
+under-cover with heavy-tailed monetary outcomes, especially with unequal arm
+sizes and many zero outcomes. More bootstrap resamples reduce simulation error
+in the quantiles; they do not recover tail information absent from the sample.
+Do not interpret exclusion of zero by a bootstrap interval as the separately
+declared Fisher/Welch test result.
+
+Wilson/Newcombe intervals also have discrete, parameter-dependent coverage;
+they are not exact 95% guarantees at every probability and sample size. For
+rare conversions, percentile intervals may be unavailable and relative effects
+may be undefined. Report availability alongside conditional coverage in method
+validation, rather than dropping unsuccessful calculations.
+
+The reproducible independent audit, known-parameter generators, Monte Carlo
+uncertainty and exact binary enumeration are in
+[`examples/experiments/validation`](https://github.com/retentioneering/retentioneering-tools/tree/codex/pr214-statistical-validation/examples/experiments/validation).
+It distinguishes numerical implementation errors from method limitations and
+does not certify sequential, clustered or post-selection inference.
+
 `expected_allocation` is a treatment probability for an independent-Bernoulli
 allocation check on the assignment roster. It does not test logging coverage or
 certify randomization; blocked/fixed-total designs need their own diagnostic.

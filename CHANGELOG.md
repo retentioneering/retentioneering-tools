@@ -50,8 +50,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   `step_conditional`: they keep their interval but get no p-value, because the
   treatment changes who reaches the previous step. With intervals, `diff`
   groups are resolved per path and a path in both groups raises
-  `DiffConfigError`. The widget's `ci_level` (0 = off) and `correction` are
-  saved with its state and kept in HTML exports.
+  `DiffConfigError`. The funnel widget draws an interval whisker on every bar,
+  shows each delta's interval and p-value (and the adjusted one) in the table,
+  marks conditional step deltas with † and colours a delta only when its
+  interval excludes 0 — never a conditional one. A sidebar selector switches
+  intervals Off / 90% / 95% / 99% and picks the correction; both are saved with
+  the widget state and kept, read-only, in HTML exports.
 
 ### Changed
 
@@ -59,6 +63,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   `funnel1_total_paths` / `funnel2_total_paths` with `diff`. The funnel
   widget's group sizes come from them, so a group in which no path reaches the
   first step no longer shows a total of 0.
+- The funnel table's relative delta now divides by group 2 (the control):
+  `(rate1 - rate2) / rate2`, the base `get_ab_test`'s `rel_delta` uses; it was
+  `(rate1 - rate2) / rate1`. It reads "n/a" when group 2's rate is 0.
 
 - Every widget encodes its computed `result` (and distribution results) as
   strict JSON: NaN and infinite values are sent as `null`, which the front end

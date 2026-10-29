@@ -367,6 +367,63 @@ class Eventstream:
             levels[col] = cats
         return levels
 
+    @_tracked("get_path_segments")
+    def get_path_segments(
+        self, segment_col: str, path_col: str | None = None
+    ) -> pd.Series:
+        """
+        Return one segment value per path.
+
+        The per-path view of a segment column: use it to carry labels computed on
+        one stream onto another (`add_segment(name, path_values=...)`), to check
+        that an experiment arm is constant per path, or to join path labels to
+        your own tables.
+
+        Parameters
+        ----------
+        segment_col : str
+            A column in `schema.segment_cols`.
+        path_col : str, optional
+            Path grain; defaults to `schema.path_col`.
+
+        Returns
+        -------
+        pandas.Series
+            Index = path id (sorted, named after `path_col`), name = `segment_col`,
+            values = the segment value; `"<MULTI>"` when the value is not constant
+            within the path (a missing value on some events counts as a second
+            value), `"<MISSING>"` when it is null throughout.
+
+        Raises
+        ------
+        InvalidParameterError
+            `segment_col` is not a segment column, or `path_col` is not a path column.
+
+        Examples
+        --------
+            arms = stream.get_path_segments("exp_group")
+            arms.value_counts()          # paths per arm, <MULTI> = assignment bug
+
+            # clusters found on the first week, carried onto the whole history
+            clusters = first_week.add_clusters(...).get_path_segments("cluster")
+            stream.add_segment("cluster", path_values=clusters)
+        """
+        from retentioneering.exceptions import InvalidParameterError
+        from retentioneering.tools._diff import per_path_label
+
+        if segment_col not in self.schema.segment_cols:
+            raise InvalidParameterError(
+                "segment_col", segment_col, list(self.schema.segment_cols)
+            )
+        path_col = path_col or self.schema.path_col
+        if path_col not in self.schema.path_cols:
+            raise InvalidParameterError(
+                "path_col", path_col, list(self.schema.path_cols)
+            )
+        labels = per_path_label(self._df, segment_col, path_col)
+        labels.name = segment_col
+        return labels
+
     @_tracked("headless_describe")
     def describe(
         self,
@@ -875,12 +932,13 @@ class Eventstream:
         time_range=None,
         metric_bins=None,
         path_col=None,
+        path_values=None,
     ) -> "Eventstream":
         """
         Add a new categorical segment column to the eventstream.
 
-        Exactly one of `rules`, `func`, `sql`, `funnel_events`, `time_range`, or
-        `metric_bins` must be provided — unless `name` is already listed in
+        Exactly one of `rules`, `func`, `sql`, `funnel_events`, `time_range`,
+        `metric_bins`, or `path_values` must be provided — unless `name` is already listed in
         `schema.custom_cols`, in which case passing none of them promotes that
         existing column to a segment in place, without recomputing its values.
 
@@ -947,9 +1005,20 @@ class Eventstream:
             - `segment_levels` — one name per bin, so `len(segment_levels)` is
               always the number of bins. Omit for auto names: `"[5, 15)"` for
               `edges`, `q1`..`qN` for `quantiles`.
+        path_values : pandas.Series or dict, optional
+            One value per path, indexed by path id — an assignment table read from
+            a file, or labels computed on another stream (clusters found on a
+            truncated stream, carried back onto the full one with
+            `truncated.get_path_segments("cluster")`). Broadcast to every event of
+            the path, so the segment is constant per path. Paths the mapping does
+            not hold get no value, which `diff` and `get_path_segments` show as
+            `<MISSING>`; ids in the mapping that are not in the eventstream are
+            ignored. A categorical Series keeps its category order. Keys that are
+            strings match non-string path ids by their string form (a dict that
+            went through JSON). A non-unique index raises `InvalidParameterError`.
         path_col : str, optional
-            Path ID column override for `funnel_events` and `metric_bins` modes;
-            defaults to `schema.path_col`.
+            Path ID column override for `funnel_events`, `metric_bins` and
+            `path_values` modes; defaults to `schema.path_col`.
 
         Examples
         --------
@@ -984,6 +1053,10 @@ class Eventstream:
 
             # promote a column that is already in the eventstream, keeping its values
             stream.add_segment("returned")
+
+            # one value per path, e.g. the experiment arm from an assignment table
+            groups = pd.read_csv("ab_groups.csv", index_col="user_id")
+            stream.add_segment("exp_group", path_values=groups["exp_group"])
         """
         from retentioneering.data_processors.add_segment import AddSegment
 
@@ -997,6 +1070,7 @@ class Eventstream:
             metric_bins=metric_bins,
             path_col=path_col,
             eventstream=self,
+            path_values=path_values,
         ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 

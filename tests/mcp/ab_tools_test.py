@@ -3,6 +3,7 @@
 import json
 
 import pandas as pd
+import pytest
 
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.mcp import tools
@@ -67,3 +68,85 @@ class TestGetSampleRatio:
         docs = tools.describe_tool("get_sample_ratio")
         assert docs["method"] == "get_sample_ratio"
         assert "mismatch" in docs["docs"]
+
+
+def _ab_session(n: int = 400) -> ReportSession:
+    rows = []
+    for i in range(n):
+        arm = "treatment" if i % 2 == 0 else "control"
+        platform = "ios" if i % 3 else "web"
+        day = pd.Timestamp("2024-01-01") + pd.Timedelta(days=i % 14)
+        rows.append([f"u{i}", "visit", day, arm, platform])
+        if i % 4 in (0, 1) or (arm == "treatment" and i % 10 == 2):
+            rows.append(
+                [f"u{i}", "order", day + pd.Timedelta(minutes=3), arm, platform]
+            )
+    df = pd.DataFrame(
+        rows, columns=["user_id", "event", "timestamp", "arm", "platform"]
+    )
+    return ReportSession(Eventstream(df, {"segment_cols": ["arm", "platform"]}), {})
+
+
+_METRICS = [
+    {"name": "conversion", "metric": "has_event", "metric_args": {"event": "order"}},
+    {"name": "orders", "metric": "event_count", "metric_args": {"event": "order"}},
+]
+
+
+class TestGetAbTest:
+    def test__numbers_only_and_json_safe(self) -> None:
+        session = _ab_session()
+        result = tools.get_ab_test(session, ["arm", "treatment", "control"], _METRICS)
+        json.dumps(result, allow_nan=False)
+        assert session.pending_tabs == []
+        assert [m["metric"] for m in result["metrics"]] == ["conversion", "orders"]
+        conv = result["metrics"][0]
+        assert conv["group1_paths"] == 200 and conv["group2_paths"] == 200
+        assert conv["delta"] == pytest.approx(0.1)
+        assert conv["delta_ci_low"] < conv["delta"] < conv["delta_ci_high"]
+        assert conv["verdict"] == "increase"
+        assert conv["test"] == "z_test"
+        assert "strata" not in conv and "periods" not in conv
+        assert result["excluded_paths"] == 0
+
+    def test__strata_top_three_and_periods(self) -> None:
+        session = _ab_session()
+        result = tools.get_ab_test(
+            session,
+            ["arm", "treatment", "control"],
+            _METRICS[:1],
+            strata_col="platform",
+            period="W",
+        )
+        json.dumps(result, allow_nan=False)
+        conv = result["metrics"][0]
+        assert conv["strata_count"] == 2
+        assert len(conv["strata"]) == 2
+        deltas = [abs(s["delta"]) for s in conv["strata"]]
+        assert deltas == sorted(deltas, reverse=True)
+        assert {s["stratum"] for s in conv["strata"]} == {"ios", "web"}
+        assert [p["period"] for p in conv["periods"]] == [
+            "2024-01-01/2024-01-07",
+            "2024-01-08/2024-01-14",
+        ]
+        assert result["period_population"] == "itt"
+
+    def test__errors_are_returned(self) -> None:
+        session = _ab_session()
+        assert "error" in tools.get_ab_test(session, ["arm", "a", "b"], _METRICS)
+        assert "error" in tools.get_ab_test(
+            session, ["arm", "treatment", "control"], [{"metric": "has_event_bulk"}]
+        )
+        assert "error" in tools.get_ab_test(
+            session, ["arm", "treatment", "control"], _METRICS, correction="sidak"
+        )
+        assert "error" in tools.get_ab_test(
+            ReportSession(None, None), ["arm"], _METRICS
+        )
+
+    def test__documented_as_an_analysis_tool(self) -> None:
+        assert "get_ab_test" in tools.describe_tool("")["analysis_tools"]
+        docs = tools.describe_tool("get_ab_test")
+        assert docs["method"] == "get_ab_test"
+        assert "verdict" in docs["docs"]
+        assert "get_ab_test" in tools.playbook("ab_test")

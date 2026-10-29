@@ -157,6 +157,41 @@ times counts once. For a per-visit figure, carve out the subpopulation with
 `filter_paths` and read a transition matrix instead.
 
 
+## ab_test
+
+**Scenario:** Did the treatment of an A/B test work?
+
+**Trigger:** User has an experiment arm column and asks whether a variant won, lost or
+"did nothing", or asks for an experiment scorecard.
+
+**Steps:**
+
+1. `get_sample_ratio(segment_col="<arm col>")` — before any metric. `mismatch=true`
+   (arms off the planned split, or paths carrying two arms) means the assignment or the
+   logging is broken; report that and stop.
+2. `get_ab_test(diff=["<arm col>", "treatment", "control"], metrics=[...])` with a few
+   metrics decided up front, each with a `name`:
+   ```json
+   [{"name": "conversion", "metric": "has_event", "metric_args": {"event": "purchase"}},
+    {"name": "revenue", "metric": "column_sum", "metric_args": {"column": "amount"}},
+    {"name": "aov", "metric": "column_sum", "metric_args": {"column": "amount"},
+     "denominator": {"metric": "event_count", "metric_args": {"event": "purchase"}}}]
+   ```
+3. Report per metric: `delta` with `[delta_ci_low, delta_ci_high]`, the `verdict` and
+   the `mde`. Quote in backticks (no tab is registered).
+4. Optional: `strata_col=` for a segment fixed before exposure (platform at signup),
+   `period="W"` for stability over time.
+
+**Reading the verdict:** `increase` / `decrease` come from the multiplicity-adjusted
+p-value. `inconclusive` is not "no effect": say which effects the interval still allows
+and whether they are smaller than the `mde` (the test could not have seen them).
+`insufficient_data`: too few events per arm to test.
+
+**Do not:** filter on post-exposure behaviour ("users who reached checkout") before
+the test, or stratify by it — that compares selected groups, not the randomised arms.
+Use the randomised unit as `path_col` (per-user experiment → user paths).
+
+
 ## comparable_windows
 
 **Scenario:** Why did one group convert and another not, given both got as far as B?

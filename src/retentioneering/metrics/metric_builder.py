@@ -897,7 +897,10 @@ class MetricBuilder:
                     )
 
     def build_metrics(
-        self, config: List[Dict[str, Any]], path_col: str | None = None
+        self,
+        config: List[Dict[str, Any]],
+        path_col: str | None = None,
+        validate: bool = True,
     ) -> pd.DataFrame:
         """
         Main method for building metrics
@@ -905,6 +908,10 @@ class MetricBuilder:
         Args:
             config: List of metric configuration dicts with 'metric' and optional 'metric_args' fields
             path_col: Path ID column (if None, taken from schema)
+            validate: Check event/segment existence against this eventstream. Callers
+                that already validated the configs on a parent stream pass False when
+                building on a slice of it (a time window, a period), where an event
+                that happens not to occur is a zero, not a typo.
 
         Returns:
             DataFrame with path_id as index and metrics as columns
@@ -920,10 +927,11 @@ class MetricBuilder:
         available_events = set(self.df[event_col].unique().tolist())
         metric_config = MetricConfig(config, available_events=available_events)
 
-        for parsed in metric_config.parsed_configs:
-            self.validate_metric_config(
-                parsed["original"], available_events=available_events
-            )
+        if validate:
+            for parsed in metric_config.parsed_configs:
+                self.validate_metric_config(
+                    parsed["original"], available_events=available_events
+                )
 
         path_ids = self.df[path_col].unique()
 

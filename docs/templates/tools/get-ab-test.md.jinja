@@ -1,0 +1,34 @@
+{% extends "_tool_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+The two arms are sets of paths: `diff` is resolved per path, and a path that
+would fall in both arms raises an error instead of being counted twice. With an
+`assignment` table the population is intention-to-treat — every assigned path,
+including those with no events (they count as zeros), with events before
+`assigned_at` dropped.
+
+The test follows the metric: a pooled z-test with Wilson and Newcombe intervals
+for 0/1 metrics, Welch's t-test for per-path totals and values, and a joint
+path bootstrap for ratio metrics (an entry with a `denominator`). The
+`verdict` reads only the adjusted p-value; the interval is per comparison. A
+walk-through with a real experiment is in the
+[Eventstream guide](/docs/eventstream#ab-test-scorecard).
+
+{% endblock %}
+
+{% block extra_params %}
+### period_basis
+
+{{ bullets(doc.parameters, "period_basis") }}
+
+### period_population
+
+{{ bullets(doc.parameters, "period_population") }}
+
+### bootstrap_weights
+
+{{ bullets(doc.parameters, "bootstrap_weights") }}
+
+{% endblock %}

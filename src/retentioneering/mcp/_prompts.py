@@ -72,7 +72,9 @@ def _playbook_index() -> dict:
 # preprocessors — they compute an answer instead of returning a new stream, so
 # they are called as their own MCP tool rather than as a step in a
 # preprocessors list, and the index has to say so.
-_ANALYSIS_METHODS = frozenset({"get_conversion_rate", "get_sample_ratio"})
+_ANALYSIS_METHODS = frozenset(
+    {"get_conversion_rate", "get_sample_ratio", "get_ab_test"}
+)
 
 
 def _tool_docs_index() -> dict:
@@ -246,6 +248,13 @@ def _static_instructions(tail: str = "") -> str:
         "path_col='session_id' (if describe() lists it) when the question is about a",
         "  visit rather than a person — per-user rates are diluted by everything else",
         "  that user ever did. See playbook('conversion_rate').",
+        "",
+        "### A/B test (did the treatment work?)",
+        "Call get_sample_ratio(arm_col) FIRST; a mismatch voids every metric.",
+        "Then get_ab_test(diff=[arm_col, 'treatment', 'control'], metrics=[...]):",
+        "  report delta with its interval, the mde and the verdict. 'inconclusive' is",
+        "  NOT 'no effect'. Strata only on segments fixed before exposure. See",
+        "  playbook('ab_test').",
         "",
         "### Conversion drop-off analysis (why is conversion from A to B dropping?)",
         "Use add_segment with funnel_events to create an N+1 level funnel segment.",

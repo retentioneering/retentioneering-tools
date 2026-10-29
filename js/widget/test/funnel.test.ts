@@ -76,6 +76,19 @@ test('colour only when the interval excludes 0, never on a conditional step', ()
   assert.ok(html.includes('†'));
 });
 
+test('under a correction a delta is coloured only when p_adj is below 1 - ci_level', () => {
+  // step 3: interval excludes 0 and p_adj 0.008 < 0.05: coloured
+  assert.equal(count(table({ result: { ci_level: 0.95, correction: 'holm' } }), 'delta-coloured'), 1);
+  // the same interval with p_adj 0.15 (raw p 0.03 among five steps): grey
+  const steps = diffSteps.map((s, i) => i === 2
+    ? { ...s, delta_conversion_rate_p_value: 0.03, delta_conversion_rate_p_value_adjusted: 0.15 } : s);
+  const html = table({ steps, result: { ci_level: 0.95, correction: 'holm' } });
+  assert.equal(count(html, 'delta-coloured'), 0);
+  assert.ok(html.includes('p_adj is below 0.05'));
+  // without a correction the interval alone decides, as before
+  assert.equal(count(table({ steps }), 'delta-coloured'), 1);
+});
+
 test('the adjusted p-value is shown with the correction name', () => {
   const html = table({ result: { ci_level: 0.95, correction: 'holm' } });
   assert.ok(html.includes('p=0.004 · Holm p_adj=0.008'));

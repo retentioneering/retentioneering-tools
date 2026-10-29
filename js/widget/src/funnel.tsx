@@ -109,6 +109,7 @@ const CONDITIONAL_NOTE =
   "Conditional on reaching the previous step, which the treatment itself changes: descriptive, no p-value";
 
 const fmtLevel = (v: number) => (v === 0 ? "Off" : `${+(v * 100).toFixed(1)}%`);
+const fmtPAlpha = (a: number) => `${+a.toFixed(4)}`;
 const fmtPp = (v: number | null | undefined) => {
   if (v == null) return "n/a";
   const t = (v * 100).toFixed(1);
@@ -310,13 +311,17 @@ export function FunnelTable({ steps, hasDiff, label1, label2, result, showCi = f
   const td: React.CSSProperties = { padding: "5px 10px", fontSize: 12, textAlign: "right", color: "#111827", borderBottom: "1px solid #f3f4f6" };
   const tdl: React.CSSProperties = { ...td, textAlign: "left", fontWeight: 500 };
 
+  const alpha = 1 - (result?.ci_level ?? 0.95);
   /** A delta cell. Without intervals it is coloured by magnitude, as before.
-   *  With intervals it is coloured only when its interval excludes 0, and a
-   *  conditional step delta is never coloured and never gets a p-value. */
+   *  With intervals it is coloured only when its interval excludes 0 and, under
+   *  a correction, its adjusted p-value is below 1 - ci_level (the verdict rule
+   *  of get_ab_test); a conditional step delta is never coloured and never gets
+   *  a p-value. */
   const renderDeltaCell = (relPct: number | null, ppVal: number, absMax: number,
     ci?: { lo?: number | null; hi?: number | null; p?: number | null; pAdj?: number | null;
            withP?: boolean; conditional?: boolean }) => {
-    const coloured = !ci || (!ci.conditional && ciExcludesZero(ci.lo, ci.hi));
+    const significant = !ci || correction === "none" || (ci.pAdj != null && ci.pAdj < alpha);
+    const coloured = !ci || (!ci.conditional && ciExcludesZero(ci.lo, ci.hi) && significant);
     const background = coloured ? heatmapColor(relPct ?? 0, absMax) : heatmapColor(0, absMax);
     const pText = ci?.withP && !ci.conditional
       ? ` · ${formatPValue(ci.p)}${correction !== "none" && ci.p != null ? ` · ${correctionLabel} ${formatPValue(ci.pAdj).replace(/^p/, "p_adj")}` : ""}`
@@ -407,7 +412,9 @@ export function FunnelTable({ steps, hasDiff, label1, label2, result, showCi = f
                     showCi ? {
                       lo: s.delta_step_conversion_rate_ci_low, hi: s.delta_step_conversion_rate_ci_high,
                       // Step deltas have intervals only; the p-value lives in the
-                      // overall column (for the first step the two deltas coincide).
+                      // overall column (for the first step the two deltas coincide,
+                      // so its colour follows the same adjusted p).
+                      pAdj: i === 0 ? s.delta_conversion_rate_p_value_adjusted : null,
                       withP: false,
                       conditional: s.step_conditional ?? i > 0,
                     } : undefined)}
@@ -428,7 +435,7 @@ export function FunnelTable({ steps, hasDiff, label1, label2, result, showCi = f
           {fmtLevel(result?.ci_level ?? 0)} intervals: Wilson for rates
           {hasDiff ? <>, Newcombe for deltas; p: pooled z-test on the overall delta, per step
             {correction !== "none" ? <>, {correctionLabel}-adjusted across steps (p_adj)</> : <>, not adjusted for the number of steps</>}.
-            {" "}A delta is coloured only when its interval excludes 0. † {CONDITIONAL_NOTE}.</> : "."}
+            {" "}A delta is coloured only when its interval excludes 0{correction !== "none" ? <> and p_adj is below {fmtPAlpha(alpha)}</> : null}. † {CONDITIONAL_NOTE}.</> : "."}
         </div>
       )}
     </div>

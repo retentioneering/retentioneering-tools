@@ -47,9 +47,7 @@ def _overlapping_stream() -> Eventstream:
 
 class TestFunnelWidgetCi:
     def test__result_is_strict_json_with_null_for_nan(self) -> None:
-        w = FunnelWidget(
-            _stream(), steps=["home", "cart"], diff=DIFF, ci_level=0.9
-        )
+        w = FunnelWidget(_stream(), steps=["home", "cart"], diff=DIFF, ci_level=0.9)
         assert w.error == ""
         result = _strict(w.result)
         assert result["ci_level"] == 0.9

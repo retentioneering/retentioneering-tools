@@ -17,6 +17,29 @@ export function parseJson<T>(raw: unknown, fallback: T): T {
   try { return JSON.parse(raw as string) as T; } catch { return fallback; }
 }
 
+// ── Comparison helpers (diff mode) ───────────────────────────────────────────
+
+/** Relative difference of group 1 against group 2 (the control), in percent:
+ *  `(r1 - r2) / r2 * 100`, the same base as `get_ab_test`'s `rel_delta`.
+ *  `null` when group 2's rate is 0 or missing: there is no base to divide by. */
+export function relativeDeltaPct(r1: number | null | undefined, r2: number | null | undefined): number | null {
+  if (r1 == null || r2 == null || r2 === 0) return null;
+  return ((r1 - r2) / r2) * 100;
+}
+
+/** True only when both interval ends are known and the interval lies entirely
+ *  on one side of 0. `null` (sent for NaN) means "no estimate", never 0. */
+export function ciExcludesZero(lo: number | null | undefined, hi: number | null | undefined): boolean {
+  if (lo == null || hi == null) return false;
+  return lo > 0 || hi < 0;
+}
+
+/** p-value as shown next to an estimate; `null` is an undefined test. */
+export function formatPValue(p: number | null | undefined): string {
+  if (p == null) return "p n/a";
+  return p < 0.001 ? "p<0.001" : `p=${p.toFixed(3)}`;
+}
+
 // ── Link focus on table cells ────────────────────────────────────────────────
 
 const FOCUS_RING = "2px solid #f59e0b";

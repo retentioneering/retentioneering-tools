@@ -1,6 +1,9 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
-import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes, useHostSubscriptions, type RenderContext } from "./widget-utils";
+import {
+  parseJson, ComputingSpinner, RetentioneeringSpinKeyframes, useHostSubscriptions, type RenderContext,
+  relativeDeltaPct, ciExcludesZero, formatPValue,
+} from "./widget-utils";
 
 // ── constants ──────────────────────────────────────────────────────────────
 
@@ -26,6 +29,7 @@ const SIDEBAR_W    = 252;
 const STEP_ROW_H   = 34;  // per step row
 const ADD_BTN_H    = 34;
 const DIFF_SECTION = 160; // diff selector
+const CI_SECTION   = 120; // confidence-interval and correction selectors
 const CHART_MIN_H  = 200;
 const TABLE_ROW_H  = 30;
 const TABLE_HEAD_H = 34;
@@ -35,7 +39,7 @@ function autoHeight(nSteps: number, nStepRows: number, hasDiff: boolean): number
   const sidebarContent =
     HEADER_H + PADDING +
     nSteps * STEP_ROW_H + ADD_BTN_H + 20 +
-    DIFF_SECTION;
+    DIFF_SECTION + CI_SECTION;
 
   const chartH = CHART_MIN_H + 60; // chart + labels
   const tableH = TABLE_HEAD_H + nStepRows * TABLE_ROW_H + 16;
@@ -70,16 +74,75 @@ interface FunnelStep {
   delta_unique_paths?: number;
   delta_conversion_rate?: number;
   delta_step_conversion_rate?: number;
+  // Present only when the result was computed with ci_level; null = no estimate.
+  conversion_rate_ci_low?: number | null;
+  conversion_rate_ci_high?: number | null;
+  step_conversion_rate_ci_low?: number | null;
+  step_conversion_rate_ci_high?: number | null;
+  funnel1_conversion_rate_ci_low?: number | null;
+  funnel1_conversion_rate_ci_high?: number | null;
+  funnel2_conversion_rate_ci_low?: number | null;
+  funnel2_conversion_rate_ci_high?: number | null;
+  funnel1_step_conversion_rate_ci_low?: number | null;
+  funnel1_step_conversion_rate_ci_high?: number | null;
+  funnel2_step_conversion_rate_ci_low?: number | null;
+  funnel2_step_conversion_rate_ci_high?: number | null;
+  delta_conversion_rate_ci_low?: number | null;
+  delta_conversion_rate_ci_high?: number | null;
+  delta_conversion_rate_p_value?: number | null;
+  delta_conversion_rate_p_value_adjusted?: number | null;
+  delta_step_conversion_rate_ci_low?: number | null;
+  delta_step_conversion_rate_ci_high?: number | null;
+  // Step-to-step delta after the first step: descriptive, never a p-value or a colour.
+  step_conditional?: boolean;
+}
+
+/** Levels offered by the sidebar selector; 0 = intervals off. */
+const CI_LEVELS = [0, 0.9, 0.95, 0.99];
+const CORRECTIONS: [string, string][] = [
+  ["none", "None"],
+  ["holm", "Holm"],
+  ["bonferroni", "Bonferroni"],
+  ["bh", "Benjamini–Hochberg"],
+];
+const CONDITIONAL_NOTE =
+  "Conditional on reaching the previous step, which the treatment itself changes: descriptive, no p-value";
+
+const fmtLevel = (v: number) => (v === 0 ? "Off" : `${+(v * 100).toFixed(1)}%`);
+const fmtPp = (v: number | null | undefined) => {
+  if (v == null) return "n/a";
+  const t = (v * 100).toFixed(1);
+  return t === "-0.0" || t === "0.0" ? "0.0" : `${v > 0 ? "+" : ""}${t}`;
+};
+const fmtPct = (v: number | null | undefined) => (v == null ? "n/a" : (v * 100).toFixed(1));
+
+/** Interval whisker: a vertical line with caps; nothing when either end is missing. */
+function Whisker({ x, lo, hi, toY }: {
+  x: number;
+  lo?: number | null;
+  hi?: number | null;
+  toY: (rate: number) => number;
+}) {
+  if (lo == null || hi == null) return null;
+  const y1 = toY(lo), y2 = toY(hi);
+  return (
+    <g data-testid="ci-whisker" stroke="#111827" strokeWidth={1.2}>
+      <line x1={x} x2={x} y1={y1} y2={y2} />
+      <line x1={x - 4} x2={x + 4} y1={y1} y2={y1} />
+      <line x1={x - 4} x2={x + 4} y1={y2} y2={y2} />
+    </g>
+  );
 }
 
 // ── bar chart ──────────────────────────────────────────────────────────────
 
-function FunnelChart({ steps, hasDiff, label1, label2, chartH }: {
+export function FunnelChart({ steps, hasDiff, label1, label2, chartH, showCi = false }: {
   steps: FunnelStep[];
   hasDiff: boolean;
   label1: string;
   label2: string;
   chartH: number;
+  showCi?: boolean;
 }) {
   const BAR_GROUP = hasDiff ? 74 : 48;
   const BAR_W     = hasDiff ? 20 : 34;
@@ -94,8 +157,12 @@ function FunnelChart({ steps, hasDiff, label1, label2, chartH }: {
     0.01,
     ...steps.map(s =>
       hasDiff
-        ? Math.max(s.funnel1_conversion_rate ?? 0, s.funnel2_conversion_rate ?? 0)
-        : (s.conversion_rate ?? 0)
+        ? Math.max(
+            s.funnel1_conversion_rate ?? 0, s.funnel2_conversion_rate ?? 0,
+            showCi ? (s.funnel1_conversion_rate_ci_high ?? 0) : 0,
+            showCi ? (s.funnel2_conversion_rate_ci_high ?? 0) : 0,
+          )
+        : Math.max(s.conversion_rate ?? 0, showCi ? (s.conversion_rate_ci_high ?? 0) : 0)
     ),
   ) * 100;
 
@@ -136,6 +203,9 @@ function FunnelChart({ steps, hasDiff, label1, label2, chartH }: {
           const hB = Math.max(2, (rateB / gridMax) * PLOT_H);
 
           const color = hasDiff ? DIFF_A : STEP_COLORS[i % STEP_COLORS.length];
+          const toY = (rate: number) => yBase - ((rate * 100) / gridMax) * PLOT_H;
+          const xA = cx - (hasDiff ? BAR_W / 2 + GAP / 2 : 0);
+          const xB = cx + BAR_W / 2 + GAP / 2;
 
           return (
             <g key={s.step}>
@@ -152,17 +222,26 @@ function FunnelChart({ steps, hasDiff, label1, label2, chartH }: {
                   fill={DIFF_B} rx={3} opacity={0.9}
                 />
               )}
+              {showCi && (hasDiff ? (
+                <>
+                  <Whisker x={xA} lo={s.funnel1_conversion_rate_ci_low} hi={s.funnel1_conversion_rate_ci_high} toY={toY} />
+                  <Whisker x={xB} lo={s.funnel2_conversion_rate_ci_low} hi={s.funnel2_conversion_rate_ci_high} toY={toY} />
+                </>
+              ) : (
+                <Whisker x={xA} lo={s.conversion_rate_ci_low} hi={s.conversion_rate_ci_high} toY={toY} />
+              ))}
               {/* Rate labels */}
               <text
-                x={cx - (hasDiff ? BAR_W / 2 + GAP / 2 : 0)}
-                y={yBase - hA - 4}
+                x={xA}
+                y={Math.min(yBase - hA, showCi ? toY((hasDiff ? s.funnel1_conversion_rate_ci_high : s.conversion_rate_ci_high) ?? 0) : Infinity) - 4}
                 textAnchor="middle" fontSize={9} fill="#374151" fontWeight={600}
               >
                 {rateA.toFixed(1)}%
               </text>
               {hasDiff && (
                 <text
-                  x={cx + BAR_W / 2 + GAP / 2} y={yBase - hB - 4}
+                  x={xB}
+                  y={Math.min(yBase - hB, showCi ? toY(s.funnel2_conversion_rate_ci_high ?? 0) : Infinity) - 4}
                   textAnchor="middle" fontSize={9} fill="#374151" fontWeight={600}
                 >
                   {rateB.toFixed(1)}%
@@ -205,45 +284,65 @@ const Dot = ({ color }: { color: string }) => (
 
 // ── data table ─────────────────────────────────────────────────────────────
 
-function FunnelTable({ steps, hasDiff, label1, label2, result }: {
+export function FunnelTable({ steps, hasDiff, label1, label2, result, showCi = false }: {
   steps: FunnelStep[];
   hasDiff: boolean;
   label1: string;
   label2: string;
   result: any;
+  showCi?: boolean;
 }) {
-  const pctDelta = (s: FunnelStep) => {
-    const r1 = s.funnel1_conversion_rate ?? 0;
-    const r2 = s.funnel2_conversion_rate ?? 0;
-    return r1 === 0 ? 0 : ((r1 - r2) / r1) * 100;
-  };
-  const pctStepDelta = (s: FunnelStep) => {
-    const r1 = s.funnel1_step_conversion_rate ?? 0;
-    const r2 = s.funnel2_step_conversion_rate ?? 0;
-    return r1 === 0 ? 0 : ((r1 - r2) / r1) * 100;
-  };
+  // Relative deltas use group 2 (the control) as the base.
+  const pctDelta = (s: FunnelStep) =>
+    relativeDeltaPct(s.funnel1_conversion_rate, s.funnel2_conversion_rate);
+  const pctStepDelta = (s: FunnelStep) =>
+    relativeDeltaPct(s.funnel1_step_conversion_rate, s.funnel2_step_conversion_rate);
   const absMaxDelta = hasDiff
-    ? Math.max(0.001, ...steps.map(s => Math.abs(pctDelta(s))))
+    ? Math.max(0.001, ...steps.map(s => Math.abs(pctDelta(s) ?? 0)))
     : 0;
   const absMaxStepDelta = hasDiff
-    ? Math.max(0.001, ...steps.map(s => Math.abs(pctStepDelta(s))))
+    ? Math.max(0.001, ...steps.map(s => Math.abs(pctStepDelta(s) ?? 0)))
     : 0;
+  const correction: string = result?.correction ?? "none";
+  const correctionLabel = (CORRECTIONS.find(([v]) => v === correction) ?? [correction, correction])[1];
 
   const th: React.CSSProperties = { padding: "6px 10px", fontSize: 11, fontWeight: 600, color: "#6b7280", textAlign: "right", borderBottom: "1px solid #e5e7eb", whiteSpace: "nowrap" };
   const td: React.CSSProperties = { padding: "5px 10px", fontSize: 12, textAlign: "right", color: "#111827", borderBottom: "1px solid #f3f4f6" };
   const tdl: React.CSSProperties = { ...td, textAlign: "left", fontWeight: 500 };
 
-  const renderDeltaCell = (relPct: number, ppVal: number, absMax: number) => {
-    const sign = relPct >= 0 ? "+" : "";
+  /** A delta cell. Without intervals it is coloured by magnitude, as before.
+   *  With intervals it is coloured only when its interval excludes 0, and a
+   *  conditional step delta is never coloured and never gets a p-value. */
+  const renderDeltaCell = (relPct: number | null, ppVal: number, absMax: number,
+    ci?: { lo?: number | null; hi?: number | null; p?: number | null; pAdj?: number | null;
+           withP?: boolean; conditional?: boolean }) => {
+    const coloured = !ci || (!ci.conditional && ciExcludesZero(ci.lo, ci.hi));
+    const background = coloured ? heatmapColor(relPct ?? 0, absMax) : heatmapColor(0, absMax);
+    const pText = ci?.withP && !ci.conditional
+      ? ` · ${formatPValue(ci.p)}${correction !== "none" && ci.p != null ? ` · ${correctionLabel} ${formatPValue(ci.pAdj).replace(/^p/, "p_adj")}` : ""}`
+      : "";
     return (
-      <td style={{ ...td, background: heatmapColor(relPct, absMax), fontWeight: 600, color: "#111827" }}>
-        {sign}{relPct.toFixed(1)}%{" "}
+      <td data-testid={ci ? (coloured ? "delta-coloured" : "delta-grey") : undefined}
+        style={{ ...td, background, fontWeight: 600, color: "#111827" }}>
+        {relPct == null ? "n/a" : `${relPct >= 0 ? "+" : ""}${relPct.toFixed(1)}%`}{" "}
         <span style={{ fontWeight: 400, fontSize: 10, color: "#374151", opacity: 0.75 }}>
           ({ppVal >= 0 ? "+" : ""}{ppVal.toFixed(1)} pp)
         </span>
+        {ci && (
+          <div data-testid="ci-cell" style={{ fontWeight: 400, fontSize: 10, color: "#374151" }}
+            title={ci.conditional ? CONDITIONAL_NOTE : undefined}>
+            [{fmtPp(ci.lo)}, {fmtPp(ci.hi)}] pp{pText}{ci.conditional ? " †" : ""}
+          </div>
+        )}
       </td>
     );
   };
+  const rateCi = (lo: number | null | undefined, hi: number | null | undefined) =>
+    showCi ? (
+      <span data-testid="ci-cell" style={{ fontSize: 10, color: "#6b7280" }}>
+        {" "}[{fmtPct(lo)}, {fmtPct(hi)}]
+      </span>
+    ) : null;
 
   return (
     <div style={{ overflowX: "auto", marginTop: 8 }}>
@@ -298,20 +397,40 @@ function FunnelTable({ steps, hasDiff, label1, label2, result }: {
                   <td style={td}>{((s.funnel2_conversion_rate ?? 0) * 100).toFixed(1)}%</td>
                   <td style={td}>{((s.funnel1_step_conversion_rate ?? 0) * 100).toFixed(1)}%</td>
                   <td style={td}>{((s.funnel2_step_conversion_rate ?? 0) * 100).toFixed(1)}%</td>
-                  {renderDeltaCell(pctDelta(s), (s.delta_conversion_rate ?? 0) * 100, absMaxDelta)}
-                  {renderDeltaCell(pctStepDelta(s), (s.delta_step_conversion_rate ?? 0) * 100, absMaxStepDelta)}
+                  {renderDeltaCell(pctDelta(s), (s.delta_conversion_rate ?? 0) * 100, absMaxDelta,
+                    showCi ? {
+                      lo: s.delta_conversion_rate_ci_low, hi: s.delta_conversion_rate_ci_high,
+                      p: s.delta_conversion_rate_p_value, pAdj: s.delta_conversion_rate_p_value_adjusted,
+                      withP: true,
+                    } : undefined)}
+                  {renderDeltaCell(pctStepDelta(s), (s.delta_step_conversion_rate ?? 0) * 100, absMaxStepDelta,
+                    showCi ? {
+                      lo: s.delta_step_conversion_rate_ci_low, hi: s.delta_step_conversion_rate_ci_high,
+                      // Step deltas have intervals only; the p-value lives in the
+                      // overall column (for the first step the two deltas coincide).
+                      withP: false,
+                      conditional: s.step_conditional ?? i > 0,
+                    } : undefined)}
                 </>
               ) : (
                 <>
                   <td style={td}>{(s.unique_paths ?? 0).toLocaleString()}</td>
-                  <td style={td}>{((s.conversion_rate ?? 0) * 100).toFixed(1)}%</td>
-                  <td style={td}>{((s.step_conversion_rate ?? 0) * 100).toFixed(1)}%</td>
+                  <td style={td}>{((s.conversion_rate ?? 0) * 100).toFixed(1)}%{rateCi(s.conversion_rate_ci_low, s.conversion_rate_ci_high)}</td>
+                  <td style={td}>{((s.step_conversion_rate ?? 0) * 100).toFixed(1)}%{rateCi(s.step_conversion_rate_ci_low, s.step_conversion_rate_ci_high)}</td>
                 </>
               )}
             </tr>
           ))}
         </tbody>
       </table>
+      {showCi && (
+        <div data-testid="ci-note" style={{ fontSize: 10, color: "#6b7280", padding: "6px 10px", lineHeight: 1.5 }}>
+          {fmtLevel(result?.ci_level ?? 0)} intervals: Wilson for rates
+          {hasDiff ? <>, Newcombe for deltas; p: pooled z-test on the overall delta, per step
+            {correction !== "none" ? <>, {correctionLabel}-adjusted across steps (p_adj)</> : <>, not adjusted for the number of steps</>}.
+            {" "}A delta is coloured only when its interval excludes 0. † {CONDITIONAL_NOTE}.</> : "."}
+        </div>
+      )}
     </div>
   );
 }
@@ -481,7 +600,12 @@ function StepEditor({ steps, events, onStepsChange }: {
 
 function Sidebar({ steps, events, segLevels, pathCols, pathIdCol,
   diffSegment, diffValue1, diffValue2, isLoading, isStatic,
+  ciLevel, correction, onCiLevelChange, onCorrectionChange,
   onStepsChange, onPathIdColChange, onDiffChange, onResetFilters }: {
+  ciLevel: number;
+  correction: string;
+  onCiLevelChange: (v: number) => void;
+  onCorrectionChange: (v: string) => void;
   steps: string[];
   events: string[];
   segLevels: Record<string, string[]>;
@@ -595,6 +719,25 @@ function Sidebar({ steps, events, segLevels, pathCols, pathIdCol,
         )}
 
         <div style={{ height: 1, background: "#e5e7eb", margin: "16px 0" }} />
+        <SH>Confidence interval</SH>
+        <select aria-label="Confidence interval" value={String(ciLevel)}
+          onChange={e => onCiLevelChange(Number(e.target.value))}
+          style={sel} disabled={isLoading || isStatic}>
+          {(CI_LEVELS.includes(ciLevel) ? CI_LEVELS : [...CI_LEVELS, ciLevel].sort((a, b) => a - b)).map(v =>
+            <option key={v} value={String(v)}>{fmtLevel(v)}</option>)}
+        </select>
+        {ciLevel > 0 && diffSegment && (
+          <div style={{ marginTop: 10 }}>
+            <FL>Correction across steps</FL>
+            <select aria-label="Multiple-comparison correction" value={correction}
+              onChange={e => onCorrectionChange(e.target.value)}
+              style={sel} disabled={isLoading || isStatic}>
+              {CORRECTIONS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+            </select>
+          </div>
+        )}
+
+        <div style={{ height: 1, background: "#e5e7eb", margin: "16px 0" }} />
         <button
           onClick={onResetFilters}
           disabled={isStatic}
@@ -631,6 +774,9 @@ export function render({ host, el, isStatic = false }: RenderContext) {
     const [isLoading,   setIsLoading]   = React.useState<boolean>(() => (host.get("is_loading") as boolean) ?? false);
     const [heightProp,  setHeightProp]  = React.useState<number>(() => (host.get("height") as number) ?? 0);
     const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(() => (host.get("sidebar_open") as boolean) ?? true);
+    const [ciLevel,     setCiLevel]     = React.useState<number>(() => (host.get("ci_level") as number) || 0);
+    const [correction,  setCorrection]  = React.useState<string>(() => (host.get("correction") as string) || "none");
+    const [error,       setError]       = React.useState<string>(() => (host.get("error") as string) || "");
 
     const events    = parseJson<string[]>(host.get("event_list"), []);
     const pathCols  = parseJson<string[]>(host.get("path_cols"), []);
@@ -644,7 +790,18 @@ export function render({ host, el, isStatic = false }: RenderContext) {
       ["steps",      () => setStepsState(parseJson(host.get("steps"), []))],
       ["diff",       () => { const d = parseJson<string[]>(host.get("diff") || "[]", []); setDiffSeg(d[0] ?? null); setDiffV1(d[1] ?? null); setDiffV2(d[2] ?? null); }],
       ["path_col", () => setPathIdCol((host.get("path_col") as string) || "")],
+      ["ci_level",   () => setCiLevel((host.get("ci_level") as number) || 0)],
+      ["correction", () => setCorrection((host.get("correction") as string) || "none")],
+      ["error",      () => setError((host.get("error") as string) || "")],
     ]);
+
+    const handleCiLevel = React.useCallback((v: number) => {
+      setCiLevel(v); host.set("ci_level", v);
+    }, []);
+
+    const handleCorrection = React.useCallback((v: string) => {
+      setCorrection(v); host.set("correction", v);
+    }, []);
 
     const setSteps = React.useCallback((s: string[]) => {
       setStepsState(s);
@@ -665,6 +822,9 @@ export function render({ host, el, isStatic = false }: RenderContext) {
     }, []);
 
     const funnelSteps = result.steps ?? [];
+    // Like hasDiff below: trust the result, which says at which level it was
+    // computed, rather than the traitlet, which can arrive before it.
+    const showCi = (result as any).ci_level != null;
     // Detect diff mode from the result itself — this handles the case where
     // the backend sends result before the diff traitlet syncs to the browser.
     const hasDiff = funnelSteps.length > 0
@@ -690,16 +850,21 @@ export function render({ host, el, isStatic = false }: RenderContext) {
               definite height overflowY:auto never engages and the chart+table
               simply get clipped by the parent's overflow:hidden. */}
           <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 16 }}>
-            {funnelSteps.length === 0 && !isLoading && (
+            {error && !isLoading && (
+              <div data-testid="funnel-error" style={{ marginBottom: 12, padding: 12, background: "#fff1f2", border: "1px solid #fca5a5", borderRadius: 8, fontSize: 12, color: "#dc2626", whiteSpace: "pre-wrap" }}>
+                {error}
+              </div>
+            )}
+            {funnelSteps.length === 0 && !isLoading && !error && (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#9ca3af", fontSize: 13 }}>
                 Add steps in the settings panel to build the funnel
               </div>
             )}
             {funnelSteps.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                <FunnelChart steps={funnelSteps} hasDiff={hasDiff} label1={label1} label2={label2} chartH={CHART_H} />
+                <FunnelChart steps={funnelSteps} hasDiff={hasDiff} label1={label1} label2={label2} chartH={CHART_H} showCi={showCi} />
                 <div style={{ width: "100%" }}>
-                  <FunnelTable steps={funnelSteps} hasDiff={hasDiff} label1={label1} label2={label2} result={result} />
+                  <FunnelTable steps={funnelSteps} hasDiff={hasDiff} label1={label1} label2={label2} result={result} showCi={showCi} />
                 </div>
               </div>
             )}
@@ -713,6 +878,10 @@ export function render({ host, el, isStatic = false }: RenderContext) {
             diffSegment={diffSeg} diffValue1={diffV1} diffValue2={diffV2}
             isLoading={isLoading}
             isStatic={isStatic}
+            ciLevel={ciLevel}
+            correction={correction}
+            onCiLevelChange={handleCiLevel}
+            onCorrectionChange={handleCorrection}
             onStepsChange={setSteps}
             onPathIdColChange={handlePathId}
             onDiffChange={handleDiff}

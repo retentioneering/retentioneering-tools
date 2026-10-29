@@ -292,5 +292,7 @@ class TestErrorMessages:
             [(f"u{i}", "A", "2024-01-01", "t" if i % 2 else "c") for i in range(6)],
             segment_cols=("exp_group",),
         )
-        with pytest.raises(SegmentLevelNotFoundError, match="diff\\[0\\] is 'exp_group'"):
+        with pytest.raises(
+            SegmentLevelNotFoundError, match="diff\\[0\\] is 'exp_group'"
+        ):
             resolve_diff(stream, ("exp_group", "x", "c"), assignment=table)

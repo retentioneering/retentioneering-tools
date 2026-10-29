@@ -43,6 +43,7 @@ _DEFAULTS: dict[str, Any] = {
     "horizon": "",
     "test": "auto",
     "correction": "holm",
+    "correction_scope": "metric",
     "ci_level": 0.95,
     "power": 0.8,
     "n_bootstrap": "1000",
@@ -121,6 +122,7 @@ class ABTestWidget(RetentioneeringWidget):
     horizon = traitlets.Unicode("").tag(sync=True)
     test = traitlets.Unicode("auto").tag(sync=True)
     correction = traitlets.Unicode("holm").tag(sync=True)
+    correction_scope = traitlets.Unicode("metric").tag(sync=True)
     ci_level = traitlets.Float(0.95).tag(sync=True)
     power = traitlets.Float(0.8).tag(sync=True)
     # an int or "auto"; kept as text so the JS side reads one type
@@ -158,6 +160,7 @@ class ABTestWidget(RetentioneeringWidget):
         "horizon",
         "test",
         "correction",
+        "correction_scope",
         "ci_level",
         "power",
         "n_bootstrap",
@@ -181,6 +184,7 @@ class ABTestWidget(RetentioneeringWidget):
         horizon=_UNSET,
         test=_UNSET,
         correction=_UNSET,
+        correction_scope=_UNSET,
         ci_level=_UNSET,
         power=_UNSET,
         n_bootstrap=_UNSET,
@@ -228,6 +232,7 @@ class ABTestWidget(RetentioneeringWidget):
             "horizon": horizon,
             "test": test,
             "correction": correction,
+            "correction_scope": correction_scope,
             "ci_level": ci_level,
             "power": power,
             "n_bootstrap": n_bootstrap,
@@ -289,6 +294,7 @@ class ABTestWidget(RetentioneeringWidget):
             "horizon": raw["horizon"] or None,
             "test": raw["test"] or "auto",
             "correction": raw["correction"] or "holm",
+            "correction_scope": raw["correction_scope"] or "metric",
             "ci_level": float(raw["ci_level"]),
             "power": float(raw["power"]),
             "n_bootstrap": n_bootstrap,
@@ -338,6 +344,7 @@ class ABTestWidget(RetentioneeringWidget):
                 "horizon",
                 "test",
                 "correction",
+                "correction_scope",
                 "ci_level",
                 "power",
                 "n_bootstrap",
@@ -401,6 +408,7 @@ class ABTestWidget(RetentioneeringWidget):
             "group2_label": labels[1],
             "ci_level": params["ci_level"],
             "correction": params["correction"],
+            "correction_scope": params["correction_scope"],
             "strata_col": params["strata_col"],
             "period": params["period"],
             "period_basis": params["period_basis"] if params["period"] else None,

@@ -8,7 +8,7 @@ that must be rejected, a population or horizon that changes the answer. Each
 generator's docstring describes the design and ends with a "Solutions (spoilers)"
 section. ``northwind_home``, the default, is generated in this module; the others
 live in ``retentioneering.datasets.ab_cases.<name>``. User ids do not overlap
-between datasets (``northwind_home`` 100001+, ``lumeo_smart_cart`` 200001+,
+between datasets (``northwind_home`` 100001+,
 ``srm_platform_bug`` 300001+, ``session_assignment`` 400001+, ``aa_calibration``
 500001+, ``trial_conversion`` 600001+, ``push_campaign`` 700001+, for fewer than
 100,000 users), so an assignment table never matches another dataset's stream.
@@ -130,7 +130,6 @@ import pandas as pd
 
 from retentioneering.datasets.ab_cases import (
     aa_calibration,
-    lumeo_smart_cart,
     push_campaign,
     session_assignment,
     srm_platform_bug,
@@ -159,7 +158,6 @@ DEFAULT_AB_TEST = "northwind_home"
 _CASES = {
     case.NAME: case
     for case in (
-        lumeo_smart_cart,
         srm_platform_bug,
         session_assignment,
         aa_calibration,
@@ -734,7 +732,7 @@ def list_ab_tests() -> dict[str, str]:
     -------
     dict
         ``{name: description}``, in this order: ``"northwind_home"``,
-        ``"lumeo_smart_cart"``, ``"srm_platform_bug"``, ``"session_assignment"``,
+        ``"srm_platform_bug"``, ``"session_assignment"``,
         ``"aa_calibration"``, ``"trial_conversion"``, ``"push_campaign"``.
 
     Examples
@@ -793,9 +791,6 @@ def load_ab_test(
         - ``"northwind_home"`` — home-goods store, 50/50 test of a one-tap
           ``quick_add`` button (about 10,000 users, eight weeks); the tutorial's
           dataset.
-        - ``"lumeo_smart_cart"`` — home and living store, a smart cart drawer after
-          ``add_to_cart`` (15,000 users, twelve weeks, sessions as a second path
-          column).
         - ``"srm_platform_bug"`` — a checkout redesign on three platforms (10,000
           users, five weeks).
         - ``"session_assignment"`` — a product card redesign assigned by the web
@@ -866,8 +861,8 @@ def load_ab_test(
     >>> from retentioneering import datasets
     >>> stream = datasets.load_ab_test()                      # northwind_home
     >>> df = datasets.load_ab_test(as_dataframe=True, with_truth=True)
-    >>> lumeo = datasets.load_ab_test("lumeo_smart_cart")
-    >>> assignment = datasets.load_ab_test_assignment("lumeo_smart_cart")
+    >>> bug = datasets.load_ab_test("srm_platform_bug")
+    >>> assignment = datasets.load_ab_test_assignment("srm_platform_bug")
     """
     name, n_users, seed = _resolve(name, n_users, seed)
     if name == DEFAULT_AB_TEST:

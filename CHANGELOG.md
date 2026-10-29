@@ -209,10 +209,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   `load_ab_test_assignment(name=...)` pick one by name (`None` means the
   default, Northwind Home, unchanged byte for byte; an unknown name raises
   `InvalidParameterError` listing the names), and `list_ab_tests()` /
-  `datasets.AB_TESTS` map every name to a one-line description. Six new
+  `datasets.AB_TESTS` map every name to a one-line description. Five new
   deterministic generators, each about a second at its default size, no data
-  file: `lumeo_smart_cart` (15,000 users, a smart cart drawer, sessions as a
-  second path column), `srm_platform_bug`, `session_assignment`,
+  file: `srm_platform_bug`, `session_assignment`,
   `aa_calibration`, `trial_conversion` and `push_campaign` (20,000 users
   assigned from a marketing table). Some hide an effect in a pre-exposure
   segment, some are broken tests whose correct conclusion is to reject them.

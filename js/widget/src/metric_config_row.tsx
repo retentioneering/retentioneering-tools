@@ -278,7 +278,7 @@ export function validateMetricCfg(cfg: any): string | null {
 // showAgg=true  → Configure Metrics (with aggregation dropdown)
 // showAgg=false → Configure Features (no aggregation dropdown)
 
-export function MetricRow({ cfg, events, segmentCols, segmentLevels, customCols = {}, showErrors, showAgg = true, onChange, onRemove }: {
+export function MetricRow({ cfg, events, segmentCols, segmentLevels, customCols = {}, showErrors, showAgg = true, metricNames = METRIC_NAMES, onChange, onRemove }: {
   cfg: any;
   events: string[];
   segmentCols: string[];
@@ -287,6 +287,8 @@ export function MetricRow({ cfg, events, segmentCols, segmentLevels, customCols 
   customCols?: Record<string, boolean>;
   showErrors: boolean;
   showAgg?: boolean;
+  /** metrics offered in the dropdown; defaults to the whole registry */
+  metricNames?: readonly string[];
   onChange: (c: any) => void;
   onRemove: () => void;
 }) {
@@ -311,7 +313,7 @@ export function MetricRow({ cfg, events, segmentCols, segmentLevels, customCols 
           ? { metric: e.target.value, agg: cfg.agg, metric_args: undefined }
           : { metric: e.target.value, metric_args: undefined })}
           style={{ ...sel, flex: "0 0 130px" }}>
-          {METRIC_NAMES.map(m => <option key={m} value={m}>{m}</option>)}
+          {metricNames.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
         <InfoTip text={METRIC_TIPS[cfg.metric] ?? ""} />
         {showAgg && (

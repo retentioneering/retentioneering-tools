@@ -201,3 +201,14 @@ def test_diff_against_itself_raises(stream) -> None:
             "order_success",
             diff=("exp_group", "treatment", "treatment"),
         )
+
+
+def test_diff_flags_conditional_rows(stream) -> None:
+    out = stream.get_conversion_rate(
+        ["path_start", "add_to_cart", {"pattern": "path_start", "offset": 1}],
+        ["order_success", "catalog"],
+        diff=("exp_group", "treatment", "control"),
+    )
+    assert out["conditional"].tolist() == [False, False, True, True, True, True]
+    # the p-value stays, flagged
+    assert out["p_value"].notna().any()

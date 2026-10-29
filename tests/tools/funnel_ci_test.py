@@ -127,7 +127,7 @@ class TestDiffCi:
             "delta": "newcombe",
             "p_value": "pooled_z",
         }
-        assert r["correction"] == "none" and r["correction_family"] is None
+        assert r["correction"] == "none" and r["correction_family"] == "none"
         assert r["excluded_paths"] == 0
         s = r["steps"][1]
         k1, k2 = s["funnel1_unique_paths"], s["funnel2_unique_paths"]
@@ -192,7 +192,7 @@ class TestDiffCi:
         )
         np.testing.assert_allclose(got, expected, rtol=1e-12)
         assert r["correction"] == correction
-        assert "m=2" in r["correction_family"]
+        assert r["correction_family"] == "metric=delta_conversion_rate/steps"
 
     def test__invalid_arguments(self) -> None:
         with pytest.raises(InvalidParameterError, match="ci_level"):

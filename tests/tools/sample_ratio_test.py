@@ -281,14 +281,49 @@ def test_assignment_ids_matched_by_string_form() -> None:
 def test_assignment_ids_that_match_nothing_raise() -> None:
     stream = _stream(_arms(50, 50))
     table = pd.Series({k.upper(): v for k, v in _arms(50, 50).items()})
-    with pytest.raises(DiffConfigError, match="none of the 100"):
+    with pytest.raises(DiffConfigError, match="only 0 of 100"):
         stream.get_sample_ratio("arm", assignment=table)
 
 
-def test_assignment_ids_mostly_unmatched_warn() -> None:
-    stream = _stream(_arms(20, 20))
-    table = pd.Series(_arms(50, 50))
-    with pytest.warns(UserWarning, match="only 40 of 100") as record:
-        result = stream.get_sample_ratio("arm", assignment=table)
-    assert {w.filename for w in record} == {__file__}
-    assert result["silent_paths"] == 60
+def test_assignment_ids_mostly_unmatched_raise() -> None:
+    # 40 of 100 table ids are paths: the table is keyed by another grain
+    with pytest.raises(DiffConfigError, match="only 40 of 100"):
+        _stream(_arms(20, 20)).get_sample_ratio(
+            "arm", assignment=pd.Series(_arms(50, 50))
+        )
+    result = _stream(_arms(30, 30)).get_sample_ratio(
+        "arm", assignment=pd.Series(_arms(50, 50))
+    )
+    assert result["silent_paths"] == 40
+
+
+def test_unit_guard_with_integer_ids() -> None:
+    # integer user and session ids share one range: the counts tie
+    rows = []
+    for user in range(1, 41):
+        for s in range(3):
+            rows.append(
+                {
+                    "user_id": user,
+                    "session_id": (user - 1) * 3 + s + 1,
+                    "event": "visit",
+                    "timestamp": pd.Timestamp("2024-01-01") + pd.Timedelta(hours=s),
+                    "arm": "treatment" if user % 2 else "control",
+                }
+            )
+    stream = Eventstream(
+        pd.DataFrame(rows),
+        {"path_cols": ["user_id", "session_id"], "segment_cols": ["arm"]},
+    )
+    users = pd.Series({u: ("treatment" if u % 2 else "control") for u in range(1, 41)})
+    with pytest.raises(InvalidParameterError, match="too narrow"):
+        stream.get_sample_ratio("arm", assignment=users, path_col="session_id")
+    # the reverse mistake: a per-session table read at the user grain
+    sessions = pd.Series(
+        {
+            s: ("treatment" if ((s - 1) // 3 + 1) % 2 else "control")
+            for s in range(1, 121)
+        }
+    )
+    with pytest.raises(DiffConfigError, match="only 40 of 120"):
+        stream.get_sample_ratio("arm", assignment=sessions)

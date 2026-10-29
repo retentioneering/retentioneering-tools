@@ -571,6 +571,7 @@ class Eventstream:
         min_events: int = 10,
         random_state: int = 42,
         path_col: str | None = None,
+        strata_pre_exposure: bool | None = None,
     ) -> pd.DataFrame:
         """
         Compare two arms of an experiment on path metrics: a scorecard.
@@ -580,7 +581,8 @@ class Eventstream:
         multiplicity-adjusted p-value, the minimum detectable effect at the realised
         sample size and a verdict. The unit of analysis is the path (`path_col`): it
         must be the unit that was randomised. An inconclusive row is not "no effect":
-        read its interval and `mde` to see which effects the test could have found.
+        its interval shows which effects the data still allow; `mde` is the effect the
+        design detects with the requested power, not a bound on the true effect.
 
         Parameters
         ----------
@@ -620,13 +622,24 @@ class Eventstream:
             raises `InvalidParameterError`: per-session intervals of a per-user
             experiment are too narrow.
         strata_col : str, optional
-            A segment column (`schema.segment_cols`) constant per path. Rows are produced
-            per stratum, with shares by arm, a share-balance p-value, a heterogeneity
-            test and a stratum-vs-rest test. Strata must be fixed before exposure (a
-            platform at signup, a cluster found on a stream truncated before the first
-            exposure and carried over with `add_segment(path_values=...)`); a stratum
-            computed from behaviour on a stream that was not truncated triggers a
-            `UserWarning` and `strata_pre_exposure=False`.
+            A segment column (`schema.segment_cols`) constant per path, or a column of
+            the `assignment` DataFrame (used first when both exist, so silent assigned
+            paths keep their stratum; from the stream, silent paths form a
+            `"<MISSING>"` stratum and the other strata rows leave them out). Rows are
+            produced per stratum, with shares by arm, a share-balance p-value, a
+            heterogeneity test and a stratum-vs-rest test. Strata must be fixed before
+            exposure (a platform at signup, a cluster found on a stream truncated
+            before the first exposure and carried over with
+            `add_segment(path_values=...)`); see `strata_pre_exposure`.
+        strata_pre_exposure : bool, optional
+            Whether the strata were fixed before exposure. `None` (default) reads the
+            recipe: True only when the column was computed after a `truncate_paths`
+            that ends paths at an event (the analyst's exposure marker; a no-op
+            truncation to `path_end` does not count), or carried from such a stream
+            by `add_segment(path_values=get_path_segments(...))`; otherwise False,
+            with a `UserWarning`. `True` declares the strata pre-exposure (a platform
+            fixed at signup, a column recorded at assignment) and suppresses the
+            warning; `False` declares them post-exposure. Needs `strata_col`.
         period : str or pandas offset, optional
             Rows per period. With `period_basis="calendar"`: a calendar unit (`"D"`,
             `"W"`, `"W-MON"`, `"M"`, `"Q"`, `"Y"`; the offset spellings `"ME"`,
@@ -650,7 +663,7 @@ class Eventstream:
             - `"since_assignment"` — bins of `timestamp - assigned_at` (needs an
               `assignment` DataFrame with `assigned_at`); labels are `"0-6"`, `"7-13"`
               (days) or `"0-11h"` (hours). A path is in a bin's population only when
-              the bin's window closes before the stream's end; the others are counted
+              the bin's window closes by the stream's last event; the others are counted
               in `immature_paths`. A bin that `horizon` cuts (`horizon="10D"` with
               `period="7D"`: the bin `"7-13"` holds days 7 to 9) keeps its label and
               gets `period_complete=False`. This is the basis for novelty effects.
@@ -669,7 +682,7 @@ class Eventstream:
         horizon : str or pandas.Timedelta, optional
             Observation window per path, e.g. `"14D"`: only events in
             `[assigned_at, assigned_at + horizon)` count, and paths whose window ends
-            after the stream's last day are left out and counted in `immature_paths`.
+            after the stream's last event are left out and counted in `immature_paths`.
             Needs an `assignment` DataFrame with `assigned_at`. Equalises exposure time
             between early and late entrants. A bare number (`14`) has no unit and
             raises `InvalidParameterError`.
@@ -709,13 +722,17 @@ class Eventstream:
               fixed).
             - `"poisson"` — independent Poisson(1) weight per path.
         min_events : int, default 10
-            Support rule per arm: paths with the event for 0/1 metrics, paths with a
-            non-zero numerator for ratios, paths with a value for totals and values.
-            The rule is `min(s1, s2) >= min_events` over the two arms' supports, so it
-            needs enough supporting paths in each arm: a behaviour that exists in one
-            arm only (a new feature's event, 0 paths in control) is reported with a
-            NaN p-value and `verdict="insufficient_data"` however large the
-            difference, and is read descriptively from the estimates, which stay.
+            Support rule, pooled over the two arms. Support is paths with the event
+            for 0/1 metrics, paths with a non-zero numerator for ratios, paths with a
+            value for totals and values. A row is `verdict="insufficient_data"` with
+            no p-value (the estimates stay) when the pooled support `s1 + s2` is below
+            `min_events`, and for 0/1 metrics also when the paths without the event,
+            `(n1 - s1) + (n2 - s2)`, are. A behaviour present in one arm only (a new
+            feature's event, 0 paths in control) is tested and flagged
+            `support_warning="one_arm_only"`. Percentile bootstrap intervals
+            under-cover with few supporting paths (about 0.93 instead of 0.95 at 60
+            paths per arm): bootstrap rows below 30 supporting paths in an arm are
+            flagged `support_warning="low_support"`.
         random_state : int, default 42
             Seed of the bootstrap.
         path_col : str, optional
@@ -734,10 +751,10 @@ class Eventstream:
             - `period`* (str), `period_start`* and `period_end`* (Timestamp for
               calendar periods, `period_end` exclusive; Timedelta from assignment for
               since-assignment bins) and `period_complete`* (bool): for calendar
-              periods False when the stream's date range (from midnight of the first
-              event's day to the midnight after the last event's day) cuts the period;
-              for since-assignment bins False when some assigned path's window is not
-              closed.
+              periods False when the stream's observed range (from midnight of the
+              first event's day to the last event's timestamp, the end of data) cuts
+              the period; for since-assignment bins False when some assigned path's
+              window is not closed by the last event, or when `horizon` cuts the bin.
             - `group1_paths`, `group2_paths` (int): paths in the row's population.
             - `group1_paths_no_events`*, `group2_paths_no_events`* (int): paths of the
               row's population with no event in the analysed window (`assignment`).
@@ -777,6 +794,10 @@ class Eventstream:
             - `valid_replicates` (Int64, `<NA>` on closed-form rows), `low_support`
               (bool): bootstrap rows; more than 1 % of replicates without support sets
               `low_support` and NaN intervals, p-value, `delta_se` and `mde`.
+            - `support_warning` (str): `""`; `"one_arm_only"` when an arm has no
+              supporting path (the p-value stays: the pooled test is valid, but the
+              behaviour does not exist in that arm); `"low_support"` on bootstrap
+              rows with fewer than 30 supporting paths in an arm.
             - `group1_share`*, `group2_share`*, `balance_p_value`* (float): share of the
               stratum within each arm (within the period) and the chi-square p-value of
               the stratum × arm table. A share-balance check only: a balanced
@@ -789,14 +810,15 @@ class Eventstream:
             - `stratum_vs_rest_p_value`* (float): normal test of the stratum's delta
               against the delta of the pooled other strata (unadjusted; NaN on rows
               without a p-value).
-            - `strata_pre_exposure`* (boolean): True when the recipe shows the stratum
-              was computed after a `truncate_paths`, False when it was computed from
-              behaviour without one, `<NA>` when the recipe cannot tell (a source
-              column, rules).
+            - `strata_pre_exposure`* (boolean): whether the strata count as fixed
+              before exposure (see the `strata_pre_exposure` parameter).
+            - `strata_pre_exposure_source`* (str): `"declared"` (the parameter was
+              True), `"recipe"` (the recipe shows the cut) or `"not_pre_exposure"`.
             - `exploratory`* (bool): True unless `strata_pre_exposure` is True.
 
             Missing values: `p_value` is NaN when both arms are constant, on
-            insufficient, descriptive and low-support rows; `rel_delta*` are NaN when
+            insufficient, descriptive and low-support rows; `mde` is NaN when the
+            delta's standard error is 0 or undefined; `rel_delta*` are NaN when
             `group2_value <= 0`; an arm with no path has NaN estimates;
             `heterogeneity_*` are NaN with fewer than two usable strata. An absent
             estimate is NaN, never 0.
@@ -868,6 +890,7 @@ class Eventstream:
             min_events=min_events,
             random_state=random_state,
             path_col=path_col,
+            strata_pre_exposure=strata_pre_exposure,
         ).fit()
 
     @_tracked("get_ab_bootstrap")
@@ -887,6 +910,7 @@ class Eventstream:
         bootstrap_weights: str = "multinomial",
         random_state: int = 42,
         path_col: str | None = None,
+        strata_pre_exposure: bool | None = None,
     ) -> pd.DataFrame:
         """
         Return joint path-bootstrap replicates of every metric of an experiment.
@@ -904,11 +928,18 @@ class Eventstream:
             As in `get_ab_test`.
         period_population, horizon, bootstrap_weights, random_state, path_col : see get_ab_test
             As in `get_ab_test`.
+        strata_pre_exposure : bool, optional
+            As in `get_ab_test` (here it only decides the `UserWarning`).
         contrast : dict, optional
             `{"name": (periods_a, periods_b)}` (period labels): for each metric (and
             stratum), rows with `group*_value = value(a) - value(b)` within each arm
             and `delta = group1_value - group2_value`, where each side pools the listed
-            periods (summed numerators over summed denominators). Needs `period`.
+            periods (summed numerators over summed denominators). Both sides run on
+            the same paths: those in the population of every contrasted period (with
+            since-assignment bins, the paths whose windows of all contrasted bins
+            close by the stream's last event), so the contrast is a change within the
+            same paths, not a change of cohort mix between early and late bins; a
+            `horizon` is a choice of window, not a requirement. Needs `period`.
             Example: `{"novelty": (["0-13"], ["28-41"])}` with `period="14D",
             period_basis="since_assignment"`.
         n_bootstrap : int or "auto", default 1000
@@ -969,6 +1000,7 @@ class Eventstream:
             bootstrap_weights=bootstrap_weights,
             random_state=random_state,
             path_col=path_col,
+            strata_pre_exposure=strata_pre_exposure,
         ).bootstrap(contrast)
 
     @_tracked("headless_describe")
@@ -2893,8 +2925,10 @@ class Eventstream:
         - `ci_basis` — how each number is computed: `{"rate": "wilson"}`
           without `diff`; `{"rate": "wilson", "delta": "newcombe", "p_value":
           "pooled_z"}` with it.
-        - with `diff` only: `correction`; `correction_family` — text naming the
-          p-values corrected together (`None` for `"none"`); `excluded_paths` —
+        - with `diff` only: `correction`; `correction_family` — the p-values
+          corrected together, spelled as in `get_ab_test`:
+          `"metric=delta_conversion_rate/steps"` (the overall-step p-values with
+          a finite value), `"none"` without correction; `excluded_paths` —
           always 0, since overlapping groups raise instead.
 
         `NaN` marks an absent estimate (never 0); widgets send it as `null`.
@@ -2988,13 +3022,7 @@ class Eventstream:
             with the diff columns. The intervals and the p-value treat every path as
             an independent unit, so they assume `path_col` is the unit that was
             assigned to a group: session paths of a user-level experiment give
-            intervals that are too narrow. The denominator is the paths where the
-            start anchor occurred: when the anchor is an event inside the experiment
-            (`"cart"` after a treatment that changes who reaches the cart), the
-            groups are selected after exposure, not randomised, so the delta and
-            the p-value describe the selected paths; they do not test the
-            treatment. Test with `get_ab_test` (or `"path_start"` as the start
-            anchor) for an unconditional comparison.
+            intervals that are too narrow. See Notes on conditional rows.
 
         Returns
         -------
@@ -3027,7 +3055,24 @@ class Eventstream:
               delta.
             - `p_value` — pooled two-proportion z-test of equal rates; `NaN` when it
               is undefined (a group without start paths, or both rates 0 or 1).
+            - `conditional` — True unless the start anchor is `"path_start"` (with
+              no offset): the denominator is then the paths that reached the start
+              anchor, and the p-value describes that selected population (see
+              Notes).
             - `excluded_paths` — always 0 (overlapping groups raise instead).
+
+        Notes
+        -----
+        With `diff`, the denominator is the paths that reached `start_anchor`.
+        When the treatment can change who reaches it (a cart, a loop, a feature's
+        event), the two groups are selected after exposure, not randomised: the
+        same conditional comparison that `funnel_data(ci_level=...)` reports with
+        `step_conditional=True` and no p-value. Such rows carry
+        `conditional=True`; their delta and p-value describe the selected paths,
+        they do not test the treatment. For the treatment's effect, compare the
+        share of all assigned paths with `get_ab_test` and a `matches_pattern`
+        metric (`{"metric": "matches_pattern", "metric_args": {"pattern":
+        "cart->order_success"}}`), or start from `"path_start"`.
 
         Examples
         --------
@@ -3053,10 +3098,10 @@ class Eventstream:
             )
 
             # with a 95% interval, and treatment vs control with the delta's
-            # interval and p-value
+            # interval and p-value, from the path start (an unconditional share)
             stream.get_conversion_rate("add_to_cart", "purchase", ci_level=0.95)
             stream.get_conversion_rate(
-                "add_to_cart", "purchase", diff=("exp_group", "treatment", "control")
+                "path_start", "purchase", diff=("exp_group", "treatment", "control")
             )
         """
         from retentioneering.tools.conversion import ConversionRate

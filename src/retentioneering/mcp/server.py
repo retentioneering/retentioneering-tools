@@ -519,9 +519,10 @@ def _build_server(
             ["segment_col", "value1", "value2"]: group1_* / group2_* columns,
             delta (group1 - group2) with delta_ci_low / delta_ci_high and
             p_value. Assumes path_col is the unit that was assigned. The
-            denominator is paths with the start anchor: if the treatment can
-            change who reaches it ("cart"), the p_value describes selected
-            paths, it does not test; use get_ab_test for the effect.
+            denominator is paths with the start anchor: unless it is
+            "path_start" the row is conditional=true and the p_value describes
+            selected paths, it does not test; use get_ab_test with a
+            matches_pattern metric for the effect.
 
         Returns
         -------
@@ -603,6 +604,7 @@ def _build_server(
         correction: str = "holm",
         ci_level: float = 0.95,
         path_col: str | None = None,
+        strata_pre_exposure: bool | None = None,
         local_preprocessors: list | None = None,
     ) -> str:
         """
@@ -610,9 +612,10 @@ def _build_server(
 
         Run get_sample_ratio first. Numbers only, no report tab: quote in backticks.
         "inconclusive" is NOT "no effect": report the interval; the mde is not a
-        bound on the effect. Arms come from the segment in diff: an ITT analysis
-        over an assignment table (assignment=) is not available through MCP, only
-        in the Python API.
+        bound on the effect. Population: stream paths (users with >= 1 event) by
+        the segment in diff, whole window; silent assigned users are not counted
+        and there is no horizon. An ITT analysis over an assignment table
+        (assignment=) is not available through MCP, only in the Python API.
 
         Parameters
         ----------
@@ -624,8 +627,9 @@ def _build_server(
             "denominator" (ratio of sums, e.g. revenue / orders).
         strata_col:
             A per-path segment fixed BEFORE exposure: adds the top 3 strata by
-            |delta| per metric (adjusted with `correction`) and a heterogeneity
-            p-value; strata_pre_exposure / exploratory flag post-exposure strata.
+            |delta| per metric (strata_selection labels it; adjusted with
+            `correction`), stratum_vs_rest_p_value and a heterogeneity p-value;
+            strata_pre_exposure / exploratory flag post-exposure strata.
         period:
             "D", "W", "M", "Q" or "7D": adds ITT rows per calendar period.
         period_population:
@@ -636,6 +640,9 @@ def _build_server(
             Interval level, default 0.95.
         path_col:
             The randomised unit (default: primary path column).
+        strata_pre_exposure:
+            true declares the strata fixed before exposure (platform at signup);
+            omit to read the recipe.
         local_preprocessors:
             One-off preprocessing. Never filter on post-exposure behaviour first.
 
@@ -645,9 +652,10 @@ def _build_server(
         delta with delta_ci_low / delta_ci_high, rel_delta, p_value, mde (effect
         detected with 80% power at alpha_used), verdict (increase, decrease,
         inconclusive, descriptive, insufficient_data), test, correction_family,
-        alpha_used; strata (top 3), heterogeneity_p_value,
-        strata_correction_family, strata_pre_exposure and exploratory with
-        strata_col; periods and periods_correction_family with period.
+        alpha_used, support_warning; warnings; strata (top 3), strata_selection,
+        heterogeneity_p_value, strata_correction_family, strata_pre_exposure,
+        strata_pre_exposure_source and exploratory with strata_col; periods and
+        periods_correction_family with period.
         """
         result = tools.get_ab_test(
             session,
@@ -659,6 +667,7 @@ def _build_server(
             correction,
             ci_level,
             path_col,
+            strata_pre_exposure,
             local_preprocessors,
         )
         return json.dumps(result, ensure_ascii=False, allow_nan=False)

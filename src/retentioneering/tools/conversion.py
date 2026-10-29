@@ -58,7 +58,14 @@ DIFF_COLUMNS = (
     ["start_anchor", "end_anchor"]
     + [f"group1_{c}" for c in GROUP_COLUMNS]
     + [f"group2_{c}" for c in GROUP_COLUMNS]
-    + ["delta", "delta_ci_low", "delta_ci_high", "p_value", "excluded_paths"]
+    + [
+        "delta",
+        "delta_ci_low",
+        "delta_ci_high",
+        "p_value",
+        "conditional",
+        "excluded_paths",
+    ]
 )
 
 #: Interval level used in diff mode when `ci_level` is not given.
@@ -76,6 +83,11 @@ def _check_ci_level(ci_level) -> float | None:
     if not 0.5 <= ci_level < 1:
         raise InvalidParameterError("ci_level", ci_level, allowed)
     return float(ci_level)
+
+
+def _is_path_start(spec) -> bool:
+    """An anchor that every path reaches: the path start, with no offset."""
+    return spec.pattern == "path_start" and not spec.offset
 
 
 def parse_within(within) -> tuple[str, float] | None:
@@ -179,6 +191,14 @@ class ConversionRate:
         out["delta_ci_low"] = low
         out["delta_ci_high"] = high
         out["p_value"] = _stats.two_proportion_z(k1, n1, k2, n2)[1]
+        # the denominator is the paths that reached the start anchor: unless that is
+        # the path's start, the groups are selected after exposure (the funnel's
+        # step_conditional); the p-value is kept, flagged
+        starts = anchors.parse_specs(start_anchor, param="start_anchor")
+        n_ends = len(anchors.parse_specs(end_anchor, param="end_anchor"))
+        out["conditional"] = [
+            not _is_path_start(spec) for spec in starts for _ in range(n_ends)
+        ]
         out["excluded_paths"] = groups.excluded_paths
         return out[DIFF_COLUMNS].reset_index(drop=True)
 

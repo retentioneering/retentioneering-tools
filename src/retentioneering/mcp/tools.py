@@ -23,6 +23,7 @@ from __future__ import annotations
 import inspect
 import json
 import math
+import warnings
 from typing import Any
 
 import pandas as pd
@@ -561,10 +562,10 @@ def get_conversion_rate(
         delta_ci_low / delta_ci_high and p_value. Groups are whole paths: a path
         whose segment changes inside it is an error, not a split. The interval
         assumes path_col is the unit that was assigned (user-level test -> user
-        paths). The denominator is the paths with the start anchor: when that is
-        an event the treatment can change ("cart"), the groups are selected after
-        exposure and the p_value describes, it does not test; use get_ab_test for
-        the effect of the treatment.
+        paths). The denominator is the paths with the start anchor: unless that is
+        "path_start", each row is conditional=true, the groups are selected after
+        exposure and the p_value describes, it does not test; for the treatment's
+        effect use get_ab_test with a matches_pattern metric (an ITT share).
 
     Returns
     -------
@@ -612,6 +613,8 @@ def get_conversion_rate(
             return int(value)
         if column == "p_value":
             return _json_number(value, 8)
+        if column == "conditional":
+            return bool(value)
         return _num(value)
 
     out: dict[str, Any] = {
@@ -747,6 +750,7 @@ def get_ab_test(
     correction: str = "holm",
     ci_level: float = 0.95,
     path_col: str | None = None,
+    strata_pre_exposure: bool | None = None,
     local_preprocessors: list | None = None,
 ) -> dict:
     """
@@ -754,10 +758,12 @@ def get_ab_test(
 
     Run get_sample_ratio first: if the arms do not have the planned sizes, no
     metric of the test can be trusted. Returns numbers only (no report tab): quote
-    them in backticks. The arms come from the segment in `diff`; an
-    intention-to-treat analysis over an assignment table (assignment=, with silent
-    assigned users, assigned_at, horizon) is not available through MCP: it needs
-    the Python API (Eventstream.get_ab_test).
+    them in backticks. Population: the paths of the stream (users with at least one
+    event), split by the segment in `diff`, over the whole window;
+    silent assigned users are not counted and there is no horizon. An intention-to-treat analysis
+    over an assignment table (assignment=, with silent assigned users, assigned_at,
+    horizon) is not available through MCP: it needs the Python API
+    (Eventstream.get_ab_test).
 
     Parameters
     ----------
@@ -775,10 +781,14 @@ def get_ab_test(
     strata_col:
         A segment constant per path and fixed BEFORE exposure (platform at signup, a
         cluster found on a stream truncated before the first exposure). Adds the top
-        three strata by |delta| per metric with p-values adjusted with `correction`
-        and a heterogeneity p-value. A stratum defined by post-exposure behaviour
-        compares selected groups, not randomised ones: strata_pre_exposure=false and
-        exploratory=true flag it.
+        three strata by |delta| per metric (strata_selection says so: picking the
+        largest deltas is selection, read them as exploratory) with p-values adjusted
+        with `correction`, a stratum-vs-rest p-value and a heterogeneity p-value. A
+        stratum defined by post-exposure behaviour compares selected groups, not
+        randomised ones: strata_pre_exposure=false and exploratory=true flag it.
+    strata_pre_exposure:
+        true declares the strata fixed before exposure (platform at signup); omit to
+        read the recipe (true only after a truncate_paths that cuts at an event).
     period:
         Calendar unit ("D", "W", "M", "Q") or fixed length ("7D"): adds one row per
         calendar period. ITT by default (every path that entered before the period's
@@ -805,10 +815,14 @@ def get_ab_test(
     "descriptive", "insufficient_data"), test, correction_family (what was adjusted
     together), alpha_used (per-comparison level after the correction); with
     strata_col: strata (top 3 by |delta|: stratum, group1_share, group2_share, delta,
-    delta_ci_low, delta_ci_high, p_value_adjusted, alpha_used, verdict),
+    delta_ci_low, delta_ci_high, p_value_adjusted, alpha_used,
+    stratum_vs_rest_p_value, verdict), strata_selection ("top 3 by |delta| of N"),
     strata_count, heterogeneity_p_value, strata_correction_family,
-    strata_pre_exposure (true / false / null = unknown) and exploratory (true unless
-    the strata are known to be pre-exposure); with period: periods (period,
+    strata_pre_exposure, strata_pre_exposure_source ("declared", "recipe",
+    "not_pre_exposure") and exploratory (true unless the strata count as
+    pre-exposure); support_warning per metric ("one_arm_only": the behaviour exists
+    in one arm only; "low_support": few paths behind a bootstrap interval);
+    warnings (the library's warnings for this call); with period: periods (period,
     period_complete, delta, delta_ci_low, delta_ci_high, p_value_adjusted,
     alpha_used, verdict) and periods_correction_family. "descriptive" marks
     period_population="active" rows (survivors, no p-value).
@@ -829,25 +843,34 @@ def get_ab_test(
         "path_col": path_col or None,
     }
     try:
-        overall = src.get_ab_test(diff_t, metrics, **kwargs)
-        strata = (
-            src.get_ab_test(diff_t, metrics, strata_col=strata_col, **kwargs)
-            if strata_col
-            else None
-        )
-        periods = (
-            src.get_ab_test(
-                diff_t,
-                metrics,
-                period=period,
-                period_population=period_population,
-                **kwargs,
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            overall = src.get_ab_test(diff_t, metrics, **kwargs)
+            strata = (
+                src.get_ab_test(
+                    diff_t,
+                    metrics,
+                    strata_col=strata_col,
+                    strata_pre_exposure=strata_pre_exposure,
+                    **kwargs,
+                )
+                if strata_col
+                else None
             )
-            if period
-            else None
-        )
+            periods = (
+                src.get_ab_test(
+                    diff_t,
+                    metrics,
+                    period=period,
+                    period_population=period_population,
+                    **kwargs,
+                )
+                if period
+                else None
+            )
     except Exception as exc:
         return {"error": str(exc)}
+    messages = list(dict.fromkeys(str(w.message) for w in caught))
 
     def _row(row: dict, columns: tuple) -> dict:
         out = {}
@@ -855,7 +878,7 @@ def get_ab_test(
             value = row[column]
             if column.endswith("_paths"):
                 out[column] = int(value)
-            elif column in ("p_value", "p_value_adjusted"):
+            elif column in ("p_value", "p_value_adjusted", "stratum_vs_rest_p_value"):
                 out[column] = _json_number(value, 8)
             elif isinstance(value, str):
                 out[column] = value
@@ -880,6 +903,7 @@ def get_ab_test(
         "test",
         "correction_family",
         "alpha_used",
+        "support_warning",
     )
     entries = []
     for row in overall.to_dict("records"):
@@ -888,6 +912,9 @@ def get_ab_test(
             part = strata[strata["metric"] == row["metric"]]
             top = part.reindex(part["delta"].abs().sort_values(ascending=False).index)
             entry["strata_count"] = int(len(part))
+            entry["strata_selection"] = (
+                f"top {min(3, len(part))} by |delta| of {len(part)}"
+            )
             entry["heterogeneity_p_value"] = _json_number(
                 part["heterogeneity_p_value"].iloc[0] if len(part) else None, 8
             )
@@ -896,6 +923,9 @@ def get_ab_test(
                 str(part["correction_family"].iloc[0]) if len(part) else None
             )
             entry["strata_pre_exposure"] = None if pd.isna(flag) else bool(flag)
+            entry["strata_pre_exposure_source"] = (
+                str(part["strata_pre_exposure_source"].iloc[0]) if len(part) else None
+            )
             entry["exploratory"] = bool(part["exploratory"].all())
             entry["strata"] = [
                 _row(
@@ -909,6 +939,7 @@ def get_ab_test(
                         "delta_ci_high",
                         "p_value_adjusted",
                         "alpha_used",
+                        "stratum_vs_rest_p_value",
                         "verdict",
                     ),
                 )
@@ -944,6 +975,7 @@ def get_ab_test(
         "excluded_paths": int(overall["excluded_paths"].iloc[0]),
         "metrics": entries,
     }
+    out["warnings"] = messages
     if strata_col:
         out["strata_col"] = strata_col
     if period:

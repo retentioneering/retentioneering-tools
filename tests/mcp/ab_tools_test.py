@@ -131,15 +131,34 @@ class TestGetAbTest:
         # Holm over the two strata: alpha / 2 per comparison
         assert conv["strata_correction_family"] == "metric=conversion/strata"
         assert [s["alpha_used"] for s in conv["strata"]] == [pytest.approx(0.025)] * 2
-        # a source column: the recipe cannot tell when it was fixed
-        assert conv["strata_pre_exposure"] is None
+        # a source column: the recipe cannot show it was fixed before exposure
+        assert conv["strata_pre_exposure"] is False
+        assert conv["strata_pre_exposure_source"] == "not_pre_exposure"
         assert conv["exploratory"] is True
+        assert conv["strata_selection"] == "top 2 by |delta| of 2"
+        assert all("stratum_vs_rest_p_value" in s for s in conv["strata"])
+        assert any("strata_pre_exposure=True" in w for w in result["warnings"])
+        assert conv["support_warning"] == ""
         assert conv["periods_correction_family"] == "metric=conversion/periods"
         assert [p["period"] for p in conv["periods"]] == [
             "2024-01-01/2024-01-07",
             "2024-01-08/2024-01-14",
         ]
         assert result["period_population"] == "itt"
+
+    def test__declared_pre_exposure_strata(self) -> None:
+        result = tools.get_ab_test(
+            _ab_session(),
+            ["arm", "treatment", "control"],
+            _METRICS[:1],
+            strata_col="platform",
+            strata_pre_exposure=True,
+        )
+        conv = result["metrics"][0]
+        assert conv["strata_pre_exposure"] is True
+        assert conv["strata_pre_exposure_source"] == "declared"
+        assert conv["exploratory"] is False
+        assert result["warnings"] == []
 
     def test__errors_are_returned(self) -> None:
         session = _ab_session()
@@ -177,6 +196,9 @@ class TestAbDocsInSync:
                 "strata_pre_exposure",
                 "exploratory",
                 "assignment=",
+                "strata_selection",
+                "stratum_vs_rest_p_value",
+                "silent assigned users are not counted",
             ):
                 assert label in doc, label
             assert "Holm-adjusted" not in doc

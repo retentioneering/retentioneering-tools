@@ -143,6 +143,7 @@ COLUMNS: tuple[str, ...] = (
     "p_basis",
     "valid_replicates",
     "low_support",
+    "support_warning",
     "group1_share",
     "group2_share",
     "balance_p_value",
@@ -151,6 +152,7 @@ COLUMNS: tuple[str, ...] = (
     "heterogeneity_strata_used",
     "stratum_vs_rest_p_value",
     "strata_pre_exposure",
+    "strata_pre_exposure_source",
     "exploratory",
 )
 
@@ -180,6 +182,11 @@ _P_BASIS = {"z_test": "pooled_z", "welch_t_test": "welch", "bootstrap": "bootstr
 _BEHAVIOUR_SEGMENT_MODES = ("metric_bins", "funnel_events")
 
 _BOOTSTRAP_CHUNK = 128
+#: Below this many supporting paths in an arm a bootstrap row gets
+#: ``support_warning="low_support"``: percentile intervals under-cover there.
+LOW_SUPPORT_PATHS = 30
+#: ``support_warning`` values.
+SUPPORT_WARNINGS = ("", "one_arm_only", "low_support")
 _DAY = pd.Timedelta(days=1)
 _HOUR = pd.Timedelta(hours=1)
 
@@ -368,8 +375,10 @@ def _sorted_ids(index: pd.Index) -> pd.Index:
 
 
 def _coverage(ts: pd.Series) -> tuple[pd.Timestamp, pd.Timestamp]:
-    """The stream's date range at day resolution: [first event's day, day after the last)."""
-    return ts.min().floor("D"), ts.max().floor("D") + _DAY
+    """The stream's observed range: from midnight of the first event's day to the last
+    event's timestamp (the end of data: a window that closes after it is not
+    observed in full)."""
+    return ts.min().floor("D"), ts.max()
 
 
 _MONTHS = (
@@ -529,10 +538,12 @@ def _align_assigned_at(assigned_at: pd.Series, ts: pd.Series) -> pd.Series:
 def _check_unit(stream, path_col: str, table: pd.DataFrame | None) -> None:
     """Refuse a path grain finer than the assigned unit (Deng et al. 2018).
 
-    The table's unit is read from its index name when that names a coarser path
-    column (a table indexed by ``user_id`` with ``path_col="session_id"``), and
-    otherwise from id overlap: more table ids found among a coarser column's ids than
-    among ``path_col``'s.
+    The table's unit is read from its index name when that names a path column (a
+    table indexed by ``user_id`` with ``path_col="session_id"`` raises; one indexed
+    by ``session_id`` is taken at its word), and otherwise from id overlap: as many
+    or more table ids found among a coarser column's ids as among ``path_col``'s
+    raises. A tie raises too: integer user and session ids often share one range,
+    and the counts cannot tell the unit then (name the index to settle it).
     """
     if table is None:
         return
@@ -541,11 +552,20 @@ def _check_unit(stream, path_col: str, table: pd.DataFrame | None) -> None:
     if position == 0:
         return
     ids = table.index
+    if ids.name == path_col:
+        return
     own = int(ids.isin(pd.unique(stream.df[path_col])).sum())
     for coarser in cols[:position]:
         named = ids.name == coarser
         hits = 0 if named else int(ids.isin(pd.unique(stream.df[coarser])).sum())
-        if named or hits > own:
+        if named or (hits > 0 and hits >= own):
+            tie = (
+                f" ({hits} table ids are {coarser} ids and {own} are {path_col} ids; "
+                f"if the table is per {path_col}, name its index "
+                f"'{path_col}')"
+                if not named and hits == own
+                else ""
+            )
             raise InvalidParameterError(
                 "path_col",
                 path_col,
@@ -553,26 +573,56 @@ def _check_unit(stream, path_col: str, table: pd.DataFrame | None) -> None:
                     f"'{coarser}' — the assignment table lists {coarser} ids, so "
                     f"{coarser} is the randomised unit; per-{path_col} intervals would "
                     "treat correlated paths of one unit as independent and come out "
-                    "too narrow (Deng et al. 2018)"
+                    f"too narrow (Deng et al. 2018){tie}"
                 ],
             )
+
+
+def prepare_assignment(
+    stream, path_col: str, table: pd.DataFrame | None
+) -> pd.DataFrame | None:
+    """Unit guard, id matching (:func:`~retentioneering.tools._diff.align_assignment`)
+    and timezone alignment of a normalised assignment table."""
+    if table is None:
+        return None
+    _check_unit(stream, path_col, table)
+    aligned = align_assignment(table, stream, path_col)
+    if aligned.index is not table.index:
+        _check_unit(stream, path_col, aligned)  # the ids now have the stream's type
+    if "assigned_at" in aligned.columns:
+        aligned["assigned_at"] = _align_assigned_at(
+            aligned["assigned_at"], stream.df[stream.schema.timestamp_col]
+        )
+    return aligned
+
+
+def _cuts_at_an_event(op: dict) -> bool:
+    """Whether a ``truncate_paths`` op ends paths at an event (a no-op truncation to
+    ``path_end`` does not)."""
+    end = op.get("end_anchor", "path_end")
+    anchors = end if isinstance(end, list) else [end]
+    for anchor in anchors:
+        pattern = anchor.get("pattern") if isinstance(anchor, dict) else anchor
+        if pattern != "path_end":
+            return True
+    return False
 
 
 def _strata_provenance(stream, strata_col: str) -> bool | None:
     """Whether ``strata_col`` was fixed before exposure, read from the stream's recipe.
 
     Returns True when the op that produced the column ran after a ``truncate_paths``
-    (or the column came through ``add_segment(path_values=)`` from such a stream, see
-    ``Eventstream.get_path_segments``), False when it was computed from the paths'
-    behaviour (``add_clusters``, ``add_segment(metric_bins=|funnel_events=)``) with no
-    truncation before it, and None when the recipe cannot tell (a source column, rules,
-    a function, SQL).
+    that ends each path at an event (the cut-off the analyst chose as the exposure
+    marker), or when the column came through ``add_segment(path_values=)`` from such
+    a stream (see ``Eventstream.get_path_segments``); False when it was computed from
+    the paths' behaviour (``add_clusters``, ``add_segment(metric_bins=|funnel_events=)``)
+    without such a truncation before it; None when the recipe cannot tell (a source
+    column, rules, a function, SQL).
 
-    Limitation: any ``truncate_paths`` earlier in the recipe counts as a pre-exposure
-    cut. The recipe does not record where the cut fell relative to the assignment or
-    the first exposure, so a truncation that ends after exposure (e.g. at the first
-    order of a treatment-driven funnel) is still read as pre-exposure; the caller
-    vouches for the cut-off.
+    The recipe proves that a cut happened, not that it fell before exposure: the
+    library does not know which event exposes a path to the treatment. A truncation
+    that ends after exposure still reads as pre-exposure; that is the analyst's
+    claim, as is an explicit ``strata_pre_exposure=True``.
     """
     lineage = stream.recipe()
     for position in range(len(lineage) - 1, -1, -1):
@@ -582,9 +632,14 @@ def _strata_provenance(stream, strata_col: str) -> bool | None:
             "add_segment",
         ):
             continue
-        truncated = any(o.get("type") == "truncate_paths" for o in lineage[:position])
+        truncated = any(
+            o.get("type") == "truncate_paths" and _cuts_at_an_event(o)
+            for o in lineage[:position]
+        )
         if op["type"] == "add_segment" and op.get("path_values") is not None:
-            flag = getattr(op["path_values"], "attrs", {}).get("pre_exposure")
+            flag = op.get("_path_values_pre_exposure")
+            if flag is None:
+                flag = getattr(op["path_values"], "attrs", {}).get("pre_exposure")
             return flag if isinstance(flag, bool) else None
         if op["type"] == "add_clusters" or any(
             op.get(mode) is not None for mode in _BEHAVIOUR_SEGMENT_MODES
@@ -592,6 +647,38 @@ def _strata_provenance(stream, strata_col: str) -> bool | None:
             return True if truncated else False
         return None
     return None
+
+
+#: ``strata_pre_exposure_source`` values.
+STRATA_SOURCES = ("declared", "recipe", "not_pre_exposure")
+
+
+def _strata_flag(
+    stream, strata_col: str, declared: bool | None, from_table: bool
+) -> tuple[bool, str]:
+    """``(strata_pre_exposure, strata_pre_exposure_source)``; warns when the auto mode
+    cannot show that the strata were fixed before exposure."""
+    if declared is not None:
+        return declared, "declared" if declared else "not_pre_exposure"
+    recipe = None if from_table else _strata_provenance(stream, strata_col)
+    if recipe is True:
+        return True, "recipe"
+    if recipe is False:
+        warn_user(
+            f"strata_col '{strata_col}' was computed from the paths' behaviour "
+            "on a stream that was not truncated before exposure: the stratum "
+            "may be post-exposure, so its rows compare selected subgroups, not "
+            "randomised ones (strata_pre_exposure=False)."
+        )
+    else:
+        where = "the assignment table" if from_table else "the stream's recipe"
+        warn_user(
+            f"{where} does not show that strata_col '{strata_col}' was fixed before "
+            "exposure, so its rows are exploratory (strata_pre_exposure=False). If it "
+            "was (a platform at signup, a segment recorded at assignment), pass "
+            "strata_pre_exposure=True."
+        )
+    return False, "not_pre_exposure"
 
 
 # ======================================================================= matrix
@@ -634,7 +721,9 @@ class MetricMatrix:
     strata : pandas.Series or None
         Stratum label per path.
     strata_pre_exposure : bool or None
-        See :func:`_strata_provenance`.
+        Whether the strata count as fixed before exposure (None without strata).
+    strata_pre_exposure_source : str or None
+        ``"declared"``, ``"recipe"`` or ``"not_pre_exposure"`` (see :func:`_strata_flag`).
     with_assignment : bool
         Whether an assignment table defined the population.
     excluded_paths : int
@@ -653,6 +742,7 @@ class MetricMatrix:
     immature: np.ndarray | None = None
     strata: pd.Series | None = None
     strata_pre_exposure: bool | None = None
+    strata_pre_exposure_source: str | None = None
     with_assignment: bool = False
     excluded_paths: int = 0
 
@@ -671,6 +761,8 @@ class MetricMatrix:
         assignment: pd.DataFrame | None,
         path_col: str | None,
         horizon: Any | None = None,
+        strata_pre_exposure: bool | None = None,
+        strata_labels: pd.Series | None = None,
     ) -> "MetricMatrix":
         """Run the metric registry once over the union of numerators and denominators.
 
@@ -681,7 +773,9 @@ class MetricMatrix:
         normalised table, see :func:`~retentioneering.tools._diff.normalize_assignment`)
         events before ``assigned_at`` are dropped and silent paths get zero rows. With
         ``horizon`` only events in ``[assigned_at, assigned_at + horizon)`` count and
-        paths whose window ends after the stream's last day are left out.
+        paths whose window ends after the stream's last event are left out. With
+        ``strata_labels`` (a column of the assignment table) the strata come from the
+        table instead of the stream's events.
         """
         from retentioneering.eventstream.eventstream import Eventstream
 
@@ -746,7 +840,14 @@ class MetricMatrix:
         period_keys = None
         if period is not None:
             period_keys, periods = _period_keys(
-                work.df, ts_col, path_col, period, period_basis, assigned_at, cov_start
+                work.df,
+                ts_col,
+                path_col,
+                period,
+                period_basis,
+                assigned_at,
+                cov_start,
+                cov_end,
             )
 
         configs: dict[str, dict] = {}
@@ -819,9 +920,13 @@ class MetricMatrix:
         # ---- strata
         strata = None
         strata_levels: list = [None]
-        pre_exposure = None
+        pre_exposure = source = None
         if strata_col is not None:
-            labels = per_path_label(stream.df, strata_col, path_col)
+            if strata_labels is not None:
+                labels = strata_labels.astype(object)
+                labels = labels.where(labels.notna(), MISSING)
+            else:
+                labels = per_path_label(stream.df, strata_col, path_col)
             strata = labels.reindex(path_ids).fillna(MISSING).astype(object)
             multi = strata.index[strata == MULTI]
             if len(multi):
@@ -832,14 +937,9 @@ class MetricMatrix:
                     ["a segment constant per path"],
                 )
             strata_levels = sorted(pd.unique(strata), key=str)
-            pre_exposure = _strata_provenance(stream, strata_col)
-            if pre_exposure is False:
-                warn_user(
-                    f"strata_col '{strata_col}' was computed from the paths' behaviour "
-                    "on a stream that was not truncated before exposure: the stratum "
-                    "may be post-exposure, so its rows compare selected subgroups, not "
-                    "randomised ones (strata_pre_exposure=False)."
-                )
+            pre_exposure, source = _strata_flag(
+                stream, strata_col, strata_pre_exposure, strata_labels is not None
+            )
 
         # ---- segments and cells
         seg_rows, seg_masks = [], []
@@ -891,6 +991,7 @@ class MetricMatrix:
             immature=immature,
             strata=strata,
             strata_pre_exposure=pre_exposure,
+            strata_pre_exposure_source=source,
             with_assignment=assignment is not None,
             excluded_paths=int(groups.excluded_paths),
         )
@@ -944,6 +1045,7 @@ def _period_keys(
     basis: str,
     assigned_at: pd.Series | None,
     cov_start: pd.Timestamp,
+    cov_end: pd.Timestamp,
 ) -> tuple[np.ndarray, pd.DataFrame]:
     """Integer period key per row and the period table (sorted chronologically)."""
     ts = df[ts_col]
@@ -1011,9 +1113,8 @@ def _period_keys(
             label = str(p) if n == 1 else f"{start:%Y-%m-%d}/{end - _DAY:%Y-%m-%d}"
             rows.append({"period": label, "period_start": start, "period_end": end})
     table = pd.DataFrame(rows, index=pd.Index(uniq, name="key"))
-    data_start, data_end = cov_start, ts.max().floor("D") + _DAY
-    table["period_complete"] = (table["period_start"] >= data_start) & (
-        table["period_end"] <= data_end
+    table["period_complete"] = (table["period_start"] >= cov_start) & (
+        table["period_end"] <= cov_end
     )
     return keys, table
 
@@ -1122,6 +1223,7 @@ class ABTest:
         min_events: int = 10,
         random_state: int = 42,
         path_col: str | None = None,
+        strata_pre_exposure: bool | None = None,
     ) -> "ABTest":
         """Validate the arguments, resolve the groups, build the matrix."""
         schema = stream.schema
@@ -1185,9 +1287,32 @@ class ABTest:
                 path_col,
                 [f"'{schema.path_cols[0]}' (period rows need the primary path column)"],
             )
-        if strata_col is not None and strata_col not in schema.segment_cols:
+        if strata_pre_exposure is not None and not isinstance(
+            strata_pre_exposure, bool
+        ):
             raise InvalidParameterError(
-                "strata_col", strata_col, list(schema.segment_cols)
+                "strata_pre_exposure", strata_pre_exposure, ["None", "True", "False"]
+            )
+        if strata_pre_exposure is not None and strata_col is None:
+            raise InvalidParameterError(
+                "strata_pre_exposure",
+                strata_pre_exposure,
+                ["None without strata_col", "a strata_col="],
+            )
+        table_strata = (
+            strata_col is not None
+            and isinstance(assignment, pd.DataFrame)
+            and strata_col in assignment.columns
+        )
+        if (
+            strata_col is not None
+            and not table_strata
+            and strata_col not in schema.segment_cols
+        ):
+            raise InvalidParameterError(
+                "strata_col",
+                strata_col,
+                list(schema.segment_cols) + ["a column of the assignment DataFrame"],
             )
 
         table = normalize_assignment(assignment) if assignment is not None else None
@@ -1213,13 +1338,11 @@ class ABTest:
             )
         if horizon is not None:
             _fixed_length(horizon, "horizon")
-        _check_unit(stream, path_col, table)
-        if table is not None:
-            table = align_assignment(table, stream, path_col)
-            if has_time:
-                table["assigned_at"] = _align_assigned_at(
-                    table["assigned_at"], stream.df[schema.timestamp_col]
-                )
+        table = prepare_assignment(stream, path_col, table)
+        strata_labels = None
+        if table_strata:
+            # silent assigned paths keep their stratum (rows stay ITT per stratum)
+            strata_labels = assignment[strata_col].set_axis(table.index, axis=0)
         specs = parse_metrics(metrics, test)
         _validate_on_stream(stream, specs)
         groups = resolve_diff(
@@ -1236,6 +1359,8 @@ class ABTest:
             assignment=table,
             path_col=path_col,
             horizon=horizon,
+            strata_pre_exposure=strata_pre_exposure,
+            strata_labels=strata_labels,
         )
         return cls(
             groups=groups,
@@ -1403,18 +1528,31 @@ class ABTest:
                 raise InvalidParameterError(
                     "contrast", {name: sides}, ["(periods_a, periods_b)"]
                 )
-            for label, periods in zip(("a", "b"), sides):
-                periods = [periods] if isinstance(periods, str) else list(periods)
+            sides = [[p] if isinstance(p, str) else list(p) for p in sides]
+            for periods in sides:
                 unknown = [p for p in periods if p not in known]
                 if unknown or not periods:
                     raise InvalidParameterError("contrast", unknown or periods, known)
+            # both sides on the same paths: those in the population of every
+            # contrasted period (S-04), so the contrast is a within-path change
+            # and not a change of cohort mix between early and late bins
+            both = cells[cells["period"].isin(sides[0] + sides[1])]
+            common = {}
+            for key, group in both.groupby(
+                ["metric", "stratum"], sort=False, dropna=False
+            ):
+                common[_cell_key(key)] = np.logical_and.reduce(
+                    [matrix.masks[:, seg] for seg in group["segment"]]
+                )
+            for label, periods in zip(("a", "b"), sides):
                 part = cells[cells["period"].isin(periods)]
                 for key, group in part.groupby(
                     ["metric", "stratum"], sort=False, dropna=False
                 ):
                     n, d = matrix.columns(list(group.index))
-                    nums.append(n.sum(axis=1))
-                    dens.append(d.sum(axis=1))
+                    keep = common[_cell_key(key)][:, None]
+                    nums.append((n * keep).sum(axis=1))
+                    dens.append((d * keep).sum(axis=1))
                     rows.append(
                         {
                             "metric": key[0],
@@ -1457,19 +1595,30 @@ class ABTest:
         nan = float("nan")
         extra: dict[str, Any] = {"kind": spec.kind}
 
-        # support: numerator events for 0/1 and ratio metrics, paths with a value otherwise
+        # support: numerator events for 0/1 and ratio metrics, paths with a value
+        # otherwise; the rule is pooled over the arms (S-02): a behaviour present in
+        # one arm only is the strongest effect there is, not missing data
         if spec.kind in ("binary", "ratio"):
             s1 = int(((num > 0) & in1).sum())
             s2 = int(((num > 0) & in2).sum())
         else:
             s1 = int(((den > 0) & in1).sum())
             s2 = int(((den > 0) & in2).sum())
-        extra["support"] = min(s1, s2) >= self.min_events
+        extra["support"] = s1 + s2 >= self.min_events
         if spec.kind == "binary":
-            n1, n2 = in1.sum(), in2.sum()
+            n1, n2 = int(in1.sum()), int(in2.sum())
+            extra["support"] = extra["support"] and (
+                (n1 - s1) + (n2 - s2) >= self.min_events
+            )
             extra["q_support"] = min(s1, s2) >= 5 and min(n1 - s1, n2 - s2) >= 5
         else:
             extra["q_support"] = min(s1, s2) >= 10
+        if min(s1, s2) == 0:
+            support_warning = "one_arm_only"
+        elif test == "bootstrap" and min(s1, s2) < LOW_SUPPORT_PATHS:
+            support_warning = "low_support"
+        else:
+            support_warning = ""
 
         valid = pd.NA
         low_support = False
@@ -1575,6 +1724,7 @@ class ABTest:
             p_basis=_P_BASIS[test],
             valid_replicates=valid if test == "bootstrap" else pd.NA,
             low_support=bool(low_support),
+            support_warning=support_warning,
         )
         return record, extra
 
@@ -1734,6 +1884,7 @@ class ABTest:
         rows["stratum_vs_rest_p_value"] = vs_rest
         flag = matrix.strata_pre_exposure
         rows["strata_pre_exposure"] = pd.array([flag] * len(rows), dtype="boolean")
+        rows["strata_pre_exposure_source"] = matrix.strata_pre_exposure_source
         rows["exploratory"] = flag is not True
         return rows
 
@@ -1757,6 +1908,12 @@ class ABTest:
         rows["valid_replicates"] = pd.array(rows["valid_replicates"], dtype="Int64")
         present = [c for c in COLUMNS if c in rows.columns]
         return rows[present].reset_index(drop=True)
+
+
+def _cell_key(key: tuple) -> tuple:
+    """A ``(metric, stratum)`` groupby key with a missing stratum as None (NaN keys
+    from two groupbys are different objects and never match in a dict)."""
+    return tuple(None if pd.isna(k) else k for k in key)
 
 
 def _t_interval(mean: float, var: float, n: int, level: float) -> tuple[float, float]:

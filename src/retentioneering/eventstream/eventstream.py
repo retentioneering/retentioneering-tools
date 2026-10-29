@@ -2377,6 +2377,8 @@ class Eventstream:
         end_anchor,
         within=None,
         path_col: str | None = None,
+        ci_level: float | None = None,
+        diff: T_Diff = None,
     ) -> pd.DataFrame:
         """
         Given that `start_anchor` happened, how often does `end_anchor` follow?
@@ -2410,6 +2412,22 @@ class Eventstream:
             end of the path.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
+        ci_level : float, optional
+            Two-sided confidence level in (0, 1), e.g. `0.95`. Adds Wilson score
+            intervals of the conversion rate (`conversion_rate_ci_low` /
+            `conversion_rate_ci_high`). In `diff` mode it sets the level of every
+            interval (default 0.95 there).
+        diff : tuple, optional
+            Compare two groups of paths: `("segment_col", value1, value2)` (`value2`
+            may be `<REST>`, either value `<MISSING>`) or `(path_ids1, path_ids2)`.
+            Groups are resolved at path level: a path that falls in both groups (a
+            segment that changes within the path, overlapping id lists) raises
+            `DiffConfigError` — compare at a finer `path_col` or carry a per-path
+            label with `add_segment(path_values=...)`. Replaces the columns below
+            with the diff columns. The intervals and the p-value treat every path as
+            an independent unit, so they assume `path_col` is the unit that was
+            assigned to a group: session paths of a user-level experiment give
+            intervals that are too narrow.
 
         Returns
         -------
@@ -2426,6 +2444,23 @@ class Eventstream:
               anywhere, the baseline the rate has to beat.
             - `lift` — `conversion_rate / base_rate`; `NaN` if `base_rate` is 0.
               Below 1 means the start event makes the outcome *less* likely.
+            - `conversion_rate_ci_low`, `conversion_rate_ci_high` — with
+              `ci_level` only, right after `conversion_rate`: the Wilson interval;
+              `NaN` when `paths_with_start` is 0.
+
+            With `diff`, one row per pair with `start_anchor`, `end_anchor` and:
+
+            - `group1_paths_with_start`, `group1_converted`,
+              `group1_conversion_rate`, `group1_conversion_rate_ci_low`,
+              `group1_conversion_rate_ci_high` (Wilson), `group1_base_rate`,
+              `group1_lift` — the columns above computed within group 1's paths
+              (the base rate over group 1's paths); the same `group2_*` columns.
+            - `delta` — `group1_conversion_rate - group2_conversion_rate`.
+            - `delta_ci_low`, `delta_ci_high` — Newcombe hybrid score interval of the
+              delta.
+            - `p_value` — pooled two-proportion z-test of equal rates; `NaN` when it
+              is undefined (a group without start paths, or both rates 0 or 1).
+            - `excluded_paths` — always 0 (overlapping groups raise instead).
 
         Examples
         --------
@@ -2449,6 +2484,13 @@ class Eventstream:
             stream.get_conversion_rate(
                 {"pattern": "path_start->catalog", "at": -1}, "purchase"
             )
+
+            # with a 95% interval, and treatment vs control with the delta's
+            # interval and p-value
+            stream.get_conversion_rate("add_to_cart", "purchase", ci_level=0.95)
+            stream.get_conversion_rate(
+                "add_to_cart", "purchase", diff=("exp_group", "treatment", "control")
+            )
         """
         from retentioneering.tools.conversion import ConversionRate
 
@@ -2457,6 +2499,8 @@ class Eventstream:
             end_anchor=end_anchor,
             within=within,
             path_col=path_col,
+            ci_level=ci_level,
+            diff=diff,
         )
 
     @_tracked("widget_segment_overview")

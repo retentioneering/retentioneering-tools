@@ -474,6 +474,8 @@ def _build_server(
         within: int | str | None = None,
         path_col: str | None = None,
         local_preprocessors: list | None = None,
+        ci_level: float | None = None,
+        diff: list | None = None,
     ) -> str:
         """
         Measure how often one event is followed by another, against its baseline.
@@ -511,6 +513,12 @@ def _build_server(
         local_preprocessors:
             One-off preprocessing for this measurement only. Same format as
             update_base_stream.
+        ci_level:
+            e.g. 0.95: adds conversion_rate_ci_low / _ci_high (Wilson).
+        diff:
+            ["segment_col", "value1", "value2"]: group1_* / group2_* columns,
+            delta (group1 - group2) with delta_ci_low / delta_ci_high and
+            p_value. Assumes path_col is the unit that was assigned.
 
         Returns
         -------
@@ -521,9 +529,16 @@ def _build_server(
         1 means the start event makes the target LESS likely.
         """
         result = tools.get_conversion_rate(
-            session, start_anchor, end_anchor, within, path_col, local_preprocessors
+            session,
+            start_anchor,
+            end_anchor,
+            within,
+            path_col,
+            local_preprocessors,
+            ci_level,
+            diff,
         )
-        return json.dumps(result, ensure_ascii=False)
+        return json.dumps(result, ensure_ascii=False, allow_nan=False)
 
     @_tool()
     def get_sample_ratio(

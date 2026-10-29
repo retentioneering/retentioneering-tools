@@ -674,22 +674,30 @@ def _is_segment_diff(diff: Any) -> bool:
     )
 
 
-#: A segment constant within every one of at least this many coarser paths that
+#: A segment constant within at least this many coarser paths that
 #: hold several ``path_col`` paths marks the coarser column as the randomised unit.
 MIN_UNITS_FOR_GRAIN = 10
+#: Share of the coarser paths (holding several finer paths) whose arm is constant
+#: at or above which ``check_segment_unit`` raises: a few users carrying both arms
+#: (logging noise, shared devices) must not disable the guard.
+CONSTANT_SHARE_RAISE = 0.99
+#: At or above this share (and below ``CONSTANT_SHARE_RAISE``) it warns.
+CONSTANT_SHARE_WARN = 0.9
 
 
 def check_segment_unit(stream, path_col: str, segment_col: str) -> None:
     """Refuse a path grain finer than the unit an arm segment was assigned at.
 
-    Without an assignment table the arm is a segment of the stream. When it is
-    constant within every path of a coarser path column (``exp_group`` the same in
-    all sessions of each user), and at least ``MIN_UNITS_FOR_GRAIN`` of those paths
-    hold several ``path_col`` paths, that column is the randomised unit and
+    Without an assignment table the arm is a segment of the stream. Among the paths
+    of a coarser path column that hold several ``path_col`` paths (users with
+    several sessions), when at least ``MIN_UNITS_FOR_GRAIN`` keep one arm and they
+    are at least ``CONSTANT_SHARE_RAISE`` of them (``exp_group`` the same in all
+    sessions of nearly every user), that column is the randomised unit and
     ``path_col`` (sessions) would give intervals that are too narrow: raises
     ``InvalidParameterError`` with the same reason as the assignment-table guard.
-    If ``path_col`` paths were randomised one by one, pass an assignment table
-    indexed by ``path_col`` (its index name settles the unit).
+    A share from ``CONSTANT_SHARE_WARN`` up gives a ``UserWarning``. If
+    ``path_col`` paths were randomised one by one, pass an assignment table indexed
+    by ``path_col`` (its index name settles the unit).
     """
     cols = list(stream.schema.path_cols)
     position = cols.index(path_col)
@@ -699,23 +707,44 @@ def check_segment_unit(stream, path_col: str, segment_col: str) -> None:
     for coarser in cols[:position]:
         labels = per_path_label(df, segment_col, coarser)
         labels = labels[labels != MISSING]
-        if (labels == MULTI).any():
-            continue
         sizes = df.groupby(coarser, observed=True, sort=False)[path_col].nunique()
-        several = int((sizes.reindex(labels.index) > 1).sum())
-        if several < MIN_UNITS_FOR_GRAIN:
+        several_mask = (sizes.reindex(labels.index) > 1).to_numpy()
+        multi_mask = (labels == MULTI).to_numpy()
+        several = int(several_mask.sum())
+        constant = int((several_mask & ~multi_mask).sum())
+        if constant < MIN_UNITS_FOR_GRAIN:
             continue
-        raise InvalidParameterError(
-            "path_col",
-            path_col,
-            [f"'{coarser}'", f"an assignment table indexed by '{path_col}'"],
-            reason=(
-                f"'{segment_col}' is constant within every {coarser} ({several} of "
-                f"them hold several {path_col} paths), so {_unit_reason(coarser, path_col)}. "
-                f"If {path_col}s were randomised one by one, pass the assignment "
-                f"table indexed by '{path_col}'"
-            ),
-        )
+        share = constant / several
+        mixed = several - constant
+        if mixed:
+            where = (
+                f"within {constant} of the {several} {coarser}s that hold several "
+                f"{path_col} paths ({mixed} carry both arms)"
+            )
+        else:
+            where = (
+                f"within every {coarser} ({several} of them hold several "
+                f"{path_col} paths)"
+            )
+        if share >= CONSTANT_SHARE_RAISE:
+            raise InvalidParameterError(
+                "path_col",
+                path_col,
+                [f"'{coarser}'", f"an assignment table indexed by '{path_col}'"],
+                reason=(
+                    f"'{segment_col}' is constant {where}, so "
+                    f"{_unit_reason(coarser, path_col)}. If {path_col}s were "
+                    "randomised one by one, pass the assignment table indexed by "
+                    f"'{path_col}'"
+                ),
+            )
+        if share >= CONSTANT_SHARE_WARN:
+            warn_user(
+                f"'{segment_col}' is constant {where} ({share:.0%}): if {coarser} "
+                f"was the randomised unit, per-{path_col} intervals are too narrow; "
+                f"analyse with path_col='{coarser}', or pass an assignment table "
+                f"indexed by '{path_col}' if {path_col}s were randomised one by one."
+            )
 
 
 def prepare_assignment(

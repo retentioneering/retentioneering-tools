@@ -3192,8 +3192,13 @@ class Eventstream:
             resolved per path: a path that falls in both groups (a segment that
             changes within the path, overlapping id lists) raises
             `DiffConfigError` — compare at a finer `path_col` or carry a per-path
-            label with `add_segment(path_values=...)`. Without `ci_level` the diff
-            keeps the widgets' event-level split.
+            label with `add_segment(path_values=...)`. A segment `diff` constant
+            within (at least 99 % of) the paths of a coarser path column, with at
+            least 10 of them holding several finer paths, raises
+            `InvalidParameterError` at the finer `path_col`: per-session intervals
+            of a per-user experiment are too narrow (the guard of `get_ab_test`).
+            Without `ci_level` the diff keeps the widgets' event-level split and
+            no guard applies.
         correction : {"none", "holm", "bonferroni", "bh"}, default "none"
             Multiple-comparison correction applied across the funnel's steps to the
             overall-delta p-values (`delta_conversion_rate_p_value_adjusted`); used
@@ -3376,7 +3381,11 @@ class Eventstream:
             with the diff columns. The intervals and the p-value treat every path as
             an independent unit, so they assume `path_col` is the unit that was
             assigned to a group: session paths of a user-level experiment give
-            intervals that are too narrow. See Notes on conditional rows.
+            intervals that are too narrow. A segment `diff` constant within (at
+            least 99 % of) the paths of a coarser path column, with at least 10 of
+            them holding several finer paths, raises `InvalidParameterError` at
+            the finer `path_col` (the guard of `get_ab_test`); pass `path_col` of
+            the randomised unit. See Notes on conditional rows.
 
         Returns
         -------

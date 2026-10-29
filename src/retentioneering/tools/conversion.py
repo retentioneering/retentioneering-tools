@@ -164,6 +164,12 @@ class ConversionRate:
         available = es.df[es.schema.event_col].unique().tolist()
 
         groups = resolve_diff(es, diff, path_col, require_constant=True)
+        from retentioneering.tools.ab_test import _is_segment_diff, check_segment_unit
+
+        if _is_segment_diff(diff):
+            # intervals at a grain finer than the randomised unit are too narrow:
+            # the same guard as get_ab_test
+            check_segment_unit(es, path_col, diff[0])
         frames = []
         for ids in (groups.ids1, groups.ids2):
             sub = es.filter_events(keep={path_col: list(ids)})

@@ -36,8 +36,8 @@ user's planted change of the per-session add probability under the new card.
 
 Solutions (spoilers)
 --------------------
-1. Users are in both arms: about 60 % of users have more than one session and
-   most of them saw both cards. ``get_sample_ratio("exp_group")`` at the user grain
+1. Users are in both arms: about 37 % of users have more than one session, and
+   most of those (31 % of all users) saw both cards. ``get_sample_ratio("exp_group")`` at the user grain
    reports them as ``multi_valued_paths`` and a mismatch, although the session
    split is a clean 50/50 (``get_sample_ratio`` with the table and
    ``path_col="session_id"``: no mismatch).
@@ -50,8 +50,8 @@ Solutions (spoilers)
    probability: normal, mean +5 pp, standard deviation 25 pp, before the
    probability is clipped to [0.01, 0.95], which lifts the realised mean to about
    +7 pp) and the heavy users contribute many sessions each. A user-clustered
-   standard error of the same delta is about 1.5 to 1.8 times the reported
-   ``delta_se``.
+   standard error of the same delta is 1.5 to 1.8 times the reported
+   ``delta_se`` (1.55 at the default seed).
 4. The first session of every user is a clean user-level experiment: cut each path
    before its second ``session_start`` (``truncate_paths("path_start",
    [{"pattern": "session_start->.*->session_start", "at": 1, "offset": -1},
@@ -141,8 +141,8 @@ _BROWSE = (
 def generate(n_users: int, seed: int) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Return ``(events, assignment)``; ``events`` includes the truth column."""
     n = _sim.check_n_users(n_users)
-    rng_users, rng_sessions, rng_browse, rng_funnel, rng_time, rng_orders = _sim.streams(
-        seed, 6
+    rng_users, rng_sessions, rng_browse, rng_funnel, rng_time, rng_orders = (
+        _sim.streams(seed, 6)
     )
 
     # ── users: base propensity, planted effect, pace ─────────────────────────

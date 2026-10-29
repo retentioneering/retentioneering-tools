@@ -46,9 +46,9 @@ Solutions (spoilers)
    were active in the week before the push, so they have events before
    ``assigned_at`` (most of them keep using the app, some do not).
 2. ITT over the table (``assignment=``) is the experiment: purchase conversion
-   rises by about +1.4 pp (users who open anyway buy at 22 % in both arms, the
-   users the push brings in buy at 12 %), and the sample ratio of the table is
-   fine.
+   rises by about +1.4 pp (+1.9 pp at the default seed): users who open anyway
+   buy at 22 % in both arms, the users the push brings in buy at 12 %. The
+   sample ratio of the table is fine.
 3. The stream-only read (no ``assignment``) compares the users who showed up,
    and the push changed who shows up: treatment has 50 % more users on the
    stream (``get_sample_ratio`` on the stream reports a mismatch, which here is
@@ -138,8 +138,8 @@ _BROWSE = {
 def generate(n_users: int, seed: int) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Return ``(events, assignment)``; ``events`` includes the truth column."""
     n = _sim.check_n_users(n_users)
-    rng_users, rng_sessions, rng_browse, rng_funnel, rng_time, rng_orders = _sim.streams(
-        seed, 6
+    rng_users, rng_sessions, rng_browse, rng_funnel, rng_time, rng_orders = (
+        _sim.streams(seed, 6)
     )
     end_s = N_DAYS * _sim.DAY_S
 

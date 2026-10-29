@@ -78,8 +78,11 @@ def sessions(
     horizon = np.maximum(end_s - tail_s - first_s, 0) / DAY_S
     n_returns = rng.poisson(rate_per_day * horizon)
     ret_user = np.repeat(np.arange(n), n_returns)
-    ret_start = first_s[ret_user] + gap_s / 2 + rng.random(len(ret_user)) * (
-        np.repeat(horizon, n_returns) * DAY_S - gap_s / 2
+    ret_start = (
+        first_s[ret_user]
+        + gap_s / 2
+        + rng.random(len(ret_user))
+        * (np.repeat(horizon, n_returns) * DAY_S - gap_s / 2)
     )
     ret_start = (ret_start // 60 * 60).astype(np.int64)
     sess_user = np.concatenate([np.arange(n), ret_user])
@@ -174,7 +177,9 @@ def flatten(
     gaps = 4 * rng.integers(min_gap_s // 4, max_gap_s // 4 + 1, len(ev_code))
     cum_gap = np.cumsum(gaps.astype(np.int64))
     first = np.r_[0, np.flatnonzero(np.diff(ev_sess)) + 1]
-    offset = np.repeat(cum_gap[first] - gaps[first], np.diff(np.r_[first, len(ev_sess)]))
+    offset = np.repeat(
+        cum_gap[first] - gaps[first], np.diff(np.r_[first, len(ev_sess)])
+    )
     ev_t = sess_start[ev_sess] + cum_gap - offset
     return ev_sess, ev_code, ev_t
 
@@ -184,6 +189,8 @@ def session_ids(user_id: np.ndarray, sess_no: np.ndarray) -> pd.Series:
     return pd.Series(user_id.astype(str)) + "_" + pd.Series((sess_no + 1).astype(str))
 
 
-def money(rng: np.random.Generator, n: int, log_mu: float, log_sigma: float) -> np.ndarray:
+def money(
+    rng: np.random.Generator, n: int, log_mu: float, log_sigma: float
+) -> np.ndarray:
     """Lognormal amounts rounded to cents."""
     return np.round(np.exp(rng.normal(log_mu, log_sigma, n)), 2)

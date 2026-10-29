@@ -5,6 +5,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added
+
+- `add_segment(name, path_values=...)` adds a segment from one value per path —
+  a pandas Series indexed by path id or a dict — broadcast to every event of the
+  path. It carries an experiment's assignment table onto the event log, or labels
+  computed on another stream (clusters found on a truncated stream) onto the full
+  one. Paths the mapping does not hold get no value (`<MISSING>` in `diff`); a
+  non-unique index raises `InvalidParameterError`; string keys from JSON match
+  integer path ids, so the MCP `add_segment` step accepts it too.
+- `get_path_segments(segment_col, path_col=None)` returns one segment value per
+  path, `<MULTI>` where the value changes within the path and `<MISSING>` where it
+  is null throughout — the inverse of `path_values`, and a quick check that an
+  experiment arm is constant per user.
+
 ### Fixed
 
 - `time_median` and `time_q95` edge weights in `transition_graph` and

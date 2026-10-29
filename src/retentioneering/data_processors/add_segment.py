@@ -6,7 +6,7 @@ from retentioneering import engine
 from retentioneering.engine.dialect import event_position
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
-from retentioneering.exceptions import PreprocessingConfigError
+from retentioneering.exceptions import InvalidParameterError, PreprocessingConfigError
 from retentioneering.utils.sql_quoting import quote_literal
 
 PROCESSOR_NAME = "add_segment"
@@ -302,6 +302,46 @@ def _interval_levels(edges: list[float]) -> list[str]:
     return labels
 
 
+def _path_values_series(path_values) -> pd.Series:
+    """Validate `path_values` and return it as a Series indexed by path id."""
+    if isinstance(path_values, pd.Series):
+        series = path_values
+    elif isinstance(path_values, dict):
+        series = pd.Series(path_values, dtype=object)
+    else:
+        raise InvalidParameterError(
+            "path_values",
+            type(path_values).__name__,
+            ["a pandas Series indexed by path id", "a dict {path_id: value}"],
+        )
+    if not series.index.is_unique:
+        dup = series.index[series.index.duplicated()].unique()
+        raise InvalidParameterError(
+            "path_values",
+            f"{len(dup)} repeated path id(s), e.g. {list(dup[:5])}",
+            ["one value per path id (a unique index)"],
+        )
+    return series
+
+
+def _broadcast_path_values(ids: pd.Series, series: pd.Series) -> pd.Series:
+    """Map per-path values onto rows; ids the mapping does not hold get NaN.
+
+    Keys that arrived through JSON are strings even when the path ids are not
+    (MCP, recipes): when no id matches directly and every key is a string,
+    the ids are matched by their string form.
+    """
+    if isinstance(series.dtype, pd.CategoricalDtype):
+        series = series.astype(object)
+    if isinstance(ids.dtype, pd.CategoricalDtype):
+        ids = ids.astype(object)
+    mapped = ids.map(series)
+    keys_are_str = len(series) > 0 and all(isinstance(k, str) for k in series.index)
+    if keys_are_str and not ids.isin(series.index).any():
+        mapped = ids.astype(str).map(series)
+    return mapped
+
+
 class AddSegment(DataProcessor):
     name: str
     rules: Collection | None
@@ -310,6 +350,7 @@ class AddSegment(DataProcessor):
     funnel_events: list | None
     time_range: Collection | None
     metric_bins: dict | None
+    path_values: pd.Series | dict | None
     path_col: str | None
 
     def __init__(
@@ -323,6 +364,7 @@ class AddSegment(DataProcessor):
         metric_bins: dict | None = None,
         path_col: str | None = None,
         eventstream=None,
+        path_values: pd.Series | dict | None = None,
     ) -> None:
         arg_is_not_none = [
             func is not None,
@@ -331,13 +373,16 @@ class AddSegment(DataProcessor):
             funnel_events is not None,
             time_range is not None,
             metric_bins is not None,
+            path_values is not None,
         ]
         if sum(arg_is_not_none) > 1:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
                 "At most one of the arguments must be defined: "
-                "rules, func, sql, funnel_events, time_range, metric_bins.",
+                "rules, func, sql, funnel_events, time_range, metric_bins, path_values.",
             )
+        if path_values is not None:
+            path_values = _path_values_series(path_values)
         if funnel_events is not None and len(funnel_events) < 2:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME, "funnel_events must have at least 2 events."
@@ -356,6 +401,7 @@ class AddSegment(DataProcessor):
         self.funnel_events = funnel_events
         self.time_range = time_range
         self.metric_bins = metric_bins
+        self.path_values = path_values
         self.path_col = path_col
         self.eventstream = eventstream
         super().__init__()
@@ -371,6 +417,7 @@ class AddSegment(DataProcessor):
                 self.funnel_events is not None,
                 self.time_range is not None,
                 self.metric_bins is not None,
+                self.path_values is not None,
             ]
         )
 
@@ -397,7 +444,7 @@ class AddSegment(DataProcessor):
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
                 "One of the arguments must be defined: rules, func, sql, "
-                "funnel_events, time_range, metric_bins — unless promoting an existing custom "
+                "funnel_events, time_range, metric_bins, path_values — unless promoting an existing custom "
                 f"column to a segment, in which case '{self.name}' must already be "
                 "a custom column and none of them should be set.",
             )
@@ -495,6 +542,24 @@ class AddSegment(DataProcessor):
 
         elif self.metric_bins is not None:
             values = self._binned_levels(df, schema)
+
+        elif self.path_values is not None:
+            pid_col = self.path_col or schema.path_col
+            if pid_col not in schema.path_cols:
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME,
+                    f"path_col '{pid_col}' must be one of schema.path_cols: {schema.path_cols}.",
+                )
+            mapped = _broadcast_path_values(df[pid_col], self.path_values)
+            new_df = df.copy()
+            if isinstance(self.path_values.dtype, pd.CategoricalDtype):
+                categories = self.path_values.cat.categories
+                new_df[self.name] = pd.Categorical(mapped, categories=categories)
+            else:
+                new_df[self.name] = mapped.astype("category")
+            new_schema = schema.copy()
+            new_schema.segment_cols.append(self.name)
+            return new_df, new_schema
 
         new_df = df.copy()
         new_df[self.name] = values

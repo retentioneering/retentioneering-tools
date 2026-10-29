@@ -351,10 +351,11 @@ def _segment_groups(stream, segment_col, v1, v2, path_col, require_constant=True
 
 
 def _assignment_groups(stream, diff, path_col, assignment):
-    if diff is None or len(diff) != 3:
+    if diff is None or isinstance(diff, (str, bytes)) or len(diff) != 3:
         raise DiffConfigError(
-            "with assignment=, diff must be ('segment_col', arm1, arm2) naming two "
-            "arms of the assignment table"
+            "with assignment=, diff must be ('segment_col', group1, group2) naming "
+            "two arms of the assignment table, e.g. ('arm', 'treatment', 'control'); "
+            f"got {diff!r}"
         )
     segment_col, v1, v2 = diff[0], diff[1], diff[2]
     segment_cols = list(stream.schema.segment_cols)
@@ -367,12 +368,21 @@ def _assignment_groups(stream, diff, path_col, assignment):
         )
     table = normalize_assignment(assignment)
     arms = set(table["arm"].unique().tolist())
+    where = (
+        f"the assignment table's arm column '{ASSIGNMENT_ARM}'"
+        + (
+            f" (diff[0] is {segment_col!r}; diff[1] and diff[2] name the table's arms)"
+            if segment_col != ASSIGNMENT_ARM
+            else ""
+        )
+    )
     v1 = coerce_level(v1, arms)
     if v1 not in arms:
         raise SegmentLevelNotFoundError(
             segment_level=v1,
-            segment_col="assignment",
+            segment_col=ASSIGNMENT_ARM,
             available_levels=sorted(arms, key=str),
+            where=where,
         )
     if v2 == REST:
         v2_vals = arms - {v1}
@@ -386,8 +396,9 @@ def _assignment_groups(stream, diff, path_col, assignment):
         if v2 not in arms:
             raise SegmentLevelNotFoundError(
                 segment_level=v2,
-                segment_col="assignment",
+                segment_col=ASSIGNMENT_ARM,
                 available_levels=sorted(arms, key=str),
+                where=where,
             )
         if v2 == v1:
             raise DiffConfigError(
@@ -486,7 +497,22 @@ def resolve_diff(
         basis = "assignment"
     else:
         if diff is None or isinstance(diff, (str, bytes)) or len(diff) not in (2, 3):
-            raise DiffConfigError("diff must be (seg, v1, v2) or (ids1, ids2)")
+            raise DiffConfigError(
+                "diff must be ('segment_col', group1, group2) or (ids1, ids2); "
+                f"got {diff!r}"
+            )
+        if len(diff) == 2 and any(
+            isinstance(side, (str, bytes)) or not hasattr(side, "__iter__")
+            for side in diff
+        ):
+            # ["exp_group", "treatment"] would otherwise be read as two id lists
+            # and iterated character by character
+            raise DiffConfigError(
+                f"diff {list(diff)!r} has two elements, so it is read as (ids1, ids2), "
+                "two collections of path ids. To compare segment levels pass three: "
+                "('segment_col', group1, group2), e.g. "
+                "('exp_group', 'treatment', 'control')."
+            )
         if len(diff) == 3:
             segment_col = diff[0]
             paths1, paths2, label1, label2, non_constant, overlap = _segment_groups(
@@ -509,7 +535,16 @@ def resolve_diff(
             available = set(pd.unique(stream.df[path_col]).tolist())
             missing = [i for i in ids1 + ids2 if i not in available]
             if missing:
-                raise PathIdNotFoundError(sorted(set(missing), key=str), path_col)
+                raise PathIdNotFoundError(
+                    sorted(set(missing), key=str),
+                    path_col,
+                    hint=(
+                        "An id list names paths of the stream; assigned paths with "
+                        "no events are not in it. For an experiment whose arms list "
+                        "silent paths too, pass the table as assignment= with "
+                        "diff=('arm', group1, group2)"
+                    ),
+                )
             paths1, paths2 = pd.unique(pd.Index(ids1)), pd.unique(pd.Index(ids2))
             overlap = len(set(paths1) & set(paths2))
             if require_constant and overlap:

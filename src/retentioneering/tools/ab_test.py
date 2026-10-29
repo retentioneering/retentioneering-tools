@@ -211,7 +211,9 @@ def _metric_column(config: dict[str, Any], role: str, label: str) -> str:
     metric = config.get("metric")
     if not isinstance(metric, str):
         raise InvalidMetricConfigError(
-            f"{label}: '{role}' needs a registry metric name, got {metric!r}"
+            f"{label}: '{role}' needs a registry metric name, got {metric!r}. "
+            "Write each metric as {'metric': <name>, 'metric_args': {...}}, e.g. "
+            "{'metric': 'has_event', 'metric_args': {'event': 'order'}}"
         )
     if metric.endswith("_bulk"):
         raise InvalidMetricConfigError(
@@ -241,6 +243,18 @@ def _metric_column(config: dict[str, Any], role: str, label: str) -> str:
             "metric must be one number per path (name a single level)."
         )
     return names[0]
+
+
+def _metric_args_hint(entry: dict[str, Any], unknown: set) -> str:
+    """The fix for keys outside an entry's schema: metric arguments go under
+    ``metric_args`` (``{"metric": "has_event", "event": "x"}`` is a common guess)."""
+    metric = entry.get("metric")
+    args = {key: entry[key] for key in sorted(unknown, key=str)}
+    example = {
+        "metric": metric if isinstance(metric, str) else "has_event",
+        "metric_args": args if isinstance(metric, str) else {"event": "order"},
+    }
+    return f"Put metric arguments under 'metric_args': {example!r}"
 
 
 def _kind_of(metric: str) -> str:
@@ -301,7 +315,8 @@ class ABMetricSpec:
         unknown = set(entry) - cls._KEYS
         if unknown:
             raise InvalidMetricConfigError(
-                f"{label}: unknown key(s) {sorted(unknown)}; allowed: {sorted(cls._KEYS)}"
+                f"{label}: unknown key(s) {sorted(unknown)}; allowed: "
+                f"{sorted(cls._KEYS)}. {_metric_args_hint(entry, unknown)}"
             )
         config = {
             "metric": entry.get("metric"),
@@ -527,16 +542,37 @@ def _align_assigned_at(assigned_at: pd.Series, ts: pd.Series) -> pd.Series:
 
     A naive table on a tz-aware stream is read as wall time in the stream's timezone;
     a tz-aware table is converted to it. A tz-aware table on a naive stream is refused:
-    the stream's timestamps carry no timezone to convert to.
+    the stream's timestamps carry no timezone to convert to. A wall time that a
+    daylight-saving change skips is moved forward to the first valid time; one that
+    occurs twice (the hour the clocks go back) cannot be placed and raises
+    ``InvalidParameterError``, which asks for a tz-aware ``assigned_at``.
     """
     tz = getattr(ts.dt, "tz", None)
     at_tz = assigned_at.dt.tz
     if tz is None and at_tz is None:
         return assigned_at
     if tz is not None:
-        if at_tz is None:
-            return assigned_at.dt.tz_localize(tz)
-        return assigned_at.dt.tz_convert(tz)
+        if at_tz is not None:
+            return assigned_at.dt.tz_convert(tz)
+        local = assigned_at.dt.tz_localize(
+            tz, ambiguous="NaT", nonexistent="shift_forward"
+        )
+        lost = local.isna() & assigned_at.notna()
+        if lost.any():
+            examples = [str(t) for t in assigned_at[lost].head(3)]
+            raise InvalidParameterError(
+                "assignment",
+                f"{int(lost.sum())} naive assigned_at value(s), e.g. {examples}",
+                [
+                    "a tz-aware assigned_at, e.g. "
+                    "assigned_at.dt.tz_localize('UTC') when the log is in UTC"
+                ],
+                reason=(
+                    f"these wall times occur twice in {tz} (the hour the clocks go "
+                    "back), so a naive time cannot say which one is meant"
+                ),
+            )
+        return local
     raise InvalidParameterError(
         "assignment",
         f"assigned_at in timezone {at_tz} on a stream with naive timestamps",
@@ -547,25 +583,51 @@ def _align_assigned_at(assigned_at: pd.Series, ts: pd.Series) -> pd.Series:
     )
 
 
-def _check_unit(stream, path_col: str, table: pd.DataFrame | None) -> None:
-    """Refuse a path grain finer than the assigned unit (Deng et al. 2018).
+def _unit_reason(coarser: str, path_col: str) -> str:
+    return (
+        f"{coarser} is the randomised unit; per-{path_col} intervals would treat "
+        f"correlated paths of one {coarser} as independent and come out too narrow "
+        "(Deng et al. 2018)"
+    )
 
-    The table's unit is read from its index name when that names a path column (a
-    table indexed by ``user_id`` with ``path_col="session_id"`` raises; one indexed
-    by ``session_id`` is taken at its word), and otherwise from id overlap: as many
-    or more table ids found among a coarser column's ids as among ``path_col``'s
-    raises. A tie raises too: integer user and session ids often share one range,
-    and the counts cannot tell the unit then (name the index to settle it).
+
+def _check_unit(stream, path_col: str, table: pd.DataFrame | None) -> None:
+    """Refuse a path grain that does not match the assigned unit (Deng et al. 2018).
+
+    Coarser table: the unit is read from the index name when that names a path
+    column (a table indexed by ``user_id`` with ``path_col="session_id"`` raises; one
+    indexed by ``session_id`` is taken at its word), and otherwise from id overlap:
+    as many or more table ids found among a coarser column's ids as among
+    ``path_col``'s raises. A tie raises too: integer user and session ids often share
+    one range, and the counts cannot tell the unit then (name the index to settle it).
+
+    Finer table: an index named after a finer path column (a ``session_id`` table
+    analysed per ``user_id``) raises, since every user would take the arm of the
+    session with the same id. An unnamed index whose ids are more often ids of a
+    finer column than of ``path_col`` gives a ``UserWarning`` with both counts (a
+    user table listing many silent users can show the same pattern, so it does not
+    raise).
     """
     if table is None:
         return
     cols = list(stream.schema.path_cols)
     position = cols.index(path_col)
-    if position == 0:
-        return
     ids = table.index
     if ids.name == path_col:
         return
+    finer = cols[position + 1 :]
+    if ids.name in finer:
+        raise InvalidParameterError(
+            "path_col",
+            path_col,
+            [f"'{ids.name}' (the grain of the table)", f"a table indexed by {path_col}"],
+            reason=(
+                f"the assignment table is indexed by '{ids.name}', a finer path "
+                f"column: every {path_col} would take the arm of the {ids.name} with "
+                f"the same id. Analyse per {ids.name} if {ids.name}s were "
+                f"randomised, or pass a table of {path_col} ids"
+            ),
+        )
     own = int(ids.isin(pd.unique(stream.df[path_col])).sum())
     for coarser in cols[:position]:
         named = ids.name == coarser
@@ -583,11 +645,70 @@ def _check_unit(stream, path_col: str, table: pd.DataFrame | None) -> None:
                 path_col,
                 [
                     f"'{coarser}' — the assignment table lists {coarser} ids, so "
-                    f"{coarser} is the randomised unit; per-{path_col} intervals would "
-                    "treat correlated paths of one unit as independent and come out "
-                    f"too narrow (Deng et al. 2018){tie}"
+                    f"{_unit_reason(coarser, path_col)}{tie}"
                 ],
             )
+    for column in finer:
+        hits = int(ids.isin(pd.unique(stream.df[column])).sum())
+        if hits > own:
+            warn_user(
+                f"{hits} of the assignment table's {len(ids)} ids are {column} ids "
+                f"and only {own} are {path_col} ids: if the table lists {column}s, "
+                f"every {path_col} takes the arm of the {column} with the same id. "
+                f"Name the index ('{path_col}' or '{column}') to say which it is."
+            )
+            return
+
+
+def _is_segment_diff(diff: Any) -> bool:
+    """Whether ``diff`` has the ``("segment_col", v1, v2)`` form."""
+    return (
+        isinstance(diff, (list, tuple)) and len(diff) == 3 and isinstance(diff[0], str)
+    )
+
+
+#: A segment constant within every one of at least this many coarser paths that
+#: hold several ``path_col`` paths marks the coarser column as the randomised unit.
+MIN_UNITS_FOR_GRAIN = 10
+
+
+def check_segment_unit(stream, path_col: str, segment_col: str) -> None:
+    """Refuse a path grain finer than the unit an arm segment was assigned at.
+
+    Without an assignment table the arm is a segment of the stream. When it is
+    constant within every path of a coarser path column (``exp_group`` the same in
+    all sessions of each user), and at least ``MIN_UNITS_FOR_GRAIN`` of those paths
+    hold several ``path_col`` paths, that column is the randomised unit and
+    ``path_col`` (sessions) would give intervals that are too narrow: raises
+    ``InvalidParameterError`` with the same reason as the assignment-table guard.
+    If ``path_col`` paths were randomised one by one, pass an assignment table
+    indexed by ``path_col`` (its index name settles the unit).
+    """
+    cols = list(stream.schema.path_cols)
+    position = cols.index(path_col)
+    if position == 0 or segment_col not in stream.schema.segment_cols:
+        return
+    df = stream.df
+    for coarser in cols[:position]:
+        labels = per_path_label(df, segment_col, coarser)
+        labels = labels[labels != MISSING]
+        if (labels == MULTI).any():
+            continue
+        sizes = df.groupby(coarser, observed=True, sort=False)[path_col].nunique()
+        several = int((sizes.reindex(labels.index) > 1).sum())
+        if several < MIN_UNITS_FOR_GRAIN:
+            continue
+        raise InvalidParameterError(
+            "path_col",
+            path_col,
+            [f"'{coarser}'", f"an assignment table indexed by '{path_col}'"],
+            reason=(
+                f"'{segment_col}' is constant within every {coarser} ({several} of "
+                f"them hold several {path_col} paths), so {_unit_reason(coarser, path_col)}. "
+                f"If {path_col}s were randomised one by one, pass the assignment "
+                f"table indexed by '{path_col}'"
+            ),
+        )
 
 
 def prepare_assignment(
@@ -1371,6 +1492,8 @@ class ABTest:
         if horizon is not None:
             _fixed_length(horizon, "horizon")
         table = prepare_assignment(stream, path_col, table)
+        if table is None and _is_segment_diff(diff):
+            check_segment_unit(stream, path_col, diff[0])
         strata_labels = None
         if table_strata:
             # silent assigned paths keep their stratum (rows stay ITT per stratum)

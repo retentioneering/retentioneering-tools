@@ -36,7 +36,11 @@ from retentioneering.tools._diff import (
     normalize_assignment,
     per_path_label,
 )
-from retentioneering.tools.ab_test import _calendar_period, prepare_assignment
+from retentioneering.tools.ab_test import (
+    _calendar_period,
+    check_segment_unit,
+    prepare_assignment,
+)
 
 if TYPE_CHECKING:
     from retentioneering.eventstream import Eventstream
@@ -245,6 +249,7 @@ class SampleRatio:
         multi = 0
         outside = 0
         if assignment is None:
+            check_segment_unit(stream, path_col, segment_col)
             labels = stream_labels
             multi = int((labels == MULTI).sum())
             candidates = [

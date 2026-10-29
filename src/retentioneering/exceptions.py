@@ -33,8 +33,23 @@ class PatternSyntaxError(RetentioneeringError):
 
 
 class InvalidParameterError(RetentioneeringError):
-    def __init__(self, param_name: str, value: str, allowed_values: list | None = None):
+    """A known parameter holding a value it cannot take.
+
+    ``allowed_values`` lists what the parameter accepts; ``reason`` says in words
+    why this value is refused (a constraint between parameters, a table of the
+    wrong grain), for the cases a list of values cannot explain.
+    """
+
+    def __init__(
+        self,
+        param_name: str,
+        value: str,
+        allowed_values: list | None = None,
+        reason: str | None = None,
+    ):
         message = f"Invalid value '{value}' for parameter '{param_name}'"
+        if reason:
+            message += f": {reason}"
         if allowed_values:
             message += f". Allowed values: {allowed_values}"
         super().__init__(message, "INVALID_PARAMETER")
@@ -114,17 +129,37 @@ class MetricDistributionError(RetentioneeringError):
 
 class SegmentLevelNotFoundError(MetricDistributionError):
     def __init__(
-        self, segment_level: str, segment_col: str, available_levels: list | None = None
+        self,
+        segment_level: str,
+        segment_col: str,
+        available_levels: list | None = None,
+        where: str | None = None,
     ):
-        message = f"Segment level '{segment_level}' not found in column '{segment_col}'"
+        # `where` replaces "column '<segment_col>'" when the levels are not a
+        # segment column's (the arms of an assignment table)
+        place = where or f"column '{segment_col}'"
+        message = f"Segment level '{segment_level}' not found in {place}"
         if available_levels:
             message += f". Available levels: {available_levels}"
         super().__init__(message, "SEGMENT_LEVEL_NOT_FOUND")
 
 
 class PathIdNotFoundError(RetentioneeringError):
-    def __init__(self, path_ids: list, path_col: str):
-        message = f"Path ID(s) {path_ids} not found in column '{path_col}'"
+    #: At most this many ids are quoted in the message.
+    SHOWN = 10
+
+    def __init__(self, path_ids: list, path_col: str, hint: str | None = None):
+        self.path_ids = list(path_ids)
+        shown = self.path_ids[: self.SHOWN]
+        if len(self.path_ids) > self.SHOWN:
+            message = (
+                f"{len(self.path_ids)} path IDs not found in column '{path_col}', "
+                f"e.g. {shown}"
+            )
+        else:
+            message = f"Path ID(s) {shown} not found in column '{path_col}'"
+        if hint:
+            message += f". {hint}"
         super().__init__(message, "PATH_ID_NOT_FOUND")
 
 

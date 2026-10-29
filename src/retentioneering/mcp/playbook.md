@@ -191,8 +191,10 @@ times counts once. For a per-visit figure, carve out the subpopulation with
    one sentence built from its numbers. For an `inconclusive` row, quote its `reading`
    verbatim (in backticks) — it says what the interval includes, the p-value after
    the correction, what the design detects and how many paths a new test needs for a
-   smaller effect — and then, if useful, propose a next step (below). The `reading` starts with the window
-   it covers ("over the whole observation period", "calendar week 2026-03-09",
+   smaller effect — and then, if useful, propose a next step (below). The `reading`
+   reads the row's numbers only: it does not check the sample ratio, the unit or
+   whether strata are pre-exposure, which is why step 1 comes first. It starts with
+   the window it covers ("over the whole observation period", "calendar week 2026-03-09",
    "days 14-27 since assignment"): a period row is not the test's result, so
    always name the window when you quote a number. With several metrics each
    reading ends "corrected within this metric only; name one decision metric": only

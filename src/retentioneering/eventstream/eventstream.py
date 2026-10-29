@@ -392,7 +392,12 @@ class Eventstream:
             Index = path id (sorted, named after `path_col`), name = `segment_col`,
             values = the segment value; `"<MULTI>"` when the value is not constant
             within the path (a missing value on some events counts as a second
-            value), `"<MISSING>"` when it is null throughout.
+            value), `"<MISSING>"` when it is null throughout. When this stream's
+            recipe shows how the column was made, `attrs["pre_exposure"]` records it:
+            True for a column computed from behaviour (`add_clusters`,
+            `add_segment(metric_bins=...)`) after a `truncate_paths`, False for one
+            computed without a truncation. `add_segment(path_values=...)` carries the
+            flag to another stream, where `get_ab_test(strata_col=...)` reads it.
 
         Raises
         ------
@@ -420,8 +425,13 @@ class Eventstream:
             raise InvalidParameterError(
                 "path_col", path_col, list(self.schema.path_cols)
             )
+        from retentioneering.tools.ab_test import _strata_provenance
+
         labels = per_path_label(self._df, segment_col, path_col)
         labels.name = segment_col
+        pre_exposure = _strata_provenance(self, segment_col)
+        if pre_exposure is not None:
+            labels.attrs["pre_exposure"] = pre_exposure
         return labels
 
     @_tracked("get_sample_ratio")

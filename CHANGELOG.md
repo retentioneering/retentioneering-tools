@@ -73,110 +73,97 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   explains what each number assumes and has a live example.
 - `get_ab_test(diff, metrics, ...)` reads out an experiment: one row per metric
   (and per stratum with `strata_col`, per period with `period`) with per-arm
-  estimates, the delta with a confidence interval, a relative delta, p-value,
-  multiplicity-adjusted p-value (`correction="holm"` by default, also
-  `"bonferroni"`, `"bh"`, `"none"`, within each metric), the minimum detectable
-  effect and a `verdict` read from the adjusted p-value. The test follows the
-  metric: z-test for 0/1 metrics, Welch for totals and values, a joint path
-  bootstrap for ratio metrics (`denominator`, e.g. average order value).
+  estimates, the delta with a per-comparison interval, a relative delta, the
+  p-value and its adjusted value (`correction="holm"` by default, also
+  `"bonferroni"` with simultaneous intervals, `"bh"`, `"none"`), the minimum
+  detectable effect at `mde_alpha` and a `verdict` read from the adjusted
+  p-value against `1 - ci_level`. The test follows the metric: z-test for 0/1
+  metrics, Welch for totals and values, a joint path bootstrap for ratio
+  metrics (`denominator`, e.g. average order value). `correction_scope="metric"`
+  (default) corrects within each metric's rows, so one decision metric is named
+  before the test and each guardrail is read alone against a declared margin;
+  `"all"` makes one family of every row, for a scorecard read without one
+  decision metric (`correction_family` names the family).
   `assignment=` makes the population intention-to-treat (silent paths count,
-  events before `assigned_at` are dropped) and refuses a path grain finer than
-  the assignment unit; `period_basis="since_assignment"` and `horizon=` give
-  every path the same exposure time (calendar periods take pandas aliases such
-  as `"W"`, `"M"`, `"Q"`; a bare number is refused); strata rows carry shares,
-  balance, heterogeneity and stratum-versus-rest p-values, an `exploratory`
-  flag and `strata_pre_exposure_source` (`"declared"` with
-  `strata_pre_exposure=True`, `"recipe"`, or `"not_pre_exposure"`), and a
-  stratum column present in the assignment table is read from there so silent
-  paths keep their stratum. Support is pooled across the arms: a behaviour seen
-  in one arm only gets a p-value and `support_warning="one_arm_only"`; a row
-  where no path of either arm has it is `insufficient_data` with
-  `support_warning="no_data"`, and a since-assignment bin with no path in
-  either arm (its window closes after the end of data) is left out.
-  `min_support` (default 10) is the pooled number of supporting paths below
-  which a row is `insufficient_data`. Bootstrap rows with fewer than 30
-  supporting paths in an arm get `support_warning="low_support"`, and those
-  where more than 1 % of the replicates have no value in an arm get
-  `"invalid_replicates"` and no interval or p-value. `mde_alpha` is the level
-  the `mde` is computed at (`alpha / m` under a correction); the verdict
-  compares `p_value_adjusted` with `1 - ci_level`. Silent assigned paths are
-  counted in `group1_silent_paths` / `group2_silent_paths`, stream paths in
-  neither group in `unassigned_paths`, and the heterogeneity test of the strata
-  reports `heterogeneity_p_value` with `heterogeneity_dof`. The estimate
-  columns are NaN, never 0, when they are undefined. Streams with tz-aware
-  timestamps and assignment ids that arrive as strings or ints are handled;
-  identical arms, a `diff[0]` that is neither `"arm"` nor a segment column
-  when `assignment=` is given, a malformed assignment table or one whose ids
-  match no path (`InvalidParameterError`), and a path grain finer than the
-  table's unit are refused. See [ADR-0017](docs/adr/0017-ab-testing-tools.md).
+  events before `assigned_at` are dropped, assignment ids that arrive as
+  strings or ints match); `population` says whether a row covers the table
+  (`"assignment"`), the stream's paths (`"stream"`) or the survivors of an
+  active period row (`"active"`). `period=` gives ITT rows per calendar period
+  (pandas aliases such as `"W"`, `"M"`, `"Q"`; a bare number is refused),
+  `period_basis="since_assignment"` bins by exposure age and `horizon=` gives
+  every path the same window (`immature_paths`), on tz-aware streams too (a
+  naive `assigned_at` in the hour the clocks go back raises). Strata rows carry
+  shares, balance, heterogeneity (`heterogeneity_p_value`,
+  `heterogeneity_dof`) and stratum-versus-rest p-values, an `exploratory` flag
+  and `strata_pre_exposure_source` (`"declared"`, `"recipe"` or
+  `"not_pre_exposure"`); a stratum column of the assignment table keeps silent
+  paths in their stratum. `group1_support` / `group2_support` count the paths
+  with a value and `conditional` flags a row that compares only those paths
+  (`time_between`, `column_mean`, an order value). `min_support` (default 10)
+  is the pooled number of supporting paths below which a row is
+  `insufficient_data`: paths with the event for 0/1 metrics, with a non-zero
+  total for totals, with a non-zero numerator for ratios, with a value for
+  values. A behaviour seen in one arm only is tested and flagged
+  `support_warning="one_arm_only"`; a row with nothing to compare is
+  `insufficient_data` with `"no_data"`; bootstrap rows under 30 supporting paths
+  in an arm get `"low_support"` (verdict kept), and those with more than 1 % of
+  replicates without a value in an arm `"invalid_replicates"` (no interval or
+  p-value). Undefined estimates are NaN, never 0. The path must be the
+  randomised unit: a table of a coarser unit or indexed by a finer path
+  column, and without a table an arm segment constant within at least 99 % of
+  the users that hold several sessions (at least 10 such users; a warning from
+  90 %), refuse a session `path_col` with `InvalidParameterError`, and
+  `funnel_data(ci_level=)` and `get_conversion_rate(diff=)` apply the same
+  guard. Error messages name the fix (metric arguments under `metric_args`, a
+  three-element segment `diff`, the table's arm column, at most 10 ids of an
+  id-list `diff`). See [ADR-0017](docs/adr/0017-ab-testing-tools.md).
 - `get_ab_bootstrap(diff, metrics, ..., contrast=None)` returns the joint
   bootstrap replicates behind it, one row per replicate × metric × stratum ×
-  period, so ratios of metrics and period contrasts (a novelty effect: days
-  0–13 minus days 28–41) get their own intervals; a contrast compares the same
-  paths in every contrasted period.
+  period, so ratios of metrics and period contrasts (an effect that changes
+  with exposure age: days 0–13 minus days 28–41) get their own intervals; a
+  contrast compares the same paths in every contrasted period.
 - `ab_test(diff, metrics, ...)`: an A/B Test widget that draws `get_ab_test`'s
   scorecard — a table (each arm's value, the delta with its interval, the
   relative delta, the adjusted p-value, the MDE, the verdict, `support_warning`
-  and, when the rows carry it, `reading`) and a forest plot of the deltas
+  with a tooltip per value, and `reading`) and a forest plot of the deltas
   coloured by verdict (red increase, blue decrease, grey inconclusive, hollow
   `insufficient_data`), with a Strata tab when `strata_col` is set
   (heterogeneity and balance p-values, exploratory rows marked) and a Periods
   tab when `period` is set (an interval band, incomplete periods hollow,
   descriptive rows as squares). 0/1 metrics read in percentage points, the
   others in their unit. Its data parameters are `get_ab_test`'s; the sidebar
-  edits the arms, the metrics (the registry editor, with row names, a
-  ratio-of-sums denominator and custom-column metrics), the confidence level,
-  the correction, the test, the strata column and its pre-exposure
-  declaration, the period and its basis, and the horizon, and every change
-  recomputes. State persists with `state_file` (the `assignment` table is
+  edits the arms (with an assignment table, also its own `arm` column), the
+  metrics (the registry editor, with row names, a ratio-of-sums denominator and
+  custom-column metrics), the confidence level, the correction and its family,
+  the test, the strata column and its pre-exposure declaration, the period and
+  its basis, and the horizon, and every change recomputes. State persists with `state_file` (the `assignment` table is
   passed again); HTML exports keep every tab, read-only. Its headless twin
   `ab_test_data` is a documented alias of `get_ab_test`, which stays the name
   the docs use. The MCP server's `add_ab_test` registers it as a report tab
   (`[label:metric]` links focus a metric's row). Docs: an A/B Test widget page
   with live demos on `load_ab_test()`.
-- The MCP server has a numbers-only `get_ab_test` tool (overall rows, the top
-  strata by effect size — labelled as such in `strata_selection` — and period
-  rows, with `mde`, `correction_family`, `mde_alpha`, `exploratory`,
-  `strata_pre_exposure` and the call's `warnings`) and an A/B scenario in its
-  playbook.
 - `get_ab_test` rows end with a `reading` column: one sentence per row built from
-  the row's own numbers and templated per verdict. It starts with the window the
-  row covers (`over the whole observation period`, `within 28 days of
-  assignment`, `calendar week 2026-03-09`, `days 14-27 since assignment`). An
-  inconclusive row says what its interval includes and after which correction,
-  the p-value, the effect the design detects and how many times the paths a
-  smaller round effect would need (`"over the whole observation period: interval
-  [-1.07, +2.28] pp includes 0 (p 0.48); effects outside it are unlikely; the
-  design detects 2.39 pp at alpha 0.05 — to detect 1 pp, about 5.7× the paths
-  are needed"`); an increase or decrease gives the interval, the p-value and the
+  the row's own numbers and templated per verdict, for people and agents to
+  quote. It starts with the window the row covers (`over the whole observation
+  period`, `within 28 days of assignment`, `calendar week 2026-03-09`, `days
+  14-27 since assignment`). An inconclusive row says what its interval includes,
+  the p-value (after the correction, when one applied; the interval is then
+  called per-comparison), the effect the design detects and how many times the
+  paths a new test would need for a smaller round effect (`"over the whole
+  observation period: interval [-1.07, +2.28] pp includes 0 (p 0.48); effects
+  outside it are unlikely; the design detects 2.39 pp at alpha 0.05 — to detect
+  1 pp, about 5.7× the paths are needed in a new test sized before it
+  starts"`); an increase or decrease gives the interval, the p-value and the
   relative change; `insufficient_data` names the support that fell short;
   descriptive rows say they are not randomised. Exploratory strata, periods
-  whose window is not complete and a `support_warning` are appended, and with
-  several metrics each row asks for one decision metric (the correction stays
-  within a metric). 0/1 metrics read in percentage points, other metrics in
-  their own unit.
-  `get_sample_ratio` returns a `reading` too (`"expected 50/50, observed
-  5040/4960 (control/treatment), p 0.42: no mismatch"`, or `"mismatch: ... — the
-  test is invalid until the assignment is fixed"`, naming the strata or periods
-  that mismatch). The MCP `get_ab_test` and `get_sample_ratio` tools return it on
-  every row with a `unit` (`"pp"` or `"value"`) and the raw `p_value` on strata
-  and period rows too, and the playbook's A/B scenario tells the agent to quote it for
-  inconclusive rows and to propose a next step (more paths, a longer horizon, a
-  pre-declared stratum, a cheaper metric).
-- `get_ab_test` says which population and which family each row belongs to:
-  `population` (`"assignment"`, intention to treat over the table, or
-  `"stream"`, paths with at least one event); `group1_support` /
-  `group2_support` (paths with a value) and `conditional` (a metric such as
-  `time_between`, `column_mean` or an order value compares the paths that have
-  a value, not the arms; `reading` says so); `correction_scope="metric"`
-  (default: metrics are separate families, name one decision metric) or
-  `"all"` (one family over every row of every metric, `correction_family`
-  `"all_metrics"`), also on `ab_test_data`, the `ab_test` widget and
-  `get_ab_bootstrap` (where it sizes `n_bootstrap="auto"`). An arm with no
-  estimate (no path in the row, or no value for a value or ratio metric) is
-  `insufficient_data` with `support_warning="no_data"`; a metric constant in
-  both arms has NaN `delta_se` and `mde`; `low_support` bootstrap rows keep their
-  verdict and their `reading` says "coverage below nominal".
+  whose window is not complete, conditional rows and a `support_warning` are
+  appended (a row with such a flag does not say that effects outside its
+  interval are unlikely), and with several metrics each row asks for one
+  decision metric. 0/1 metrics read in percentage points, other metrics in their
+  own unit. `get_sample_ratio` returns a `reading` too (`"expected 50/50,
+  observed 5040/4960 (control/treatment), p 0.42: no mismatch"`, or `"mismatch:
+  ... — the test is invalid until the assignment is fixed"`, naming the strata or
+  periods that mismatch).
 - `get_ab_paths(diff, metrics, *, assignment=None, horizon=None, path_col=None)`
   returns the per-path table behind the scorecard — arm, `assigned_at`,
   `silent`, `mature` and every metric's per-path value in the analysed window
@@ -186,26 +173,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - `add_segment(..., pre_exposure=True)` declares a segment fixed before
   exposure; the declaration is kept in the recipe, and `get_ab_test(strata_col=)`
   reads it as `strata_pre_exposure_source="declared"` without a warning.
-  `get_metrics` honours a metric's `name` as `get_ab_test` does.
-- The A/B unit guard also refuses a table indexed by a finer path column (a
-  session table read per user; an unnamed one whose ids are more often session
-  ids warns) and, without a table, a session `path_col` when the arm segment is
-  constant within every user. A naive `assigned_at` that falls in the hour the
-  clocks go back raises `InvalidParameterError` asking for a tz-aware column
-  (a skipped wall time moves forward). Error messages name the fix: metric
-  arguments go under `metric_args`, a two-element segment `diff` needs
-  `(segment_col, group1, group2)`, an unknown arm names the table's arm column,
-  and `PathIdNotFoundError` quotes at most 10 ids.
-- MCP: `serve(stream, assignment=...)` attaches an assignment table; the A/B
-  tools then count every assigned user (ITT) and accept `horizon=` and
-  `period_basis="since_assignment"`. `get_ab_test` / `add_ab_test` take
-  `horizon`, `period_basis`, `test` and `correction_scope`, and every row
-  carries `population`, the supports, `conditional`, the raw `p_value`, `unit`
-  and a `scope` sentence. A numbers-only `get_ab_bootstrap` tool contrasts
-  periods (a novelty effect) with a joint interval. `describe()` lists segment
-  levels, the path columns each segment is constant on, value columns and the
-  assignment table's size; `describe_tool("metrics")` lists the registry and
-  `describe_tool("get_ab_test")` names the Python-only parameters. The playbook
+- MCP: four A/B tools. `get_sample_ratio`, `get_ab_test` (overall rows, the top
+  strata by effect size — labelled in `strata_selection` — and period rows) and
+  `get_ab_bootstrap` (an early-minus-late contrast of periods with its point
+  estimate and joint interval) return numbers only; `add_ab_test` registers the
+  `ab_test` widget as a report tab (`[label:metric]` links focus a metric's
+  row). Every row carries `population`, the supports, `conditional`, the raw and
+  adjusted p-values, `mde`, `mde_alpha`, `correction_family`, `reading`, `unit`
+  (`"pp"` or `"value"`) and a `scope` sentence, plus the strata's
+  pre-exposure flags and the call's `warnings`. `serve(stream, assignment=...)`
+  attaches an assignment table: the A/B tools then count every assigned user
+  (ITT) and accept `horizon=` and `period_basis="since_assignment"` (without a
+  table, the error says how to pass one). `describe()` lists segment levels,
+  the path columns each segment is constant on, value columns and the
+  assignment table's size; `describe_tool("metrics")` lists the registry,
+  `describe_tool("get_ab_test")` names the Python-only parameters and
+  `describe_tool("get_ab_bootstrap")` describes the MCP contrast summary. The
+  playbook's A/B scenario asks for the decision metric and the guardrails'
+  margins before the first call, quotes `reading` for inconclusive rows, and
+  proposes a new test sized before it starts rather than a longer one; it also
   covers a treatment that renames an event, the order of a "who does it help"
   analysis and the tab `export_report` needs.
 - `rete.datasets.load_ab_test()` and `load_ab_test_assignment()`: "Northwind Home",
@@ -234,8 +220,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   which segments are fixed at assignment, what the assignment table is — and
   ends with a "Solutions (spoilers)" section (Northwind Home's stories moved
   there too); every planted verdict is checked by a test through the public
-  API, and a slow seed sweep checks that each holds in at least 90 % of 40
-  seeds. User ids do not overlap between datasets. The Eventstream guide has a
+  API, and a slow seed sweep over 40 seeds checks that each planted effect holds
+  in at least 90 % of them and each true null in at least 85 %. User ids do not overlap between datasets. The Eventstream guide has a
   table of the datasets.
 - Tutorial notebook `notebooks/ab_testing_tutorial.ipynb`: one analysis of the
   Northwind Home experiment in eleven steps, from the assignment table to a
@@ -253,7 +239,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   it proves and what remains a hypothesis. It runs against the development
   install until this release ships; CI executes it.
 - Docs: a Tools reference section (`get_ab_test`, `get_ab_bootstrap`,
-  `get_sample_ratio`) rendered from the docstrings and listed in `llms.txt`.
+  `get_ab_paths`, `get_sample_ratio`) rendered from the docstrings and listed
+  in `llms.txt`.
 - Docs: an A/B Testing guide (`docs/guide/ab-testing.md`) — the unit, the
   intention-to-treat population, `diff` and the metrics; a worked example on
   `load_ab_test()` with real outputs; how to read the scorecard (verdict, `mde`,
@@ -272,6 +259,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 
+- `get_metrics` honours a metric's `name` as `get_ab_test` does; a name that
+  repeats another metric's column name raises `InvalidMetricConfigError`.
+- `PathIdNotFoundError` quotes at most 10 of the missing ids and their count.
 - `funnel_data` returns the path totals behind every rate: `total_paths`, or
   `funnel1_total_paths` / `funnel2_total_paths` with `diff`. The funnel
   widget's group sizes come from them, so a group in which no path reaches the

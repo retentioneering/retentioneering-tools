@@ -19,6 +19,8 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
     strategy:
       fail-fast: false
       matrix:
@@ -46,11 +48,14 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
-        with:
-          python-version: ${{ matrix.python-version }}
+
+      - name: Install matrix Python
+        run: uv python install "$UV_PYTHON"
 
       - name: Install Python dependencies
-        run: uv sync
+        run: |
+          uv sync --python "$UV_PYTHON"
+          uv run python -c 'import os, sys; assert sys.version_info[:2] == tuple(map(int, os.environ["UV_PYTHON"].split(".")))'
 
       - name: Run tests
         run: uv run pytest tests/ -v

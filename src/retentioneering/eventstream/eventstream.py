@@ -656,7 +656,8 @@ class Eventstream:
 
         Not available here: variance reduction (CUPED, regression adjustment),
         sequential tests and equivalence tests. `get_ab_paths` returns the per-path
-        table behind the scorecard for doing them by hand.
+        table behind the scorecard for doing them by hand; the
+        [A/B Testing guide](/docs/ab-testing) lists what is deferred.
 
         Parameters
         ----------
@@ -1181,6 +1182,97 @@ class Eventstream:
             path_col=path_col,
             strata_pre_exposure=strata_pre_exposure,
         ).bootstrap(contrast)
+
+    @_tracked("get_ab_paths")
+    def get_ab_paths(
+        self,
+        diff: T_Diff,
+        metrics: list,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
+        path_col: str | None = None,
+    ) -> pd.DataFrame:
+        """
+        Return the per-path table behind an A/B scorecard: one row per compared path.
+
+        Each row holds the path's arm and the value of every metric in the window
+        `get_ab_test` reads, computed the same way: silent paths count 0 for 0/1
+        metrics and totals, values are NaN where undefined, ratio metrics come as
+        numerator and denominator. Aggregating it per arm gives the scorecard's
+        `group1_value` / `group2_value` (the mean of a 0/1 metric, a total or a
+        value over the paths with one; the summed numerator over the summed
+        denominator of a ratio). Use it for what the scorecard does not do:
+        variance reduction (CUPED, regression on pre-period covariates), quantile
+        or rank tests, custom plots and power calculations from history.
+
+        Parameters
+        ----------
+        diff, metrics : see get_ab_test
+            As in `get_ab_test`: the arms and the metric configs (with `name` and
+            `denominator`).
+        assignment : pandas.Series or pandas.DataFrame, optional
+            As in `get_ab_test`: the intention-to-treat population (silent paths
+            included, events before `assigned_at` dropped).
+        horizon : str or pandas.Timedelta, optional
+            As in `get_ab_test`: only events in `[assigned_at, assigned_at +
+            horizon)` count; paths whose window is not closed by the stream's last
+            event stay in the table with `mature=False` and NaN metric values.
+        path_col : str, optional
+            Path grain; defaults to `schema.path_col` (the unit guard of
+            `get_ab_test` applies).
+
+        Returns
+        -------
+        pandas.DataFrame
+            Index: path id (named after `path_col`), sorted; both arms. Columns:
+
+            - `arm` (str): the arm label, `diff[1]` or `diff[2]` (`"group1"` /
+              `"group2"` for id lists).
+            - `assigned_at` (Timestamp): with an `assignment` DataFrame that has
+              it, in the stream's timezone.
+            - `silent` (boolean): no event in the analysed window (`<NA>` for an
+              immature path).
+            - `mature` (bool): the path is in the analysed population (always True
+              without `horizon`).
+            - one column per metric, named by its `name`: the per-path value
+              (float); for a ratio metric two columns, `<name>_numerator` and
+              `<name>_denominator`. NaN on immature paths and where a value metric
+              is undefined.
+
+        Raises
+        ------
+        DiffConfigError, InvalidMetricConfigError, InvalidParameterError, EmptyEventstreamError
+            As in `get_ab_test`.
+
+        Examples
+        --------
+            paths = stream.get_ab_paths(
+                ("exp_group", "treatment", "control"),
+                metrics=[{"name": "conversion", "metric": "has_event",
+                          "metric_args": {"event": "order_success"}}],
+                assignment=assignment,
+                horizon="28D",
+            )
+            paths[paths["mature"]].groupby("arm")["conversion"].mean()
+
+            # CUPED with a pre-period covariate x (a Series indexed by user_id)
+            mature = paths[paths["mature"]].join(x)
+            theta = mature[["conversion", "x"]].cov().iloc[0, 1] / mature["x"].var()
+            mature["adjusted"] = mature["conversion"] - theta * (
+                mature["x"] - mature["x"].mean())
+            mature.groupby("arm")["adjusted"].mean()
+        """
+        from retentioneering.tools.ab_test import ab_paths
+
+        return ab_paths(
+            self,
+            diff,
+            metrics,
+            assignment=assignment,
+            horizon=horizon,
+            path_col=path_col,
+        )
 
     @_tracked("headless_describe")
     def describe(
@@ -3116,9 +3208,14 @@ class Eventstream:
 
         Notes
         -----
-        The unconditional denominator is the paths **with at least one event**
-        in the eventstream (per group with `diff`): users assigned to an arm who
-        never produced an event are not counted. The intervals and p-values
+        Population: the unconditional denominator is the paths **with at least
+        one event** in the eventstream (per group with `diff`), what
+        `get_ab_test` calls `population="stream"`: users assigned to an arm who
+        never produced an event are not counted, so a funnel's first-step rate
+        can differ from the scorecard's (`get_ab_test(assignment=...)` counts
+        every assigned user, silent ones as 0, `population="assignment"`). Use
+        `get_ab_test` with an assignment table for the effect on the arms; the
+        funnel shows where the paths go. The intervals and p-values
         treat every path as an independent unit, so they assume `path_col` is
         the unit that was assigned to a group: session paths of a user-level
         experiment give intervals that are too narrow. p-values are per

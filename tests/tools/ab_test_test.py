@@ -1472,3 +1472,65 @@ class TestCorrectionScope:
     def test_invalid_scope(self) -> None:
         with pytest.raises(InvalidParameterError, match="correction_scope"):
             ABTest.from_stream(_random(), DIFF, [CONV], correction_scope="metrics")
+
+
+class TestAbPaths:
+    """U5: the per-path table reproduces the scorecard."""
+
+    def test_aggregation_reproduces_the_scorecard(self) -> None:
+        stream = _random(effect=0.05)
+        assignment = _random_assignment()
+        silent = pd.DataFrame(
+            {
+                "arm": ["treatment", "control"],
+                "assigned_at": pd.Timestamp("2024-01-02"),
+            },
+            index=["s1", "s2"],
+        )
+        assignment = pd.concat([assignment, silent])
+        metrics = [CONV, ORDERS, MEAN_VALUE, AOV]
+        card = stream.get_ab_test(
+            DIFF, metrics, assignment=assignment, horizon="7D"
+        ).set_index("metric")
+        paths = stream.get_ab_paths(DIFF, metrics, assignment=assignment, horizon="7D")
+        assert paths.index.name == "user_id"
+        assert list(paths.columns) == [
+            "arm",
+            "assigned_at",
+            "silent",
+            "mature",
+            "conv",
+            "orders",
+            "mean_value",
+            "aov_numerator",
+            "aov_denominator",
+        ]
+        assert len(paths) == len(assignment)
+        immature = paths[~paths["mature"]]
+        assert len(immature) == card.loc["conv", "immature_paths"]
+        assert immature["conv"].isna().all() and immature["silent"].isna().all()
+        assert bool(paths.loc["s1", "silent"]) and paths.loc["s1", "conv"] == 0
+        mature = paths[paths["mature"]]
+        by_arm = mature.groupby("arm")
+        for arm, column in (("treatment", "group1"), ("control", "group2")):
+            part = by_arm.get_group(arm)
+            for name in ("conv", "orders", "mean_value"):
+                assert part[name].mean() == pytest.approx(
+                    card.loc[name, f"{column}_value"]
+                ), (name, arm)
+            aov = part["aov_numerator"].sum() / part["aov_denominator"].sum()
+            assert aov == pytest.approx(card.loc["aov", f"{column}_value"])
+            assert len(part) == card.loc["conv", f"{column}_paths"]
+            assert (
+                part["mean_value"].notna().sum()
+                == card.loc["mean_value", f"{column}_support"]
+            )
+
+    def test_without_assignment(self) -> None:
+        stream = _random()
+        paths = stream.get_ab_paths(DIFF, [CONV])
+        assert list(paths.columns) == ["arm", "silent", "mature", "conv"]
+        assert paths["mature"].all() and not paths["silent"].any()
+        card = stream.get_ab_test(DIFF, [CONV]).iloc[0]
+        means = paths.groupby("arm")["conv"].mean()
+        assert means["treatment"] == pytest.approx(card.group1_value)

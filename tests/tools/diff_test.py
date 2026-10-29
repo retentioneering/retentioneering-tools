@@ -260,3 +260,37 @@ class TestIdenticalArms:
         table = pd.Series({"u0": "c", "u1": "t"})
         with pytest.raises(DiffConfigError, match="itself"):
             resolve_diff(constant, ("arm", "t", "t"), assignment=table)
+
+
+class TestErrorMessages:
+    """U7: errors name the fix."""
+
+    def test_two_element_segment_diff(self, constant) -> None:
+        with pytest.raises(DiffConfigError, match=r"\('segment_col', group1, group2\)"):
+            resolve_diff(constant, ["arm", "t"])
+        with pytest.raises(DiffConfigError, match="two arms of the assignment table"):
+            resolve_diff(constant, ["arm", "t"], assignment=pd.Series({"u0": "t"}))
+
+    def test_unknown_ids_are_capped(self, constant) -> None:
+        missing = [f"z{i:02d}" for i in range(30)]
+        with pytest.raises(PathIdNotFoundError) as info:
+            resolve_diff(constant, (["u0", *missing], ["u1"]))
+        message = str(info.value)
+        assert message.startswith("30 path IDs not found in column 'user_id', e.g.")
+        assert "z09" in message and "z10" not in message
+        assert "assignment=" in message
+        assert len(info.value.path_ids) == 30
+
+    def test_unknown_arm_names_the_table_and_the_segment(self, constant) -> None:
+        table = pd.Series({f"u{i}": ("t" if i % 2 else "c") for i in range(6)})
+        with pytest.raises(SegmentLevelNotFoundError) as info:
+            resolve_diff(constant, ("arm", "treatment", "c"), assignment=table)
+        message = str(info.value)
+        assert "the assignment table's arm column 'arm'" in message
+        assert "Available levels: ['c', 't']" in message
+        stream = _stream(
+            [(f"u{i}", "A", "2024-01-01", "t" if i % 2 else "c") for i in range(6)],
+            segment_cols=("exp_group",),
+        )
+        with pytest.raises(SegmentLevelNotFoundError, match="diff\\[0\\] is 'exp_group'"):
+            resolve_diff(stream, ("exp_group", "x", "c"), assignment=table)

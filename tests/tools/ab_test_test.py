@@ -1,5 +1,7 @@
 """A/B scorecard (``tools/ab_test.py``): metric specs, the metric matrix, the scorecard."""
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -1153,12 +1155,15 @@ class TestIntegerIds:
         # per-user table, per-session analysis: every user id is also a session id
         with pytest.raises(InvalidParameterError, match="too narrow"):
             _fit(stream, assignment=users, path_col="session_id")
-        # per-session table read at the user grain: most ids are not users -> the
-        # match-share warning, and the 40 that do match disagree with the stream's arm
+        # per-session table read at the user grain: a session_id index raises (R2-01)
         sessions = df.groupby("session_id")["arm"].first()
+        with pytest.raises(InvalidParameterError, match="finer path column"):
+            _fit(stream, assignment=sessions)
+        # unnamed: most ids are not users -> the match-share and the finer-grain
+        # warnings, and the 40 that do match disagree with the stream's arm
         with pytest.warns(UserWarning, match="only 40 of 120"):
             with pytest.raises(DiffConfigError, match="disagrees"):
-                _fit(stream, assignment=sessions)
+                _fit(stream, assignment=sessions.rename_axis(None))
         # the right pairing runs
         assert len(_fit(stream, assignment=users)) == 1
         named = sessions.rename_axis("session_id")
@@ -1200,3 +1205,124 @@ def test_scorecard_coverage_of_welch_and_bootstrap_rows() -> None:
             covered[metric] += row.delta_ci_low <= 0 <= row.delta_ci_high
     for metric, hits in covered.items():
         assert 0.91 <= hits / sims <= 0.99, (metric, hits / sims)
+
+
+class TestUnitGuard:
+    """R2-01 / U4: a table or a segment of a different grain than ``path_col``."""
+
+    @staticmethod
+    def _stream(n_users: int = 1000, seed: int = 3):
+        # integer users 1..1000 and sessions 1..~1500: most session ids are user ids
+        rng = np.random.default_rng(seed)
+        rows, session = [], 0
+        arm_of = {}
+        for user in range(1, n_users + 1):
+            for _ in range(1 + int(rng.random() < 0.5)):
+                session += 1
+                arm = "treatment" if rng.random() < 0.5 else "control"
+                arm_of[session] = arm
+                ts = pd.Timestamp("2024-01-01") + pd.Timedelta(minutes=session)
+                rows.append((user, session, "visit", ts))
+                buy = 0.25 if arm == "treatment" else 0.10
+                if rng.random() < buy:
+                    rows.append((user, session, "order", ts + pd.Timedelta(1, "s")))
+        df = pd.DataFrame(rows, columns=["user_id", "session_id", "event", "timestamp"])
+        stream = Eventstream(df, {"path_cols": ["user_id", "session_id"]})
+        return stream, pd.Series(arm_of)
+
+    def test_session_table_at_the_user_grain(self) -> None:
+        stream, sessions = self._stream()
+        users = stream.df["user_id"].unique()
+        overlap = sessions.index.isin(users).mean()
+        assert 0.6 < overlap < 0.7  # the round-2 review's 66 %
+        diff = ("arm", "treatment", "control")
+        named = sessions.rename_axis("session_id")
+        with pytest.raises(InvalidParameterError, match="finer path column"):
+            ABTest.from_stream(stream, diff, [CONV], assignment=named)
+        with pytest.warns(UserWarning, match="are session_id ids and only"):
+            ABTest.from_stream(stream, diff, [CONV], assignment=sessions)
+        # at its own grain the table runs without a warning
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            out = ABTest.from_stream(
+                stream, diff, [CONV], assignment=named, path_col="session_id"
+            ).fit()
+        assert out["delta"].iloc[0] > 0.1
+
+    def test_segment_constant_per_user_at_the_session_grain(self) -> None:
+        rows = []
+        for user in range(40):
+            arm = "treatment" if user % 2 else "control"
+            for s in range(2):
+                ts = pd.Timestamp("2024-01-01") + pd.Timedelta(hours=user + s)
+                rows.append((f"u{user}", f"u{user}s{s}", "visit", ts, arm))
+                if (user + s) % 3 == 0:
+                    rows.append(
+                        (f"u{user}", f"u{user}s{s}", "order", ts + pd.Timedelta(1, "m"), arm)
+                    )
+        df = pd.DataFrame(
+            rows, columns=["user_id", "session_id", "event", "timestamp", "arm"]
+        )
+        stream = Eventstream(
+            df, {"path_cols": ["user_id", "session_id"], "segment_cols": ["arm"]}
+        )
+        diff = ("arm", "treatment", "control")
+        with pytest.raises(InvalidParameterError, match="constant within every user_id"):
+            ABTest.from_stream(stream, diff, [CONV], path_col="session_id")
+        with pytest.raises(InvalidParameterError, match="too narrow"):
+            stream.get_sample_ratio("arm", path_col="session_id")
+        # the user grain runs; a session table named after its grain is taken at
+        # its word
+        assert len(ABTest.from_stream(stream, diff, [CONV]).fit()) == 1
+        table = (
+            df.drop_duplicates("session_id").set_index("session_id")["arm"]
+        )
+        out = ABTest.from_stream(
+            stream, diff, [CONV], assignment=table, path_col="session_id"
+        ).fit()
+        assert out["group1_paths"].iloc[0] == 40
+
+
+class TestDaylightSaving:
+    """R2-02: a naive assigned_at on a tz-aware stream across the autumn change."""
+
+    @staticmethod
+    def _stream_and_table(at: str):
+        tz = "Europe/Berlin"
+        rows, table = [], {}
+        for i in range(40):
+            arm = "treatment" if i % 2 else "control"
+            start = pd.Timestamp("2026-10-20 12:00", tz=tz) + pd.Timedelta(hours=i)
+            rows.append((f"u{i}", "visit", start))
+            if i % 3 == 0:
+                rows.append((f"u{i}", "order", start + pd.Timedelta(minutes=5)))
+            table[f"u{i}"] = (arm, start.tz_localize(None))
+        table["u0"] = (table["u0"][0], pd.Timestamp(at))
+        df = pd.DataFrame(rows, columns=["user_id", "event", "timestamp"])
+        frame = pd.DataFrame.from_dict(table, orient="index", columns=["arm", "assigned_at"])
+        return Eventstream(df), frame
+
+    def test_ambiguous_wall_time_raises_a_clear_error(self) -> None:
+        # 02:30 happens twice in Berlin on 2026-10-25
+        stream, table = self._stream_and_table("2026-10-25 02:30")
+        with pytest.raises(InvalidParameterError, match="occur twice"):
+            ABTest.from_stream(stream, DIFF, [CONV], assignment=table, horizon="1D")
+        with pytest.raises(InvalidParameterError, match="tz-aware assigned_at"):
+            stream.get_sample_ratio(assignment=table)
+
+    def test_skipped_wall_time_moves_forward_and_aware_tables_work(self) -> None:
+        # 02:30 does not exist on 2026-03-29: read as 03:00
+        stream, table = self._stream_and_table("2026-03-29 02:30")
+        out = ABTest.from_stream(stream, DIFF, [CONV], assignment=table).fit()
+        assert out["group1_paths"].iloc[0] + out["group2_paths"].iloc[0] == 40
+        stream, table = self._stream_and_table("2026-10-25 02:30")
+        table["assigned_at"] = table["assigned_at"].dt.tz_localize("UTC")
+        assert len(ABTest.from_stream(stream, DIFF, [CONV], assignment=table).fit()) == 1
+
+
+def test_metric_key_errors_point_at_metric_args() -> None:
+    with pytest.raises(InvalidMetricConfigError, match="under 'metric_args'") as info:
+        ABMetricSpec.from_user({"metric": "has_event", "event": "order"})
+    assert "{'metric': 'has_event', 'metric_args': {'event': 'order'}}" in str(info.value)
+    with pytest.raises(InvalidMetricConfigError, match="'metric_args': "):
+        ABMetricSpec.from_user({"has_event": "order"})

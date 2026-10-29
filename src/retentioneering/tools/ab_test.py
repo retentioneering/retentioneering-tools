@@ -2485,9 +2485,11 @@ def row_reading(
         and _finite(row["mde_alpha"])
         and row["mde_alpha"] < alpha * (1 - 1e-12)
     )
+    # the correction adjusts the p-value only: the interval stays per comparison
+    # (except Bonferroni's simultaneous interval, quoted as such)
     after = f" after {correction}" if adjusted else ""
     p_adj = row["p_value_adjusted"]
-    p_part = f"p {_p_text(p_adj)}" if _finite(p_adj) else "no p-value"
+    p_part = f"p {_p_text(p_adj)}{after}" if _finite(p_adj) else "no p-value"
 
     simultaneous = _finite(row.get("delta_ci_low_adj"), row.get("delta_ci_high_adj"))
     if simultaneous:
@@ -2495,7 +2497,7 @@ def row_reading(
         label = "simultaneous interval"
     else:
         low, high = row["delta_ci_low"], row["delta_ci_high"]
-        label = "interval"
+        label = "per-comparison interval" if adjusted else "interval"
     has_ci = _finite(low, high)
     if has_ci:
         lo, hi = low * scale, high * scale
@@ -2535,14 +2537,14 @@ def row_reading(
         parts.append("estimate shown descriptively")
     elif verdict in ("increase", "decrease"):
         if not has_ci:
-            parts.append(f"{p_part}{after}")
+            parts.append(p_part)
         elif covers_zero:
             parts.append(
-                f"{p_part}{after} is below alpha {alpha:.4g}, though the {interval} "
+                f"{p_part} is below alpha {alpha:.4g}, though the {interval} "
                 "includes 0 (borderline: test and interval disagree at the threshold)"
             )
         else:
-            parts.append(f"{interval} excludes 0{after} ({p_part})")
+            parts.append(f"{interval} excludes 0 ({p_part})")
         rel = row["rel_delta"]
         if _finite(rel):
             pct = rel * 100
@@ -2562,15 +2564,21 @@ def row_reading(
                     "than two paths with a value)"
                 )
         elif not has_ci:
-            parts.append(f"no interval; {p_part}{after}")
+            parts.append(f"no interval; {p_part}")
         elif covers_zero:
-            parts.append(
-                f"{interval} includes 0{after} ({p_part}); effects outside it are "
-                "unlikely"
-            )
+            # a flagged row (few supporting paths, strata not pre-exposure, a
+            # conditional comparison) does not earn the plain claim: its flags
+            # are appended below instead
+            if _validity_flagged(row):
+                parts.append(f"{interval} includes 0 ({p_part})")
+            else:
+                parts.append(
+                    f"{interval} includes 0 ({p_part}); effects outside it are "
+                    "unlikely"
+                )
         elif after:
             parts.append(
-                f"{interval} excludes 0 per comparison but not{after} ({p_part})"
+                f"{interval} excludes 0, but {p_part} is not below alpha {alpha:.4g}"
             )
         else:
             parts.append(
@@ -2590,7 +2598,7 @@ def row_reading(
                 target, factor = needed
                 design += (
                     f" — to detect {target:g}{unit}, about {factor:.1f}× the paths "
-                    "are needed"
+                    "are needed in a new test sized before it starts"
                 )
             parts.append(design)
 
@@ -2619,6 +2627,16 @@ def row_reading(
             parts.append("corrected within this metric only; name one decision metric")
     text = "; ".join(parts)
     return f"{window}: {text}" if window else text
+
+
+def _validity_flagged(row: dict) -> bool:
+    """Whether a row carries a flag that weakens its interval: few supporting paths
+    or invalid replicates, strata not pre-exposure, a conditional comparison."""
+    return (
+        row.get("support_warning") in ("low_support", "invalid_replicates")
+        or bool(row.get("exploratory", False))
+        or bool(row.get("conditional", False))
+    )
 
 
 def _cell_key(key: tuple) -> tuple:

@@ -180,7 +180,7 @@ def describe_tool(tool: str = "") -> dict:
       urls_to_events   sample_paths   split_sessions
 
     Analysis tools (called directly, not as a preprocessor step):
-      get_conversion_rate
+      get_conversion_rate  get_sample_ratio
 
     Reference topics:
       report_links   (anchor link syntax for analysis text)
@@ -602,6 +602,114 @@ def get_conversion_rate(
             for row in frame.to_dict("records")
         ],
     }
+
+
+def _json_number(value: Any, digits: int = 6) -> float | None:
+    """A float for JSON: NaN/inf become null (an absent estimate is not 0)."""
+    if value is None:
+        return None
+    value = float(value)
+    return round(value, digits) if math.isfinite(value) else None
+
+
+def get_sample_ratio(
+    session: Any,
+    segment_col: str,
+    expected_shares: dict | None = None,
+    alpha: float = 0.001,
+    path_col: str | None = None,
+    by: str | None = None,
+    local_preprocessors: list | None = None,
+) -> dict:
+    """
+    Check an A/B test's arm sizes against the expected split (sample ratio mismatch).
+
+    Run this FIRST on any experiment, before reading a single metric: if the
+    arms do not have the planned sizes, paths were lost from one arm and every
+    comparison is suspect. Returns numbers only (no report tab); quote them in
+    backticks.
+
+    Parameters
+    ----------
+    segment_col:
+        Segment column holding the arm (see describe() for segments).
+    expected_shares:
+        {arm: share}, summing to 1. Omit for an equal split.
+    alpha:
+        Mismatch threshold, default 0.001 (SRM alarms are strict on purpose).
+    path_col:
+        The unit that was randomised (default: the primary path column).
+    by:
+        Repeat the check per group: a segment constant per path that was fixed at
+        assignment, or "day". Not for variables the treatment can change.
+    local_preprocessors:
+        One-off preprocessing for this check only. Never filter on behaviour
+        (e.g. "reached cart") before an SRM check: on such a subset a share
+        difference is a treatment effect, not a bug.
+
+    Returns
+    -------
+    segment_col, path_col, mismatch (bool), p_value, chi2, dof, alpha,
+    multi_valued_paths (paths with >1 arm: an assignment bug), unassigned_paths,
+    basis, and levels — one row per arm with paths, share, expected_share. With
+    `by`: by_levels, one row per group with paths, chi2, p_value,
+    p_value_adjusted (Holm) and mismatch.
+    """
+    if (err := _require_stream(session)) is not None:
+        return err
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
+    try:
+        result = src.get_sample_ratio(
+            segment_col,
+            expected_shares=expected_shares,
+            alpha=alpha,
+            path_col=path_col or None,
+            by=by or None,
+        )
+    except Exception as exc:
+        return {"error": str(exc)}
+
+    levels = result["levels"]
+    if by:
+        levels = levels[levels["by"] == "<ALL>"]
+    out: dict[str, Any] = {
+        "segment_col": segment_col,
+        "path_col": path_col or src.schema.path_col,
+        "mismatch": bool(result["mismatch"]),
+        "p_value": _json_number(result["p_value"], 8),
+        "chi2": _json_number(result["chi2"], 4),
+        "dof": int(result["dof"]),
+        "alpha": float(result["alpha"]),
+        "multi_valued_paths": int(result["multi_valued_paths"]),
+        "unassigned_paths": int(result["unassigned_paths"]),
+        "basis": result["basis"],
+        "levels": [
+            {
+                "level": str(row["level"]),
+                "paths": int(row["paths"]),
+                "share": _json_number(row["share"], 4),
+                "expected_share": _json_number(row["expected_share"], 4),
+            }
+            for row in levels.to_dict("records")
+        ],
+    }
+    if by:
+        out["by"] = by
+        out["by_levels"] = [
+            {
+                "by": str(row["by"]),
+                "paths": int(row["paths"]),
+                "chi2": _json_number(row["chi2"], 4),
+                "p_value": _json_number(row["p_value"], 8),
+                "p_value_adjusted": _json_number(row["p_value_adjusted"], 8),
+                "mismatch": bool(row["mismatch"]),
+            }
+            for row in result["by_levels"].to_dict("records")
+        ]
+    return out
 
 
 def check_analysis(analysis: str) -> dict:

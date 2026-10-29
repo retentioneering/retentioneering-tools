@@ -24,6 +24,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   `add_segment(metric_bins=...)` and Filter Paths conditions. A sum of no values
   is 0; a mean or last value of no values is `NaN`, not 0. The JS metric editor
   offers a column dropdown (numeric columns for sum and mean).
+- `get_sample_ratio(segment_col, expected_shares=None, alpha=0.001,
+  path_col=None, assignment=None, by=None)` checks an experiment for sample
+  ratio mismatch: paths per arm against the expected split (chi-square
+  goodness of fit), with `mismatch` also raised by paths that carry more than
+  one arm. `assignment=` counts an assignment table instead of the stream
+  (silent paths included); `by=` repeats the check per day of assignment or per
+  segment fixed at assignment, with Holm-adjusted p-values. The MCP server has
+  a numbers-only `get_sample_ratio` tool.
 
 ### Fixed
 

@@ -424,6 +424,116 @@ class Eventstream:
         labels.name = segment_col
         return labels
 
+    @_tracked("get_sample_ratio")
+    def get_sample_ratio(
+        self,
+        segment_col: str,
+        expected_shares: dict | None = None,
+        alpha: float = 0.001,
+        path_col: str | None = None,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        by: str | None = None,
+    ) -> dict:
+        """
+        Check an experiment's arm sizes against the expected split (sample ratio mismatch).
+
+        Counts paths per arm and runs a chi-square goodness-of-fit test against the
+        expected shares. A mismatch means the assignment, the logging or a filter
+        lost paths from one arm, and no metric of the test can be trusted until it is
+        explained. Paths whose arm changes within the path are an assignment bug and
+        also raise the alarm.
+
+        Run it on the assignment table (`assignment=`) or on the full stream before
+        any filter that depends on behaviour. On a post-exposure subset (users who
+        reached the cart) the shares differ whenever the treatment works: that is an
+        effect, not a bug, and this check does not apply there.
+
+        Parameters
+        ----------
+        segment_col : str
+            Segment column holding the arm (`schema.segment_cols`). With `assignment`
+            it may be absent from the stream; when present, every path's arm on the
+            stream must agree with the table.
+        expected_shares : dict, optional
+            `{level: share}`, shares summing to 1 (within 1e-9), at least two levels.
+            Default: an equal split over the column's levels (or the table's arms).
+            Levels not named here are not arms; their paths are counted in
+            `unassigned_paths`.
+        alpha : float, default 0.001
+            Threshold of `mismatch`. SRM alarms are set stricter than 0.05 because
+            they gate every other result.
+        path_col : str, optional
+            Path grain; defaults to `schema.path_col`.
+        assignment : pandas.Series or pandas.DataFrame, optional
+            Per-path arm table: a Series `path_id -> arm`, or a DataFrame indexed by
+            path id with a column `arm` (and optionally `assigned_at`). The counts are
+            the table's rows, including paths with no events in the stream.
+        by : str, optional
+            Repeat the check within groups: a segment column constant per path (a
+            column of the `assignment` DataFrame is used first), or `"day"` — the day
+            of `assigned_at`, or of the path's first event without a table. Valid only
+            for a variable fixed at assignment (signup platform, assignment day): on a
+            variable the treatment can change, per-group shares measure an effect.
+            Raises `InvalidParameterError` for a segment that changes within a path.
+
+        Returns
+        -------
+        dict
+            - `levels` (DataFrame): one row per arm — `level`, `paths`, `share`,
+              `expected_share`, `expected_paths`. With `by`, a leading `by` column;
+              the overall rows carry `by="<ALL>"`, followed by the rows of every group.
+            - `chi2` (float), `dof` (int), `p_value` (float): the overall test; NaN
+              when no path is counted.
+            - `alpha` (float): the threshold used.
+            - `mismatch` (bool): `p_value < alpha` or `multi_valued_paths > 0`.
+            - `multi_valued_paths` (int): paths with more than one arm value (on the
+              stream, or disagreeing with the assignment table).
+            - `silent_paths` (int): assignment rows with no events in the stream (0
+              without `assignment`).
+            - `unassigned_paths` (int): paths with no arm or an arm outside
+              `expected_shares` (not counted in the test).
+            - `basis` (str): what was counted.
+            - `by` (str) and `by_levels` (DataFrame) with `by` only: one row per group
+              — `by`, `paths`, `chi2`, `dof`, `p_value`, `p_value_adjusted` (Holm over
+              the groups) and `mismatch` (`p_value_adjusted < alpha`). The overall
+              `mismatch` does not include the groups.
+
+        Raises
+        ------
+        InvalidParameterError
+            `segment_col` not a segment column (without `assignment`); fewer than two
+            arms; `expected_shares` not summing to 1 or naming an unknown level;
+            `alpha` outside (0, 1); `by` not a per-path segment or `"day"`.
+        DiffConfigError
+            `assignment` malformed or its index not unique.
+
+        Examples
+        --------
+            check = stream.get_sample_ratio("exp_group")
+            check["mismatch"], check["p_value"]
+            check["levels"]
+
+            # an unequal design, and the assignment table as the population
+            stream.get_sample_ratio(
+                "exp_group",
+                expected_shares={"control": 0.8, "treatment": 0.2},
+                assignment=groups,          # index user_id, columns arm, assigned_at
+            )
+
+            # did the split hold on every day of the rollout?
+            stream.get_sample_ratio("exp_group", by="day")["by_levels"]
+        """
+        from retentioneering.tools.sample_ratio import SampleRatio
+
+        return SampleRatio(self).fit(
+            segment_col,
+            expected_shares=expected_shares,
+            alpha=alpha,
+            path_col=path_col,
+            assignment=assignment,
+            by=by,
+        )
+
     @_tracked("headless_describe")
     def describe(
         self,

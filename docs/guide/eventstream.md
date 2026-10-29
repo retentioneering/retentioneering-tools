@@ -120,6 +120,30 @@ stream = rete.Eventstream(df, schema={
 })
 ```
 
+### A/B test datasets
+
+For experiments, `load_ab_test(name)` generates one of seven synthetic randomised tests, each with stories planted in it, and `load_ab_test_assignment(name)` returns its assignment table (the population for [`get_ab_test(assignment=...)`](/docs/tools/get-ab-test)). Nothing is downloaded: every dataset is a deterministic generator that runs in about a second, with `seed=` and `n_users=` to vary it. Some datasets hide an effect in a segment, some are broken tests whose right answer is "do not read this test" — finding out which is the exercise.
+
+```python
+import retentioneering as rete
+
+rete.datasets.list_ab_tests()                    # name -> one-line description
+stream = rete.datasets.load_ab_test("srm_platform_bug")
+assignment = rete.datasets.load_ab_test_assignment("srm_platform_bug")
+```
+
+| name | size | what it practises | solutions |
+|---|---|---|---|
+| `northwind_home` (default) | 10,000 users, 8 weeks | the full readout: sample ratio, scorecard, funnel intervals, novelty, pre-exposure strata, loops; the [A/B tutorial](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_tutorial.ipynb)'s dataset | [`ab_test.py`](https://github.com/retentioneering/retentioneering-tools/blob/master/src/retentioneering/datasets/ab_test.py) |
+| `lumeo_smart_cart` | 15,000 users, 12 weeks, sessions as a second path column | reading a null top line; pre-exposure segments; loops a treatment creates | [`lumeo_smart_cart.py`](https://github.com/retentioneering/retentioneering-tools/blob/master/src/retentioneering/datasets/ab_cases/lumeo_smart_cart.py) |
+| `srm_platform_bug` | 10,000 users, 5 weeks | validity checks before any metric; `get_sample_ratio(by=...)` | [`srm_platform_bug.py`](https://github.com/retentioneering/retentioneering-tools/blob/master/src/retentioneering/datasets/ab_cases/srm_platform_bug.py) |
+| `session_assignment` | 8,000 users, 4 weeks | the unit of randomisation versus the unit of analysis | [`session_assignment.py`](https://github.com/retentioneering/retentioneering-tools/blob/master/src/retentioneering/datasets/ab_cases/session_assignment.py) |
+| `aa_calibration` | 10,000 users, 4 weeks | what an A/A test should show; daily rows; revenue metrics | [`aa_calibration.py`](https://github.com/retentioneering/retentioneering-tools/blob/master/src/retentioneering/datasets/ab_cases/aa_calibration.py) |
+| `trial_conversion` | 10,000 users, 6 weeks | outcomes that arrive late; `horizon` and since-assignment periods | [`trial_conversion.py`](https://github.com/retentioneering/retentioneering-tools/blob/master/src/retentioneering/datasets/ab_cases/trial_conversion.py) |
+| `push_campaign` | 20,000 assigned users, 2 weeks | assignment from outside the product; ITT versus the users who showed up | [`push_campaign.py`](https://github.com/retentioneering/retentioneering-tools/blob/master/src/retentioneering/datasets/ab_cases/push_campaign.py) |
+
+Each generator's docstring (`help(rete.datasets.ab_cases.push_campaign)`) describes the experiment — where the treatment sits, which segments are fixed at assignment and can be declared pre-exposure, what the assignment table is — and ends with a "Solutions (spoilers)" section: the planted stories and the correct conclusion. Every dataset has the path columns `user_id` and `session_id` and the arm segment `exp_group`; user ids do not overlap between datasets, so a table loaded for one never matches another's stream. `with_truth=True` adds the planted truth column for checking an analysis at the end.
+
 ## Inspecting your data
 
 `stream.describe()` is a quick sanity check on what got loaded: dataset shape, schema, date range, event frequency, and path length/duration statistics.

@@ -673,8 +673,8 @@ class Eventstream:
             Power used for `mde`.
         n_bootstrap : int or "auto", default 1000
             Replicates for bootstrap cells (and for the relative intervals of totals
-            and values); `"auto"` = `max(1000, ceil(20 * m / alpha))` where `m` is the
-            largest family size.
+            and values), at least 100; `"auto"` = `max(1000, ceil(20 * m / alpha))`
+            where `m` is the largest family size.
         bootstrap_weights : {"multinomial", "poisson"}, default "multinomial"
             Resampling scheme of the bootstrap.
 

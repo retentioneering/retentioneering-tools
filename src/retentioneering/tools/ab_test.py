@@ -1038,7 +1038,7 @@ class ABTest:
 
         table = normalize_assignment(assignment) if assignment is not None else None
         has_time = table is not None and "assigned_at" in table.columns
-        if period is not None and period_basis == "since_assignment" and not has_time:
+        if period_basis == "since_assignment" and not has_time:
             raise InvalidParameterError(
                 "period_basis",
                 period_basis,
@@ -1108,6 +1108,13 @@ class ABTest:
 
     def fit(self) -> pd.DataFrame:
         """Return the scorecard (columns in ``COLUMNS`` order, optional ones dropped)."""
+        if self.resolved_n_bootstrap() < bs.MIN_REPLICATES:
+            # Fewer replicates give NaN intervals on every bootstrap row.
+            raise InvalidParameterError(
+                "n_bootstrap",
+                self.n_bootstrap,
+                [f"an int >= {bs.MIN_REPLICATES}", "auto"],
+            )
         cells = self.matrix.cells
         boot_cells = [
             i

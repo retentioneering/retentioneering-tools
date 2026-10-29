@@ -285,6 +285,7 @@ class TestMatrix:
         for kwargs in (
             {"horizon": "7D"},
             {"period": "7D", "period_basis": "since_assignment"},
+            {"period_basis": "since_assignment"},
         ):
             with pytest.raises(InvalidParameterError):
                 _fit(_tiny(), **kwargs)
@@ -343,6 +344,7 @@ class TestMatrix:
             {"power": 0},
             {"min_events": 0},
             {"n_bootstrap": "many"},
+            {"n_bootstrap": 50},
             {"period": "fortnightly"},
             {"horizon": "-3D"},
         ],

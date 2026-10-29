@@ -31,11 +31,14 @@ of a widget (ADR-0006); when an `ab_test` widget ships, `ab_test_data` becomes
 its twin and an alias of `get_ab_test`.
 
 **D2 — path-level groups.** `tools/_diff.py::resolve_diff` resolves a `diff`
-into two disjoint sets of path ids (`DiffGroups`). Every inferential method
-(`get_ab_test`, `get_ab_bootstrap`, `get_sample_ratio`,
-`get_conversion_rate(diff=)`, `funnel(ci_level=)`) refuses a path that would
+into two disjoint sets of path ids (`DiffGroups`). The inferential methods
+that compare two arms (`get_ab_test`, `get_ab_bootstrap`,
+`get_conversion_rate(diff=)`, `funnel(ci_level=)`) refuse a path that would
 land in both groups with `DiffConfigError`, counting them and pointing at a
-finer `path_col` or a path-level segment (`add_segment(path_values=)`). The
+finer `path_col` or a path-level segment (`add_segment(path_values=)`).
+`get_sample_ratio` does not refuse such paths: it counts them as
+`multi_valued_paths` and raises `mismatch`, because for a sample ratio check a
+path that carries two arms is the finding, not an input error. The
 existing widgets keep their event-level split; migrating them is a later,
 announced behaviour change. An `assignment=` table (path id → arm, optionally
 `assigned_at`) defines the intention-to-treat population: silent paths count as
@@ -65,10 +68,16 @@ z-test with Wilson / Newcombe intervals for 0/1 metrics, Welch for per-path
 totals and values, a joint path bootstrap for ratios of sums (multinomial
 weights within arm, batched, seeded per arm, percentile interval, p-value from
 the bootstrap standard error). A support rule (`min_events`) marks rows too
-thin to test. Strata carry shares by arm, a share-balance check (not a guard
-against post-exposure strata), Cochran's Q over strata that pass a support
-guard, a stratum-versus-rest test and an `exploratory` flag; a stratum computed
-from behaviour on an untruncated stream warns and is flagged
+thin to test; support is pooled across the arms, so a behaviour present in one
+arm only still gets a p-value, flagged in `support_warning` (a per-arm rule
+hid exactly the effects a new feature creates, and a guardrail that wipes out
+an outcome in one arm). Strata carry shares by arm, a share-balance check (not
+a guard against post-exposure strata), Cochran's Q over strata that pass a
+support guard, a stratum-versus-rest test and an `exploratory` flag. Whether a
+stratum is pre-exposure is declared (`strata_pre_exposure=True`, for a source
+column such as a signup platform) or read from a truncation in the recipe that
+ends at the assignment or exposure marker, and recorded in
+`strata_pre_exposure_source`; any other stratum warns and is flagged
 `strata_pre_exposure=False`. Permutation tests are not part of the scorecard.
 
 **D8 — funnel intervals.** `funnel(ci_level=, correction=)` adds Wilson
@@ -93,7 +102,15 @@ and `tools/_bootstrap.py` are pure functions without an `Eventstream`.
   is which.
 - Pre-assignment comparisons (an A/A strip before assignment) are not produced
   by `get_ab_test`, which drops events before `assigned_at`; they are built on a
-  stream truncated at assignment.
+  separate stream of the events before each path's `assigned_at` (a pandas filter
+  on the event table: `truncate_paths` cannot anchor on a per-path timestamp
+  column).
+- The tutorial's pre-assignment A/A strip is deferred: the bundled
+  `load_ab_test()` dataset assigns users at their first app open and has no
+  pre-history, so there is nothing before assignment to compare. A future
+  revision of the dataset may plant a few days of pre-assignment history; the
+  generator is unchanged in this release, and the tutorial says why the check
+  is missing.
 
 ## Roadmap (not in this release)
 

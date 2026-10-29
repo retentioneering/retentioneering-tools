@@ -30,6 +30,65 @@ never entered the funnel at all. If most of your eventstream never touches the
 funnel, filter first ([`filter_paths`](/docs/data-processors/filter-paths)) so
 the rate answers the question you meant.
 
+### Confidence intervals and A/B tests
+
+`ci_level=0.95` (or the **Confidence interval** selector in the sidebar: Off /
+90% / 95% / 99%) puts sampling uncertainty on every number:
+
+| Number | Interval | Test |
+|---|---|---|
+| a group's `conversion_rate` and `step_conversion_rate` | Wilson score | — |
+| `delta_conversion_rate` (overall, per step) | Newcombe hybrid score | pooled two-proportion z-test, `delta_conversion_rate_p_value` |
+| `delta_step_conversion_rate` (step to step) | Newcombe hybrid score | none — see below |
+
+Only the **overall** deltas get a p-value. A step-to-step rate is conditional on
+reaching the previous step, and in an experiment the treatment itself changes
+who reaches it: a step delta compares two different populations, so it is
+descriptive, never a treatment effect. Its interval is shown, marked † and
+flagged `step_conditional`, but it carries no p-value and is never coloured.
+The first step has no previous step, so its two deltas coincide.
+
+The table colours a delta only when its interval excludes 0; everything else
+stays grey, whatever its size. A funnel tests one comparison per step, so with
+many steps some p-values fall under 0.05 by chance: `correction="holm"` (or
+`"bonferroni"`, or `"bh"` for the false discovery rate) adjusts the overall-delta
+p-values across the steps into `delta_conversion_rate_p_value_adjusted`. The
+intervals are never adjusted, so a delta can be coloured while its adjusted
+p-value is above your threshold — read the adjusted p-value for the decision.
+The relative delta in the table divides by group 2, the control.
+
+With intervals, a `diff` must split **paths**, not events: a path whose segment
+changes inside it would sit in both groups, and the groups would not be
+independent. Such a `diff` raises `DiffConfigError` with the count; compare a
+segment that is constant per path (an experiment arm attached with
+[`add_segment(path_values=...)`](/docs/data-processors/add-segment)) or a finer
+`path_col`. Two more things the numbers assume:
+
+- **The denominator is the paths with at least one event.** A user assigned to
+  an arm who never produced an event is not counted; for an intention-to-treat
+  read that includes them, use `get_ab_test(assignment=...)`.
+- **Each path is one independent unit.** That holds when `path_col` is the unit
+  that was randomised. Session paths of a user-level experiment are not
+  independent and give intervals that are too narrow.
+
+```python
+stream.funnel(
+    steps=["home", "product_view", "add_to_cart", "order_success"],
+    diff=("exp_group", "treatment", "control"),
+    ci_level=0.95,
+    correction="holm",
+)
+```
+
+Headless, `funnel_data(..., ci_level=0.95)` returns the same numbers: a
+`*_ci_low` / `*_ci_high` pair next to every rate and delta,
+`delta_conversion_rate_p_value` and `delta_conversion_rate_p_value_adjusted`,
+`step_conditional`, and at the top level `ci_level`, `ci_basis`, `correction`,
+`correction_family` and `excluded_paths`. Every funnel result also carries its
+denominators: `total_paths`, or `funnel1_total_paths` / `funnel2_total_paths`.
+An estimate that does not exist (an interval over zero paths, a test where both
+groups convert at 0% or 100%) is `NaN`, never 0.
+
 ### When the funnel stops being enough
 
 The moment you want to know *why* users dropped between two levels, put the
@@ -61,4 +120,18 @@ step and transition representations of the same paths.
     steps=["catalog", "product_view", "add_to_cart", "purchase"],
     diff=["platform", "mobile", "desktop"]
 )`} path="/docs-demos/widgets/funnel/diff.html" height={480} />
+
+This descriptive diff splits events: `platform` changes within some users'
+paths, so those users appear in both groups. That is why the same `diff` with
+`ci_level` raises — intervals need every path in exactly one group.
+
+### Confidence intervals
+Two acquisition cohorts, a segment that is constant per user. The cohorts were
+not randomised, so the intervals measure sampling noise, not a causal effect.
+<DemoWidget cmd={`stream.funnel(
+    steps=["catalog", "product_view", "add_to_cart", "purchase"],
+    diff=["user_cohort", "2024-01", "2024-04"],
+    ci_level=0.95,
+    correction="holm",
+)`} path="/docs-demos/widgets/funnel/ci.html" height={640} />
 {% endblock %}

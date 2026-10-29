@@ -42,6 +42,7 @@ SITE_URL = "https://retentioneering.com"
 
 TITLE_OVERRIDES = {
     "urls_to_events": "URLs to Events",
+    "ab_test": "A/B Test",
     "get_ab_test": "A/B Test Scorecard",
     "get_ab_bootstrap": "A/B Bootstrap Replicates",
     "get_sample_ratio": "Sample Ratio Check",
@@ -95,6 +96,7 @@ WIDGETS = [
     ("widgets/funnel.md.jinja", "funnel", "funnel_data"),
     ("widgets/segment-overview.md.jinja", "segment_overview", "segment_overview_data"),
     ("widgets/cluster-analysis.md.jinja", "cluster_analysis", "cluster_analysis_data"),
+    ("widgets/ab-test.md.jinja", "ab_test", "ab_test_data"),
 ]
 
 DATA_PROCESSORS = [

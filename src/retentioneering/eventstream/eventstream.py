@@ -3358,9 +3358,9 @@ class Eventstream:
     _ab_title, _, _ab_rest = _ab_summary.partition("\n\n")
     ab_test_data.__doc__ = _numpydoc_join(
         f"{_ab_title}\n\n"
-        "Documented alias of `get_ab_test`, under the name of the `ab_test` "
-        "widget's headless twin: the same computation, arguments and result. "
-        "The docs and the tutorial use `get_ab_test`; the widget calls this "
+        "Documented alias of `get_ab_test`, under the name of the `ab_test`\n"
+        "widget's headless twin: the same computation, arguments and result.\n"
+        "The docs and the tutorial use `get_ab_test`; the widget calls this\n"
         f"method, so its numbers are the getter's.\n\n{_ab_rest}",
         list(_ab_sections.items()),
     )

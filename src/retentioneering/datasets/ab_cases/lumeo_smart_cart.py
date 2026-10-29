@@ -44,14 +44,17 @@ Solutions (spoilers)
    ``has_all_events(["collections", "wishlist_add"])`` on the stream truncated
    before the first ``add_to_cart`` recovers them (other users almost never do
    both). The drawer bridges them from collecting to buying: control builders
-   convert at 15 %, treatment builders at about 27 % (+12 pp; the drawer
-   helps a builder who does not loop by +18 pp). The rest of the users pay for it
-   with -1.2 pp, which is what makes the top line null; that row is usually
-   inconclusive (true but small).
+   convert at 15 %, treatment builders at about 27 % (+12 pp planted, +10 pp at
+   the default seed; the drawer helps a builder who does not loop by +18 pp).
+   The rest of the users pay for it with -1.2 pp, which is what makes the top
+   line null. That loss is real but small: the rest's row reads as a decrease in
+   about a quarter of seeds, including the default one (-2.5 pp), and as
+   inconclusive otherwise.
 3. A drawer-reopen loop exists in treatment only: ``smart_cart_open ->
-   smart_cart_open`` (the drawer's recommendation thumbnails look tappable and
-   are not). About 38 % of treatment builders loop (50 % on the apps, 15 % on
-   the web; a few other treatment users reopen the drawer once by accident). Loopers
+   smart_cart_open -> smart_cart_open``, three or more opens in a row (the
+   drawer's recommendation thumbnails look tappable and are not). About 38 % of
+   treatment builders loop (50 % on the apps, 15 % on the web); a few other
+   treatment users reopen the drawer once by accident (two opens). Loopers
    convert at 17 %, far below the builders who do not loop (33 %): the loop is
    where the drawer's gain leaks. This comparison is post-exposure and
    descriptive (loopers are selected by the treatment); the ITT effect is the
@@ -171,8 +174,8 @@ _BROWSE = {
 def generate(n_users: int, seed: int) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Return ``(events, assignment)``; ``events`` includes the truth column."""
     n = _sim.check_n_users(n_users)
-    rng_users, rng_sessions, rng_browse, rng_funnel, rng_time, rng_orders = _sim.streams(
-        seed, 6
+    rng_users, rng_sessions, rng_browse, rng_funnel, rng_time, rng_orders = (
+        _sim.streams(seed, 6)
     )
 
     # ── users and their planted outcomes ─────────────────────────────────────
@@ -288,7 +291,9 @@ def generate(n_users: int, seed: int) -> tuple[pd.DataFrame, pd.DataFrame]:
     value[is_order] = _sim.money(
         rng_orders, int(is_order.sum()), _ORDER_LOG_MU, _ORDER_LOG_SIGMA
     )
-    cohort = np.char.add("W", np.char.zfill((assigned_s // (7 * _sim.DAY_S) + 1).astype(str), 2))
+    cohort = np.char.add(
+        "W", np.char.zfill((assigned_s // (7 * _sim.DAY_S) + 1).astype(str), 2)
+    )
     arm = np.where(treated, "treatment", "control")
     platform_name = np.asarray(_PLATFORMS, dtype=object)[platform]
     events = pd.DataFrame(

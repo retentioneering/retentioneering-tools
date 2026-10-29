@@ -1,8 +1,10 @@
 """Regenerate the cached fixture of the "Northwind Home" A/B dataset.
 
 The story tests in ``tests/datasets/ab_test_test.py`` read the default call of
-``retentioneering.datasets.load_ab_test`` from ``tests/datasets/fixtures/`` (three
-small parquet files, a lossless compact encoding of the generator's output).
+``retentioneering.datasets.load_ab_test`` (``name="northwind_home"``) from
+``tests/datasets/fixtures/`` (three small parquet files, a lossless compact
+encoding of the generator's output). The other bundled A/B datasets generate in
+about a second and have no fixture.
 Run this after changing the generator, then rerun the story tests:
 
     uv run python scripts/refresh_ab_fixture.py

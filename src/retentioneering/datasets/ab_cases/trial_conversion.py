@@ -36,10 +36,10 @@ Solutions (spoilers)
 --------------------
 1. The early offer moves conversion earlier, not up: 18 % of users subscribe in
    both arms, all by day 20. In control they subscribe around the end of the
-   trial (days 11-20); in treatment 55 % of the subscribers take the day-3 offer
-   (days 3-6) and the rest subscribe as in control.
+   trial (days 11-20, most on day 14); in treatment 70 % of the subscribers take
+   the day-3 offer (days 3-6) and the rest subscribe as in control.
 2. The whole-window read (ITT over the table, no horizon) shows an increase of
-   about +3 pp with a small p-value: the recent cohorts are immature. A user who
+   about +3 pp with a small p-value (+3.3 pp, p < 0.001 at the default seed): the recent cohorts are immature. A user who
    started the trial ten days before the data end has had the chance to take the
    day-3 offer but not yet to reach the end of the trial, so treatment conversions
    are counted and control conversions are not yet.
@@ -113,9 +113,9 @@ _PLATFORMS = ("ios", "android")
 _PLATFORM_P = (0.55, 0.45)
 _WEEKDAY = (1.10, 1.05, 1.00, 1.00, 0.95, 0.90, 0.95)
 _CONVERT_P = 0.18
-_EARLY_SHARE = 0.55  # treatment subscribers who take the day-3 offer
+_EARLY_SHARE = 0.70  # treatment subscribers who take the day-3 offer
 # control (and late treatment) subscribe day: (first day, last day, weight)
-_LATE_DAYS = ((11, 13, 0.25), (14, 14, 0.55), (15, 20, 0.20))
+_LATE_DAYS = ((11, 13, 0.15), (14, 14, 0.60), (15, 20, 0.25))
 _EARLY_DAYS = (3, 6)
 _TRIAL_DAYS = 14
 _RATE = {"subscriber": 0.55, "other": 0.22}  # app sessions per day in the trial
@@ -135,7 +135,8 @@ def _late_day(rng: np.random.Generator, n: int) -> np.ndarray:
     which = rng.choice(len(_LATE_DAYS), size=n, p=weights / weights.sum())
     low = np.asarray([lo for lo, _, _ in _LATE_DAYS])[which]
     high = np.asarray([hi for _, hi, _ in _LATE_DAYS])[which]
-    return low + rng.random(n) * (high - low + 1)
+    # a day d means [d, d + 1); 0.95 keeps the subscribe events of day 20 before 21D
+    return low + rng.random(n) * (high - low + 0.95)
 
 
 def generate(n_users: int, seed: int) -> tuple[pd.DataFrame, pd.DataFrame]:

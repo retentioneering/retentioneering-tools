@@ -101,6 +101,13 @@ The planted stories of Northwind Home:
    ``length`` of the pre-exposure window; a median split gives the same picture)
    convert less in treatment, users with longer windows convert more; both bins are
    significant after Holm.
+
+Correct conclusion (the tutorial's readout): over the whole window the effect on
+conversion is inconclusive; within each user's first 28 days it is positive, and
+it fades after the first two weeks (novelty). The effect differs between
+pre-exposure user types (scanners gain, curators lose, the curators' carts turn
+into a reopen loop): ship or not is a product call on these facts, and the next
+experiment targets the loop.
 """
 
 from __future__ import annotations

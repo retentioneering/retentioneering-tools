@@ -136,8 +136,8 @@ _BROWSE = {
 def generate(n_users: int, seed: int) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Return ``(events, assignment)``; ``events`` includes the truth column."""
     n = _sim.check_n_users(n_users)
-    rng_users, rng_sessions, rng_browse, rng_funnel, rng_time, rng_orders = _sim.streams(
-        seed, 6
+    rng_users, rng_sessions, rng_browse, rng_funnel, rng_time, rng_orders = (
+        _sim.streams(seed, 6)
     )
 
     # ── users; the whales are the last ids, one batch, all in one arm ────────
@@ -211,9 +211,7 @@ def generate(n_users: int, seed: int) -> tuple[pd.DataFrame, pd.DataFrame]:
         rng_orders, int(is_order.sum()), _ORDER_LOG_MU, _ORDER_LOG_SIGMA
     )
     whale_rows = np.flatnonzero(is_order & whale[ev_user])
-    value[whale_rows] = np.round(
-        rng_orders.uniform(*_WHALE_ORDER, len(whale_rows)), -1
-    )
+    value[whale_rows] = np.round(rng_orders.uniform(*_WHALE_ORDER, len(whale_rows)), -1)
     arm = np.where(treated, "treatment", "control")
     platform_name = np.asarray(_PLATFORMS, dtype=object)[platform]
     events = pd.DataFrame(

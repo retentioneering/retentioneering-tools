@@ -137,8 +137,8 @@ _BROWSE = {
 def generate(n_users: int, seed: int) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Return ``(events, assignment)``; ``events`` includes the truth column."""
     n = _sim.check_n_users(n_users)
-    rng_users, rng_sessions, rng_browse, rng_funnel, rng_time, rng_orders = _sim.streams(
-        seed, 6
+    rng_users, rng_sessions, rng_browse, rng_funnel, rng_time, rng_orders = (
+        _sim.streams(seed, 6)
     )
 
     # ── users, outcomes and the logging bug ──────────────────────────────────
@@ -150,9 +150,7 @@ def generate(n_users: int, seed: int) -> tuple[pd.DataFrame, pd.DataFrame]:
     rate = np.where(high, _RETURN_RATE["high"], _RETURN_RATE["low"]) * rng_users.gamma(
         2.0, 0.5, n
     )
-    affected = (
-        treated & (platform == _ANDROID) & (assigned_s >= BUG_DAY * _sim.DAY_S)
-    )
+    affected = treated & (platform == _ANDROID) & (assigned_s >= BUG_DAY * _sim.DAY_S)
     lost = affected & (
         rng_users.random(n) < np.where(high, _DROP["high"], _DROP["low"])
     )
@@ -167,7 +165,9 @@ def generate(n_users: int, seed: int) -> tuple[pd.DataFrame, pd.DataFrame]:
     user_first = np.full(n, -1)
     user_first[sess_user[sess_no == 0]] = np.flatnonzero(sess_no == 0)
     n_user_sess = np.bincount(sess_user, minlength=n)
-    pick = np.floor(rng_sessions.random(n) * np.maximum(n_user_sess, 1)).astype(np.int64)
+    pick = np.floor(rng_sessions.random(n) * np.maximum(n_user_sess, 1)).astype(
+        np.int64
+    )
     order_sess = np.zeros(n_sess, dtype=bool)
     buyers = np.flatnonzero(converts & ~lost)
     order_sess[user_first[buyers] + pick[buyers]] = True

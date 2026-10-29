@@ -654,8 +654,8 @@ class Eventstream:
         questions (an early lift can fade), so choose the window and the decision
         metric before reading the table.
 
-        Not available here: variance reduction (CUPED, regression adjustment),
-        sequential tests and equivalence tests. `get_ab_paths` returns the per-path
+        Not available here: variance reduction (CUPED, regression adjustment: there
+        is no `covariates=` argument), sequential tests and equivalence verdicts. `get_ab_paths` returns the per-path
         table behind the scorecard for doing them by hand; the
         [A/B Testing guide](/docs/ab-testing) lists what is deferred.
 

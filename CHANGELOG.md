@@ -110,6 +110,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   treatment-only cart loop, novelty since assignment, no AOV shift, a sign flip by
   pre-exposure path length) are listed in the module docstring and each one is
   checked by a test; `with_truth=True` adds the planted `user_type`.
+- Tutorial notebook `notebooks/ab_testing_tutorial.ipynb`: one analysis of the
+  Northwind Home experiment from the assignment table to the final readout — SRM,
+  the scorecard, funnel intervals and why a conditional step's p-value misleads,
+  calendar weeks versus a fixed exposure age (`horizon=`) versus the
+  since-assignment novelty contrast, blind pre-exposure clusters as strata, the
+  treatment-only cart loop as a descriptive rate and as an ITT metric, pre- versus
+  post-exposure strata, and the planted truth. Every number is printed by a library
+  call, and every step says what it proves and what remains a hypothesis. It runs
+  against the development install until this release ships; CI executes it.
 
 ### Fixed
 

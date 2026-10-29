@@ -288,9 +288,15 @@ class TestStories:
     ) -> None:
         majority = pd.crosstab(clusters, truth.reindex(clusters.index)).idxmax(axis=1)
         carried = stream.add_segment("behaviour", path_values=clusters)
+        # the labels were read off a plain frame, so the recipe cannot vouch for
+        # them: the window before the first add is declared pre-exposure
         rows = _by_stratum(
             carried.get_ab_test(
-                DIFF, [CONVERSION], assignment=assignment, strata_col="behaviour"
+                DIFF,
+                [CONVERSION],
+                assignment=assignment,
+                strata_col="behaviour",
+                strata_pre_exposure=True,
             )
         )
 
@@ -299,6 +305,8 @@ class TestStories:
         assert by_type["scanner"]["verdict"] == "increase"
         assert by_type["curator"]["verdict"] == "decrease"
         assert rows["strata_pre_exposure"].all()
+        assert set(rows["strata_pre_exposure_source"]) == {"declared"}
+        assert not rows["exploratory"].any()
 
     def test_story3_planted_effects(self, stream, assignment) -> None:
         rows = _by_stratum(
@@ -345,13 +353,20 @@ class TestStories:
             **periods,
         )
         early, late = rows.loc["0-13", "delta"], rows.loc["28-41", "delta"]
-        low, high = reps.loc[reps["contrast"] == "novelty", "delta"].quantile(
-            [0.025, 0.975]
-        )
+        novelty = reps.loc[reps["contrast"] == "novelty", "delta"]
+        low, high = novelty.quantile([0.025, 0.975])
+        # the contrast runs both sides on the same paths (mature for days 0-41),
+        # the population a 42-day horizon gives every bin
+        same = stream.get_ab_test(
+            DIFF, [CONVERSION], assignment=assignment, horizon="42D", **periods
+        ).set_index("period")
+        balanced = same.loc["0-13", "delta"] - same.loc["28-41", "delta"]
 
         assert early > 0 > late
+        assert same["group1_paths"].nunique() == 1
         assert low > 0
-        assert low < early - late < high
+        assert low < balanced < high
+        assert abs(novelty.mean() - balanced) < 0.005
 
     def test_story6_aov_inconclusive(self, stream, assignment) -> None:
         aov = {
@@ -382,6 +397,26 @@ class TestStories:
             },
         )
         labels = binned.get_path_segments("length_bin")
+        rows = _by_stratum(
+            stream.add_segment("length_bin", path_values=labels).get_ab_test(
+                DIFF, [CONVERSION], assignment=assignment, strata_col="length_bin"
+            )
+        )
+
+        assert rows.loc["short", "verdict"] == "decrease"
+        assert rows.loc["long", "verdict"] == "increase"
+
+    def test_story7_median_split_gives_the_same_picture(
+        self, stream, assignment, pre_exposure
+    ) -> None:
+        labels = pre_exposure.add_segment(
+            "length_bin",
+            metric_bins={
+                "metric": {"metric": "length"},
+                "quantiles": 2,
+                "segment_levels": ["short", "long"],
+            },
+        ).get_path_segments("length_bin")
         rows = _by_stratum(
             stream.add_segment("length_bin", path_values=labels).get_ab_test(
                 DIFF, [CONVERSION], assignment=assignment, strata_col="length_bin"

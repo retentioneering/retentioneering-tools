@@ -266,12 +266,8 @@ def _add_diff_ci(
     result["ci_level"] = ci_level
     result["ci_basis"] = dict(CI_BASIS)
     result["correction"] = correction
+    # spelled as get_ab_test spells it: "metric=<what>/<dimension>", "none"
     result["correction_family"] = (
-        None
-        if correction == "none"
-        else (
-            f"delta_conversion_rate over the funnel's steps "
-            f"(m={int(np.isfinite(p_value).sum())} finite p-values)"
-        )
+        "none" if correction == "none" else "metric=delta_conversion_rate/steps"
     )
     result["excluded_paths"] = int(excluded_paths)

@@ -28,15 +28,19 @@ Planted stories
    inconclusive: |delta| below half the MDE, p > 0.2; the sample ratio of the
    assignment table is fine (p > 0.05).
 2. Every overall funnel step of ``["product_view", "cart", "checkout_start",
-   "payment", "order_success"]`` is grey after Holm. ``quick_add``'s mini-cart offers
-   "checkout now", which starts checkouts that never pay, so the *conditional*
+   "payment", "order_success"]`` is grey after Holm. The treatment build shows a
+   "checkout now" shortcut after every treatment add that reaches the cart
+   (``quick_add`` or ``add_to_cart``), which starts checkouts that never pay, so the
+   *conditional*
    (step-to-step) rate ``checkout_start -> payment`` has a naive two-proportion
    p < 0.05 (lower in treatment) although nothing changed for users who meant to pay:
    its denominator is a post-exposure population.
 3. Three pre-exposure user types with near-exclusive marker events: ``scanner``
    (18 %; three or more ``search_filter`` before the first add; the feature raises
-   their conversion by about +9 pp), ``curator`` (18 %; ``collections_view`` and
-   ``wishlist_add``; about -8 pp) and ``other`` (64 %; within 1 pp of no effect). Blind
+   their conversion by +12.5 pp at the default seed; the acceptance test allows +4 to
+   +15 pp), ``curator`` (18 %; ``collections_view`` and ``wishlist_add``; -6.7 pp,
+   allowed -12 to -4 pp) and ``other`` (64 %; no planted effect, -0.4 pp, allowed
+   within 2 pp). Blind
    K-means on ``has_event_bulk`` flags plus ``active_days`` of the window before the
    first add (``truncate_paths("path_start", [{"pattern": "add_to_cart", "offset": -1},
    {"pattern": "quick_add", "offset": -1}, "path_end"])``, K = 3, ``n_init=4``,
@@ -405,7 +409,8 @@ def _generate(n_users: int, seed: int) -> tuple[pd.DataFrame, pd.DataFrame]:
     mult *= _novelty_mult(days)
     p_checkout = np.where(a_treated, np.minimum(p_checkout * mult, 0.97), p_checkout)
     checkout = cart & (rng_funnel.random(n_add) < p_checkout)
-    # quick_add's mini-cart offers "checkout now": low-intent starts that never pay
+    # treatment's "checkout now" shortcut, after any treatment add that reaches the
+    # cart: starts that never pay
     idle_checkout = (
         a_treated & cart & ~checkout & (rng_funnel.random(n_add) < _IDLE_CHECKOUT_P)
     )
@@ -723,8 +728,9 @@ def load_ab_test_assignment(
     -------
     pandas.DataFrame
         Index ``user_id``; columns ``arm`` (``"treatment"`` / ``"control"``) and
-        ``assigned_at`` (Timestamp: the user's first app open; every tracked event of
-        the user is later). Includes users with no events (silent users).
+        ``assigned_at`` (Timestamp: the moment of assignment, the user's first app
+        open; the user's tracked events, if any, all come later). Includes silent
+        users, who were assigned but produced no tracked event.
     """
     _, users = _generate(n_users, seed)
     return _assignment(users)

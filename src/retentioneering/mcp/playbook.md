@@ -184,18 +184,22 @@ times counts once. For a per-visit figure, carve out the subpopulation with
    (`strata_correction_family`); `exploratory=true` (or `strata_pre_exposure` not
    true) means the strata may be post-exposure: report them as exploratory.
 
-An intention-to-treat analysis over an assignment table (silent assigned users,
-`assigned_at`, `horizon`) is not available through MCP; it needs the Python API
-(`Eventstream.get_ab_test(assignment=...)`).
+Population through MCP: the stream's paths (users with at least one event) split by
+the arm segment, over the whole window; silent assigned users are not counted and
+there is no horizon. An intention-to-treat analysis over an assignment table (silent
+assigned users, `assigned_at`, `horizon`) needs the Python API
+(`Eventstream.get_ab_test(assignment=...)`). Quote `warnings` if the call returns any.
 
 **Reading the verdict:** `increase` / `decrease` come from the multiplicity-adjusted
 p-value (`alpha_used` is the per-comparison level after the correction).
-`inconclusive` is not "no effect": the interval says which effects are still
-compatible with the data. The `mde` is the effect the test detects with 80 % power at
-`alpha_used`; an inconclusive result does not bound the effect below it, the interval
-does. `insufficient_data`: fewer than `min_events` supporting paths in one arm, which
-includes a behaviour that exists in one arm only; read it from the estimates.
-`descriptive`: rows of `period_population="active"` (survivors), no p-value.
+`inconclusive` is not "no effect": report the interval as the range of effects the
+data still allow. The `mde` is the effect the test detects with 80 % power at the
+corrected alpha, a design quantity: never say the effect is smaller than the `mde`.
+`insufficient_data`: pooled support below `min_events`; report its estimates
+descriptively. `support_warning="one_arm_only"`: the behaviour exists in one arm only;
+the test stands, say so next to it. `descriptive`: rows of
+`period_population="active"` (survivors), no p-value. Strata are the top 3 by |delta|
+(`strata_selection`): exploratory unless `strata_pre_exposure` is true.
 
 **Do not:** filter on post-exposure behaviour ("users who reached checkout") before
 the test, or stratify by it — that compares selected groups, not the randomised arms.

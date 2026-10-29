@@ -17,8 +17,9 @@ original study within the stated tolerances:
 * weekly intention-to-treat rows;
 * funnel intervals (when the installed version has them) and the
   ``add_to_cart -> order_success`` conversion interval;
-* the drawer loop (three opens in a row) is 0 in control (the row is
-  ``insufficient_data``: a metric that cannot occur in one arm has no test).
+* the drawer loop (three opens in a row) is 0 in control; support is pooled
+  across arms, so the row is tested and carries
+  ``support_warning="one_arm_only"`` (when the installed version has it).
 
 It prints every number it checks and the wall time of each step. Exit code 1
 on any failed check.
@@ -291,6 +292,13 @@ def run(data_dir: Path, report: Report) -> None:
         print(loop[SHOW].to_string(index=False))
         value = float(loop["group2_value"].iloc[0])
         report.check_true("loop is 0 in control", value == 0.0, f"{value}")
+        if "support_warning" in loop.columns:
+            row = loop.iloc[0]
+            report.check_true(
+                "loop row tested, flagged one_arm_only",
+                row["support_warning"] == "one_arm_only" and pd.notna(row["p_value"]),
+                f"{row['support_warning']} p={row['p_value']:.3g} {row['verdict']}",
+            )
 
     with report.step("funnel with intervals"):
         params = inspect.signature(stream.funnel_data).parameters

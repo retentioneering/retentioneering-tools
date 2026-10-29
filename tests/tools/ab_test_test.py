@@ -263,20 +263,22 @@ class TestMatrix:
         assert list(conv["period"]) == ["0-6", "7-13"]
         assert list(conv["period_start"]) == [pd.Timedelta(0), pd.Timedelta(days=7)]
         assert list(conv["period_end"]) == [pd.Timedelta(days=7), pd.Timedelta(days=14)]
-        # the second window closes after the stream's last day for 5 of 7 paths
-        assert list(conv["immature_paths"]) == [0, 5]
-        assert list(conv["period_complete"]) == [True, False]
-        assert list(conv["group1_paths"]) == [4, 1]
-        assert list(conv["group2_paths"]) == [3, 1]
+        # the data end at the last event (01-16 12:00): c3's first window (from
+        # 01-10) closes after it, and no path's second window closes in time
+        assert list(conv["immature_paths"]) == [1, 7]
+        assert list(conv["period_complete"]) == [False, False]
+        assert list(conv["group1_paths"]) == [4, 0]
+        assert list(conv["group2_paths"]) == [2, 0]
         orders = out[out.metric == "orders"]
-        np.testing.assert_allclose(orders["group2_value"], [1 / 3, 0.0])
+        np.testing.assert_allclose(orders["group2_value"], [1 / 2, np.nan])
 
     def test_horizon(self) -> None:
         out = _fit(_tiny(), [CONV, ORDERS], assignment=_table(), horizon="7D")
         out = out.set_index("metric")
-        assert out.loc["conv", "immature_paths"] == 0
+        # c3's window (01-10 + 7 days) ends after the last event (01-16 12:00)
+        assert out.loc["conv", "immature_paths"] == 1
         # c2's second order is 8 days after assignment
-        assert out.loc["orders", "group2_value"] == pytest.approx(1 / 3)
+        assert out.loc["orders", "group2_value"] == pytest.approx(1 / 2)
         out = _fit(_tiny(), assignment=_table(), horizon="10D").iloc[0]
         assert out.immature_paths == 3  # t3, c2, c3 were assigned too late
         assert (out.group1_paths, out.group2_paths) == (3, 1)
@@ -358,7 +360,8 @@ class TestMatrix:
     def test_tick_periods_are_anchored_at_the_first_day(self) -> None:
         out = _fit(_tiny(), period="7D")
         assert list(out["period"]) == ["2024-01-03/2024-01-09", "2024-01-10/2024-01-16"]
-        assert out["period_complete"].all()
+        # the data end at the last event (01-16 12:00), inside the second bin
+        assert list(out["period_complete"]) == [True, False]
         out = _fit(_tiny(), period="D")
         assert out["period"].iloc[0] == "2024-01-03"
 
@@ -437,6 +440,7 @@ class TestScorecard:
             "p_basis",
             "valid_replicates",
             "low_support",
+            "support_warning",
         ]
 
     def test_z_test_matches_the_stats_core(self) -> None:
@@ -572,21 +576,25 @@ class TestScorecard:
         )
         both = out.loc["all"]
         assert np.isnan(both.p_value) and np.isnan(both.p_value_adjusted)
-        assert both.verdict == "inconclusive"
-        assert both.delta == 0.0
+        # no path without the event in either arm: below the pooled support rule
+        assert both.verdict == "insufficient_data"
+        assert both.delta == 0.0 and both.support_warning == ""
         zero = out.loc["none"]
         assert np.isnan(zero.rel_delta) and np.isnan(zero.rel_delta_ci_low)
-        assert zero.verdict == "insufficient_data" and np.isnan(zero.p_value)
-        assert zero.group2_value == 0.0  # the estimate itself is still reported
+        # pooled support (15 events): a behaviour of one arm only is tested
+        assert zero.verdict == "increase" and zero.p_value < 1e-4
+        assert zero.support_warning == "one_arm_only"
+        assert zero.group2_value == 0.0
 
     def test_min_events(self) -> None:
         cells = {("x", "treatment"): (100, 9), ("x", "control"): (100, 30)}
         stream = _counts_stream(cells)
-        assert ABTest.from_stream(stream, DIFF, [CONV]).fit().iloc[0].verdict == (
-            "insufficient_data"
-        )
-        row = ABTest.from_stream(stream, DIFF, [CONV], min_events=5).fit().iloc[0]
+        # the rule is pooled: 39 paths with the event, 161 without
+        row = ABTest.from_stream(stream, DIFF, [CONV]).fit().iloc[0]
         assert row.verdict == "decrease" and row.p_value < 0.05
+        row = ABTest.from_stream(stream, DIFF, [CONV], min_events=40).fit().iloc[0]
+        assert row.verdict == "insufficient_data" and np.isnan(row.p_value)
+        assert not np.isnan(row.delta)  # the estimates stay
 
     def test_strata_columns_and_heterogeneity_guard(self) -> None:
         cells = dict(_THREE)
@@ -601,7 +609,9 @@ class TestScorecard:
         assert set(out["heterogeneity_strata_used"]) == {3}
         assert set(out["heterogeneity_df"]) == {2}
         assert out["heterogeneity_p_value"].nunique() == 1
-        assert out["strata_pre_exposure"].isna().all()  # a source column: unknown
+        # a source column: the recipe cannot show it was fixed before exposure
+        assert not out["strata_pre_exposure"].any()
+        assert set(out["strata_pre_exposure_source"]) == {"not_pre_exposure"}
         assert out["exploratory"].all()
 
     def test_stratum_vs_rest(self) -> None:
@@ -720,14 +730,32 @@ class TestBootstrapTable:
             "group2_value",
             "delta",
         ]
-        plain = table[table.contrast.isna()].set_index(["period", "replicate"])
         contrast = table[table.contrast == "novelty"].set_index("replicate")
         assert contrast["period"].isna().all()
-        expected = plain.loc["0-6", "group1_value"] - plain.loc["7-13", "group1_value"]
-        np.testing.assert_allclose(contrast["group1_value"], expected)
         np.testing.assert_allclose(
             contrast["delta"], contrast["group1_value"] - contrast["group2_value"]
         )
+        # both sides run on the same paths: those whose 0-6 and 7-13 windows both
+        # close before the data end; recomputed by hand from the events
+        num, den, sides = test._contrast_columns({"novelty": (["0-6"], ["7-13"])})
+        treated = test.matrix.arm == 0
+        got = num[treated].sum(axis=0) / den[treated].sum(axis=0)
+        df = _random().to_dataframe()
+        at = _random_assignment()["assigned_at"]
+        end = df["timestamp"].max()
+        common = at[(at + pd.Timedelta(days=14) <= end)]
+        common = common[
+            _random_assignment()["arm"].reindex(common.index) == "treatment"
+        ]
+        orders = df[(df.event == "order") & df.user_id.isin(common.index)]
+        since = orders["timestamp"] - orders["user_id"].map(common)
+        early = orders.loc[since < pd.Timedelta(days=7), "user_id"].nunique()
+        late = orders.loc[
+            (since >= pd.Timedelta(days=7)) & (since < pd.Timedelta(days=14)),
+            "user_id",
+        ].nunique()
+        assert list(sides["side"]) == ["a", "b"]
+        np.testing.assert_allclose(got, [early / len(common), late / len(common)])
 
     def test_contrast_errors(self) -> None:
         with pytest.raises(InvalidParameterError):
@@ -869,17 +897,22 @@ class TestAssignmentIds:
     def test_no_matching_id_raises(self) -> None:
         table = _random_assignment()
         table.index = table.index.str.upper()
-        with pytest.raises(DiffConfigError, match="none of the 1200"):
+        with pytest.raises(DiffConfigError, match="only 0 of 1200"):
             _fit(_random(), assignment=table)
 
-    def test_partial_match_warns_with_the_counts(self) -> None:
+    def test_mostly_unmatched_ids_raise_with_the_counts(self) -> None:
         table = _random_assignment()
         ids = list(table.index)
         ids[:700] = [i.upper() for i in ids[:700]]
         table.index = ids
-        with pytest.warns(UserWarning, match="only 500 of 1200") as record:
+        with pytest.raises(DiffConfigError, match="only 500 of 1200"):
             _random().get_ab_test(DIFF, [CONV], assignment=table)
-        assert {w.filename for w in record} == {__file__}
+        ids[:700] = [i.lower() for i in ids[:700]]
+        ids[:500] = [i.upper() for i in ids[:500]]
+        table.index = ids
+        # 700 of 1200 match: the other 500 are silent assigned paths
+        row = _fit(_random(), assignment=table).iloc[0]
+        assert row.group1_paths_no_events + row.group2_paths_no_events == 500
 
     def test_unit_named_by_the_table_index(self) -> None:
         # session ids equal user ids: the overlap check alone cannot tell the unit
@@ -891,7 +924,11 @@ class TestAssignmentIds:
         table = _table().rename_axis("user_id")
         with pytest.raises(InvalidParameterError, match="too narrow"):
             _fit(stream, assignment=table, path_col="session_id")
-        _fit(stream, assignment=table.rename_axis(None), path_col="session_id")
+        # unnamed, the counts tie: ambiguous, so refused too
+        with pytest.raises(InvalidParameterError, match="name its index"):
+            _fit(stream, assignment=table.rename_axis(None), path_col="session_id")
+        # a table declared per session is taken at its word
+        _fit(stream, assignment=table.rename_axis("session_id"), path_col="session_id")
 
 
 class TestTimezones:
@@ -972,3 +1009,189 @@ class TestWarningLocation:
         with pytest.warns(UserWarning, match="post-exposure") as record:
             stream.get_ab_test(DIFF, [CONV], strata_col="length_bin")
         assert {w.filename for w in record} == {__file__}
+
+
+# ---------------------------------------------------------------- round 2
+class TestPooledSupport:
+    def test_a_treatment_that_wipes_out_an_outcome_is_tested(self) -> None:
+        cells = {("x", "treatment"): (400, 0), ("x", "control"): (400, 95)}
+        row = ABTest.from_stream(_counts_stream(cells), DIFF, [CONV]).fit().iloc[0]
+        assert row.verdict == "decrease" and row.p_value < 1e-20
+        assert row.support_warning == "one_arm_only"
+        assert np.isnan(row.rel_delta_ci_low)  # log ratio undefined at k = 0
+
+    def test_bootstrap_rows_with_few_supporting_paths_are_flagged(self) -> None:
+        out = ABTest.from_stream(_random(n=120), DIFF, [AOV], min_events=1).fit()
+        assert out.iloc[0].support_warning == "low_support"
+        out = ABTest.from_stream(_random(), DIFF, [AOV, CONV]).fit().set_index("metric")
+        assert out.loc["aov", "support_warning"] == ""
+        assert out.loc["conv", "support_warning"] == ""  # not a bootstrap row
+
+    def test_zero_variance_bootstrap_row_has_no_mde(self) -> None:
+        rows = []
+        for i in range(60):
+            arm = "treatment" if i % 2 else "control"
+            rows.append((f"u{i}", "order", pd.Timestamp("2024-01-01"), arm, 10.0))
+        df = pd.DataFrame(
+            rows, columns=["user_id", "event", "timestamp", "arm", "value"]
+        )
+        stream = Eventstream(df, {"segment_cols": ["arm"], "custom_cols": ["value"]})
+        row = ABTest.from_stream(stream, DIFF, [AOV], min_events=1).fit().iloc[0]
+        assert row.delta == 0.0
+        assert np.isnan(row.mde) and np.isnan(row.rel_mde)
+
+
+class TestStrataDeclaration:
+    def _length_bins(self, stream: Eventstream) -> Eventstream:
+        return stream.add_segment(
+            "length_bin", metric_bins={"metric": {"metric": "length"}, "edges": [2]}
+        )
+
+    def test_no_op_truncation_is_not_a_pre_exposure_cut(self) -> None:
+        noop = self._length_bins(_random().truncate_paths("path_start", "path_end"))
+        with pytest.warns(UserWarning, match="post-exposure"):
+            out = _fit(noop, strata_col="length_bin")
+        assert not out["strata_pre_exposure"].any()
+        assert set(out["strata_pre_exposure_source"]) == {"not_pre_exposure"}
+
+    def test_a_cut_at_an_event_reads_as_pre_exposure(self, recwarn) -> None:
+        cut = _random().truncate_paths(
+            "path_start", [{"pattern": "order", "offset": -1}, "path_end"]
+        )
+        out = _fit(self._length_bins(cut), strata_col="length_bin")
+        assert out["strata_pre_exposure"].all()
+        assert set(out["strata_pre_exposure_source"]) == {"recipe"}
+        assert not [w for w in recwarn if "strata_col" in str(w.message)]
+
+    def test_declared_strata(self, recwarn) -> None:
+        out = _fit(_random(), strata_col="platform", strata_pre_exposure=True)
+        assert out["strata_pre_exposure"].all() and not out["exploratory"].any()
+        assert set(out["strata_pre_exposure_source"]) == {"declared"}
+        assert not [w for w in recwarn if "strata_col" in str(w.message)]
+        out = _fit(_random(), strata_col="platform", strata_pre_exposure=False)
+        assert set(out["strata_pre_exposure_source"]) == {"not_pre_exposure"}
+        assert out["exploratory"].all()
+
+    def test_source_column_warns_and_points_at_the_declaration(self) -> None:
+        with pytest.warns(UserWarning, match="strata_pre_exposure=True"):
+            out = _fit(_random(), strata_col="platform")
+        assert not out["strata_pre_exposure"].any()
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"strata_pre_exposure": "yes", "strata_col": "platform"},
+            {"strata_pre_exposure": True},
+        ],
+    )
+    def test_declaration_validated(self, kwargs) -> None:
+        with pytest.raises(InvalidParameterError, match="strata_pre_exposure"):
+            _fit(_random(), **kwargs)
+
+    def test_strata_from_the_assignment_table(self) -> None:
+        table = _table()
+        table["signup"] = ["ios", "web", "web", "ios", "ios", "web", "web"]
+        out = _fit(
+            _tiny(),
+            assignment=table,
+            strata_col="signup",
+            strata_pre_exposure=True,
+        )
+        # the silent t4 keeps its stratum: no <MISSING> row
+        assert list(out["stratum"]) == ["ios", "web"]
+        assert list(out["group1_paths"]) == [2, 2]
+        assert list(out["group2_paths"]) == [1, 2]
+        # the table column is used first even when the stream has the same name
+        table = table.rename(columns={"signup": "platform"})
+        out = _fit(
+            _tiny(), assignment=table, strata_col="platform", strata_pre_exposure=True
+        )
+        assert list(out["stratum"]) == ["ios", "web"]
+
+    def test_recipe_with_path_values_is_json_and_keeps_the_flag(self) -> None:
+        import json
+
+        stream = _random()
+        cut = stream.truncate_paths(
+            "path_start", [{"pattern": "order", "offset": -1}, "path_end"]
+        )
+        labels = self._length_bins(cut).get_path_segments("length_bin")
+        carried = stream.add_segment("length_bin", path_values=labels)
+        recipe = carried.recipe()
+        json.dumps(recipe)
+        assert recipe[-1]["path_values"]["u00000"] == labels["u00000"]
+        assert recipe[-1]["_path_values_pre_exposure"] is True
+        out = _fit(carried, strata_col="length_bin")
+        assert set(out["strata_pre_exposure_source"]) == {"recipe"}
+
+
+class TestIntegerIds:
+    def test_session_table_at_user_grain_and_ties_are_refused(self) -> None:
+        rows = []
+        for user in range(1, 41):
+            arm = "treatment" if user % 2 else "control"
+            for s in range(3):
+                session = (user - 1) * 3 + s + 1
+                ts = pd.Timestamp("2024-01-01") + pd.Timedelta(hours=user + s)
+                rows.append((user, session, "visit", ts, arm))
+                if (user + s) % 4 == 0:
+                    rows.append(
+                        (user, session, "order", ts + pd.Timedelta(1, "m"), arm)
+                    )
+        df = pd.DataFrame(
+            rows, columns=["user_id", "session_id", "event", "timestamp", "arm"]
+        )
+        stream = Eventstream(
+            df, {"path_cols": ["user_id", "session_id"], "segment_cols": ["arm"]}
+        )
+        users = pd.Series(
+            {u: ("treatment" if u % 2 else "control") for u in range(1, 41)}
+        )
+        # per-user table, per-session analysis: every user id is also a session id
+        with pytest.raises(InvalidParameterError, match="too narrow"):
+            _fit(stream, assignment=users, path_col="session_id")
+        # per-session table read at the user grain: most ids are not users
+        sessions = df.groupby("session_id")["arm"].first()
+        with pytest.raises(DiffConfigError, match="only 40 of 120"):
+            _fit(stream, assignment=sessions)
+        # the right pairing runs
+        assert len(_fit(stream, assignment=users)) == 1
+        named = sessions.rename_axis("session_id")
+        assert len(_fit(stream, assignment=named, path_col="session_id")) == 1
+
+
+@pytest.mark.slow
+def test_scorecard_coverage_of_welch_and_bootstrap_rows() -> None:
+    """Under a true null, 95 % intervals of a Welch row (orders per user) and a
+    bootstrap row (AOV) cover 0 at about the nominal rate (300 paths per arm)."""
+    rng = np.random.default_rng(7)
+    sims, covered = 200, {"orders": 0, "aov": 0}
+    for _ in range(sims):
+        n = 600
+        users = np.repeat(np.arange(n), 1)
+        n_orders = rng.poisson(0.8, n)
+        user_rows = np.repeat(users, n_orders)
+        df = pd.DataFrame(
+            {
+                "user_id": np.concatenate([users, user_rows]).astype(str),
+                "event": ["visit"] * n + ["order"] * len(user_rows),
+                "timestamp": pd.Timestamp("2024-01-01"),
+                "value": np.concatenate(
+                    [np.full(n, np.nan), rng.lognormal(3, 0.6, len(user_rows))]
+                ),
+            }
+        )
+        df["arm"] = np.where(df["user_id"].astype(int) % 2, "treatment", "control")
+        stream = Eventstream(df, {"segment_cols": ["arm"], "custom_cols": ["value"]})
+        out = (
+            ABTest.from_stream(
+                stream, DIFF, [ORDERS, AOV], n_bootstrap=200, random_state=int(_)
+            )
+            .fit()
+            .set_index("metric")
+        )
+        for metric in covered:
+            row = out.loc[metric]
+            covered[metric] += row.delta_ci_low <= 0 <= row.delta_ci_high
+    for metric, hits in covered.items():
+        assert 0.91 <= hits / sims <= 0.99, (metric, hits / sims)

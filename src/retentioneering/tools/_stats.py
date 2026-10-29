@@ -32,6 +32,7 @@ __all__ = [
     "mde_from_se",
     "holm",
     "bonferroni",
+    "benjamini_hochberg",
     "cochran_q",
     "chi2_balance",
     "srm_chi2",
@@ -303,6 +304,31 @@ def bonferroni(p) -> np.ndarray:
     ok = np.isfinite(p)
     out = np.full_like(p, np.nan)
     out[ok] = np.minimum(1.0, p[ok] * int(ok.sum()))
+    return out
+
+
+def benjamini_hochberg(p) -> np.ndarray:
+    """Benjamini-Hochberg step-up adjusted p-values (false discovery rate).
+
+    ``p_adj(i) = min_{j >= i} (m / j) * p_(j)`` over the ascending order, clipped to 1.
+    NaN entries are ignored (``m`` = number of finite p-values) and returned as NaN,
+    as in :func:`holm`. Controls the false discovery rate, not the family-wise error:
+    use it for many exploratory rows (strata, transitions), Holm for a few confirmatory
+    ones.
+    """
+    p = np.atleast_1d(np.asarray(p, dtype=float))
+    out = np.full_like(p, np.nan)
+    ok = np.isfinite(p)
+    q = p[ok]
+    m = q.size
+    if m == 0:
+        return out
+    order = np.argsort(q, kind="mergesort")
+    scaled = q[order] * m / np.arange(1, m + 1)
+    adjusted = np.minimum(1.0, np.minimum.accumulate(scaled[::-1])[::-1])
+    result = np.empty(m)
+    result[order] = adjusted
+    out[ok] = result
     return out
 
 

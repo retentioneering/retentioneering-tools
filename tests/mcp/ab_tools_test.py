@@ -283,16 +283,22 @@ class TestReading:
         text = " ".join(str(tools.playbook("ab_test")).split())
         assert "quote its `reading` verbatim" in text
         for step in (
-            "More paths",
-            "A longer horizon",
+            "More paths for the next test",
+            "A horizon declared for the next test",
             "A pre-declared stratum",
             "A cheaper metric",
         ):
             assert step in text, step
+        # R3D-01 / R3D-09: no advice to extend a finished test; the decision
+        # metric is asked for before the scorecard is shown
+        assert "run longer or on more traffic" not in text and "rerun with" not in text
+        assert "Before the first `get_ab_test` call, ask which metric decides" in text
         prompts = " ".join(
             inspect.getsource(_prompts).replace('",', "").replace('"', "").split()
         )
-        assert "quote the row's reading and propose a next step" in prompts
+        assert "quote the row's reading" in prompts
+        assert "a longer horizon" not in prompts
+        assert "BEFORE the first get_ab_test call" in prompts
 
 
 # ── wave 5: assignment table, horizon, scope, bootstrap, describe ────────────

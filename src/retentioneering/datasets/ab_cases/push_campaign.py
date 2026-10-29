@@ -50,8 +50,9 @@ Solutions (spoilers)
    buy at 22 % in both arms, the users the push brings in buy at 12 %. The
    sample ratio of the table is fine.
 3. The stream-only read (no ``assignment``) compares the users who showed up,
-   and the push changed who shows up: treatment has 50 % more users on the
-   stream (``get_sample_ratio`` on the stream reports a mismatch, which here is
+   and the push changed who shows up: treatment has about 44 % more users on
+   the stream (3,680 against 2,557 at the default seed; ``get_sample_ratio`` on
+   the stream reports a mismatch, which here is
    the push working, not a bug), the extra users buy less, and the users active
    only before the push count too. Its conversion delta is negative, the
    opposite sign of the ITT effect.

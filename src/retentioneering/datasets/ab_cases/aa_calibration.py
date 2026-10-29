@@ -54,9 +54,13 @@ Solutions (spoilers)
    (a custom column capped at its 99th percentile, about 600) and both revenue
    rows are inconclusive.
 
-Correct conclusion: no effect, as designed; the pipeline is fine for 0/1 metrics,
-and revenue needs a robust metric (winsorised or capped, declared before the
-test) before any revenue result of a real test can be trusted.
+Correct conclusion: the 0/1 metrics behave as a null should, but the assignment
+has a defect: accounts created together are assigned together, so the reseller,
+not the user, is the unit those six accounts share. Randomise (or analyse) at the
+reseller level, and declare a robust revenue metric (winsorised or capped) before
+any revenue result of a real test can be trusted. One A/A run is a smoke test,
+not a calibration: measuring the false-positive rate takes many re-randomised
+splits (an A/A replay, which the library does not offer yet).
 """
 
 from __future__ import annotations

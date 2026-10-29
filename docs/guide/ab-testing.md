@@ -176,7 +176,7 @@ Two more things the funnel's numbers assume. **The denominator is the paths with
 
 The scorecard above counts every event a user produced after assignment, until the data end. Users who entered in the first week were observed for eight weeks, those who entered in the sixth for two, so the effect it reports is an average over different exposure times, weighted by when users happened to arrive. Three arguments make the time dimension explicit.
 
-**`horizon=` gives every user the same window.** Only events in `[assigned_at, assigned_at + horizon)` count, and users whose window had not closed when the data end are left out (`immature_paths`). The estimand becomes "the effect within N days of assignment":
+**`horizon=` gives every user the same window.** Only events in `[assigned_at, assigned_at + horizon)` count, and users whose window had not closed by the stream's last event, where the data end, are left out (`immature_paths`). The estimand becomes "the effect within N days of assignment":
 
 ```python
 conversion = [metrics[0]]
@@ -186,9 +186,9 @@ stream.get_ab_test(diff, conversion, assignment=assignment, horizon="28D")
 | horizon | group1_paths | group2_paths | immature_paths | delta | interval | p_value | mde | verdict |
 |---|---|---|---|---|---|---|---|---|
 | none | 4960 | 5040 | — | +0.60 pp | [−1.07, +2.28] | 0.479 | 2.39 pp | inconclusive |
-| `"14D"` | 4960 | 5040 | 0 | +2.71 pp | [+1.34, +4.08] | 0.0001 | 1.96 pp | increase |
-| `"28D"` | 4329 | 4384 | 1287 | +2.08 pp | [+0.42, +3.74] | 0.014 | 2.38 pp | increase |
-| `"42D"` | 3190 | 3184 | 3626 | +0.99 pp | [−1.09, +3.07] | 0.351 | 2.98 pp | inconclusive |
+| `"14D"` | 4958 | 5037 | 5 | +2.75 pp | [+1.38, +4.12] | 0.0001 | 1.96 pp | increase |
+| `"28D"` | 4323 | 4379 | 1298 | +2.09 pp | [+0.43, +3.75] | 0.014 | 2.38 pp | increase |
+| `"42D"` | 3175 | 3161 | 3664 | +1.00 pp | [−1.09, +3.09] | 0.347 | 2.98 pp | inconclusive |
 
 These are different questions with different answers, not one question measured more or less precisely. Pick the horizon that matches the decision before the test starts — "do users buy more in their first four weeks?" — and report that one row. Trying horizons until one turns green is a form of peeking (see [pitfall 6](#6-peeking-and-open-ended-metrics)).
 
@@ -201,14 +201,14 @@ stream.get_ab_test(diff, conversion, assignment=assignment,
 
 | period | group1_paths | group2_paths | immature_paths | delta | interval | p_value_adjusted | verdict |
 |---|---|---|---|---|---|---|---|
-| 0-13 | 4960 | 5040 | 0 | +2.71 pp | [+1.34, +4.08] | 0.0003 | increase |
-| 14-27 | 4329 | 4384 | 1287 | −0.69 pp | [−1.75, +0.36] | 0.198 | inconclusive |
-| 28-41 | 3190 | 3184 | 3626 | −1.52 pp | [−2.67, −0.37] | 0.019 | decrease |
+| 0-13 | 4958 | 5037 | 5 | +2.75 pp | [+1.38, +4.12] | 0.0003 | increase |
+| 14-27 | 4323 | 4379 | 1298 | −0.67 pp | [−1.73, +0.39] | 0.213 | inconclusive |
+| 28-41 | 3175 | 3161 | 3664 | −1.48 pp | [−2.63, −0.33] | 0.023 | decrease |
 | 42-55 | 0 | 0 | 10000 | — | — | — | insufficient_data |
 
 The effect is front-loaded: positive in the first two weeks after assignment, negative from the fifth week on. The open-ended scorecard averages these, and the 14- and 28-day horizons read mostly the early part. `period_complete` is False where some assigned user's window had not closed.
 
-**A novelty effect is a contrast between two of those windows**, and it needs an interval of its own. In the table above the windows hold different users — days 0–13 all 10,000, days 28–41 only the 6,374 whose six weeks had closed — and a difference between those rows would mix the change of the effect with the change of who is counted. `contrast=` avoids that: it compares the same paths in every contrasted bin, keeping only the paths whose windows closed in all of them, so the library balances the contrast whatever the horizon. `horizon="42D"` below makes that population explicit (with it, every bin of the table above would hold the same 6,374 users); it is a choice of window, not a requirement. The two windows' estimates are correlated, so their intervals cannot be combined by eye; [`get_ab_bootstrap()`](/docs/tools/get-ab-bootstrap) evaluates every period on the same resampled users:
+**A novelty effect is a contrast between two of those windows**, and it needs an interval of its own. In the table above the windows hold different users — days 0–13 9,995 of the 10,000, days 28–41 only the 6,336 whose six weeks had closed — and a difference between those rows would mix the change of the effect with the change of who is counted. `contrast=` avoids that: it compares the same paths in every contrasted bin, keeping only the paths whose windows closed in all of them, so the library balances the contrast whatever the horizon. `horizon="42D"` below makes that population explicit (with it, every bin of the table above would hold the same 6,336 users); it is a choice of window, not a requirement. The two windows' estimates are correlated, so their intervals cannot be combined by eye; [`get_ab_bootstrap()`](/docs/tools/get-ab-bootstrap) evaluates every period on the same resampled users:
 
 ```python
 reps = stream.get_ab_bootstrap(
@@ -218,10 +218,10 @@ reps = stream.get_ab_bootstrap(
 )
 novelty = reps.loc[reps["contrast"] == "novelty", "delta"]
 novelty.mean(), novelty.quantile([0.025, 0.975]).tolist()
-# (0.0490, [0.0281, 0.0692])
+# (0.0479, [0.0284, 0.0675])
 ```
 
-For the same 6,374 users, the treatment's effect in days 0–13 exceeds its effect in days 28–41 by 4.9 pp, with an interval that excludes 0: a novelty effect, measured by exposure age.
+For the same 6,336 users, the treatment's effect in days 0–13 exceeds its effect in days 28–41 by about 4.8 pp, with an interval from 2.8 to 6.8 pp that excludes 0: a novelty effect, measured by exposure age.
 
 **Calendar periods** (`period="W"`, the default `period_basis="calendar"`) answer a different question: did the effect hold over the calendar weeks of the test? Each week's row includes every user assigned by the end of that week, active or not (ITT per period), and the weeks of one metric are one correction family:
 

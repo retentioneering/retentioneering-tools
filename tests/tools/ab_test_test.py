@@ -359,3 +359,391 @@ class TestMatrix:
         assert out["period_complete"].all()
         out = _fit(_tiny(), period="D")
         assert out["period"].iloc[0] == "2024-01-03"
+
+
+# ---------------------------------------------------------------- scorecard
+def _counts_stream(cells: dict) -> Eventstream:
+    """Users built from ``{(stratum, arm): (paths, converted)}``; one visit each, an order
+    for the converted ones."""
+    rows = []
+    start = pd.Timestamp("2024-01-01")
+    i = 0
+    for (stratum, arm), (paths, converted) in cells.items():
+        for j in range(paths):
+            uid = f"u{i:05d}"
+            i += 1
+            rows.append((uid, "visit", start, arm, stratum))
+            if j < converted:
+                rows.append(
+                    (uid, "order", start + pd.Timedelta(minutes=5), arm, stratum)
+                )
+    df = pd.DataFrame(rows, columns=["user_id", "event", "timestamp", "arm", "group"])
+    return Eventstream(df, {"segment_cols": ["arm", "group"]})
+
+
+_THREE = {
+    ("a", "treatment"): (200, 60),
+    ("a", "control"): (200, 40),
+    ("b", "treatment"): (200, 50),
+    ("b", "control"): (200, 50),
+    ("c", "treatment"): (200, 30),
+    ("c", "control"): (200, 31),
+}
+AOV = {
+    "name": "aov",
+    "metric": "column_sum",
+    "metric_args": {"column": "value"},
+    "denominator": {"metric": "event_count", "metric_args": {"event": "order"}},
+}
+REVENUE = {
+    "name": "revenue",
+    "metric": "column_sum",
+    "metric_args": {"column": "value"},
+}
+
+
+class TestScorecard:
+    def test_columns_of_a_plain_call(self) -> None:
+        out = ABTest.from_stream(_random(), DIFF, [CONV]).fit()
+        assert list(out.columns) == [
+            "metric",
+            "group1_paths",
+            "group2_paths",
+            "excluded_paths",
+            "group1_value",
+            "group1_ci_low",
+            "group1_ci_high",
+            "group2_value",
+            "group2_ci_low",
+            "group2_ci_high",
+            "delta",
+            "delta_se",
+            "delta_ci_low",
+            "delta_ci_high",
+            "rel_delta",
+            "rel_delta_ci_low",
+            "rel_delta_ci_high",
+            "p_value",
+            "p_value_adjusted",
+            "correction_family",
+            "alpha_used",
+            "mde",
+            "rel_mde",
+            "verdict",
+            "test",
+            "ci_basis",
+            "p_basis",
+            "valid_replicates",
+            "low_support",
+        ]
+
+    def test_z_test_matches_the_stats_core(self) -> None:
+        from retentioneering.tools import _stats as st
+
+        stream = _random(effect=0.1)
+        row = ABTest.from_stream(stream, DIFF, [CONV]).fit().iloc[0]
+        flags = stream.get_metrics(
+            [{"metric": "has_event", "metric_args": {"event": "order"}}]
+        )
+        arm = stream.get_path_segments("arm").reindex(flags.index)
+        y = flags.iloc[:, 0]
+        k1, n1 = y[arm == "treatment"].sum(), (arm == "treatment").sum()
+        k2, n2 = y[arm == "control"].sum(), (arm == "control").sum()
+        assert row.group1_value == pytest.approx(k1 / n1)
+        assert (row.delta_ci_low, row.delta_ci_high) == pytest.approx(
+            st.newcombe_ci(k1, n1, k2, n2)
+        )
+        assert row.p_value == pytest.approx(st.two_proportion_z(k1, n1, k2, n2)[1])
+        assert (row.rel_delta_ci_low, row.rel_delta_ci_high) == pytest.approx(
+            st.delta_log_ratio_ci(k1, n1, k2, n2)
+        )
+        assert row.mde == pytest.approx(
+            st.mde_proportion((k1 + k2) / (n1 + n2), n1, n2)
+        )
+        assert row.verdict == "increase"
+        assert (row.test, row.ci_basis, row.p_basis) == ("z_test", "wilson", "pooled_z")
+
+    def test_welch_matches_scipy(self) -> None:
+        from scipy import stats
+
+        stream = _random()
+        row = ABTest.from_stream(stream, DIFF, [ORDERS]).fit().iloc[0]
+        counts = stream.get_metrics(
+            [{"metric": "event_count", "metric_args": {"event": "order"}}]
+        ).iloc[:, 0]
+        arm = stream.get_path_segments("arm").reindex(counts.index)
+        x1, x2 = counts[arm == "treatment"], counts[arm == "control"]
+        ref = stats.ttest_ind(x1, x2, equal_var=False)
+        assert row.p_value == pytest.approx(ref.pvalue, rel=1e-9)
+        ci = ref.confidence_interval(0.95)
+        assert (row.delta_ci_low, row.delta_ci_high) == pytest.approx((ci.low, ci.high))
+        assert (row.test, row.ci_basis, row.p_basis) == (
+            "welch_t_test",
+            "welch",
+            "welch",
+        )
+        assert np.isfinite(
+            row.rel_delta_ci_low
+        )  # joint-bootstrap percentile of the ratio
+
+    def test_ratio_metric_uses_the_bootstrap(self) -> None:
+        out = ABTest.from_stream(_random(), DIFF, [AOV, REVENUE], n_bootstrap=400).fit()
+        aov = out.set_index("metric").loc["aov"]
+        assert (aov.test, aov.ci_basis, aov.p_basis) == (
+            "bootstrap",
+            "path_bootstrap",
+            "bootstrap_se",
+        )
+        assert aov.valid_replicates == 400 and not aov.low_support
+        assert aov.delta_ci_low < aov.delta < aov.delta_ci_high
+        assert out.set_index("metric").loc["revenue", "valid_replicates"] is pd.NA
+
+    def test_verdict_comes_from_the_adjusted_p(self) -> None:
+        stream = _counts_stream(_THREE)
+        plain = ABTest.from_stream(
+            stream, DIFF, [CONV], strata_col="group", correction="none"
+        ).fit()
+        holm = ABTest.from_stream(stream, DIFF, [CONV], strata_col="group").fit()
+        a_plain, a_holm = plain.iloc[0], holm.iloc[0]
+        assert a_plain.p_value < 0.05 and a_plain.verdict == "increase"
+        assert a_holm.p_value == pytest.approx(a_plain.p_value)
+        assert a_holm.p_value_adjusted > 0.05 and a_holm.verdict == "inconclusive"
+        # the per-comparison interval still excludes 0: it is not what the verdict reads
+        assert a_holm.delta_ci_low > 0
+        assert list(holm["correction_family"].unique()) == ["metric=conv/strata"]
+        assert list(plain["correction_family"].unique()) == ["none"]
+
+    def test_mde_at_the_corrected_alpha(self) -> None:
+        from retentioneering.tools import _stats as st
+
+        out = ABTest.from_stream(
+            _counts_stream(_THREE), DIFF, [CONV], strata_col="group"
+        ).fit()
+        row = out.iloc[0]
+        assert row.alpha_used == pytest.approx(0.05 / 3)
+        assert row.mde == pytest.approx(
+            st.mde_proportion(100 / 400, 200, 200, 0.05 / 3)
+        )
+        assert row.rel_mde == pytest.approx(row.mde / row.group2_value)
+
+    def test_bonferroni_adds_simultaneous_intervals(self) -> None:
+        from retentioneering.tools import _stats as st
+
+        out = ABTest.from_stream(
+            _counts_stream(_THREE),
+            DIFF,
+            [CONV],
+            strata_col="group",
+            correction="bonferroni",
+        ).fit()
+        row = out.iloc[0]
+        assert (row.delta_ci_low_adj, row.delta_ci_high_adj) == pytest.approx(
+            st.newcombe_ci(60, 200, 40, 200, 1 - 0.05 / 3)
+        )
+        assert row.delta_ci_low_adj < row.delta_ci_low
+        assert row.p_value_adjusted == pytest.approx(min(1.0, 3 * row.p_value))
+
+    def test_benjamini_hochberg(self) -> None:
+        from retentioneering.tools import _stats as st
+
+        out = ABTest.from_stream(
+            _counts_stream(_THREE), DIFF, [CONV], strata_col="group", correction="bh"
+        ).fit()
+        np.testing.assert_allclose(
+            out["p_value_adjusted"], st.benjamini_hochberg(out["p_value"].to_numpy())
+        )
+        assert "delta_ci_low_adj" not in out.columns
+
+    def test_nan_table(self) -> None:
+        cells = {
+            ("all", "treatment"): (30, 30),  # everyone converts in both arms
+            ("all", "control"): (30, 30),
+            ("none", "treatment"): (40, 15),  # control never converts
+            ("none", "control"): (40, 0),
+        }
+        out = (
+            ABTest.from_stream(
+                _counts_stream(cells), DIFF, [CONV], strata_col="group", min_events=10
+            )
+            .fit()
+            .set_index("stratum")
+        )
+        both = out.loc["all"]
+        assert np.isnan(both.p_value) and np.isnan(both.p_value_adjusted)
+        assert both.verdict == "inconclusive"
+        assert both.delta == 0.0
+        zero = out.loc["none"]
+        assert np.isnan(zero.rel_delta) and np.isnan(zero.rel_delta_ci_low)
+        assert zero.verdict == "insufficient_data" and np.isnan(zero.p_value)
+        assert zero.group2_value == 0.0  # the estimate itself is still reported
+
+    def test_min_events(self) -> None:
+        cells = {("x", "treatment"): (100, 9), ("x", "control"): (100, 30)}
+        stream = _counts_stream(cells)
+        assert ABTest.from_stream(stream, DIFF, [CONV]).fit().iloc[0].verdict == (
+            "insufficient_data"
+        )
+        row = ABTest.from_stream(stream, DIFF, [CONV], min_events=5).fit().iloc[0]
+        assert row.verdict == "decrease" and row.p_value < 0.05
+
+    def test_strata_columns_and_heterogeneity_guard(self) -> None:
+        cells = dict(_THREE)
+        cells[("d", "treatment")] = (40, 3)  # fewer than 5 events: not used in Q
+        cells[("d", "control")] = (40, 4)
+        out = ABTest.from_stream(
+            _counts_stream(cells), DIFF, [CONV], strata_col="group", min_events=1
+        ).fit()
+        assert list(out["stratum"]) == ["a", "b", "c", "d"]
+        np.testing.assert_allclose(out["group1_share"], [200 / 640] * 3 + [40 / 640])
+        assert out["balance_p_value"].iloc[0] == pytest.approx(1.0)
+        assert set(out["heterogeneity_strata_used"]) == {3}
+        assert set(out["heterogeneity_df"]) == {2}
+        assert out["heterogeneity_p_value"].nunique() == 1
+        assert out["strata_pre_exposure"].isna().all()  # a source column: unknown
+        assert out["exploratory"].all()
+
+    def test_stratum_vs_rest(self) -> None:
+        cells = {k: v for k, v in _THREE.items() if k[0] in ("a", "b")}
+        out = ABTest.from_stream(
+            _counts_stream(cells), DIFF, [CONV], strata_col="group"
+        ).fit()
+        # with two strata the complement of one is the other: the same test as Q
+        np.testing.assert_allclose(
+            out["stratum_vs_rest_p_value"], out["heterogeneity_p_value"], rtol=1e-9
+        )
+        a, b = out.iloc[0], out.iloc[1]
+        z = (a.delta - b.delta) / np.hypot(a.delta_se, b.delta_se)
+        from scipy import stats
+
+        assert a.stratum_vs_rest_p_value == pytest.approx(2 * stats.norm.sf(abs(z)))
+
+    def test_post_exposure_strata_warn(self) -> None:
+        stream = _random().add_segment(
+            "length_bin", metric_bins={"metric": {"metric": "length"}, "edges": [3]}
+        )
+        with pytest.warns(UserWarning, match="post-exposure"):
+            out = ABTest.from_stream(
+                stream, DIFF, [CONV], strata_col="length_bin"
+            ).fit()
+        assert (out["strata_pre_exposure"] == False).all()  # noqa: E712
+        assert out["exploratory"].all()
+
+    def test_pre_exposure_strata_carried_by_path_values(self, recwarn) -> None:
+        stream = _random()
+        pre = stream.truncate_paths(
+            "path_start", [{"pattern": "order", "offset": -1}, "path_end"]
+        )
+        pre = pre.add_segment(
+            "length_bin", metric_bins={"metric": {"metric": "length"}, "edges": [2]}
+        )
+        labels = pre.get_path_segments("length_bin")
+        assert labels.attrs["pre_exposure"] is True
+        full = stream.add_segment("length_bin", path_values=labels)
+        out = ABTest.from_stream(full, DIFF, [CONV], strata_col="length_bin").fit()
+        assert out["strata_pre_exposure"].all()
+        assert not out["exploratory"].any()
+        assert not [w for w in recwarn if "post-exposure" in str(w.message)]
+
+    def test_low_support_bootstrap(self) -> None:
+        rows = []
+        for i in range(60):
+            arm = "treatment" if i < 30 else "control"
+            rows.append((f"u{i}", "visit", pd.Timestamp("2024-01-01"), arm, np.nan))
+            if i in (0, 30, 31, 32, 33, 34, 35):  # one order in treatment
+                rows.append(
+                    (f"u{i}", "order", pd.Timestamp("2024-01-02"), arm, 10.0 + i)
+                )
+        df = pd.DataFrame(
+            rows, columns=["user_id", "event", "timestamp", "arm", "value"]
+        )
+        stream = Eventstream(df, {"segment_cols": ["arm"], "custom_cols": ["value"]})
+        row = ABTest.from_stream(stream, DIFF, [AOV], min_events=1).fit().iloc[0]
+        assert row.low_support
+        assert row.valid_replicates < 990
+        assert np.isnan(row.delta_ci_low) and np.isnan(row.p_value)
+        assert row.group1_value == pytest.approx(10.0)  # the point estimate stays
+        assert row.verdict == "inconclusive"
+
+    def test_poisson_weights_and_auto_replicates(self) -> None:
+        test = ABTest.from_stream(
+            _counts_stream(_THREE),
+            DIFF,
+            [CONV],
+            strata_col="group",
+            n_bootstrap="auto",
+            bootstrap_weights="poisson",
+            test="bootstrap",
+        )
+        assert test.resolved_n_bootstrap() == 1200
+        out = test.fit()
+        assert set(out["valid_replicates"]) == {1200}
+
+
+class TestBootstrapTable:
+    def test_long_table_shares_the_scorecard_replicates(self) -> None:
+        test = ABTest.from_stream(_random(), DIFF, [CONV, AOV], n_bootstrap=300)
+        table = test.bootstrap()
+        assert list(table.columns) == [
+            "replicate",
+            "metric",
+            "group1_value",
+            "group2_value",
+            "delta",
+        ]
+        assert len(table) == 600
+        aov = table[table.metric == "aov"]["delta"].to_numpy()
+        row = test.fit().set_index("metric").loc["aov"]
+        assert row.delta_ci_low == pytest.approx(np.quantile(aov, 0.025))
+        assert row.delta_ci_high == pytest.approx(np.quantile(aov, 0.975))
+
+    def test_contrast_rows(self) -> None:
+        test = ABTest.from_stream(
+            _random(),
+            DIFF,
+            [CONV],
+            assignment=_random_assignment(),
+            period="7D",
+            period_basis="since_assignment",
+            n_bootstrap=200,
+        )
+        table = test.bootstrap({"novelty": (["0-6"], ["7-13"])})
+        assert list(table.columns) == [
+            "replicate",
+            "metric",
+            "period",
+            "contrast",
+            "group1_value",
+            "group2_value",
+            "delta",
+        ]
+        plain = table[table.contrast.isna()].set_index(["period", "replicate"])
+        contrast = table[table.contrast == "novelty"].set_index("replicate")
+        assert contrast["period"].isna().all()
+        expected = plain.loc["0-6", "group1_value"] - plain.loc["7-13", "group1_value"]
+        np.testing.assert_allclose(contrast["group1_value"], expected)
+        np.testing.assert_allclose(
+            contrast["delta"], contrast["group1_value"] - contrast["group2_value"]
+        )
+
+    def test_contrast_errors(self) -> None:
+        with pytest.raises(InvalidParameterError):
+            ABTest.from_stream(_random(), DIFF, [CONV]).bootstrap(
+                {"x": (["0-6"], ["7-13"])}
+            )
+        test = ABTest.from_stream(_random(), DIFF, [CONV], period="W")
+        with pytest.raises(InvalidParameterError):
+            test.bootstrap({"x": (["0-6"], ["7-13"])})
+
+    def test_strata_and_periods(self) -> None:
+        table = ABTest.from_stream(
+            _random(), DIFF, [CONV], strata_col="platform", period="W", n_bootstrap=100
+        ).bootstrap()
+        assert {"stratum", "period"} <= set(table.columns)
+        assert table.groupby(["stratum", "period"]).size().eq(100).all()
+
+
+def _random_assignment() -> pd.DataFrame:
+    stream = _random()
+    first = stream.df.groupby("user_id", observed=True)["timestamp"].min()
+    arm = stream.get_path_segments("arm")
+    return pd.DataFrame({"arm": arm, "assigned_at": first.reindex(arm.index)})

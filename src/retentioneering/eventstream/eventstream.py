@@ -507,6 +507,12 @@ class Eventstream:
             - `unassigned_paths` (int): paths with no arm or an arm outside
               `expected_shares` (not counted in the test).
             - `basis` (str): what was counted.
+            - `reading` (str): the check in one sentence, built from the numbers
+              above: `"expected 50/50, observed 5040/4960 (control/treatment),
+              p 0.42: no mismatch"`, or `"mismatch: ... — the test is invalid until
+              the assignment is fixed"` when the split is off or paths carry two
+              arms; paths not counted and, with `by`, the groups that mismatch are
+              added.
             - `by` (str) and `by_levels` (DataFrame) with `by` only: one row per group
               — `by`, `paths`, `chi2`, `dof`, `p_value`, `p_value_adjusted` (Holm over
               the groups) and `mismatch` (`p_value_adjusted < alpha`). The overall
@@ -582,7 +588,8 @@ class Eventstream:
         sample size and a verdict. The unit of analysis is the path (`path_col`): it
         must be the unit that was randomised. An inconclusive row is not "no effect":
         its interval shows which effects the data still allow; `mde` is the effect the
-        design detects with the requested power, not a bound on the true effect.
+        design detects with the requested power, not a bound on the true effect. The
+        last column, `reading`, says this for each row in one sentence.
 
         Parameters
         ----------
@@ -664,7 +671,8 @@ class Eventstream:
               `assignment` DataFrame with `assigned_at`); labels are `"0-6"`, `"7-13"`
               (days) or `"0-11h"` (hours). A path is in a bin's population only when
               the bin's window closes by the stream's last event; the others are counted
-              in `immature_paths`. A bin that `horizon` cuts (`horizon="10D"` with
+              in `immature_paths`; a bin with no such path in either arm is left
+              out of the table. A bin that `horizon` cuts (`horizon="10D"` with
               `period="7D"`: the bin `"7-13"` holds days 7 to 9) keeps its label and
               gets `period_complete=False`. This is the basis for novelty effects.
         period_population : {"itt", "active"}, default "itt"
@@ -794,7 +802,10 @@ class Eventstream:
             - `valid_replicates` (Int64, `<NA>` on closed-form rows), `low_support`
               (bool): bootstrap rows; more than 1 % of replicates without support sets
               `low_support` and NaN intervals, p-value, `delta_se` and `mde`.
-            - `support_warning` (str): `""`; `"one_arm_only"` when an arm has no
+            - `support_warning` (str): `""`; `"no_data"` when no path of either arm
+              has the behaviour (no event, no non-zero total or numerator, no
+              value): the row is `"insufficient_data"`, whatever the metric type;
+              `"one_arm_only"` when an arm has no
               supporting path (the p-value stays: the pooled test is valid, but the
               behaviour does not exist in that arm); `"low_support"` on bootstrap
               rows with fewer than 30 supporting paths in an arm.
@@ -815,6 +826,31 @@ class Eventstream:
             - `strata_pre_exposure_source`* (str): `"declared"` (the parameter was
               True), `"recipe"` (the recipe shows the cut) or `"not_pre_exposure"`.
             - `exploratory`* (bool): True unless `strata_pre_exposure` is True.
+            - `reading` (str): one sentence that reads the row from its own
+              numbers, templated per `verdict`; 0/1 metrics in percentage points
+              (pp), other metrics in their unit, negative numbers with a plain `-`.
+              It starts with the row's window: `"over the whole observation
+              period"`, `"within 28 days of assignment"` (`horizon`), `"calendar
+              week 2026-03-09"`, `"calendar month 2026-03"`, `"days 14-27 since
+              assignment"`. `"inconclusive"`: `"... : interval [-1.07, +2.28] pp
+              includes 0 after holm (p 0.48); effects outside it are unlikely; the
+              design detects 2.39 pp at alpha 0.0125 — to detect 1 pp, about 5.7×
+              the paths are needed"` (the p-value is `p_value_adjusted`; `after
+              holm` only when the correction changed the level; the multiplier is
+              `(mde / effect)²` for a round effect at or below half the `mde`, left
+              out without an `mde`; an interval that excludes 0 only before the
+              correction says so). `"increase"` / `"decrease"`: `"... : interval
+              [+1.38, +4.12] pp excludes 0 after holm (p 0.00070); relative +12 %"`.
+              `"insufficient_data"`: `"... : pooled support 3 < min_events 20;
+              estimate shown descriptively"`, or `"... : no data in either arm"`
+              with `support_warning="no_data"`. `"descriptive"`: `"... : active
+              population: not randomised, describes who was active in the
+              period"`. Appended when set: `"exploratory: strata not pre-exposure
+              (declare strata_pre_exposure=True if they are)"`, `"window not
+              complete"` (`period_complete` False), the `support_warning`, and,
+              with several metrics and no strata or periods, `"corrected within
+              this metric only; name one decision metric"`. With
+              `correction="bonferroni"` it quotes the simultaneous interval.
 
             Missing values: `p_value` is NaN when both arms are constant, on
             insufficient, descriptive and low-support rows; `mde` is NaN when the
@@ -962,7 +998,8 @@ class Eventstream:
             - `delta` (float): `group1_value - group2_value`.
 
             NaN where a replicate has no support in a cell (no path with a value or a
-            zero weighted denominator).
+            zero weighted denominator). Replicate rows carry no `reading`; the
+            sentence that reads each metric is on its `get_ab_test` row.
 
         Raises
         ------
@@ -2942,6 +2979,16 @@ class Eventstream:
         the unit that was assigned to a group: session paths of a user-level
         experiment give intervals that are too narrow. p-values are per
         comparison unless `correction` is set; intervals are never adjusted.
+
+        Reading an interval that includes 0: the data are compatible with no
+        difference *and* with every difference inside the interval, so the step
+        is not shown to differ — it is not shown to be equal either. Read the
+        bounds as the range of effects still allowed (`[-1.07, +2.28]` pp: a
+        drop larger than about 1 pp or a gain larger than about 2.3 pp is
+        unlikely); a narrow interval around 0 rules out effects that matter, a
+        wide one says the test is too small to tell. `get_ab_test` gives the
+        same step as a scorecard row with `mde` and a `reading` that says how
+        many more paths a smaller effect would need.
 
         Examples
         --------

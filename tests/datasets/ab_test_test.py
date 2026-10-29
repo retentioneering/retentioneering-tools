@@ -6,9 +6,11 @@ the default call (``tests/datasets/fixtures/``, refreshed by
 ``scripts/refresh_ab_fixture.py``); ``test__fixture_matches_the_generator`` checks
 that the generator still reproduces it.
 
-TODO: once ``ab/a2-ab-test`` lands, switch the statistics below (pooled z, Holm,
-path bootstrap) to ``get_ab_test`` / ``get_ab_bootstrap`` / ``get_sample_ratio`` so the
-stories are asserted through the library's own scorecard.
+The stories are asserted through the library's own tools (``get_ab_test``,
+``get_ab_bootstrap``, ``get_sample_ratio``, ``funnel_data(ci_level=...)``), so the
+dataset, the tools and the tutorial cannot disagree. Two helpers stay hand-written on
+purpose: the naive conditional-step p-value of story 2, which no library tool reports,
+and the per-feature balance check of the pre-exposure window.
 """
 
 from __future__ import annotations
@@ -17,7 +19,6 @@ import math
 import pathlib
 import time
 
-import numpy as np
 import pandas as pd
 import pytest
 from sklearn.metrics import adjusted_rand_score
@@ -36,10 +37,15 @@ PRE_EXPOSURE_END = [
     "path_end",
 ]
 ALPHA = 0.05
+CONVERSION = {
+    "name": "conversion",
+    "metric": "has_event",
+    "metric_args": {"event": "order_success"},
+}
 
 
 # ---------------------------------------------------------------------------
-# Statistics helpers (numpy only; replaced by get_ab_test later, see TODO above)
+# Statistics helpers (only what no library tool reports)
 # ---------------------------------------------------------------------------
 
 
@@ -56,36 +62,8 @@ def _pooled_z(x1: int, n1: int, x2: int, n2: int) -> tuple[float, float, float]:
     return p1 - p2, _norm_sf2((p1 - p2) / se), se
 
 
-def _wilson(x: int, n: int, z: float = 1.959964) -> tuple[float, float]:
-    """Wilson score interval of a proportion."""
-    p = x / n
-    centre = (p + z * z / (2 * n)) / (1 + z * z / n)
-    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
-    return centre - half, centre + half
-
-
-def _holm(p_values) -> np.ndarray:
-    """Holm-adjusted p-values (step-down, monotone, capped at 1)."""
-    p = np.asarray(p_values, dtype=float)
-    order = np.argsort(p)
-    adjusted = np.empty_like(p)
-    running = 0.0
-    for rank, i in enumerate(order):
-        running = max(running, (len(p) - rank) * p[i])
-        adjusted[i] = min(running, 1.0)
-    return adjusted
-
-
-def _two_arm_test(flag: pd.Series, arm: pd.Series) -> tuple[float, float, float]:
-    """Pooled z on a 0/1 per-user flag; ``arm`` is "treatment"/"control" per user."""
-    treated = (arm == "treatment").to_numpy()
-    y = flag.to_numpy().astype(bool)
-    return _pooled_z(
-        int(y[treated].sum()),
-        int(treated.sum()),
-        int(y[~treated].sum()),
-        int((~treated).sum()),
-    )
+def _by_stratum(scorecard: pd.DataFrame) -> pd.DataFrame:
+    return scorecard.set_index("stratum")
 
 
 # ---------------------------------------------------------------------------
@@ -128,12 +106,6 @@ def truth(frame) -> pd.Series:
 
 
 @pytest.fixture(scope="module")
-def converted(stream) -> pd.Series:
-    metric = {"metric": "has_event", "metric_args": {"event": "order_success"}}
-    return stream.get_metrics([metric]).iloc[:, 0].astype(bool)
-
-
-@pytest.fixture(scope="module")
 def pre_exposure(stream) -> Eventstream:
     return stream.truncate_paths("path_start", PRE_EXPOSURE_END)
 
@@ -148,17 +120,6 @@ def clusters(pre_exposure) -> pd.Series:
         scaler="minmax",
     )
     return clustered.to_dataframe().groupby("user_id")["behaviour"].first()
-
-
-def _strata_tests(labels: pd.Series, converted: pd.Series, user_arm: pd.Series):
-    """Per-stratum conversion test with Holm across strata: {label: (delta, p_adj)}."""
-    rows = {}
-    for label in sorted(labels.unique()):
-        users = labels.index[labels == label]
-        delta, p, _ = _two_arm_test(converted.reindex(users), user_arm.reindex(users))
-        rows[label] = (delta, p)
-    adjusted = _holm([p for _, p in rows.values()])
-    return {k: (d, a) for (k, (d, _)), a in zip(rows.items(), adjusted)}
 
 
 # ---------------------------------------------------------------------------
@@ -269,32 +230,27 @@ class TestContract:
 
 class TestStories:
     def test_story1_top_line_grey_and_sample_ratio_fine(
-        self, assignment, converted
+        self, stream, assignment
     ) -> None:
         # ITT over the assignment table: silent users count as not converted.
-        flag = converted.reindex(assignment.index, fill_value=False)
-        delta, p, se = _two_arm_test(flag, assignment["arm"])
-        mde = (1.959964 + 0.841621) * se  # alpha 0.05 two-sided, power 0.8
+        row = stream.get_ab_test(DIFF, [CONVERSION], assignment=assignment).iloc[0]
+        srm = stream.get_sample_ratio("exp_group", assignment=assignment)
 
-        assert p > 0.2
-        assert abs(delta) < mde / 2
-        n_t = int((assignment["arm"] == "treatment").sum())
-        n = len(assignment)
-        chi2 = (n_t - n / 2) ** 2 / (n / 4)  # 1 df, 50/50 expected
-        assert _norm_sf2(math.sqrt(chi2)) > 0.05
+        assert row["verdict"] == "inconclusive"
+        assert row["p_value"] > 0.2
+        assert abs(row["delta"]) < row["mde"] / 2
+        assert srm["silent_paths"] > 0
+        assert srm["p_value"] > 0.05 and not srm["mismatch"]
 
-    def test_story2_overall_funnel_steps_grey_after_holm(
-        self, stream, user_arm
-    ) -> None:
-        steps = stream.funnel_data(FUNNEL_STEPS, diff=DIFF)["steps"]
-        n_t = int((user_arm == "treatment").sum())
-        n_c = int((user_arm == "control").sum())
-        p_values = [
-            _pooled_z(s["funnel1_unique_paths"], n_t, s["funnel2_unique_paths"], n_c)[1]
-            for s in steps
+    def test_story2_overall_funnel_steps_grey_after_holm(self, stream) -> None:
+        funnel = stream.funnel_data(
+            FUNNEL_STEPS, diff=DIFF, ci_level=0.95, correction="holm"
+        )
+        adjusted = [
+            s["delta_conversion_rate_p_value_adjusted"] for s in funnel["steps"]
         ]
 
-        assert (_holm(p_values) > ALPHA).all()
+        assert all(p > ALPHA for p in adjusted)
 
     def test_story2_conditional_step_naive_p(self, stream) -> None:
         # The naive two-proportion p of a step-to-step rate (previous step as the
@@ -321,22 +277,33 @@ class TestStories:
         assert ari >= 0.5
 
     def test_story3_both_signs_survive_holm(
-        self, clusters, truth, converted, user_arm
+        self, stream, assignment, clusters, truth
     ) -> None:
         majority = pd.crosstab(clusters, truth.reindex(clusters.index)).idxmax(axis=1)
-        results = _strata_tests(clusters, converted, user_arm)
+        carried = stream.add_segment("behaviour", path_values=clusters)
+        rows = _by_stratum(
+            carried.get_ab_test(
+                DIFF, [CONVERSION], assignment=assignment, strata_col="behaviour"
+            )
+        )
 
         assert sorted(majority) == ["curator", "other", "scanner"]
-        by_type = {majority[label]: res for label, res in results.items()}
-        assert by_type["scanner"][0] > 0 and by_type["scanner"][1] < ALPHA
-        assert by_type["curator"][0] < 0 and by_type["curator"][1] < ALPHA
+        by_type = {majority[label]: rows.loc[label] for label in majority.index}
+        assert by_type["scanner"]["verdict"] == "increase"
+        assert by_type["curator"]["verdict"] == "decrease"
+        assert rows["strata_pre_exposure"].all()
 
-    def test_story3_planted_effects(self, truth, converted, user_arm) -> None:
-        results = _strata_tests(truth, converted, user_arm)
+    def test_story3_planted_effects(self, stream, assignment) -> None:
+        rows = _by_stratum(
+            stream.add_segment("user_type").get_ab_test(
+                DIFF, [CONVERSION], assignment=assignment, strata_col="user_type"
+            )
+        )
 
-        assert 0.04 < results["scanner"][0] < 0.15
-        assert -0.12 < results["curator"][0] < -0.04
-        assert abs(results["other"][0]) < 0.02 and results["other"][1] > ALPHA
+        assert 0.04 < rows.loc["scanner", "delta"] < 0.15
+        assert -0.12 < rows.loc["curator", "delta"] < -0.04
+        assert abs(rows.loc["other", "delta"]) < 0.02
+        assert rows.loc["other", "verdict"] == "inconclusive"
 
     def test_story4_cart_loop_in_treatment_curators_only(self, stream, truth) -> None:
         _, treatment, control = stream.transition_graph_data(
@@ -354,90 +321,50 @@ class TestStories:
         assert len(loopers) > 100
         assert (truth.reindex(loopers) == "curator").all()
 
-    def test_story5_novelty_since_assignment(self, frame, assignment) -> None:
-        orders = frame.loc[frame["event"] == "order_success", ["user_id", "timestamp"]]
-        since = (
-            orders["timestamp"]
-            - assignment["assigned_at"].reindex(orders["user_id"]).values
+    def test_story5_novelty_since_assignment(self, stream, assignment) -> None:
+        # ITT per since-assignment window, over the users whose window lies inside
+        # the data (silent users included); the contrast has a joint interval.
+        periods = {"period": "14D", "period_basis": "since_assignment"}
+        rows = stream.get_ab_test(
+            DIFF, [CONVERSION], assignment=assignment, **periods
+        ).set_index("period")
+        reps = stream.get_ab_bootstrap(
+            DIFF,
+            [CONVERSION],
+            assignment=assignment,
+            contrast={"novelty": (["0-13"], ["28-41"])},
+            n_bootstrap=400,
+            random_state=0,
+            **periods,
         )
-        days = since.dt.total_seconds().to_numpy() / 86_400
-        end = ab_test.START + pd.Timedelta(days=ab_test.N_DAYS)
-        arm = (assignment["arm"] == "treatment").to_numpy()
-
-        def window(lo: int, hi: int) -> tuple[np.ndarray, np.ndarray]:
-            users = orders["user_id"].to_numpy()[(days >= lo) & (days < hi)]
-            y = assignment.index.isin(users).astype(float)
-            # ITT over the users whose window lies inside the data, silent ones included
-            eligible = (
-                assignment["assigned_at"] + pd.Timedelta(days=hi) <= end
-            ).to_numpy()
-            return y, eligible
-
-        y_early, e_early = window(0, 14)
-        y_late, e_late = window(28, 42)
-
-        def contrast(idx: np.ndarray) -> tuple[float, float, float]:
-            t, ee, el, ye, yl = (
-                arm[idx],
-                e_early[idx],
-                e_late[idx],
-                y_early[idx],
-                y_late[idx],
-            )
-            early = ye[t & ee].mean() - ye[~t & ee].mean()
-            late = yl[t & el].mean() - yl[~t & el].mean()
-            return early - late, early, late
-
-        point, early, late = contrast(np.arange(len(arm)))
-        rng = np.random.default_rng(0)
-        t_idx, c_idx = np.flatnonzero(arm), np.flatnonzero(~arm)
-        reps = np.array(
-            [
-                contrast(
-                    np.concatenate(
-                        [rng.choice(t_idx, len(t_idx)), rng.choice(c_idx, len(c_idx))]
-                    )
-                )[0]
-                for _ in range(400)
-            ]
+        early, late = rows.loc["0-13", "delta"], rows.loc["28-41", "delta"]
+        low, high = reps.loc[reps["contrast"] == "novelty", "delta"].quantile(
+            [0.025, 0.975]
         )
-        low, high = np.quantile(reps, [0.025, 0.975])
 
         assert early > 0 > late
         assert low > 0
-        assert low < point < high
+        assert low < early - late < high
 
-    def test_story6_aov_inconclusive(self, frame) -> None:
-        orders = frame.loc[frame["event"] == "order_success"]
-        per_user = orders.groupby("user_id").agg(
-            value=("order_value", "sum"),
-            n=("order_value", "size"),
-            arm=("exp_group", "first"),
-        )
-        rng = np.random.default_rng(0)
+    def test_story6_aov_inconclusive(self, stream, assignment) -> None:
+        aov = {
+            "name": "aov",
+            "metric": "column_sum",
+            "metric_args": {"column": "order_value"},
+            "denominator": {
+                "metric": "event_count",
+                "metric_args": {"event": "order_success"},
+            },
+        }
+        row = stream.get_ab_test(DIFF, [aov], assignment=assignment).iloc[0]
 
-        def aov(table: pd.DataFrame, idx: np.ndarray) -> float:
-            return (
-                table["value"].to_numpy()[idx].sum() / table["n"].to_numpy()[idx].sum()
-            )
-
-        t = per_user[per_user["arm"] == "treatment"]
-        c = per_user[per_user["arm"] == "control"]
-        point = aov(t, np.arange(len(t))) - aov(c, np.arange(len(c)))
-        reps = np.array(
-            [
-                aov(t, rng.integers(0, len(t), len(t)))
-                - aov(c, rng.integers(0, len(c), len(c)))
-                for _ in range(1000)
-            ]
-        )
-        low, high = np.quantile(reps, [0.025, 0.975])
-
-        assert low < 0 < high
-        assert abs(point) < 0.05 * aov(c, np.arange(len(c)))
+        assert row["test"] == "bootstrap"
+        assert row["verdict"] == "inconclusive"
+        assert row["delta_ci_low"] < 0 < row["delta_ci_high"]
+        assert abs(row["delta"]) < 0.05 * row["group2_value"]
 
     def test_story7_sign_flip_by_pre_exposure_length(
-        self, pre_exposure, converted, user_arm
+        self, stream, assignment, pre_exposure
     ) -> None:
         binned = pre_exposure.add_segment(
             "length_bin",
@@ -447,11 +374,15 @@ class TestStories:
                 "segment_levels": ["short", "long"],
             },
         )
-        labels = binned.to_dataframe().groupby("user_id")["length_bin"].first()
-        results = _strata_tests(labels, converted, user_arm)
+        labels = binned.get_path_segments("length_bin")
+        rows = _by_stratum(
+            stream.add_segment("length_bin", path_values=labels).get_ab_test(
+                DIFF, [CONVERSION], assignment=assignment, strata_col="length_bin"
+            )
+        )
 
-        assert results["short"][0] < 0 and results["short"][1] < ALPHA
-        assert results["long"][0] > 0 and results["long"][1] < ALPHA
+        assert rows.loc["short", "verdict"] == "decrease"
+        assert rows.loc["long", "verdict"] == "increase"
 
     def test_pre_exposure_window_is_arm_independent(
         self, pre_exposure, user_arm
@@ -467,9 +398,3 @@ class TestStories:
             se = math.sqrt(t.var() / len(t) + c.var() / len(c))
             if se > 0:
                 assert _norm_sf2((t.mean() - c.mean()) / se) > 0.001, column
-
-    def test_wilson_helper(self) -> None:
-        low, high = _wilson(30, 100)
-
-        assert low == pytest.approx(0.2189, abs=1e-4)
-        assert high == pytest.approx(0.3958, abs=1e-4)

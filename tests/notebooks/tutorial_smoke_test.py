@@ -49,7 +49,8 @@ def _verdicts(frame, key="metric"):
     return dict(zip(frame[key], frame["verdict"]))
 
 
-# step 1: population and SRM
+# step 1: population and SRM; no event precedes its user's assignment
+assert before_assignment == 0
 assert not srm["mismatch"] and not srm["by_levels"]["mismatch"].any()
 assert srm["silent_paths"] > 0 and srm["multi_valued_paths"] == 0
 assert overview["shape"]["n_paths"] < len(assignment)
@@ -75,17 +76,23 @@ assert _verdicts(scorecard_28d) == {
 }
 assert _verdicts(since, "period")["0-13"] == "increase"
 assert _verdicts(since, "period")["28-41"] == "decrease"
+# the readout quotes the late bin: a decrease of 1.5 pp at adjusted p 0.019
+_late = since.set_index("period").loc["28-41"]
+assert round(_late["delta"] * 100, 1) == -1.5 and round(_late["p_value_adjusted"], 3) == 0.019
 assert since["group1_paths"].nunique() == 1
 assert low > 0 and low < point < high
 
 # step 5: blind pre-exposure clusters, both signs after Holm
-assert sorted(cluster_names.values()) == ["browsers", "collectors", "filterers"]
+assert sorted(cluster_names.values()) == ["curator", "other", "scanner"]
 assert _verdicts(strata, "stratum") == {
     "<MISSING>": "insufficient_data",
-    "browsers": "inconclusive",
-    "collectors": "decrease",
-    "filterers": "increase",
+    "other": "inconclusive",
+    "curator": "decrease",
+    "scanner": "increase",
 }
+# "other" shows no detectable change: an interval around 0, about -2.5 to +1.8 pp
+_other = strata.set_index("stratum").loc["other"]
+assert round(_other["delta_ci_low"] * 100, 1) == -2.5 and round(_other["delta_ci_high"] * 100, 1) == 1.8
 assert strata["balance_p_value"].iloc[0] > 0.05
 assert strata["heterogeneity_p_value"].iloc[0] < 0.05
 assert strata.loc[strata["stratum"] != "<MISSING>", "strata_pre_exposure"].all()
@@ -102,9 +109,10 @@ assert graph_treatment.loc["cart", "cart"] > 0 and graph_control.loc["cart", "ca
 # step 8: descriptive loop -> order, ITT loop share
 assert loop_to_order.iloc[0]["group2_paths_with_start"] == 0
 _loop = loop_itt.set_index("stratum")
-assert _loop.loc["collectors", "group1_value"] > 0
+assert round(_loop.loc["curator", "group1_value"] * 100) == 26
+assert _loop.loc["curator", "delta_ci_low"] > 0.1
 assert (_loop["group2_value"] == 0).all()
-assert (_loop.drop(index="collectors")["group1_value"] == 0).all()
+assert (_loop.drop(index="curator")["group1_value"] == 0).all()
 assert set(_loop["verdict"]) == {"insufficient_data"}
 
 # step 9: pre-exposure sign flip; post-exposure split flagged, balance p silent
@@ -112,6 +120,17 @@ assert _verdicts(by_length, "stratum")["short"] == "decrease"
 assert _verdicts(by_length, "stratum")["long"] == "increase"
 assert not post_length["strata_pre_exposure"].any() and post_length["exploratory"].all()
 assert post_length["balance_p_value"].iloc[0] > 0.05
+# ... and it tells a different story from the pre-exposure split
+assert _verdicts(post_length, "stratum") != _verdicts(by_length, "stratum")
+assert _verdicts(post_length, "stratum")["short"] != "decrease"
+
+# the length split and the clusters overlap only partly: every cluster has short and long users
+_overlap = pd.crosstab(
+    stream.get_path_segments("behaviour"),
+    pre_length.reindex(stream.get_path_segments("behaviour").index),
+    normalize="index",
+)
+assert ((_overlap > 0.1) & (_overlap < 0.9)).all().all()
 
 # step 10: planted truth
 assert adjusted_rand_score(truth, recovered.reindex(truth.index)) >= 0.5

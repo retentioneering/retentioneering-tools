@@ -25,6 +25,7 @@ from retentioneering import engine
 from retentioneering.engine import dialect
 from retentioneering.exceptions import InvalidParameterError
 from retentioneering.paths import anchors
+from retentioneering.tools import _stats
 from retentioneering.utils.durations import parse_duration
 
 if TYPE_CHECKING:
@@ -39,6 +40,43 @@ COLUMNS = [
     "base_rate",
     "lift",
 ]
+
+CI_COLUMNS = ["conversion_rate_ci_low", "conversion_rate_ci_high"]
+
+#: Per-group columns of the diff mode, each prefixed with ``group1_``/``group2_``.
+GROUP_COLUMNS = [
+    "paths_with_start",
+    "converted",
+    "conversion_rate",
+    "conversion_rate_ci_low",
+    "conversion_rate_ci_high",
+    "base_rate",
+    "lift",
+]
+
+DIFF_COLUMNS = (
+    ["start_anchor", "end_anchor"]
+    + [f"group1_{c}" for c in GROUP_COLUMNS]
+    + [f"group2_{c}" for c in GROUP_COLUMNS]
+    + ["delta", "delta_ci_low", "delta_ci_high", "p_value", "excluded_paths"]
+)
+
+#: Interval level used in diff mode when `ci_level` is not given.
+DEFAULT_CI_LEVEL = 0.95
+
+
+def _check_ci_level(ci_level) -> float | None:
+    if ci_level is None:
+        return None
+    if isinstance(ci_level, bool) or not isinstance(ci_level, (int, float)):
+        raise InvalidParameterError(
+            "ci_level", ci_level, ["a float in (0, 1), e.g. 0.95"]
+        )
+    if not 0 < ci_level < 1:
+        raise InvalidParameterError(
+            "ci_level", ci_level, ["a float in (0, 1), e.g. 0.95"]
+        )
+    return float(ci_level)
 
 
 def parse_within(within) -> tuple[str, float] | None:
@@ -75,12 +113,84 @@ class ConversionRate:
         end_anchor,
         within=None,
         path_col: str | None = None,
+        ci_level: float | None = None,
+        diff=None,
     ) -> pd.DataFrame:
         """
         Conversion from `start_anchor` to `end_anchor`, one row per pair.
 
         See `Eventstream.get_conversion_rate` for the parameters and the
         returned columns.
+        """
+        ci_level = _check_ci_level(ci_level)
+        if diff is not None:
+            return self._fit_diff(
+                start_anchor, end_anchor, within, path_col, ci_level, diff
+            )
+        result = self._fit_single(start_anchor, end_anchor, within, path_col)
+        if ci_level is not None:
+            low, high = _stats.wilson_ci(
+                result["converted"].to_numpy(),
+                result["paths_with_start"].to_numpy(),
+                ci_level,
+            )
+            position = COLUMNS.index("conversion_rate") + 1
+            result.insert(position, "conversion_rate_ci_low", low)
+            result.insert(position + 1, "conversion_rate_ci_high", high)
+        return result
+
+    def _fit_diff(self, start_anchor, end_anchor, within, path_col, ci_level, diff):
+        """Path-level comparison of two groups: per-group rates and the delta."""
+        from retentioneering.tools._diff import resolve_diff
+
+        es = self.eventstream
+        path_col = path_col or es.schema.path_col
+        if path_col not in es.schema.path_cols:
+            raise InvalidParameterError("path_col", path_col, es.schema.path_cols)
+        ci_level = ci_level if ci_level is not None else DEFAULT_CI_LEVEL
+        # Anchors are validated against the whole stream, so a typo is reported
+        # the same way as without diff, and an event absent from one group only
+        # counts as zero conversions there.
+        available = es.df[es.schema.event_col].unique().tolist()
+
+        groups = resolve_diff(es, diff, path_col, require_constant=True)
+        frames = []
+        for ids in (groups.ids1, groups.ids2):
+            sub = es.filter_events(keep={path_col: list(ids)})
+            frame = ConversionRate(sub)._fit_single(
+                start_anchor, end_anchor, within, path_col, available=available
+            )
+            low, high = _stats.wilson_ci(
+                frame["converted"].to_numpy(),
+                frame["paths_with_start"].to_numpy(),
+                ci_level,
+            )
+            frame["conversion_rate_ci_low"] = low
+            frame["conversion_rate_ci_high"] = high
+            frames.append(frame)
+        g1, g2 = frames
+        out = g1[["start_anchor", "end_anchor"]].copy()
+        for prefix, frame in (("group1_", g1), ("group2_", g2)):
+            for col in GROUP_COLUMNS:
+                out[prefix + col] = frame[col].to_numpy()
+        k1, n1 = g1["converted"].to_numpy(), g1["paths_with_start"].to_numpy()
+        k2, n2 = g2["converted"].to_numpy(), g2["paths_with_start"].to_numpy()
+        out["delta"] = out["group1_conversion_rate"] - out["group2_conversion_rate"]
+        low, high = _stats.newcombe_ci(k1, n1, k2, n2, ci_level)
+        out["delta_ci_low"] = low
+        out["delta_ci_high"] = high
+        out["p_value"] = _stats.two_proportion_z(k1, n1, k2, n2)[1]
+        out["excluded_paths"] = groups.excluded_paths
+        return out[DIFF_COLUMNS].reset_index(drop=True)
+
+    def _fit_single(
+        self, start_anchor, end_anchor, within, path_col, available=None
+    ) -> pd.DataFrame:
+        """One row per pair over this eventstream's paths.
+
+        `available` overrides the event names the anchors are validated against:
+        a diff group is checked against the whole stream, so an event that only
+        one group lacks is a zero, not a typo.
         """
         es = self.eventstream
         schema = es.schema
@@ -90,7 +200,8 @@ class ConversionRate:
         if path_col not in schema.path_cols:
             raise InvalidParameterError("path_col", path_col, schema.path_cols)
 
-        available = df[schema.event_col].unique().tolist()
+        if available is None:
+            available = df[schema.event_col].unique().tolist()
         starts = self._parse_side(start_anchor, "start_anchor", available)
         ends = self._parse_side(end_anchor, "end_anchor", available)
         window = parse_within(within)

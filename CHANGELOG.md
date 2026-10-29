@@ -32,6 +32,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   (silent paths included); `by=` repeats the check per day of assignment or per
   segment fixed at assignment, with Holm-adjusted p-values. The MCP server has
   a numbers-only `get_sample_ratio` tool.
+- `get_conversion_rate(..., ci_level=None, diff=None)`: `ci_level` adds Wilson
+  intervals of the rate (`conversion_rate_ci_low` / `conversion_rate_ci_high`);
+  `diff` compares two groups of paths in one row — `group1_*` / `group2_*`
+  rates with intervals, base rates and lifts, `delta` with a Newcombe interval
+  and a pooled z-test `p_value` (NaN when undefined). Groups are resolved per
+  path, so a path whose segment changes inside it raises `DiffConfigError`
+  instead of being counted in both groups. The MCP `get_conversion_rate` tool
+  takes the same two arguments.
 
 ### Fixed
 

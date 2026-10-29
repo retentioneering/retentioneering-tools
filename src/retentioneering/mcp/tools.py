@@ -507,6 +507,8 @@ def get_conversion_rate(
     within: int | str | None = None,
     path_col: str | None = None,
     local_preprocessors: list | None = None,
+    ci_level: float | None = None,
+    diff: list | None = None,
 ) -> dict:
     """
     Measure how often one event is followed by another, against its baseline.
@@ -548,10 +550,20 @@ def get_conversion_rate(
     local_preprocessors:
         Optional one-off preprocessing applied on top of the base stream for
         this measurement only. Same format as update_base_stream preprocessors.
+    ci_level:
+        e.g. 0.95: adds conversion_rate_ci_low / conversion_rate_ci_high (Wilson).
+    diff:
+        Compare two groups of paths: ["segment_col", "value1", "value2"]
+        ("<REST>" allowed as value2). Each row then carries group1_* and group2_*
+        versions of the columns below (with their CIs), delta (group1 - group2),
+        delta_ci_low / delta_ci_high and p_value. Groups are whole paths: a path
+        whose segment changes inside it is an error, not a split. The interval
+        assumes path_col is the unit that was assigned (user-level test -> user
+        paths).
 
     Returns
     -------
-    path_col, within (echoed back), and rows — one per (start, end) pair:
+    path_col, within, ci_level, diff (echoed back), and rows — one per (start, end) pair:
       paths_with_start  the denominator: paths where the start anchor occurred
       converted         of those, paths where the target followed it
       conversion_rate   converted / paths_with_start (null if denominator is 0)
@@ -575,6 +587,8 @@ def get_conversion_rate(
             end_anchor=end_anchor,
             within=within,
             path_col=path_col or None,
+            ci_level=ci_level,
+            diff=tuple(diff) if diff else None,
         )
     except Exception as exc:
         return {"error": str(exc)}
@@ -586,22 +600,28 @@ def get_conversion_rate(
         value = float(value)
         return None if math.isnan(value) else round(value, 4)
 
-    return {
+    def _cell(column: str, value: Any) -> Any:
+        if column in ("start_anchor", "end_anchor"):
+            return str(value)
+        if column.endswith(("paths_with_start", "converted", "excluded_paths")):
+            return int(value)
+        if column == "p_value":
+            return _json_number(value, 8)
+        return _num(value)
+
+    out: dict[str, Any] = {
         "path_col": path_col or src.schema.path_col,
         "within": within,
         "rows": [
-            {
-                "start_anchor": str(row["start_anchor"]),
-                "end_anchor": str(row["end_anchor"]),
-                "paths_with_start": int(row["paths_with_start"]),
-                "converted": int(row["converted"]),
-                "conversion_rate": _num(row["conversion_rate"]),
-                "base_rate": _num(row["base_rate"]),
-                "lift": _num(row["lift"]),
-            }
+            {column: _cell(column, value) for column, value in row.items()}
             for row in frame.to_dict("records")
         ],
     }
+    if ci_level is not None:
+        out["ci_level"] = ci_level
+    if diff:
+        out["diff"] = list(diff)
+    return out
 
 
 def _json_number(value: Any, digits: int = 6) -> float | None:

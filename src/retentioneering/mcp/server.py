@@ -47,6 +47,7 @@ def serve(
     stream: "Eventstream | None" = None,
     context: dict | None = None,
     port: int = 8765,
+    assignment=None,
 ) -> None:
     """
     Start a local MCP server exposing *stream* to Claude (or any MCP client).
@@ -68,6 +69,16 @@ def serve(
             })
     port:
         HTTP port for the SSE transport (default 8765).
+    assignment:
+        Optional experiment assignment table, as for `Eventstream.get_ab_test`
+        (a Series path id -> arm, or a DataFrame indexed by path id with column
+        `arm` and optionally `assigned_at`). When given, the A/B tools
+        (get_sample_ratio, get_ab_test, add_ab_test, get_ab_bootstrap) count every
+        assigned path, silent ones included (intention to treat), and `horizon=` /
+        since-assignment periods become available to the agent. The table stays
+        in this process; describe() reports its size and arms. Example::
+
+            serve(stream, assignment=load_ab_test_assignment())
 
     Notes
     -----
@@ -90,7 +101,9 @@ def serve(
         "mcp_serve", {"has_context": bool(context), "has_stream": stream is not None}
     )
     _check_port_available(port)
-    mcp = _build_server(stream, context or {}, notebook_dir=os.getcwd())
+    mcp = _build_server(
+        stream, context or {}, notebook_dir=os.getcwd(), assignment=assignment
+    )
     thread = threading.Thread(
         target=lambda: mcp.run(transport="sse", port=port),
         daemon=True,
@@ -132,13 +145,16 @@ def _build_server(
     stream: "Eventstream | None",
     context: dict,
     notebook_dir: str = "",
+    assignment=None,
 ) -> MCPServer:
     mcp = MCPServer(
         "retentioneering",
-        instructions=_system_instructions(stream, context, notebook_dir=notebook_dir),
+        instructions=_system_instructions(
+            stream, context, notebook_dir=notebook_dir, assignment=assignment
+        ),
     )
 
-    session = ReportSession(stream, context)
+    session = ReportSession(stream, context, assignment=assignment)
 
     def _tool():
         """@mcp.tool() that sets caller='mcp' in the tracking context and holds
@@ -268,17 +284,23 @@ def _build_server(
           urls_to_events   sample_paths   split_sessions
 
         Analysis tools (called directly, not as a preprocessor step):
-          get_conversion_rate  get_sample_ratio  get_ab_test
+          get_conversion_rate  get_sample_ratio  get_ab_test  get_ab_bootstrap
 
         Reference topics:
           report_links   (anchor link syntax for analysis text)
+          metrics        (the metric registry: names, metric_args, how A/B reads them)
         """
         return json.dumps(tools.describe_tool(tool), ensure_ascii=False)
 
     @_tool()
     def describe() -> str:
         """Return schema, event list, unique path counts and available segments.
-        Reflects the current active stream (after any update_base_stream calls)."""
+        Reflects the current active stream (after any update_base_stream calls).
+        Also segment_levels (arm names, up to 20 per column),
+        segments_constant_per_path (the path columns each segment is constant on:
+        an arm or a stratum must be), value_columns (numeric columns for
+        column_sum / column_mean) and, when serve() got one, assignment (the
+        experiment table's size and arms)."""
         return json.dumps(tools.describe(session, session.context), ensure_ascii=False)
 
     @_tool()
@@ -480,6 +502,10 @@ def _build_server(
         path_col: str | None = None,
         strata_pre_exposure: bool | None = None,
         local_preprocessors: list | None = None,
+        horizon: str | None = None,
+        period_basis: str = "calendar",
+        test: str = "auto",
+        correction_scope: str = "metric",
     ) -> str:
         """
         Register an A/B test scorecard tab in the pending report.
@@ -487,14 +513,17 @@ def _build_server(
         The tab is the ab_test widget (table and forest plot of each metric's
         delta with its interval, coloured by verdict; Strata / Periods tabs with
         strata_col / period). Same arguments and numbers as get_ab_test; run
-        get_sample_ratio first; use get_ab_test when you need numbers only.
+        get_sample_ratio first; use get_ab_test when you need numbers only. An
+        A/B analysis that used only numbers-only tools still needs one tab to
+        export a report: this is the A/B one.
 
         Parameters
         ----------
         label:
             Tab label shown in the report. No colons in the label.
         diff, metrics, strata_col, period, period_population, correction,
-        ci_level, path_col, strata_pre_exposure, local_preprocessors:
+        ci_level, path_col, strata_pre_exposure, local_preprocessors, horizon,
+        period_basis, test, correction_scope:
             As in get_ab_test.
 
         Returns
@@ -516,6 +545,10 @@ def _build_server(
             path_col,
             strata_pre_exposure,
             local_preprocessors,
+            horizon,
+            period_basis,
+            test,
+            correction_scope,
         )
         return json.dumps(result, ensure_ascii=False, allow_nan=False)
 
@@ -598,7 +631,7 @@ def _build_server(
 
     @_tool()
     def get_sample_ratio(
-        segment_col: str,
+        segment_col: str | None = None,
         expected_shares: dict | None = None,
         alpha: float = 0.001,
         path_col: str | None = None,
@@ -612,11 +645,14 @@ def _build_server(
         Run this FIRST on any experiment, before reading a metric: if the arms do
         not have the planned sizes, paths were lost from one arm and every
         comparison is suspect. Numbers only, no report tab: quote in backticks.
+        With the session's assignment table (describe()['assignment']) the counts
+        are the table's rows, silent users included, and segment_col is optional.
 
         Parameters
         ----------
         segment_col:
-            Segment column holding the arm (see describe()).
+            Segment column holding the arm (see describe()); optional with an
+            assignment table.
         expected_shares:
             {arm: share} summing to 1; omit for an equal split.
         alpha:
@@ -626,7 +662,8 @@ def _build_server(
         strata_col:
             Repeat per stratum: a segment fixed at assignment (signup platform).
         period:
-            Repeat per calendar unit of the first event: "D", "W" or "M".
+            Repeat per calendar unit of assigned_at (or the first event): "D",
+            "W" or "M".
         local_preprocessors:
             One-off preprocessing. Never filter on behaviour before an SRM
             check: on such a subset a share difference is an effect, not a bug.
@@ -634,7 +671,7 @@ def _build_server(
         Returns
         -------
         JSON with mismatch, p_value, chi2, dof, multi_valued_paths (assignment
-        bug when > 0), unassigned_paths, basis, reading (one sentence: expected vs
+        bug when > 0), silent_paths, unassigned_paths, basis, reading (one sentence: expected vs
         observed split, p and the conclusion; quote it), levels (paths, share,
         expected_share per arm) and, with strata_col, strata (per stratum: paths,
         p_value, p_value_adjusted by Holm across strata, mismatch), with period,
@@ -664,6 +701,10 @@ def _build_server(
         path_col: str | None = None,
         strata_pre_exposure: bool | None = None,
         local_preprocessors: list | None = None,
+        horizon: str | None = None,
+        period_basis: str = "calendar",
+        test: str = "auto",
+        correction_scope: str = "metric",
     ) -> str:
         """
         Compare two arms of an experiment on path metrics: delta, interval, verdict, MDE.
@@ -671,30 +712,46 @@ def _build_server(
         Run get_sample_ratio first. Numbers only, no report tab: quote in backticks.
         "inconclusive" is NOT "no effect": quote the row's reading (what the
         interval allows, what the design detects, how many more paths a smaller
-        effect needs) and propose a next step; the mde is not a bound on the effect. Population: stream paths (users with >= 1 event) by
-        the segment in diff, whole window; silent assigned users are not counted
-        and there is no horizon. An ITT analysis over an assignment table
-        (assignment=) is not available through MCP, only in the Python API.
+        effect needs) and propose a next step; the mde is not a bound on the
+        effect. Population (`population`): with the session's assignment table
+        (serve(stream, assignment=...)) every assigned user, silent ones included;
+        without one the stream paths (users with >= 1 event) by the segment in
+        diff, so silent assigned users are not counted. Metrics are not corrected
+        against each other (correction_scope="metric"): name one decision metric.
 
         Parameters
         ----------
         diff:
-            ["segment_col", "group1", "group2"]; delta = group1 - group2. The
-            segment must be constant per path; path_col must be the randomised unit.
+            ["segment_col", "group1", "group2"] (three elements); delta = group1 -
+            group2. With an assignment table diff[0] may be "arm". The segment must
+            be constant per path; path_col must be the randomised unit.
         metrics:
             Registry metric configs (one number per path) with optional "name" and
-            "denominator" (ratio of sums, e.g. revenue / orders).
+            "denominator" (ratio of sums, e.g. revenue / orders); arguments under
+            "metric_args". describe_tool("metrics") lists the registry.
         strata_col:
             A per-path segment fixed BEFORE exposure: adds the top 3 strata by
             |delta| per metric (strata_selection labels it; adjusted with
             `correction`), stratum_vs_rest_p_value and a heterogeneity p-value;
             strata_pre_exposure / exploratory flag post-exposure strata.
         period:
-            "D", "W", "M", "Q" or "7D": adds ITT rows per calendar period.
+            "D", "W", "M", "Q" or "7D": adds ITT rows per period.
+        period_basis:
+            "calendar" (default) or "since_assignment" (days since assigned_at,
+            needs the assignment table; period a fixed length such as "7D").
         period_population:
             "itt" (default) or "active" (survivors only; descriptive, no p).
+        horizon:
+            e.g. "28D": only each user's first 28 days count; users not observed
+            that long are left out (needs the assignment table's assigned_at).
+            Different horizons answer different questions: choose before reading.
+        test:
+            "auto" (default), "z_test", "welch_t_test" or "bootstrap".
         correction:
-            "holm" (default), "bonferroni", "bh" or "none", within one metric's rows.
+            "holm" (default), "bonferroni", "bh" or "none".
+        correction_scope:
+            "metric" (default: within one metric's rows) or "all" (every row of
+            every metric in one family).
         ci_level:
             Interval level, default 0.95.
         path_col:
@@ -707,18 +764,21 @@ def _build_server(
 
         Returns
         -------
-        JSON with unassigned_paths (stream paths in neither group of diff) and
-        metrics: per metric group sizes and values,
-        delta with delta_ci_low / delta_ci_high, rel_delta, p_value, mde (effect
-        detected with 80% power at mde_alpha), verdict (increase, decrease,
-        inconclusive, descriptive, insufficient_data), test, correction_family,
-        mde_alpha, support_warning, reading (one sentence per row, from its
-        numbers, naming the window it covers; also on strata and periods rows),
-        unit ("pp" or "value": the unit reading quotes; strata and periods rows
-        carry p_value too); warnings; strata (top 3), strata_selection,
-        heterogeneity_p_value, strata_correction_family, strata_pre_exposure,
-        strata_pre_exposure_source and exploratory with strata_col; periods and
-        periods_correction_family with period.
+        JSON with population, unassigned_paths (stream paths in neither group of
+        diff) and metrics: per metric population, group sizes, group1_support /
+        group2_support and conditional (a metric defined only for some paths
+        compares those paths), values, delta with delta_ci_low / delta_ci_high,
+        rel_delta, p_value (raw), p_value_adjusted, mde (effect detected with 80%
+        power at mde_alpha), verdict (increase, decrease, inconclusive,
+        descriptive, insufficient_data), test, correction_family, mde_alpha,
+        support_warning, reading (one sentence per row, from its numbers, naming
+        the window it covers; also on strata and periods rows), unit ("pp" or
+        "value": the unit reading quotes) and scope (what the row is corrected
+        against; strata/period intervals are unadjusted; on every row); warnings;
+        strata (top 3), strata_selection, heterogeneity_p_value,
+        strata_correction_family, strata_pre_exposure, strata_pre_exposure_source
+        and exploratory with strata_col; periods and periods_correction_family
+        with period; immature_paths with horizon.
         """
         result = tools.get_ab_test(
             session,
@@ -731,6 +791,75 @@ def _build_server(
             ci_level,
             path_col,
             strata_pre_exposure,
+            local_preprocessors,
+            horizon,
+            period_basis,
+            test,
+            correction_scope,
+        )
+        return json.dumps(result, ensure_ascii=False, allow_nan=False)
+
+    @_tool()
+    def get_ab_bootstrap(
+        diff: list,
+        metrics: list,
+        period: str,
+        contrast: dict,
+        period_basis: str = "calendar",
+        horizon: str | None = None,
+        strata_col: str | None = None,
+        strata_pre_exposure: bool | None = None,
+        ci_level: float = 0.95,
+        n_bootstrap: int = 1000,
+        path_col: str | None = None,
+        local_preprocessors: list | None = None,
+    ) -> str:
+        """
+        Contrast an A/B effect between periods with a joint bootstrap interval (novelty).
+
+        "Is the early effect larger than the late one?" in one interval: every
+        period is evaluated on the same resampled users, both sides on the users
+        observed in all contrasted periods. Numbers only, no report tab: quote in
+        backticks.
+
+        Parameters
+        ----------
+        diff, metrics, path_col, local_preprocessors, horizon, strata_col,
+        strata_pre_exposure:
+            As in get_ab_test.
+        period:
+            The bins the contrast names: "14D" with period_basis="since_assignment"
+            gives "0-13", "14-27", ...; or a calendar unit ("W").
+        period_basis:
+            "calendar" (default) or "since_assignment" (needs the assignment table).
+        contrast:
+            {"name": [periods_a, periods_b]}, e.g. {"novelty": [["0-13"], ["28-41"]]}.
+        ci_level:
+            Level of the percentile interval (default 0.95).
+        n_bootstrap:
+            Replicates (default 1000, at least 100).
+
+        Returns
+        -------
+        JSON with population, n_bootstrap, warnings and rows: per metric (and
+        stratum) and contrast, group1_value / group2_value (each arm's change
+        between the sides), delta with delta_ci_low / delta_ci_high (percentile,
+        unadjusted), p_value (bootstrap SE, unadjusted), share_positive (share of
+        replicates with delta > 0, not a p-value), valid_replicates and unit.
+        """
+        result = tools.get_ab_bootstrap(
+            session,
+            diff,
+            metrics,
+            period,
+            contrast,
+            period_basis,
+            horizon,
+            strata_col,
+            strata_pre_exposure,
+            ci_level,
+            n_bootstrap,
+            path_col,
             local_preprocessors,
         )
         return json.dumps(result, ensure_ascii=False, allow_nan=False)
@@ -765,8 +894,11 @@ def _build_server(
         path: str | None = None,
     ) -> str:
         """
-        Generate the HTML report with all widgets added via add_transition_graph /
-        add_step_matrix. Resets the pending widget list afterwards.
+        Generate the HTML report with all widgets added via the add_* tools
+        (add_transition_graph, add_step_matrix, add_segment_overview, add_ab_test).
+        Needs at least one tab: numbers-only tools (get_ab_test, get_sample_ratio,
+        get_conversion_rate) register none, so an A/B analysis adds its scorecard
+        with add_ab_test. Resets the pending widget list afterwards.
 
         Parameters
         ----------
@@ -788,7 +920,12 @@ def _build_server(
         if not session.pending_tabs:
             return json.dumps(
                 {
-                    "error": "No widgets added. Call add_transition_graph or add_step_matrix first."
+                    "error": (
+                        "No widgets added. Call an add_* tool first "
+                        "(add_transition_graph, add_step_matrix, add_segment_overview, "
+                        "or add_ab_test for an A/B analysis whose numbers came from "
+                        "numbers-only tools)."
+                    )
                 }
             )
         return json.dumps(session.export(title, analysis, path))

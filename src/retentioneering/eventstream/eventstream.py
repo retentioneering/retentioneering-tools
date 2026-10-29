@@ -2135,6 +2135,152 @@ class Eventstream:
             state_file=state_file,
         )
 
+    @_tracked("headless_experiment")
+    def experiment_data(
+        self,
+        *,
+        assignments,
+        metrics,
+        observation,
+        variant_col="exp_group",
+        control="control",
+        treatment="treatment",
+        unit_col=None,
+        bootstrap=None,
+        funnel_steps=None,
+        expected_allocation=None,
+        tests=None,
+        event_catalog=None,
+        binary_intervals=None,
+    ) -> dict:
+        """Estimate fixed-window experiment outcomes from a complete assignment roster.
+
+        Assignments define the population, including units without events.
+        Supported outcomes are unit-level means and explicit ratios; bootstrap
+        draws whole independent units within each assigned arm. Source history
+        before assignment is allowed; only events in [start, end) contribute.
+
+        Parameters
+        ----------
+        assignments : pandas.DataFrame
+            One row per independent unit, with its ID, variant and assignment time.
+        metrics : list of dict
+            Named scalar path metric configurations with explicit aggregation:
+            mean, ratio_of_sums, or mean_of_ratios with eligibility. Optional
+            display metadata labels measurement units without changing estimates;
+            effect_unit labels absolute differences separately (percent uses pp).
+        observation : dict
+            start, end, assignment_time_col and complete=True. All assignments
+            must precede or equal start. Complete logging is an explicit input
+            assertion, not inferred from each unit's last event.
+        variant_col : str, default 'exp_group'
+            Assignment variant column.
+        control, treatment : scalar
+            Distinct assigned variants; effects are treatment minus control.
+        unit_col : str, optional
+            Independent assignment/resampling unit in schema.path_cols.
+        bootstrap : dict, optional
+            Percentile method, n_resamples, confidence_level, random_state and
+            batch_size. None disables bootstrap; the resolved seed is exported.
+        funnel_steps : list of str, optional
+            Ordered within-window steps. Cumulative reach uses all assignments;
+            conditional transitions use the preceding reached-step population.
+        expected_allocation : float, optional
+            Expected treatment probability for an independent-Bernoulli SRM check.
+        tests : dict, optional
+            Explicit methods mapping outcome names to fisher_exact or welch,
+            with adjustment='holm'. Tests and intervals are separate procedures.
+        event_catalog : dict, optional
+            Declared event names per column, supplementing observed values, for
+            known outcomes that have zero occurrences in the complete source.
+        binary_intervals : dict, optional
+            Explicit method='newcombe' and confidence_level for independent
+            binary outcomes. Wilson marginal intervals and Newcombe differences;
+            no implicit substitution for a requested percentile bootstrap.
+
+        Returns
+        -------
+        dict
+            Versioned aggregate summary, population diagnostics and resolved
+            metadata. Intervals are pointwise. Unavailable results carry explicit
+            statuses. User IDs and raw bootstrap draws are not exported.
+        """
+        from retentioneering.tools.experiment import experiment_data
+
+        return experiment_data(
+            self,
+            assignments=assignments,
+            metrics=metrics,
+            observation=observation,
+            variant_col=variant_col,
+            control=control,
+            treatment=treatment,
+            unit_col=unit_col,
+            bootstrap=bootstrap,
+            funnel_steps=funnel_steps,
+            expected_allocation=expected_allocation,
+            tests=tests,
+            event_catalog=event_catalog,
+            binary_intervals=binary_intervals,
+        ).to_dict()
+
+    @_tracked("widget_experiment")
+    def experiment(
+        self,
+        *,
+        assignments,
+        metrics,
+        observation,
+        variant_col="exp_group",
+        control="control",
+        treatment="treatment",
+        unit_col=None,
+        bootstrap=None,
+        funnel_steps=None,
+        expected_allocation=None,
+        tests=None,
+        event_catalog=None,
+        binary_intervals=None,
+        height=650,
+        sidebar_open=True,
+    ):
+        """Display a calculated experiment scorecard and funnel in Jupyter.
+
+        All data parameters match experiment_data; see that method for population,
+        outcome and inference semantics. This first view shows a fixed computed
+        result. It does not restore an assignment roster from a saved widget state.
+
+        Parameters
+        ----------
+        assignments, metrics, observation, variant_col, control, treatment, unit_col,
+        bootstrap, funnel_steps, expected_allocation, tests, event_catalog, binary_intervals
+            Identical to experiment_data.
+        height : int, default 650
+            Display height in pixels.
+        sidebar_open : bool, default True
+            Whether diagnostic details start expanded.
+        """
+        from retentioneering.widgets.experiment import ExperimentWidget
+
+        return ExperimentWidget(
+            self,
+            assignments=assignments,
+            metrics=metrics,
+            observation=observation,
+            variant_col=variant_col,
+            control=control,
+            treatment=treatment,
+            unit_col=unit_col,
+            bootstrap=bootstrap,
+            funnel_steps=funnel_steps,
+            expected_allocation=expected_allocation,
+            tests=tests,
+            event_catalog=event_catalog,
+            binary_intervals=binary_intervals,
+            height=height,
+            sidebar_open=sidebar_open,
+        )
+
     @_tracked("widget_funnel")
     def funnel(
         self,

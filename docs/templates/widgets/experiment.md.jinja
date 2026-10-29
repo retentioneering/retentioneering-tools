@@ -1,0 +1,23 @@
+{% extends "_widget_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+The assignment roster defines the experiment population. A unit with no events
+in the outcome window remains in the denominator of supported mean outcomes.
+The same calculation supplies the headless result and this fixed result view;
+changing a display tab or height never draws another bootstrap sample.
+
+The effect direction is treatment minus control. Cumulative ordered reach is a
+binary outcome over all assignments. Conditional transitions use the previous
+reached-step population, which can itself be changed by treatment.
+
+Intervals carry their method and availability status. Percentile bootstrap draws
+whole independent units inside their assigned arm. Explicit Newcombe binary
+intervals use Wilson arm intervals; there is no hidden method substitution.
+All intervals in this version are pointwise.
+
+See [Experiments](/docs/experiments) for population, observation, metric and
+inference contracts, and the end-to-end tutorial. This initial widget displays a
+calculated snapshot; assignment-table state restoration is not implemented.
+{% endblock %}

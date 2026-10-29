@@ -1,10 +1,7 @@
 from dataclasses import dataclass
 
-from retentioneering import engine
-from retentioneering.engine.dialect import event_position
 from retentioneering.exceptions import InvalidParameterError
 from retentioneering.tools.types import T_Diff
-from retentioneering.utils.sql_quoting import quote_literal
 
 if False:
     from retentioneering.eventstream.eventstream import Eventstream  # noqa: F401
@@ -35,8 +32,8 @@ class Funnel:
             return self._fit_single(steps, path_col)
         else:
             stream1, stream2 = self.eventstream._split_two(diff, path_col=path_col)
-            f1 = Funnel(stream1)._fit_single(steps, path_col)
-            f2 = Funnel(stream2)._fit_single(steps, path_col)
+            f1 = Funnel(stream1)._fit_single(steps, path_col, self.eventstream)
+            f2 = Funnel(stream2)._fit_single(steps, path_col, self.eventstream)
 
             combined = []
             for i, step in enumerate(steps):
@@ -59,68 +56,21 @@ class Funnel:
                 )
             return {"steps": combined}
 
-    def _fit_single(self, steps: list[str], path_col: str) -> dict:
-        event_col = self.eventstream.schema.event_col
-        index_col = self.eventstream.schema.index
-
+    def _fit_single(self, steps: list[str], path_col: str, source_stream=None) -> dict:
         if not steps:
             return {"steps": []}
+        from retentioneering.paths.ordered_reach import ordered_reach_counts
 
-        df = self.eventstream.df
-        total_paths = int(df[path_col].nunique())
-        path_col_q = engine.quote_ident(path_col)
-        event_col_q = engine.quote_ident(event_col)
-        index_col_q = engine.quote_ident(index_col)
-        subindex_col_q = engine.quote_ident(self.eventstream.schema.subindex)
-        position = event_position(index_col_q, subindex_col_q)
-        joined_position = event_position(f"df.{index_col_q}", f"df.{subindex_col_q}")
-
-        # Sequential funnel semantics: a path reaches step k iff there
-        # exist positions p1 < p2 < ... < pk with event(p_j) = steps[j].
-        # A position is (index, subindex): synthetic markers can share their
-        # source event's index, but still precede it in the stream's order.
-        # Chained CTEs: step_k holds, per path, the earliest occurrence of
-        # steps[k-1] that comes strictly after the path's step_{k-1} match.
-        # This correctly handles repeated events and duplicate step names.
-        #
-        # path_cols is validated (coarsest-first, strictly nested) at
-        # Eventstream construction time, and path_col is restricted to
-        # schema.path_cols above, so comparing full event positions is
-        # correct at any accepted grain (see ADR-0004).
-        ctes = []
-        for step_num, step_event in enumerate(steps, start=1):
-            ev = quote_literal(step_event)
-            if step_num == 1:
-                ctes.append(
-                    f"step_1 AS ("
-                    f"SELECT {path_col_q} AS path_id, MIN({position}) AS idx "
-                    f"FROM df "
-                    f"WHERE {event_col_q} = {ev} "
-                    f"GROUP BY {path_col_q}"
-                    f")"
-                )
-            else:
-                prev = f"step_{step_num - 1}"
-                ctes.append(
-                    f"step_{step_num} AS ("
-                    f"SELECT df.{path_col_q} AS path_id, MIN({joined_position}) AS idx "
-                    f"FROM df "
-                    f"JOIN {prev} ON df.{path_col_q} = {prev}.path_id "
-                    f"WHERE df.{event_col_q} = {ev} AND {joined_position} > {prev}.idx "
-                    f"GROUP BY df.{path_col_q}"
-                    f")"
-                )
-        counts = ", ".join(
-            f"(SELECT COUNT(*) FROM step_{i}) AS count_{i}"
-            for i in range(1, len(steps) + 1)
+        total_paths = int(self.eventstream.df[path_col].nunique())
+        source = self.eventstream if source_stream is None else source_stream
+        counts = ordered_reach_counts(
+            source, steps, path_col=path_col, frame=self.eventstream.df
         )
-        query = f"WITH {', '.join(ctes)} SELECT {counts}"
-        row = engine.run(query, df=df).iloc[0]
 
         funnel_data = []
         prev_count = None
         for step_num, step_event in enumerate(steps, start=1):
-            count = int(row[f"count_{step_num}"])
+            count = int(counts[f"reach_{step_num}"])
             conversion_rate = count / total_paths if total_paths > 0 else 0.0
             step_conversion_rate = (
                 conversion_rate

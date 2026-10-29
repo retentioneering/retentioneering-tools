@@ -5,7 +5,30 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added
+
+- Assignment-aware `experiment_data` and `experiment` for fixed-window, two-arm
+  outcomes, including silent assigned units, native behavioral patterns, means
+  and explicit ratios, unit bootstrap, declared Fisher/Welch tests and Holm.
+- Explicit Wilson/Newcombe binary intervals, pointwise uncertainty diagnostics,
+  and a native result view showing denominators, methods and unavailable states.
+- Shared `event_value_sum` path metric for numeric values on matching events.
+
 ### Fixed
+
+- Experiment degeneracy checks use observed contributions, including constant
+  decimal amounts; Welch calculations handle extreme measurement scales and
+  report numerical failures explicitly.
+- Categorical assignment labels work when an entire arm is silent. Percentage
+  ratios distinguish absolute percentage-point changes from relative percent.
+- Ordinary funnels aggregate shared ordered-reach logic inside SQL, avoiding
+  per-path result materialization when uncertainty is not requested.
+- Tutorial figures preserve unavailable intervals and points; the Lumeo loader,
+  rebuild instructions and generated provenance match the included fixture.
+- Experiment Wilson intervals now include the exact 0/1 endpoints for zero/all
+  successes; floating-point cancellation could previously exclude a true
+  boundary probability. An independent, opt-in coverage audit documents
+  finite-sample limitations separately from this numerical correction.
 
 - `time_median` and `time_q95` edge weights in `transition_graph` and
   `transition_graph_data` measure the exact gap between events instead of

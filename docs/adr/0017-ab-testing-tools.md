@@ -24,9 +24,11 @@ below are the answers.
 ## Decision
 
 **D1 — names.** The scorecard is `Eventstream.get_ab_test`, the replicate
-table `get_ab_bootstrap`, the SRM check `get_sample_ratio`: getters, like
-`get_conversion_rate`, documented by hand in the Eventstream guide and rendered
-in a Tools reference section. A `*_data` name is reserved for the headless twin
+table `get_ab_bootstrap`, the per-path table behind the scorecard
+`get_ab_paths`, the SRM check `get_sample_ratio`: getters, like
+`get_conversion_rate`, whose reference pages are rendered from their docstrings
+in a Tools reference section (ADR-0013), with a short section each in the
+Eventstream guide. A `*_data` name is reserved for the headless twin
 of a widget (ADR-0006); when an `ab_test` widget ships, `ab_test_data` becomes
 its twin and an alias of `get_ab_test`.
 
@@ -53,24 +55,36 @@ announced behaviour change. An `assignment=` table (path id → arm, optionally
 `assigned_at`) defines the intention-to-treat population: silent paths count as
 zeros, events before assignment are dropped, and a path grain finer than the
 table's unit is refused, because per-session intervals of a per-user experiment
-are too narrow (Deng et al. 2018).
+are too narrow (Deng et al. 2018). Without a table the segment form of `diff`
+gets the same guard: when the arm is constant within at least 99 % of the paths
+of a coarser path column that hold several finer paths (and at least 10 such
+paths), the finer `path_col` raises `InvalidParameterError`, and from 90 % it
+warns; a share rather than "every user", so that a few users carrying both arms
+do not switch the guard off. `get_ab_test`, `get_ab_bootstrap`,
+`get_sample_ratio`, `funnel(ci_level=)` and `get_conversion_rate(diff=)` apply
+it.
 
 **D5 — periods.** `period=` rows are intention-to-treat per period by default:
 every path assigned by the period's end is in the period, active or not.
 `period_population="active"` rows compare survivors and are labelled
 `descriptive`, without a p-value. `period_basis="since_assignment"` bins events
 by time since each path's assignment and keeps a path in a bin only when the
-bin's window closed before the data ends (`immature_paths`), which is how a
-novelty effect is measured: as a contrast of since-assignment windows in
+bin's window closed before the data ends (`immature_paths`), which is how an
+effect that changes with exposure age (novelty, for one) is measured: as a
+contrast of since-assignment windows in
 `get_ab_bootstrap(contrast=...)`, with a joint interval. `horizon=` gives every
 path the same observation window.
 
 **D6 — multiplicity and the verdict.** The family is the set of rows of one
 metric (its strata and periods); metrics are separate families by default
 (`correction_scope="metric"`), and `correction_scope="all"` makes every row of
-the call one family, for a set of guardrails read together. The docs ask for one
-decision metric declared in advance instead of a correction across a whole
-scorecard. `correction` is
+the call one family, for a scorecard read without one decision metric. The docs
+ask for one decision metric declared in advance instead of a correction across a
+whole scorecard, and for guardrails read each on its own against a harm margin
+declared before the test: correcting guardrails together raises each one's bar
+for `decrease` and makes harm harder to detect (Spotify's risk-aware decision
+rule corrects the decision metrics, not the guardrails). A margin-based verdict
+is deferred; until then the docs compare the interval with the margin. `correction` is
 Holm by default, Bonferroni (which adds simultaneous intervals), Benjamini–
 Hochberg for many exploratory rows, or none; `correction_family` names what was
 corrected together. The `verdict` (`increase` / `decrease` / `inconclusive` /
@@ -96,15 +110,21 @@ any other stratum warns and is flagged `strata_pre_exposure=False`. The library
 has no notion of an exposure marker: `"recipe"` means that a truncation that
 ends paths at an event preceded the labels, and the library cannot verify that
 it ends at exposure, so the docs ask the analyst to declare a cut the analysis
-relies on. Permutation tests are not part of the scorecard.
+relies on. Permutation tests are not part of the scorecard. Every row carries a
+`reading`, one sentence built from the row's own numbers for people and agents
+who quote it: its window first, the per-comparison interval, the p-value after
+the correction, the design's `mde` with the paths a new test would need, then
+the row's flags; a row with a validity flag does not claim that effects outside
+its interval are unlikely, and the sentence does not check the sample ratio or
+the unit.
 
 **D8 — funnel intervals.** `funnel(ci_level=, correction=)` adds Wilson
 intervals per step and, in diff mode, Newcombe intervals and pooled-z p-values
 of the overall-rate deltas with an optional correction over steps. Conditional
 step deltas get intervals but no p-value and are never coloured: their
 denominator is a post-exposure subset. The widget draws whiskers and colours a
-delta only when its interval excludes 0; NaN reaches the browser as `null` in
-every widget. The relative delta's base is group 2.
+delta only when its interval excludes 0 and, under a correction, its adjusted
+p-value is below alpha; NaN reaches the browser as `null` in every widget. The relative delta's base is group 2.
 
 Common rules: an absent estimate is NaN, never 0; `inconclusive` is never
 spelled "no effect"; the unit of resampling is `path_col`; `tools/_stats.py`
@@ -113,8 +133,10 @@ and `tools/_bootstrap.py` are pure functions without an `Eventstream`.
 ## Consequences
 
 - Users get an experiment readout without leaving the library, and the same
-  numbers through the MCP server (`get_ab_test`, `get_sample_ratio`,
-  `get_conversion_rate` return numbers only, no report tab).
+  numbers through the MCP server: `get_ab_test`, `get_ab_bootstrap`,
+  `get_sample_ratio` and `get_conversion_rate` return numbers only, and
+  `add_ab_test` registers the scorecard as a report tab (the `ab_test`
+  widget).
 - Two `diff` semantics coexist until the widgets migrate: event-level in the
   descriptive widgets, path-level in the inferential tools. The docs say which
   is which.

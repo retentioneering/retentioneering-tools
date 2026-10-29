@@ -114,6 +114,11 @@ class TestGetMetricsName:
         stream = _stream()
         with pytest.raises(InvalidMetricConfigError, match="duplicate"):
             stream.get_metrics([{"name": "a", "metric": "length"}] * 2)
+        # m6: a name that repeats another metric's column name
+        with pytest.raises(InvalidMetricConfigError, match="duplicate output"):
+            stream.get_metrics(
+                [{"name": "length", "metric": "duration"}, {"metric": "length"}]
+            )
         with pytest.raises(InvalidMetricConfigError, match="single column"):
             stream.get_metrics(
                 [{"name": "flags", "metric": "has_event_bulk", "metric_args": {}}]

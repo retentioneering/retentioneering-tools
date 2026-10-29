@@ -79,6 +79,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   strata by effect size and period rows) and an A/B scenario in its playbook.
 - Docs: a Tools reference section (`get_ab_test`, `get_ab_bootstrap`,
   `get_sample_ratio`) rendered from the docstrings and listed in `llms.txt`.
+- Docs: an A/B Testing guide (`docs/guide/ab-testing.md`) — the unit, the
+  intention-to-treat population, `diff` and the metrics; a worked example on
+  `load_ab_test()` with real outputs; how to read the scorecard (verdict, `mde`,
+  correction family, strata flags); funnels with intervals and why
+  step-to-step rates are descriptive; horizon, since-assignment periods and
+  novelty; blind pre-exposure clusters as strata; sample ratio checks with
+  `by=`; and eight pitfalls with sources. It has a live funnel demo on the A/B
+  dataset, a row in Path Analysis's question table, an "A/B tests" section in
+  the README and a note in Agent Skills.
 
 ### Changed
 

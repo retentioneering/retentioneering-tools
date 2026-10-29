@@ -33,6 +33,10 @@ There are two ways to give an agent access to a skill:
   install — useful when you're developing against an unreleased change or want the skill
   and the library code to always match exactly.
 
+## A/B tests
+
+The skills do not have an experiment workflow yet. When you ask an agent to read an A/B test, point it at the [A/B Testing](/docs/ab-testing) guide: it should check the sample ratio first (`get_sample_ratio`), use the assignment table as the population and the randomised unit as `path_col`, declare the metrics before running `get_ab_test`, report `inconclusive` rows with their interval and `mde` rather than as "no effect", and treat anything split by post-exposure behaviour as descriptive. The [MCP server](/docs/mcp-server)'s playbook already carries the same rules for its `get_sample_ratio` and `get_ab_test` tools.
+
 ## Contributing to the skills
 
 Skills are versioned alongside the library and welcome the same kind of contributions as the code — see [Contributing](https://github.com/retentioneering/retentioneering-tools/blob/master/CONTRIBUTING.md). If you change the public API, the product-analytics skill's `references/api-map.md` is version-verified against the checkout and should be re-checked; update both `.claude/skills/` and `.agents/skills/` copies together.

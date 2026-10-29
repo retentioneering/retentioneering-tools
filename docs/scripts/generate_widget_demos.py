@@ -23,6 +23,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from retentioneering.datasets.ab_test import load_ab_test
 from retentioneering.datasets.ecom import load_ecom
 from retentioneering.eventstream import Eventstream
 
@@ -157,7 +158,11 @@ def build_toy_stream() -> Eventstream:
 # Pages whose <DemoWidget> tags run against something other than the bundled
 # ecom dataset. Inside a page, `stream` always means whatever that page's own
 # text means by it.
-STREAM_BUILDERS = {GUIDE_DIR / "path-analysis.md": build_toy_stream}
+STREAM_BUILDERS = {
+    GUIDE_DIR / "path-analysis.md": build_toy_stream,
+    # the A/B guide's worked example runs on the synthetic experiment dataset
+    GUIDE_DIR / "ab-testing.md": load_ab_test,
+}
 
 
 def main() -> None:

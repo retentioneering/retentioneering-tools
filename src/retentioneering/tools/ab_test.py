@@ -87,6 +87,7 @@ __all__ = [
     "PERIOD_POPULATIONS",
     "BOOTSTRAP_WEIGHTS",
     "row_reading",
+    "ab_paths",
 ]
 
 TESTS = ("auto", "z_test", "welch_t_test", "bootstrap")
@@ -1358,6 +1359,8 @@ class ABTest:
     period_basis: str = "calendar"
     period: Any = None
     horizon: pd.Timedelta | None = None
+    #: The prepared assignment table (ids matched to the stream), or None.
+    assignment_table: pd.DataFrame | None = field(default=None, repr=False)
     _replicates_cache: dict = field(default_factory=dict, repr=False)
 
     # ------------------------------------------------------------------ factory
@@ -1543,6 +1546,7 @@ class ABTest:
             period_basis=period_basis if period is not None else "calendar",
             period=period,
             horizon=None if horizon is None else _fixed_length(horizon, "horizon"),
+            assignment_table=table,
         )
 
     # ------------------------------------------------------------------ public
@@ -1631,6 +1635,42 @@ class ABTest:
             out = pd.concat([out, extra], ignore_index=True)
         columns = [c for c in BOOTSTRAP_COLUMNS if c in out.columns]
         return out[columns]
+
+    def paths(self) -> pd.DataFrame:
+        """The per-path table behind the scorecard (see :func:`ab_paths`)."""
+        matrix = self.matrix
+        groups = self.groups
+        path_col = matrix.path_ids.name
+        ids = _sorted_ids(groups.ids1.append(groups.ids2))
+        out = pd.DataFrame(index=ids)
+        out["arm"] = np.where(ids.isin(groups.ids1), groups.label1, groups.label2)
+        table = self.assignment_table
+        if table is not None and "assigned_at" in table.columns:
+            out["assigned_at"] = table["assigned_at"].reindex(ids)
+        position = matrix.path_ids.get_indexer(ids)
+        mature = position >= 0
+        silent = np.zeros(len(ids), dtype=bool)
+        silent[mature] = ~matrix.has_events[position[mature]]
+        out["silent"] = pd.array(np.where(mature, silent, None), dtype="boolean")
+        out["mature"] = mature
+        for spec in self.specs:
+            num, den = matrix.values[spec.name]
+            columns = (
+                [(f"{spec.name}_numerator", num), (f"{spec.name}_denominator", den)]
+                if spec.kind == "ratio"
+                else [(spec.name, num)]
+            )
+            for column, values in columns:
+                if column in out.columns:
+                    raise InvalidMetricConfigError(
+                        f"metric {spec.name!r}: column {column!r} is taken; rename "
+                        "the metric"
+                    )
+                full = np.full(len(ids), np.nan)
+                full[mature] = values[position[mature], 0]
+                out[column] = full
+        out.index.name = path_col or self.matrix.path_ids.name
+        return out
 
     # ------------------------------------------------------------------ bootstrap
     def _run_bootstrap(self, num, den, n_boot) -> BootstrapResult:
@@ -2171,6 +2211,30 @@ class ABTest:
         ]
         present = [c for c in COLUMNS if c in rows.columns]
         return rows[present].reset_index(drop=True)
+
+
+def ab_paths(
+    stream: "Eventstream",
+    diff: Any,
+    metrics: list[dict[str, Any]],
+    *,
+    assignment: pd.Series | pd.DataFrame | None = None,
+    horizon: Any | None = None,
+    path_col: str | None = None,
+) -> pd.DataFrame:
+    """One row per compared path with every metric's per-path value; the table
+    ``get_ab_test`` aggregates (see ``Eventstream.get_ab_paths``)."""
+    test = ABTest.from_stream(
+        stream,
+        diff,
+        metrics,
+        assignment=assignment,
+        horizon=horizon,
+        path_col=path_col,
+    )
+    out = test.paths()
+    out.index.name = path_col or stream.schema.path_col
+    return out
 
 
 # ======================================================================= reading

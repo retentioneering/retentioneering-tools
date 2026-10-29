@@ -7,12 +7,27 @@ The two arms are sets of paths: `diff` is resolved per path, and a path that
 would fall in both arms raises an error instead of being counted twice. With an
 `assignment` table the population is intention-to-treat — every assigned path,
 including those with no events (they count as zeros), with events before
-`assigned_at` dropped.
+`assigned_at` dropped. Without it the population is the stream's paths, each
+with at least one event. The `population` column says which (`"assignment"` or
+`"stream"`), so a funnel's rate on the stream can be told apart from the ITT
+rate. A metric that has a value only for some paths (`time_between`,
+`column_mean`, a ratio such as order value) compares those paths, not the whole
+arms: `group1_support` / `group2_support` count them and `conditional` flags
+the row.
+
+The path grain must be the randomised unit. A table indexed by a coarser or a
+finer path column than `path_col` raises, and so does a `diff` segment that is
+constant within every user when `path_col` is a session: per-session intervals
+of a per-user experiment are too narrow.
 
 The test follows the metric: a pooled z-test with Wilson and Newcombe intervals
 for 0/1 metrics, Welch's t-test for per-path totals and values, and a joint
 path bootstrap for ratio metrics (an entry with a `denominator`). The
 `verdict` reads only the adjusted p-value; the interval is per comparison. The
+correction runs within each metric's rows (`correction_scope="metric"`): metrics
+are not corrected against each other, so name one decision metric before the
+test, or pass `correction_scope="all"` to correct every row of every metric
+together (a declared set of guardrails). The
 [A/B Testing guide](/docs/ab-testing) is a walk-through on the bundled synthetic
 experiment, `load_ab_test()`.
 
@@ -51,10 +66,15 @@ number.
 
 Then the row's flags, when set: `exploratory: strata not pre-exposure (declare
 strata_pre_exposure=True if they are)`, `window not complete` for a period whose
-window the data does not cover, and the `support_warning`. With several metrics
-and no strata or periods, each row ends with `corrected within this metric only;
-name one decision metric`: the correction never spans metrics, so a decision
-needs one metric named before the test. With `correction="bonferroni"` the
+window the data does not cover, `conditional: a value for 812 of 4960 and 790 of
+5040 paths; compares those paths, not the whole arms`, and the `support_warning`
+(`low support: coverage below nominal (under 30 supporting paths in an arm)` on
+bootstrap rows, whose verdict stays). With several metrics and no strata or
+periods, each row ends with `corrected within this metric only; name one
+decision metric`: by default the correction does not span metrics, so a decision
+needs one metric named before the test (`corrected across all 3 metrics` with
+`correction_scope="all"`). A value or ratio metric with no value in one arm
+reads `no value in group1: ...` and is `insufficient_data`. With `correction="bonferroni"` the
 sentence quotes the simultaneous interval. Since-assignment bins whose window
 closes after the end of data for every path have no population in either arm
 and are left out.
@@ -69,6 +89,10 @@ and are left out.
 ### correction
 
 {{ bullets(doc.parameters, "correction") }}
+
+### correction_scope
+
+{{ bullets(doc.parameters, "correction_scope") }}
 
 ### period_basis
 

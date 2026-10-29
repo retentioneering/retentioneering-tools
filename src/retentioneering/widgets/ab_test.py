@@ -213,9 +213,14 @@ class ABTestWidget(RetentioneeringWidget):
         except Exception:
             self.event_list = "[]"
         try:
-            self.segment_levels = json.dumps(eventstream.get_segment_levels())
+            levels = dict(eventstream.get_segment_levels())
         except Exception:
-            self.segment_levels = "{}"
+            levels = {}
+        arms = _assignment_arms(assignment)
+        if arms is not None and "arm" not in (schema.segment_cols or []):
+            # the table-only form diff=("arm", ...): the sidebar lists its arms
+            levels["arm"] = arms
+        self.segment_levels = json.dumps(levels, default=str)
         self.segment_cols = json.dumps(list(schema.segment_cols or []))
         self.path_cols = json.dumps(list(schema.path_cols))
         self.custom_cols = _custom_columns_catalogue(eventstream)
@@ -440,6 +445,18 @@ class ABTestWidget(RetentioneeringWidget):
             sidebar_open if sidebar_open is not None else self.sidebar_open
         )
         return data
+
+
+def _assignment_arms(assignment) -> list | None:
+    """The arms of an assignment table (a Series of arms or a DataFrame with an
+    `arm` column), or None."""
+    if isinstance(assignment, pd.Series):
+        values = assignment
+    elif isinstance(assignment, pd.DataFrame) and "arm" in assignment.columns:
+        values = assignment["arm"]
+    else:
+        return None
+    return sorted(pd.unique(values.dropna()).tolist(), key=str)
 
 
 def _assignment_info(assignment) -> str:

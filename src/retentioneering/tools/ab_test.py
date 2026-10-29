@@ -1568,7 +1568,8 @@ class ABTest:
     # ------------------------------------------------------------------ public
     @property
     def alpha(self) -> float:
-        return 1.0 - self.ci_level
+        # rounded so that ci_level=0.95 gives 0.05, not 0.050000000000000044
+        return round(1.0 - self.ci_level, 12)
 
     def resolved_n_bootstrap(self) -> int:
         """``n_bootstrap``, with ``"auto"`` = ``max(1000, ceil(20 * m / alpha))``."""
@@ -2094,7 +2095,7 @@ class ABTest:
             rows.loc[index, "p_value_adjusted"] = adjust(p)
             m = int(np.isfinite(p).sum())
             if self.correction != "none" and m > 1:
-                rows.loc[index, "mde_alpha"] = self.alpha / m
+                rows.loc[index, "mde_alpha"] = round(self.alpha / m, 12)
             rows.loc[index, "correction_family"] = [
                 self._family_label(name) for name in rows.loc[index, "metric"]
             ]

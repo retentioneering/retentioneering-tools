@@ -66,7 +66,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   `DiffConfigError`. The funnel widget draws an interval whisker on every bar,
   shows each delta's interval and p-value (and the adjusted one) in the table,
   marks conditional step deltas with † and colours a delta only when its
-  adjusted p-value clears the level — never a conditional one. A sidebar selector switches
+  interval excludes 0 and, under a correction, its adjusted p-value is below
+  alpha — never a conditional one. A sidebar selector switches
   intervals Off / 90% / 95% / 99% and picks the correction; both are saved with
   the widget state and kept, read-only, in HTML exports. The Funnel docs page
   explains what each number assumes and has a live example.

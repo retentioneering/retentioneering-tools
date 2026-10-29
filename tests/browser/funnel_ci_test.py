@@ -16,10 +16,10 @@ from retentioneering import Eventstream
 playwright = pytest.importorskip("playwright.sync_api")
 
 
-def _ab_stream() -> Eventstream:
+def _ab_stream(n: int = 10, buys: tuple = (6, 3)) -> Eventstream:
     rows = []
-    for group, n_buy in (("t", 6), ("c", 3)):
-        for i in range(10):
+    for group, n_buy in zip(("t", "c"), buys):
+        for i in range(n):
             rows.append((f"{group}{i}", "home", "2026-01-01 00:00", group))
             if i < n_buy:
                 rows.append((f"{group}{i}", "buy", "2026-01-01 00:01", group))
@@ -56,5 +56,31 @@ def test_static_diff_funnel_draws_whiskers_and_locks_the_ci_selector(tmp_path):
             assert selector.is_disabled()  # no kernel behind a static export
             assert "NaN" not in page.locator("body").inner_text()
             assert not errors, errors
+        finally:
+            browser.close()
+
+
+def test_conditional_step_deltas_are_never_coloured(tmp_path):
+    # 60 % vs 20 % buyers out of 100: the step-to-step delta's interval excludes 0,
+    # so only the conditional rule keeps it grey
+    export = tmp_path / "funnel_conditional.html"
+    _ab_stream(n=100, buys=(60, 20)).funnel(
+        steps=["home", "buy"], diff=("grp", "t", "c"), ci_level=0.95
+    ).export_html(str(export))
+
+    with playwright.sync_playwright() as runtime:
+        executable = os.environ.get("RETENTIONEERING_TEST_CHROME")
+        browser = runtime.chromium.launch(executable_path=executable)
+        try:
+            page = browser.new_page(viewport={"width": 1100, "height": 700})
+            page.goto(export.as_uri())
+            page.locator("[data-testid=ci-cell]").first.wait_for(state="visible")
+            conditional = page.locator("td", has_text="†")
+            assert conditional.count() >= 1
+            for i in range(conditional.count()):
+                assert conditional.nth(i).get_attribute("data-testid") == "delta-grey"
+            # the unconditional delta of the same step is coloured: the rule, not
+            # the data, keeps the conditional cell grey
+            assert page.locator("[data-testid=delta-coloured]").count() >= 1
         finally:
             browser.close()

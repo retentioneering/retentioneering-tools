@@ -2279,6 +2279,8 @@ class Eventstream:
         steps: list[str] | None = None,
         diff=None,
         path_col: str | None = None,
+        ci_level: float | None = None,
+        correction: str | None = None,
         height: int | None = None,
         sidebar_open: bool | None = None,
         state_file: str | None = None,
@@ -2301,6 +2303,15 @@ class Eventstream:
             `(path_ids1, path_ids2)`; `value2` may be `<REST>`.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
+        ci_level : float, optional
+            Two-sided confidence level in (0, 1), e.g. `0.95`: draws an interval
+            whisker on every bar and adds the delta's interval and p-value to the
+            table. Also switchable in the sidebar (Off / 90% / 95% / 99%). In diff
+            mode the groups are then resolved per path and a path in both groups
+            raises `DiffConfigError`; see `funnel_data` for every number shown.
+        correction : {"none", "holm", "bonferroni", "bh"}, default "none"
+            Multiple-comparison correction over the overall-step p-values; see
+            `funnel_data`.
         height : int, default 420
             Widget height in pixels.
         sidebar_open : bool, default True
@@ -2313,6 +2324,14 @@ class Eventstream:
         --------
             stream.funnel(steps=["catalog", "add_to_cart", "purchase"])
             stream.funnel(steps=["add_to_cart", "purchase"], diff=("user_lifecycle", "loyal", "new"))
+
+            # A/B test: per-arm intervals, the delta's interval and Holm-adjusted p
+            stream.funnel(
+                steps=["catalog", "add_to_cart", "purchase"],
+                diff=("exp_group", "treatment", "control"),
+                ci_level=0.95,
+                correction="holm",
+            )
         """
         from retentioneering.widgets.funnel import FunnelWidget, _UNSET
 
@@ -2321,6 +2340,8 @@ class Eventstream:
             steps=steps if steps is not None else _UNSET,
             diff=diff if diff is not None else _UNSET,
             path_col=path_col if path_col is not None else _UNSET,
+            ci_level=ci_level if ci_level is not None else _UNSET,
+            correction=correction if correction is not None else _UNSET,
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
             state_file=state_file,
@@ -2332,6 +2353,8 @@ class Eventstream:
         steps: list[str] | None = None,
         diff=None,
         path_col: str | None = None,
+        ci_level: float | None = None,
+        correction: str = "none",
     ) -> dict:
         """
         Compute funnel conversion metrics and return a dict (headless).
@@ -2346,6 +2369,24 @@ class Eventstream:
             `(path_ids1, path_ids2)`; `value2` may be `<REST>`.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
+        ci_level : float, optional
+            Two-sided confidence level in (0, 1), e.g. `0.95`. Adds a Wilson score
+            interval to every rate and, with `diff`, a Newcombe hybrid score
+            interval to every delta and a pooled two-proportion z-test p-value to
+            every **overall** delta (see Returns). In diff mode the groups are then
+            resolved per path: a path that falls in both groups (a segment that
+            changes within the path, overlapping id lists) raises
+            `DiffConfigError` — compare at a finer `path_col` or carry a per-path
+            label with `add_segment(path_values=...)`. Without `ci_level` the diff
+            keeps the widgets' event-level split.
+        correction : {"none", "holm", "bonferroni", "bh"}, default "none"
+            Multiple-comparison correction applied across the funnel's steps to the
+            overall-delta p-values (`delta_conversion_rate_p_value_adjusted`); used
+            only with `ci_level` and `diff`. `"none"` copies the raw p-values;
+            `"holm"` (Holm step-down) and `"bonferroni"` control the family-wise
+            error rate; `"bh"` (Benjamini–Hochberg) controls the false discovery
+            rate. Steps whose p-value is undefined (`NaN`) are left out of the
+            family.
 
         Returns
         -------
@@ -2358,17 +2399,92 @@ class Eventstream:
         - `step_conversion_rate` — `unique_paths` as a share of the
           **previous step's** `unique_paths`, i.e. the step-to-step
           conversion. Equals `conversion_rate` for the first step, since
-          there is no previous step to divide by.
+          there is no previous step to divide by; 0.0 when the previous step
+          has no paths.
 
         When `diff` is given, each of the four keys above is split into
         `funnel1_*` / `funnel2_*` (one per segment) and `delta_*`
         (`funnel1_* - funnel2_*`) instead.
+
+        Top-level keys besides `"steps"` (when `steps` is not empty):
+
+        - `total_paths` — paths in the eventstream, the denominator of
+          `conversion_rate`; with `diff`, `funnel1_total_paths` and
+          `funnel2_total_paths` instead (the paths of each group).
+
+        With `ci_level`, per step (no `diff`):
+
+        - `conversion_rate_ci_low`, `conversion_rate_ci_high` — Wilson interval
+          of `conversion_rate`.
+        - `step_conversion_rate_ci_low`, `step_conversion_rate_ci_high` — Wilson
+          interval of `step_conversion_rate`; `NaN` when the previous step has
+          no paths (the rate itself stays 0.0 for compatibility).
+
+        With `ci_level` and `diff`, per step:
+
+        - `funnel1_conversion_rate_ci_low`, `funnel1_conversion_rate_ci_high`,
+          `funnel1_step_conversion_rate_ci_low`,
+          `funnel1_step_conversion_rate_ci_high` and the same `funnel2_*` keys —
+          Wilson intervals of each group's rates.
+        - `delta_conversion_rate_ci_low`, `delta_conversion_rate_ci_high` —
+          Newcombe interval of `delta_conversion_rate`.
+        - `delta_conversion_rate_p_value` — pooled two-proportion z-test of equal
+          overall rates; `NaN` when undefined (both rates 0 or 1, e.g. a first
+          step that every path reaches).
+        - `delta_conversion_rate_p_value_adjusted` — the same p-value after
+          `correction` across the steps; `NaN` where the raw p-value is `NaN`.
+        - `delta_step_conversion_rate_ci_low`,
+          `delta_step_conversion_rate_ci_high` — Newcombe interval of
+          `delta_step_conversion_rate`. **No p-value**: see `step_conditional`.
+        - `step_conditional` — `False` for the first step, `True` after it. A
+          step-to-step rate conditions on reaching the previous step, and the
+          treatment itself changes who reaches it, so a step delta compares
+          different populations: it is descriptive, never a treatment effect,
+          and carries an interval but no p-value.
+
+        With `ci_level`, top level:
+
+        - `ci_level` — the level used.
+        - `ci_basis` — how each number is computed: `{"rate": "wilson"}`
+          without `diff`; `{"rate": "wilson", "delta": "newcombe", "p_value":
+          "pooled_z"}` with it.
+        - with `diff` only: `correction`; `correction_family` — text naming the
+          p-values corrected together (`None` for `"none"`); `excluded_paths` —
+          always 0, since overlapping groups raise instead.
+
+        `NaN` marks an absent estimate (never 0); widgets send it as `null`.
+
+        Notes
+        -----
+        The unconditional denominator is the paths **with at least one event**
+        in the eventstream (per group with `diff`): users assigned to an arm who
+        never produced an event are not counted. The intervals and p-values
+        treat every path as an independent unit, so they assume `path_col` is
+        the unit that was assigned to a group: session paths of a user-level
+        experiment give intervals that are too narrow. p-values are per
+        comparison unless `correction` is set; intervals are never adjusted.
+
+        Examples
+        --------
+            stream.funnel_data(["catalog", "add_to_cart", "purchase"])
+            stream.funnel_data(
+                ["catalog", "add_to_cart", "purchase"],
+                diff=("exp_group", "treatment", "control"),
+                ci_level=0.95,
+                correction="holm",
+            )
         """
         from retentioneering.tools.funnel import Funnel
 
         if not steps:
             return {"steps": []}
-        return Funnel(self).fit(steps=steps, diff=diff, path_col=path_col)
+        return Funnel(self).fit(
+            steps=steps,
+            diff=diff,
+            path_col=path_col,
+            ci_level=ci_level,
+            correction=correction,
+        )
 
     @_tracked("get_conversion_rate")
     def get_conversion_rate(

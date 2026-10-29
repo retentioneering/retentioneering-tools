@@ -40,8 +40,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   path, so a path whose segment changes inside it raises `DiffConfigError`
   instead of being counted in both groups. The MCP `get_conversion_rate` tool
   takes the same two arguments.
+- `funnel_data(..., ci_level=None, correction="none")` and `funnel(...,
+  ci_level=None, correction=None)` put confidence intervals on the funnel: a
+  Wilson interval on every rate and, with `diff`, a Newcombe interval on every
+  delta and a pooled z-test p-value on every overall-conversion delta
+  (`delta_conversion_rate_p_value`, plus `_adjusted` after `correction`:
+  `"none"`, `"holm"`, `"bonferroni"` or `"bh"` across the steps, named in
+  `correction_family`). Step-to-step deltas after the first step are flagged
+  `step_conditional`: they keep their interval but get no p-value, because the
+  treatment changes who reaches the previous step. With intervals, `diff`
+  groups are resolved per path and a path in both groups raises
+  `DiffConfigError`. The widget's `ci_level` (0 = off) and `correction` are
+  saved with its state and kept in HTML exports.
 
 ### Changed
+
+- `funnel_data` returns the path totals behind every rate: `total_paths`, or
+  `funnel1_total_paths` / `funnel2_total_paths` with `diff`. The funnel
+  widget's group sizes come from them, so a group in which no path reaches the
+  first step no longer shows a total of 0.
 
 - Every widget encodes its computed `result` (and distribution results) as
   strict JSON: NaN and infinite values are sent as `null`, which the front end

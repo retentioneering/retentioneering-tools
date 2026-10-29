@@ -542,6 +542,13 @@ class TestScorecard:
         )
         assert row.rel_mde == pytest.approx(row.mde / row.group2_value)
 
+    def test_mde_alpha_is_rounded(self) -> None:
+        """m13: 1 - 0.95 is 0.050000000000000044 in floating point."""
+        stream = _counts_stream(_THREE)
+        assert _fit(stream).iloc[0].mde_alpha == 0.05
+        out = ABTest.from_stream(stream, DIFF, [CONV], strata_col="group").fit()
+        assert out.iloc[0].mde_alpha == round(0.05 / 3, 12)
+
     def test_bonferroni_adds_simultaneous_intervals(self) -> None:
         from retentioneering.tools import _stats as st
 

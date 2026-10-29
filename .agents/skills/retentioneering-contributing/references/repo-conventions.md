@@ -72,3 +72,23 @@ uv run python docs/scripts/generate_widget_demos.py # regen static widget demos
 `src/retentioneering/{eventstream,data_processors,tools,widgets,metrics,mcp,utils}` ·
 `js/{viz-core,widget}` (npm workspaces → build outputs land in `src/.../static/`) ·
 `docs/{guide,adr,scripts}` · `tests/` mirrors `src` areas.
+
+
+## Development: assignment-aware experiments
+
+This source branch adds `experiment_data` / `experiment`; they are not in PyPI 5.3.0.
+Require a complete separate assignment roster, fixed calendar observation window
+and declared independent unit. Do not derive assignments from active event rows.
+`experiment_data` returns JSON-safe summary/diagnostics/metadata; `experiment`
+is a native fixed-result view with the same data parameters. Supported scalar
+metrics include has_event, event_count, matches_pattern and event_value_sum.
+The latter requires event/value_col (and optional event_col) in metric_args;
+matching nonfinite values raise rather than being silently filled.
+Use explicit bootstrap and/or binary_intervals={'method':'newcombe',
+'confidence_level':.95}; methods and unavailable statuses survive export.
+Percentile intervals are pointwise; tests are separately declared Fisher/Welch
+with Holm. Constant arms and sparse ratios need visible diagnostics.
+Source history before assignment is allowed outside the outcome window.
+No automatic winner, censoring/sequential design, widget roster restore or new
+MCP assignment binding is supplied in this first version. Read /docs/experiments
+and installed docstrings before writing code for a released version.

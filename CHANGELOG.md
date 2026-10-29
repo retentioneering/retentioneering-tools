@@ -5,6 +5,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added
+
+- Assignment-aware `experiment_data` and `experiment` for fixed-window, two-arm
+  outcomes, including silent assigned units, native behavioral patterns, means
+  and explicit ratios, unit bootstrap, declared Fisher/Welch tests and Holm.
+- Explicit Wilson/Newcombe binary intervals, pointwise uncertainty diagnostics,
+  and a native result view showing denominators, methods and unavailable states.
+- Shared `event_value_sum` path metric for numeric values on matching events.
+
 ### Fixed
 
 - `time_median` and `time_q95` edge weights in `transition_graph` and

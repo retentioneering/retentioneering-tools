@@ -309,11 +309,13 @@ class TestStories:
         assert not rows["exploratory"].any()
 
     def test_story3_planted_effects(self, stream, assignment) -> None:
-        rows = _by_stratum(
-            stream.add_segment("user_type").get_ab_test(
-                DIFF, [CONVERSION], assignment=assignment, strata_col="user_type"
+        # user_type is the planted truth, not a recipe-visible pre-exposure cut
+        with pytest.warns(UserWarning, match="was fixed before exposure"):
+            rows = _by_stratum(
+                stream.add_segment("user_type").get_ab_test(
+                    DIFF, [CONVERSION], assignment=assignment, strata_col="user_type"
+                )
             )
-        )
 
         assert 0.04 < rows.loc["scanner", "delta"] < 0.15
         assert -0.12 < rows.loc["curator", "delta"] < -0.04

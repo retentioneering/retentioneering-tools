@@ -226,6 +226,17 @@ class SampleRatio:
             raise InvalidParameterError("alpha", alpha, ["a float in (0, 1)"])
         segment_cols = list(schema.segment_cols)
         if assignment is None:
+            if segment_col is None:
+                raise InvalidParameterError(
+                    "segment_col",
+                    segment_col,
+                    segment_cols,
+                    reason=(
+                        "name the stream's arm column, or pass assignment= (a "
+                        "per-path arm table, as for get_ab_test) to check the "
+                        "table's arms"
+                    ),
+                )
             if segment_col not in segment_cols:
                 raise InvalidParameterError("segment_col", segment_col, segment_cols)
         elif segment_col is not None and segment_col not in segment_cols:

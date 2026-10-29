@@ -962,6 +962,31 @@ class TestAssignmentIds:
         row = _fit(_random(), assignment=table).iloc[0]
         assert row.group1_silent_paths + row.group2_silent_paths == 500
 
+    def test_mostly_silent_table_named_after_the_grain(self) -> None:
+        """m5: a table indexed by 'user_id' is not told to index by 'user_id'."""
+        table = _random_assignment()
+        ids = list(table.index)
+        ids[:700] = [i.upper() for i in ids[:700]]
+        table.index = pd.Index(ids, name="user_id")
+        with pytest.warns(UserWarning, match="only 500 of 1200") as record:
+            _fit(_random(), assignment=table)
+        text = str(record[0].message)
+        assert "indexed by 'user_id', so most assigned paths" in text
+        assert "index the table by" not in text
+
+    def test_id_list_diff_with_assignment_quotes_ten_ids(self) -> None:
+        """m5: a 1200-id diff is quoted by its first ids and its count."""
+        stream = _random()
+        arm = stream.get_path_segments("arm")
+        ids1 = list(arm.index[arm == "treatment"])
+        ids2 = list(arm.index[arm == "control"])
+        with pytest.raises(DiffConfigError) as info:
+            ABTest.from_stream(
+                stream, (ids1, ids2), [CONV], assignment=_random_assignment()
+            )
+        message = str(info.value)
+        assert f"... ({len(ids1)} ids)" in message and len(message) < 1000
+
     def test_unit_named_by_the_table_index(self) -> None:
         # session ids equal user ids: the overlap check alone cannot tell the unit
         df = _tiny().to_dataframe()[["user_id", "event", "timestamp", "arm"]]

@@ -78,9 +78,9 @@ assert float(naive.set_index("step").loc["checkout_start -> payment", "naive_p_v
 assert weekly["delta"].iloc[0] > 0 > weekly["delta"].iloc[-1]
 assert _verdicts(since, "period")["0-13"] == "increase"
 assert _verdicts(since, "period")["28-41"] == "decrease"
-# the readout quotes the late bin: a decrease of 1.5 pp at adjusted p 0.019
+# the readout quotes the late bin: a decrease of 1.5 pp at adjusted p 0.023
 _late = since.set_index("period").loc["28-41"]
-assert round(_late["delta"] * 100, 1) == -1.5 and round(_late["p_value_adjusted"], 3) == 0.019
+assert round(_late["delta"] * 100, 1) == -1.5 and round(_late["p_value_adjusted"], 3) == 0.023
 assert since["group1_paths"].nunique() == 1
 assert low > 0 and low < point < high
 

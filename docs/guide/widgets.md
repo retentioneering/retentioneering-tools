@@ -13,6 +13,7 @@ stream.step_matrix()
 stream.funnel()
 stream.segment_overview()
 stream.cluster_analysis()
+stream.ab_test()
 ```
 
 All parameters are optional. You can call any widget without arguments and configure it interactively using the sidebar that appears on the right side of the widget.
@@ -99,6 +100,7 @@ Headless methods follow the naming pattern `<widget>_data()`:
 | `stream.funnel()` | [`stream.funnel_data()`](/docs/widgets/funnel#headless-mode) |
 | `stream.segment_overview()` | [`stream.segment_overview_data()`](/docs/widgets/segment-overview#headless-mode) |
 | `stream.cluster_analysis()` | [`stream.cluster_analysis_data()`](/docs/widgets/cluster-analysis#headless-mode) |
+| `stream.ab_test()` | [`stream.ab_test_data()`](/docs/widgets/ab-test#headless-mode) — alias of [`get_ab_test()`](/docs/tools/get-ab-test), the name the A/B docs use |
 
 ```python
 # Get transition matrix as a DataFrame
@@ -117,6 +119,27 @@ Diff mode changes what each widget's headless `*_data()` twin returns (see [Head
 - `transition_graph_data()` returns `(diff, group1, group2)` instead of a single matrix — three DataFrames, where `diff = group1 - group2`.
 - `step_sankey_data()` / `step_matrix_data()` return `(combined, group1, group2)` instead of a single DataFrame — three DataFrames, where `combined = group1 - group2`. With `path_pattern` (multiple anchor blocks), each of the three is instead a tuple with one DataFrame per block, and `combined_blocks[i] = group1_blocks[i] - group2_blocks[i]`.
 - `funnel_data()` keeps the same `{"steps": [...]}` shape, but each step dict gets `funnel1_unique_paths`, `funnel1_conversion_rate`, `funnel1_step_conversion_rate`, `funnel2_unique_paths`, `funnel2_conversion_rate`, `funnel2_step_conversion_rate`, `delta_unique_paths`, `delta_conversion_rate`, and `delta_step_conversion_rate` instead of the plain `unique_paths`/`conversion_rate`/`step_conversion_rate` keys (`delta_* = funnel1_* - funnel2_*`).
+
+## A/B tests
+
+[`stream.ab_test(diff, metrics)`](/docs/widgets/ab-test) draws the scorecard of
+[`get_ab_test`](/docs/tools/get-ab-test): a table and a forest plot of the
+deltas with their intervals, coloured by verdict (red `increase`, blue
+`decrease`, grey `inconclusive`, hollow `insufficient_data`), plus a Strata tab
+with `strata_col=` and a Periods tab with `period=`. Its `diff` differs from the
+diff mode above in one way: the arms are resolved **per path**, and a path that
+falls in both arms raises `DiffConfigError` instead of being split by event.
+Pass the experiment's assignment table as `assignment=` for an
+intention-to-treat comparison; the [A/B Testing guide](/docs/ab-testing)
+explains every number.
+
+```python
+stream.ab_test(
+    ("exp_group", "treatment", "control"),
+    metrics=[{"name": "conversion", "metric": "has_event", "metric_args": {"event": "purchase"}}],
+    assignment=assignment,
+)
+```
 
 ## Exporting to HTML
 

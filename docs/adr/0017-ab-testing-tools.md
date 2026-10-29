@@ -30,6 +30,15 @@ in a Tools reference section. A `*_data` name is reserved for the headless twin
 of a widget (ADR-0006); when an `ab_test` widget ships, `ab_test_data` becomes
 its twin and an alias of `get_ab_test`.
 
+*Shipped with the first release of these tools:* `Eventstream.ab_test` (widget:
+scorecard table and forest plot, Strata and Periods tabs, the metric editor of
+ADR-0007 in the sidebar) and `ab_test_data`, a wrapper around `get_ab_test`
+whose docstring is `get_ab_test`'s with an alias note. The widget's data
+parameters are `get_ab_test`'s, and its numbers are `ab_test_data`'s rows
+unchanged: the Scorecard is the call without `strata_col` and `period`, the
+Strata and Periods tabs the calls with each. `get_ab_test` stays the name the
+docs use.
+
 **D2 — path-level groups.** `tools/_diff.py::resolve_diff` resolves a `diff`
 into two disjoint sets of path ids (`DiffGroups`). The inferential methods
 that compare two arms (`get_ab_test`, `get_ab_bootstrap`,
@@ -122,8 +131,8 @@ and `tools/_bootstrap.py` are pure functions without an `Eventstream`.
 3. Variance reduction: CUPED and linearisation on pre-exposure metrics.
 4. Populations: `exposure_event=` / `population="exposed"`, a balance check
    with a studentised within-strata permutation test.
-5. An `ab_test` widget (forest plot, strata and period panels) with the
-   `ab_test_data` twin.
+5. ~~An `ab_test` widget (forest plot, strata and period panels) with the
+   `ab_test_data` twin.~~ Shipped (see D1).
 
 Deferred decisions: `assignment=` on the funnel, and equivalence /
 non-inferiority verdicts (a margin-based verdict next to the superiority one).

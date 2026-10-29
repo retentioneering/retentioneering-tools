@@ -398,6 +398,12 @@ class TestAssignmentThroughMcp:
             _ab_session(), ["arm", "treatment", "control"], _METRICS, horizon="7D"
         )
         assert "error" in result and "horizon" in result["error"]
+        # m7: the error says where MCP gets the table
+        assert "serve(stream, assignment=table)" in result["error"]
+        added = tools.add_ab_test(
+            _ab_session(), "AB", ["arm", "treatment", "control"], _METRICS, horizon="7D"
+        )
+        assert "serve(stream, assignment=table)" in added["error"]
 
     def test_add_ab_test_uses_the_table(self) -> None:
         session = _itt_session()
@@ -408,6 +414,20 @@ class TestAssignmentThroughMcp:
         tab = session.pending_tabs[0]["data"]
         assert tab["result"]["overall"][0]["population"] == "assignment"
         assert tab["horizon"] == "7D"
+        # R3C-06: who was counted and what was corrected, as get_ab_test says
+        entry = result["metrics"][0]
+        for key in ("population", "correction_family", "mde_alpha", "scope", "unit"):
+            assert key in entry, key
+        assert entry["population"] == "assignment"
+        json.dumps(result, allow_nan=False)
+        strata = tools.add_ab_test(
+            _itt_session(), "AB", ["arm", "treatment", "control"], _METRICS,
+            strata_col="platform",
+        )
+        entry = strata["metrics"][0]
+        assert entry["exploratory"] is True
+        assert entry["strata_pre_exposure"] is False
+        assert entry["strata_pre_exposure_source"] == "not_pre_exposure"
 
     def test_bootstrap_contrast(self) -> None:
         session = _itt_session()
@@ -470,7 +490,13 @@ class TestDescribeForExperiments:
             assert name in note, name
         for name in ("horizon", "period_basis", "correction_scope"):
             assert name not in note.split("available: ")[1].split(".")[0], name
-        assert tools.describe_tool("get_ab_bootstrap")["method"] == "get_ab_bootstrap"
+        boot = tools.describe_tool("get_ab_bootstrap")
+        assert boot["method"] == "get_ab_bootstrap"
+        # m7: the MCP tool returns a contrast summary, not the replicate table
+        assert "contrast summary" in boot["mcp_tool"]
+        assert "period and contrast are required" in boot["mcp_tool"]
+        assert "ci_level" in boot["mcp_docs"] and "share_positive" in boot["mcp_docs"]
+        assert "mcp_tool" not in out
 
 
 class TestServerWrappersInSync:
@@ -490,3 +516,23 @@ class TestServerWrappersInSync:
             tool_params = list(inspect.signature(getattr(tools, name)).parameters)[1:]
             schema = registered[name].parameters["properties"]
             assert list(schema) == tool_params, name
+
+
+class TestStepToCode:
+    """m8: the exported code keeps every add_segment argument."""
+
+    def test_pre_exposure_survives_the_export(self) -> None:
+        from retentioneering.mcp._agent_logic import _step_to_code
+
+        code = _step_to_code(
+            {
+                "type": "add_segment",
+                "name": "entry",
+                "rules": [{"segment": "x", "filter": "length > 3"}],
+                "pre_exposure": True,
+            }
+        )
+        assert code.startswith("stream.add_segment(name='entry', rules=")
+        assert code.endswith("pre_exposure=True)")
+        plain = _step_to_code({"type": "add_segment", "name": "g", "sql": "SELECT 1"})
+        assert plain == "stream.add_segment(name='g', sql='SELECT 1')"

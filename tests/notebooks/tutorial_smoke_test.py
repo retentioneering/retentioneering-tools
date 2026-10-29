@@ -55,18 +55,10 @@ assert not srm["mismatch"] and not srm["by_levels"]["mismatch"].any()
 assert srm["silent_paths"] > 0 and srm["multi_valued_paths"] == 0
 assert overview["shape"]["n_paths"] < len(assignment)
 
-# step 2: the whole-window scorecard is inconclusive everywhere
+# step 2: two reads declared up front. Primary (whole window): inconclusive everywhere;
+# secondary (horizon="28D"): conversion, orders and revenue increase
 assert set(scorecard["verdict"]) == {"inconclusive"}
 assert scorecard.set_index("metric").loc["aov", "ci_basis"] == "path_bootstrap"
-
-# step 3: overall steps grey after Holm; two conditional deltas in opposite directions
-assert (funnel_table["delta_conversion_rate_p_value_adjusted"] > 0.05).all()
-assert funnel_table.loc["checkout_start", "delta_step_conversion_rate_ci_low"] > 0
-assert funnel_table.loc["payment", "delta_step_conversion_rate_ci_high"] < 0
-assert float(naive.set_index("step").loc["checkout_start -> payment", "naive_p_value"]) < 1e-3
-
-# step 4: weekly drift, the 28-day reading, since-assignment bins, the contrast
-assert weekly["delta"].iloc[0] > 0 > weekly["delta"].iloc[-1]
 assert _verdicts(scorecard_28d) == {
     "conversion": "increase",
     "adders": "inconclusive",
@@ -74,6 +66,16 @@ assert _verdicts(scorecard_28d) == {
     "revenue_per_user": "increase",
     "aov": "inconclusive",
 }
+assert (scorecard_28d["immature_paths"] > 0).all()
+
+# step 3: overall steps grey after Holm; two conditional deltas in opposite directions
+assert (funnel_table["delta_conversion_rate_p_value_adjusted"] > 0.05).all()
+assert funnel_table.loc["checkout_start", "delta_step_conversion_rate_ci_low"] > 0
+assert funnel_table.loc["payment", "delta_step_conversion_rate_ci_high"] < 0
+assert float(naive.set_index("step").loc["checkout_start -> payment", "naive_p_value"]) < 1e-3
+
+# step 4: weekly drift, since-assignment bins (the 42D sensitivity check), the contrast
+assert weekly["delta"].iloc[0] > 0 > weekly["delta"].iloc[-1]
 assert _verdicts(since, "period")["0-13"] == "increase"
 assert _verdicts(since, "period")["28-41"] == "decrease"
 # the readout quotes the late bin: a decrease of 1.5 pp at adjusted p 0.019
@@ -82,7 +84,8 @@ assert round(_late["delta"] * 100, 1) == -1.5 and round(_late["p_value_adjusted"
 assert since["group1_paths"].nunique() == 1
 assert low > 0 and low < point < high
 
-# step 5: blind pre-exposure clusters, both signs after Holm
+# step 5: the window is balanced between the arms; blind clusters, both signs after Holm
+assert set(window_balance["verdict"]) == {"inconclusive"}
 assert sorted(cluster_names.values()) == ["curator", "other", "scanner"]
 assert _verdicts(strata, "stratum") == {
     "<MISSING>": "insufficient_data",
@@ -96,6 +99,9 @@ assert round(_other["delta_ci_low"] * 100, 1) == -2.5 and round(_other["delta_ci
 assert strata["balance_p_value"].iloc[0] > 0.05
 assert strata["heterogeneity_p_value"].iloc[0] < 0.05
 assert strata.loc[strata["stratum"] != "<MISSING>", "strata_pre_exposure"].all()
+assert (
+    strata.loc[strata["stratum"] != "<MISSING>", "strata_pre_exposure_source"] == "declared"
+).all()
 assert not strata["exploratory"].any()
 
 # step 6: the funnels' last step repeats the strata rows
@@ -106,19 +112,27 @@ for _name, _row in cluster_funnels.items():
 # step 7: the loop exists in treatment only
 assert graph_treatment.loc["cart", "cart"] > 0 and graph_control.loc["cart", "cart"] == 0
 
-# step 8: descriptive loop -> order, ITT loop share
+# step 8: descriptive loop -> order (conditional), ITT loop share under the pooled support rule
 assert loop_to_order.iloc[0]["group2_paths_with_start"] == 0
+assert loop_to_order["conditional"].all()
 _loop = loop_itt.set_index("stratum")
 assert round(_loop.loc["curator", "group1_value"] * 100) == 26
 assert _loop.loc["curator", "delta_ci_low"] > 0.1
 assert (_loop["group2_value"] == 0).all()
 assert (_loop.drop(index="curator")["group1_value"] == 0).all()
-assert set(_loop["verdict"]) == {"insufficient_data"}
+assert _loop.loc["curator", "support_warning"] == "one_arm_only"
+assert _loop.loc["curator", "verdict"] == "increase"
+assert set(_loop.drop(index="curator")["verdict"]) == {"insufficient_data"}
 
 # step 9: pre-exposure sign flip; post-exposure split flagged, balance p silent
 assert _verdicts(by_length, "stratum")["short"] == "decrease"
 assert _verdicts(by_length, "stratum")["long"] == "increase"
+assert (
+    by_length.loc[by_length["stratum"] != "<MISSING>", "strata_pre_exposure_source"]
+    == "declared"
+).all()
 assert not post_length["strata_pre_exposure"].any() and post_length["exploratory"].all()
+assert (post_length["strata_pre_exposure_source"] == "not_pre_exposure").all()
 assert post_length["balance_p_value"].iloc[0] > 0.05
 # ... and it tells a different story from the pre-exposure split
 assert _verdicts(post_length, "stratum") != _verdicts(by_length, "stratum")

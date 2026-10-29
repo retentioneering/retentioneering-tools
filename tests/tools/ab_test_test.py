@@ -74,7 +74,7 @@ def _table() -> pd.DataFrame:
 
 
 def _fit(stream, metrics=(CONV,), **kwargs) -> pd.DataFrame:
-    kwargs.setdefault("min_events", 1)
+    kwargs.setdefault("min_support", 1)
     return ABTest.from_stream(stream, DIFF, list(metrics), **kwargs).fit()
 
 
@@ -195,8 +195,8 @@ class TestMatrix:
         assert (row.group1_paths, row.group2_paths) == (3, 4)
         assert row.group1_value == pytest.approx(3 / 3)
         assert row.group2_value == pytest.approx(1 / 4)
-        assert "group1_paths_no_events" not in row.index
-        assert row.excluded_paths == 0
+        assert "group1_silent_paths" not in row.index
+        assert row.unassigned_paths == 0
 
     def test_assignment_silent_paths_and_pre_assignment_events(self) -> None:
         out = _fit(_tiny(), [CONV, ORDERS], assignment=_table()).set_index("metric")
@@ -204,8 +204,8 @@ class TestMatrix:
         assert (conv.group1_paths, conv.group2_paths) == (4, 3)
         assert conv.group1_value == pytest.approx(2 / 4)  # t2's order is pre-assignment
         assert conv.group2_value == pytest.approx(1 / 3)
-        assert (conv.group1_paths_no_events, conv.group2_paths_no_events) == (1, 0)
-        assert conv.excluded_paths == 1  # x1 is outside the assignment table
+        assert (conv.group1_silent_paths, conv.group2_silent_paths) == (1, 0)
+        assert conv.unassigned_paths == 1  # x1 is outside the assignment table
         assert out.loc["orders"].group2_value == pytest.approx(2 / 3)
 
     def test_assignment_series_keeps_pre_assignment_events(self) -> None:
@@ -345,7 +345,7 @@ class TestMatrix:
             {"bootstrap_weights": "bayes"},
             {"ci_level": 1.5},
             {"power": 0},
-            {"min_events": 0},
+            {"min_support": 0},
             {"n_bootstrap": "many"},
             {"n_bootstrap": 50},
             {"period": "fortnightly"},
@@ -415,7 +415,7 @@ class TestScorecard:
             "metric",
             "group1_paths",
             "group2_paths",
-            "excluded_paths",
+            "unassigned_paths",
             "group1_value",
             "group1_ci_low",
             "group1_ci_high",
@@ -432,7 +432,7 @@ class TestScorecard:
             "p_value",
             "p_value_adjusted",
             "correction_family",
-            "alpha_used",
+            "mde_alpha",
             "mde",
             "rel_mde",
             "verdict",
@@ -440,7 +440,6 @@ class TestScorecard:
             "ci_basis",
             "p_basis",
             "valid_replicates",
-            "low_support",
             "support_warning",
             "reading",
         ]
@@ -502,7 +501,8 @@ class TestScorecard:
             "path_bootstrap",
             "bootstrap_se",
         )
-        assert aov.valid_replicates == 400 and not aov.low_support
+        assert aov.valid_replicates == 400
+        assert aov.support_warning != "invalid_replicates"
         assert aov.delta_ci_low < aov.delta < aov.delta_ci_high
         assert out.set_index("metric").loc["revenue", "valid_replicates"] is pd.NA
 
@@ -528,7 +528,7 @@ class TestScorecard:
             _counts_stream(_THREE), DIFF, [CONV], strata_col="group"
         ).fit()
         row = out.iloc[0]
-        assert row.alpha_used == pytest.approx(0.05 / 3)
+        assert row.mde_alpha == pytest.approx(0.05 / 3)
         assert row.mde == pytest.approx(
             st.mde_proportion(100 / 400, 200, 200, 0.05 / 3)
         )
@@ -571,7 +571,7 @@ class TestScorecard:
         }
         out = (
             ABTest.from_stream(
-                _counts_stream(cells), DIFF, [CONV], strata_col="group", min_events=10
+                _counts_stream(cells), DIFF, [CONV], strata_col="group", min_support=10
             )
             .fit()
             .set_index("stratum")
@@ -588,13 +588,13 @@ class TestScorecard:
         assert zero.support_warning == "one_arm_only"
         assert zero.group2_value == 0.0
 
-    def test_min_events(self) -> None:
+    def test_min_support(self) -> None:
         cells = {("x", "treatment"): (100, 9), ("x", "control"): (100, 30)}
         stream = _counts_stream(cells)
         # the rule is pooled: 39 paths with the event, 161 without
         row = ABTest.from_stream(stream, DIFF, [CONV]).fit().iloc[0]
         assert row.verdict == "decrease" and row.p_value < 0.05
-        row = ABTest.from_stream(stream, DIFF, [CONV], min_events=40).fit().iloc[0]
+        row = ABTest.from_stream(stream, DIFF, [CONV], min_support=40).fit().iloc[0]
         assert row.verdict == "insufficient_data" and np.isnan(row.p_value)
         assert not np.isnan(row.delta)  # the estimates stay
 
@@ -603,13 +603,13 @@ class TestScorecard:
         cells[("d", "treatment")] = (40, 3)  # fewer than 5 events: not used in Q
         cells[("d", "control")] = (40, 4)
         out = ABTest.from_stream(
-            _counts_stream(cells), DIFF, [CONV], strata_col="group", min_events=1
+            _counts_stream(cells), DIFF, [CONV], strata_col="group", min_support=1
         ).fit()
         assert list(out["stratum"]) == ["a", "b", "c", "d"]
         np.testing.assert_allclose(out["group1_share"], [200 / 640] * 3 + [40 / 640])
         assert out["balance_p_value"].iloc[0] == pytest.approx(1.0)
         assert set(out["heterogeneity_strata_used"]) == {3}
-        assert set(out["heterogeneity_df"]) == {2}
+        assert set(out["heterogeneity_dof"]) == {2}
         assert out["heterogeneity_p_value"].nunique() == 1
         # a source column: the recipe cannot show it was fixed before exposure
         assert not out["strata_pre_exposure"].any()
@@ -658,7 +658,7 @@ class TestScorecard:
         assert not out["exploratory"].any()
         assert not [w for w in recwarn if "post-exposure" in str(w.message)]
 
-    def test_low_support_bootstrap(self) -> None:
+    def test_invalid_replicates_bootstrap(self) -> None:
         rows = []
         for i in range(60):
             arm = "treatment" if i < 30 else "control"
@@ -671,8 +671,9 @@ class TestScorecard:
             rows, columns=["user_id", "event", "timestamp", "arm", "value"]
         )
         stream = Eventstream(df, {"segment_cols": ["arm"], "custom_cols": ["value"]})
-        row = ABTest.from_stream(stream, DIFF, [AOV], min_events=1).fit().iloc[0]
-        assert row.low_support
+        row = ABTest.from_stream(stream, DIFF, [AOV], min_support=1).fit().iloc[0]
+        assert row.support_warning == "invalid_replicates"
+        assert "had no value in an arm" in row.reading
         assert row.valid_replicates < 990
         assert np.isnan(row.delta_ci_low) and np.isnan(row.p_value)
         # an absent estimate is NaN: no SE and no MDE either
@@ -894,12 +895,12 @@ class TestAssignmentIds:
         out = _fit(stream, assignment=table)
         cols = ["group1_paths", "group2_paths", "group1_value", "group2_value"]
         pd.testing.assert_frame_equal(out[cols], ref[cols])
-        assert (out["group1_paths_no_events"] == 0).all()
+        assert (out["group1_silent_paths"] == 0).all()
 
     def test_no_matching_id_raises(self) -> None:
         table = _random_assignment()
         table.index = table.index.str.upper()
-        with pytest.raises(DiffConfigError, match="only 0 of 1200"):
+        with pytest.raises(InvalidParameterError, match="only 0 of 1200"):
             _fit(_random(), assignment=table)
 
     def test_mostly_unmatched_ids_warn_with_the_counts(self) -> None:
@@ -914,7 +915,7 @@ class TestAssignmentIds:
         table.index = ids
         # 700 of 1200 match: the other 500 are silent assigned paths
         row = _fit(_random(), assignment=table).iloc[0]
-        assert row.group1_paths_no_events + row.group2_paths_no_events == 500
+        assert row.group1_silent_paths + row.group2_silent_paths == 500
 
     def test_unit_named_by_the_table_index(self) -> None:
         # session ids equal user ids: the overlap check alone cannot tell the unit
@@ -1023,7 +1024,7 @@ class TestPooledSupport:
         assert np.isnan(row.rel_delta_ci_low)  # log ratio undefined at k = 0
 
     def test_bootstrap_rows_with_few_supporting_paths_are_flagged(self) -> None:
-        out = ABTest.from_stream(_random(n=120), DIFF, [AOV], min_events=1).fit()
+        out = ABTest.from_stream(_random(n=120), DIFF, [AOV], min_support=1).fit()
         assert out.iloc[0].support_warning == "low_support"
         out = ABTest.from_stream(_random(), DIFF, [AOV, CONV]).fit().set_index("metric")
         assert out.loc["aov", "support_warning"] == ""
@@ -1038,7 +1039,7 @@ class TestPooledSupport:
             rows, columns=["user_id", "event", "timestamp", "arm", "value"]
         )
         stream = Eventstream(df, {"segment_cols": ["arm"], "custom_cols": ["value"]})
-        row = ABTest.from_stream(stream, DIFF, [AOV], min_events=1).fit().iloc[0]
+        row = ABTest.from_stream(stream, DIFF, [AOV], min_support=1).fit().iloc[0]
         assert row.delta == 0.0
         assert np.isnan(row.mde) and np.isnan(row.rel_mde)
 

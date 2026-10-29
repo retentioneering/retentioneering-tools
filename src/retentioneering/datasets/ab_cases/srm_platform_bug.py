@@ -44,8 +44,8 @@ Solutions (spoilers)
    high-intent Android treatment users assigned from day 9 on. Users assigned
    earlier were already logged.
 3. The sample ratio of the table is far off (``get_sample_ratio`` mismatch, p far
-   below 0.001); ``by="platform"`` puts the whole mismatch on Android, and the
-   table cut at day 9 is balanced before and unbalanced after (the treatment's
+   below 0.001); ``strata_col="platform"`` puts the whole mismatch on Android, and
+   the table cut at day 9 is balanced before and unbalanced after (the treatment's
    share of each later day is about 0.4).
 4. The naive read (stream or table) shows a conversion lift of about +3 pp
    that "survives" the test: the missing users are the ones who would not have

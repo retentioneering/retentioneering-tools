@@ -9,6 +9,7 @@ from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.exceptions import (
     DiffConfigError,
     EmptyEventstreamError,
+    InvalidParameterError,
     PathIdNotFoundError,
     SegmentLevelNotFoundError,
 )
@@ -60,7 +61,7 @@ class TestSegmentForm:
         groups = resolve_diff(two_users, ("arm", "t", "c"), require_constant=False)
         assert list(groups.ids1) == ["u1"]
         assert list(groups.ids2) == ["u1", "u2"]
-        assert groups.excluded_paths == 1
+        assert groups.unassigned_paths == 0  # u1 sits in both groups
         assert groups.basis == "segment"
 
     def test_legacy_split_two_is_unchanged(self, two_users) -> None:
@@ -75,7 +76,8 @@ class TestSegmentForm:
         assert isinstance(groups, DiffGroups)
         assert list(groups.ids1) == ["u1", "u3", "u5"]
         assert list(groups.ids2) == ["u0", "u2", "u4"]
-        assert (groups.n1(), groups.n2(), groups.excluded_paths) == (3, 3, 0)
+        # u9 has no arm: in neither group
+        assert (groups.n1(), groups.n2(), groups.unassigned_paths) == (3, 3, 1)
         assert (groups.label1, groups.label2) == ("t", "c")
 
     def test_rest_and_missing(self, constant) -> None:
@@ -127,7 +129,7 @@ class TestIdForm:
             constant, (["u1", "u0", "u0"], ["u1", "u2"]), require_constant=False
         )
         assert list(groups.ids1) == ["u0", "u1"]
-        assert groups.excluded_paths == 1
+        assert groups.unassigned_paths == 4  # u3, u4, u5, u9 are in neither list
         assert (groups.label1, groups.basis) == ("group1", "ids")
 
     def test_unknown_id(self, constant) -> None:
@@ -157,15 +159,25 @@ class TestAssignment:
         assert groups.n2() == 3
         assert groups.basis == "assignment"
         # u9 has events but no row in the table: outside the ITT population
-        assert groups.excluded_paths == 1
+        assert groups.unassigned_paths == 1
 
-    def test_dataframe_and_segment_not_on_stream(self, constant) -> None:
+    def test_dataframe_and_the_table_alone(self) -> None:
+        stream = _stream(
+            [("u0", "A", "2024-01-01", "x"), ("u1", "A", "2024-01-01", "y")],
+            segment_cols=("platform",),
+        )
         table = pd.DataFrame(
             {"arm": ["a", "b"], "assigned_at": ["2024-01-01", "2024-01-02"]},
             index=["u0", "u1"],
         )
-        groups = resolve_diff(constant, ("variant", "a", "b"), assignment=table)
+        groups = resolve_diff(stream, ("arm", "a", "b"), assignment=table)
         assert (list(groups.ids1), list(groups.ids2)) == (["u0"], ["u1"])
+
+    def test_unknown_segment_with_assignment_raises(self, constant) -> None:
+        # a typo in diff[0] would silently skip the stream-vs-table check
+        table = pd.Series({"u0": "c", "u1": "t"})
+        with pytest.raises(DiffConfigError, match=r"diff\[0\] must be 'arm'"):
+            resolve_diff(constant, ("variant", "t", "c"), assignment=table)
 
     def test_disagreement_raises(self, constant) -> None:
         # u0 carries "c" on its events but the table says "t"
@@ -175,7 +187,7 @@ class TestAssignment:
 
     def test_non_unique_index(self, constant) -> None:
         table = pd.Series(["t", "c"], index=["u1", "u1"])
-        with pytest.raises(DiffConfigError, match="unique"):
+        with pytest.raises(InvalidParameterError, match="repeat in the index"):
             resolve_diff(constant, ("arm", "t", "c"), assignment=table)
 
     def test_unknown_arm(self, constant) -> None:
@@ -183,8 +195,12 @@ class TestAssignment:
             resolve_diff(constant, ("arm", "t", "x"), assignment=pd.Series({"u1": "t"}))
 
     def test_normalize(self) -> None:
-        with pytest.raises(DiffConfigError, match="'arm' column"):
+        with pytest.raises(InvalidParameterError, match="no 'arm'"):
             normalize_assignment(pd.DataFrame({"group": ["t"]}))
+        with pytest.raises(InvalidParameterError, match="empty"):
+            normalize_assignment(pd.Series(dtype=object))
+        with pytest.raises(InvalidParameterError, match="list"):
+            normalize_assignment(["t", "c"])
         table = normalize_assignment(pd.Series({"u1": None, "u2": "t"}))
         assert table["arm"].tolist() == ["<MISSING>", "t"]
 
@@ -205,8 +221,8 @@ class TestRealData:
         groups = resolve_diff(
             stream, ("platform", "mobile", "desktop"), path_col="session_id"
         )
-        assert groups.excluded_paths == 0
-        assert groups.n1() + groups.n2() > 0
+        assert groups.unassigned_paths == 420  # the tablet sessions
+        assert groups.n1() + groups.n2() + 420 == stream.df["session_id"].nunique()
 
     def test_lumeo_shaped_constant_segment(self) -> None:
         rng = np.random.default_rng(7)
@@ -219,7 +235,7 @@ class TestRealData:
         ]
         stream = _stream(rows, segment_cols=("exp_group",))
         groups = resolve_diff(stream, ("exp_group", "treatment", "control"))
-        assert groups.excluded_paths == 0
+        assert groups.unassigned_paths == 0
         assert groups.n1() == int((arms == "treatment").sum())
         assert groups.n1() + groups.n2() == 400
 

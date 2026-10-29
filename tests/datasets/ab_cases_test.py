@@ -122,8 +122,10 @@ def check_lumeo_smart_cart(stream: Eventstream, assignment: pd.DataFrame) -> dic
 
 def check_srm_platform_bug(stream: Eventstream, assignment: pd.DataFrame) -> dict:
     conv = _has("order_success", "conversion")
-    srm = stream.get_sample_ratio("exp_group", assignment=assignment, by="platform")
-    by_platform = srm["by_levels"].set_index("by")["mismatch"]
+    srm = stream.get_sample_ratio(
+        "exp_group", assignment=assignment, strata_col="platform"
+    )
+    by_platform = srm["strata"].set_index("stratum")["mismatch"]
     bug_day = srm_platform_bug.START + pd.Timedelta(days=srm_platform_bug.BUG_DAY)
     early = assignment[assignment["assigned_at"] < bug_day]
     late = assignment[assignment["assigned_at"] >= bug_day]
@@ -620,11 +622,11 @@ class TestLumeoSmartCart:
 class TestSrmPlatformBug:
     def test__later_days_lose_treatment_users(self, srm_bug) -> None:
         stream, assignment = srm_bug
-        by_day = stream.get_sample_ratio("exp_group", assignment=assignment, by="day")
-        levels = by_day["levels"]
+        days = stream.get_sample_ratio("exp_group", assignment=assignment, period="D")
+        levels = days["levels"]
         share = levels[
-            (levels["level"] == "treatment") & (levels["by"] != "<ALL>")
-        ].set_index("by")["share"]
+            (levels["level"] == "treatment") & (levels["period"] != "<ALL>")
+        ].set_index("period")["share"]
         day = pd.to_datetime(share.index)
         bug = srm_platform_bug.START + pd.Timedelta(days=srm_platform_bug.BUG_DAY)
 
@@ -668,7 +670,7 @@ class TestSessionAssignment:
 
     def test__session_table_refused_at_user_grain(self, per_session) -> None:
         stream, assignment = per_session
-        with pytest.raises(DiffConfigError):
+        with pytest.raises(InvalidParameterError, match="'assignment'"):
             stream.get_ab_test(DIFF, [_has("add_to_cart")], assignment=assignment)
 
     def test__clustered_se_ratio(self, per_session) -> None:
@@ -773,7 +775,7 @@ class TestPushCampaign:
             [_has("purchase", "buyers")],
             assignment=assignment,
         ).iloc[0]
-        silent = row["group1_paths_no_events"] + row["group2_paths_no_events"]
+        silent = row["group1_silent_paths"] + row["group2_silent_paths"]
 
         assert 0.66 < silent / len(assignment) < 0.74
 

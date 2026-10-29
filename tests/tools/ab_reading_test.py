@@ -34,10 +34,9 @@ def _row(**fields) -> dict:
         "rel_delta": 0.025,
         "p_value": 0.12,
         "p_value_adjusted": 0.48,
-        "alpha_used": 0.0125,
+        "mde_alpha": 0.0125,
         "mde": 0.0239,
         "verdict": "inconclusive",
-        "low_support": False,
         "support_warning": "",
     }
     row.update(fields)
@@ -49,7 +48,7 @@ def _read(row: dict, **kwargs) -> str:
         "kind": "binary",
         "correction": "holm",
         "alpha": 0.05,
-        "min_events": 10,
+        "min_support": 10,
         "support_count": 2000,
         "non_support_count": 8000,
     }
@@ -114,16 +113,16 @@ class TestInconclusive:
         )
 
     def test_without_an_effective_correction(self) -> None:
-        # a family of one: alpha_used == alpha, no "after holm"
-        text = _read(_row(alpha_used=0.05))
+        # a family of one: mde_alpha == alpha, no "after holm"
+        text = _read(_row(mde_alpha=0.05))
         assert text.startswith("interval [-1.07, +2.28] pp includes 0 (p 0.48);")
         assert "at alpha 0.05 —" in text
-        none = _read(_row(alpha_used=0.05), correction="none")
+        none = _read(_row(mde_alpha=0.05), correction="none")
         assert "after" not in none
 
     def test_metric_in_its_own_unit(self) -> None:
         text = _read(
-            _row(delta_ci_low=-0.28, delta_ci_high=3.28, mde=2.55, alpha_used=0.05),
+            _row(delta_ci_low=-0.28, delta_ci_high=3.28, mde=2.55, mde_alpha=0.05),
             kind="count",
         )
         assert text.startswith("interval [-0.28, +3.28] includes 0 (p 0.48)")
@@ -133,7 +132,7 @@ class TestInconclusive:
     def test_small_values_keep_three_significant_digits(self) -> None:
         text = _read(
             _row(
-                delta_ci_low=-0.0086, delta_ci_high=0.0377, mde=0.0331, alpha_used=0.05
+                delta_ci_low=-0.0086, delta_ci_high=0.0377, mde=0.0331, mde_alpha=0.05
             ),
             kind="value",
         )
@@ -156,7 +155,7 @@ class TestInconclusive:
                 delta_ci_low=0.0001,
                 delta_ci_high=0.02,
                 p_value_adjusted=0.051,
-                alpha_used=0.05,
+                mde_alpha=0.05,
             )
         )
         assert text.startswith(
@@ -175,7 +174,7 @@ class TestInconclusive:
         text = _read(_row(delta_ci_low=float("nan"), delta_ci_high=float("nan")))
         assert text.startswith("no interval; p 0.48 after holm; the design detects")
 
-    def test_low_support_bootstrap(self) -> None:
+    def test_invalid_replicates_bootstrap(self) -> None:
         text = _read(
             _row(
                 p_value=float("nan"),
@@ -183,7 +182,7 @@ class TestInconclusive:
                 delta_ci_low=float("nan"),
                 delta_ci_high=float("nan"),
                 mde=float("nan"),
-                low_support=True,
+                support_warning="invalid_replicates",
             ),
             kind="ratio",
         )
@@ -232,7 +231,7 @@ class TestSignificant:
             delta_ci_high=-0.0033,
             p_value_adjusted=0.023,
             rel_delta=-0.042,
-            alpha_used=0.05,
+            mde_alpha=0.05,
         )
         assert _read(row) == (
             "interval [-2.63, -0.33] pp excludes 0 (p 0.023); relative -4.2 %"
@@ -247,7 +246,7 @@ class TestSignificant:
                 delta_ci_low=-0.0001,
                 delta_ci_high=0.03,
                 p_value_adjusted=0.049,
-                alpha_used=0.05,
+                mde_alpha=0.05,
                 rel_delta=float("nan"),
             )
         )
@@ -290,9 +289,9 @@ class TestOtherVerdicts:
         text = _read(
             _row(verdict="insufficient_data", p_value_adjusted=float("nan")),
             support_count=3,
-            min_events=20,
+            min_support=20,
         )
-        assert text == "pooled support 3 < min_events 20; estimate shown descriptively"
+        assert text == "pooled support 3 < min_support 20; estimate shown descriptively"
 
     def test_insufficient_paths_without_the_event(self) -> None:
         text = _read(
@@ -301,7 +300,7 @@ class TestOtherVerdicts:
             non_support_count=4,
         )
         assert text == (
-            "pooled paths without the event 4 < min_events 10; estimate shown "
+            "pooled paths without the event 4 < min_support 10; estimate shown "
             "descriptively"
         )
 
@@ -350,7 +349,7 @@ class TestFlags:
         assert text.endswith(
             "; corrected within this metric only; name one decision metric"
         )
-        none = _read(_row(alpha_used=0.05), correction="none", several_metrics=True)
+        none = _read(_row(mde_alpha=0.05), correction="none", several_metrics=True)
         assert none.endswith("; not corrected across metrics; name one decision metric")
         assert "decision metric" not in _read(_row())
 
@@ -400,7 +399,9 @@ class TestScorecardColumn:
         )
         assert (
             out["reading"]
-            .str.endswith("; corrected within this metric only; name one decision metric")
+            .str.endswith(
+                "; corrected within this metric only; name one decision metric"
+            )
             .all()
         )
         assert "pp" not in by_metric.loc["orders", "reading"]
@@ -479,7 +480,7 @@ class TestNoData:
             df[["user_id", "event", "timestamp", "arm", "platform"]],
             {"segment_cols": ["arm", "platform"]},
         )
-        row = ABTest.from_stream(stream, DIFF, [CHAT], min_events=1).fit().iloc[0]
+        row = ABTest.from_stream(stream, DIFF, [CHAT], min_support=1).fit().iloc[0]
         assert row["support_warning"] == "one_arm_only"
         assert row["reading"].endswith(
             "; one_arm_only: the behaviour exists in one arm only"
@@ -552,8 +553,10 @@ class TestBundledDataset:
             horizon="42D",
         )
         assert list(since["period"]) == ["0-13", "14-27", "28-41"]
-        assert since["reading"].iloc[1].startswith(
-            "days 14-27 since assignment, within 42 days of assignment: "
+        assert (
+            since["reading"]
+            .iloc[1]
+            .startswith("days 14-27 since assignment, within 42 days of assignment: ")
         )
 
     def test_empty_since_assignment_bins_are_dropped(self, data) -> None:
@@ -651,7 +654,7 @@ class TestSampleRatioReading:
             "expected 50/50, observed 0/0 (a/b): no path counted, the check cannot run"
         )
 
-    def test_by_names_the_groups_that_mismatch(self) -> None:
+    def test_names_the_strata_that_mismatch(self) -> None:
         # android loses half of its treatment paths: the overall split still looks
         # plausible at alpha 0.001, the android group does not
         def platform(i, arm):
@@ -673,12 +676,12 @@ class TestSampleRatioReading:
                 }
             )
         stream = Eventstream(pd.DataFrame(rows), {"segment_cols": ["arm", "platform"]})
-        result = stream.get_sample_ratio("arm", by="platform")
+        result = stream.get_sample_ratio("arm", strata_col="platform")
         assert result["reading"].endswith(
             "by platform: mismatch in android (adjusted p < 0.0001) — the test is "
             "invalid until the assignment is fixed there"
         )
         clean = _srm_stream(500, 500, platform=platform).get_sample_ratio(
-            "arm", by="platform"
+            "arm", strata_col="platform"
         )
         assert clean["reading"].endswith("; by platform: no group mismatches")

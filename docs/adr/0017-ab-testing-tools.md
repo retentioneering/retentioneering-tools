@@ -72,12 +72,13 @@ Hochberg for many exploratory rows, or none; `correction_family` names what was
 corrected together. The `verdict` (`increase` / `decrease` / `inconclusive` /
 `descriptive` / `insufficient_data`) is a pure function of the adjusted
 p-value; the interval is per comparison and documented so; `mde` is computed at
-the corrected per-comparison level. The test follows the metric kind: pooled
+the Bonferroni level `alpha / m` (`mde_alpha`), which is not the verdict's
+threshold. The test follows the metric kind: pooled
 z-test with Wilson / Newcombe intervals for 0/1 metrics, Welch for per-path
 totals and values, a joint path bootstrap for ratios of sums (multinomial
 weights within arm, batched, seeded per arm, percentile interval, p-value from
-the bootstrap standard error). A support rule (`min_events`) marks rows too
-thin to test; support is pooled across the arms, so a behaviour present in one
+the bootstrap standard error). A support rule (`min_support`, counted in
+supporting paths, not events) marks rows too thin to test; support is pooled across the arms, so a behaviour present in one
 arm only still gets a p-value, flagged in `support_warning` (a per-arm rule
 hid exactly the effects a new feature creates, and a guardrail that wipes out
 an outcome in one arm). Strata carry shares by arm, a share-balance check (not

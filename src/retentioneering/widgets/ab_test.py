@@ -47,7 +47,7 @@ _DEFAULTS: dict[str, Any] = {
     "power": 0.8,
     "n_bootstrap": "1000",
     "bootstrap_weights": "multinomial",
-    "min_events": 10,
+    "min_support": 10,
     "random_state": 42,
     "path_col": "",
     "strata_pre_exposure": None,
@@ -126,7 +126,7 @@ class ABTestWidget(RetentioneeringWidget):
     # an int or "auto"; kept as text so the JS side reads one type
     n_bootstrap = traitlets.Unicode("1000").tag(sync=True)
     bootstrap_weights = traitlets.Unicode("multinomial").tag(sync=True)
-    min_events = traitlets.Int(10).tag(sync=True)
+    min_support = traitlets.Int(10).tag(sync=True)
     random_state = traitlets.Int(42).tag(sync=True)
     path_col = traitlets.Unicode("").tag(sync=True)
 
@@ -162,7 +162,7 @@ class ABTestWidget(RetentioneeringWidget):
         "power",
         "n_bootstrap",
         "bootstrap_weights",
-        "min_events",
+        "min_support",
         "random_state",
         "path_col",
     )
@@ -185,7 +185,7 @@ class ABTestWidget(RetentioneeringWidget):
         power=_UNSET,
         n_bootstrap=_UNSET,
         bootstrap_weights=_UNSET,
-        min_events=_UNSET,
+        min_support=_UNSET,
         random_state=_UNSET,
         path_col=_UNSET,
         strata_pre_exposure=_UNSET,
@@ -232,7 +232,7 @@ class ABTestWidget(RetentioneeringWidget):
             "power": power,
             "n_bootstrap": n_bootstrap,
             "bootstrap_weights": bootstrap_weights,
-            "min_events": min_events,
+            "min_support": min_support,
             "random_state": random_state,
             "path_col": path_col,
             "height": height,
@@ -293,7 +293,7 @@ class ABTestWidget(RetentioneeringWidget):
             "power": float(raw["power"]),
             "n_bootstrap": n_bootstrap,
             "bootstrap_weights": raw["bootstrap_weights"] or "multinomial",
-            "min_events": int(raw["min_events"]),
+            "min_support": int(raw["min_support"]),
             "random_state": int(raw["random_state"]),
             "path_col": raw["path_col"] or None,
         }
@@ -342,7 +342,7 @@ class ABTestWidget(RetentioneeringWidget):
                 "power",
                 "n_bootstrap",
                 "bootstrap_weights",
-                "min_events",
+                "min_support",
                 "random_state",
                 "path_col",
             )

@@ -692,7 +692,7 @@ def get_conversion_rate(
     def _cell(column: str, value: Any) -> Any:
         if column in ("start_anchor", "end_anchor"):
             return str(value)
-        if column.endswith(("paths_with_start", "converted", "excluded_paths")):
+        if column.endswith(("paths_with_start", "converted")):
             return int(value)
         if column == "p_value":
             return _json_number(value, 8)
@@ -729,7 +729,8 @@ def get_sample_ratio(
     expected_shares: dict | None = None,
     alpha: float = 0.001,
     path_col: str | None = None,
-    by: str | None = None,
+    strata_col: str | None = None,
+    period: str | None = None,
     local_preprocessors: list | None = None,
 ) -> dict:
     """
@@ -750,9 +751,12 @@ def get_sample_ratio(
         Mismatch threshold, default 0.001 (SRM alarms are strict on purpose).
     path_col:
         The unit that was randomised (default: the primary path column).
-    by:
-        Repeat the check per group: a segment constant per path that was fixed at
-        assignment, or "day". Not for variables the treatment can change.
+    strata_col:
+        Repeat the check per stratum: a segment constant per path that was fixed at
+        assignment (platform at signup). Not for variables the treatment can change.
+    period:
+        Repeat the check per calendar unit of the path's first event: "D" (day),
+        "W" (week) or "M" (month), as get_ab_test spells it. Not with strata_col.
     local_preprocessors:
         One-off preprocessing for this check only. Never filter on behaviour
         (e.g. "reached cart") before an SRM check: on such a subset a share
@@ -765,9 +769,10 @@ def get_sample_ratio(
     basis, reading (one sentence: the expected and observed split, the p-value and
     the conclusion, e.g. "expected 50/50, observed 5040/4960 (control/treatment),
     p 0.42: no mismatch"; quote it), and levels — one row per arm with paths, share,
-    expected_share. With `by`: by_levels, one row per group with paths, chi2,
-    p_value, p_value_adjusted (Holm across `by` levels) and mismatch; reading names
-    the groups that mismatch.
+    expected_share. With strata_col: strata, one row per stratum with stratum, paths,
+    chi2, p_value, p_value_adjusted (Holm across the strata) and mismatch; with
+    period: periods, the same per period; reading names the strata or periods that
+    mismatch.
     """
     if (err := _require_stream(session)) is not None:
         return err
@@ -781,14 +786,16 @@ def get_sample_ratio(
             expected_shares=expected_shares,
             alpha=alpha,
             path_col=path_col or None,
-            by=by or None,
+            strata_col=strata_col or None,
+            period=period or None,
         )
     except Exception as exc:
         return {"error": str(exc)}
 
     levels = result["levels"]
-    if by:
-        levels = levels[levels["by"] == "<ALL>"]
+    for key in ("stratum", "period"):
+        if key in levels.columns:
+            levels = levels[levels[key] == "<ALL>"]
     out: dict[str, Any] = {
         "segment_col": segment_col,
         "path_col": path_col or src.schema.path_col,
@@ -811,18 +818,23 @@ def get_sample_ratio(
             for row in levels.to_dict("records")
         ],
     }
-    if by:
-        out["by"] = by
-        out["by_levels"] = [
+    for arg, key, name in (
+        ("strata_col", "stratum", "strata"),
+        ("period", "period", "periods"),
+    ):
+        if name not in result:
+            continue
+        out[arg] = result[arg]
+        out[name] = [
             {
-                "by": str(row["by"]),
+                key: str(row[key]),
                 "paths": int(row["paths"]),
                 "chi2": _json_number(row["chi2"], 4),
                 "p_value": _json_number(row["p_value"], 8),
                 "p_value_adjusted": _json_number(row["p_value_adjusted"], 8),
                 "mismatch": bool(row["mismatch"]),
             }
-            for row in result["by_levels"].to_dict("records")
+            for row in result[name].to_dict("records")
         ]
     return out
 
@@ -895,12 +907,14 @@ def get_ab_test(
 
     Returns
     -------
-    diff, path_col, ci_level, correction, excluded_paths, and metrics — one entry per
+    diff, path_col, ci_level, correction, unassigned_paths (stream paths in neither
+    group of diff, e.g. a third arm), and metrics — one entry per
     metric: group1_paths, group2_paths, group1_value, group2_value, delta,
     delta_ci_low, delta_ci_high, rel_delta, p_value, mde (the effect the test detects
-    with 80% power at alpha_used), verdict ("increase", "decrease", "inconclusive",
+    with 80% power at mde_alpha), verdict ("increase", "decrease", "inconclusive",
     "descriptive", "insufficient_data"), test, correction_family (what was adjusted
-    together), alpha_used (per-comparison level after the correction), reading
+    together), mde_alpha (the level the mde is computed at, alpha / m under a
+    correction; the verdict compares p_value_adjusted with 1 - ci_level), reading
     (one sentence built from the row's numbers: the window it covers, what the
     interval includes or excludes after the correction, the p-value, for an
     inconclusive row the effect the design detects and the paths needed for a
@@ -908,17 +922,19 @@ def get_ab_test(
     delta fields are shares and whose reading is in percentage points; "value":
     the metric's own unit); with
     strata_col: strata (top 3 by |delta|: stratum, group1_share, group2_share, delta,
-    delta_ci_low, delta_ci_high, p_value, p_value_adjusted, alpha_used,
+    delta_ci_low, delta_ci_high, p_value, p_value_adjusted, mde_alpha,
     stratum_vs_rest_p_value, verdict, reading, unit), strata_selection ("top 3 by |delta| of N"),
     strata_count, heterogeneity_p_value, strata_correction_family,
     strata_pre_exposure, strata_pre_exposure_source ("declared", "recipe",
     "not_pre_exposure") and exploratory (true unless the strata count as
     pre-exposure); support_warning per metric ("no_data": no path of either arm
     has the behaviour; "one_arm_only": the behaviour exists in one arm only;
-    "low_support": few paths behind a bootstrap interval);
+    "invalid_replicates": more than 1 % of bootstrap replicates without a value in
+    an arm, so no interval or p-value; "low_support": few paths behind a bootstrap
+    interval);
     warnings (the library's warnings for this call); with period: periods (period,
     period_complete, delta, delta_ci_low, delta_ci_high, p_value,
-    p_value_adjusted, alpha_used, verdict, reading, unit) and
+    p_value_adjusted, mde_alpha, verdict, reading, unit) and
     periods_correction_family. "descriptive" marks
     period_population="active" rows (survivors, no p-value).
 
@@ -1006,7 +1022,7 @@ def get_ab_test(
         "verdict",
         "test",
         "correction_family",
-        "alpha_used",
+        "mde_alpha",
         "support_warning",
         "reading",
     )
@@ -1045,7 +1061,7 @@ def get_ab_test(
                         "delta_ci_high",
                         "p_value",
                         "p_value_adjusted",
-                        "alpha_used",
+                        "mde_alpha",
                         "stratum_vs_rest_p_value",
                         "verdict",
                         "reading",
@@ -1070,7 +1086,7 @@ def get_ab_test(
                         "delta_ci_high",
                         "p_value",
                         "p_value_adjusted",
-                        "alpha_used",
+                        "mde_alpha",
                         "verdict",
                         "reading",
                     ),
@@ -1084,7 +1100,7 @@ def get_ab_test(
         "path_col": path_col or src.schema.path_col,
         "ci_level": ci_level,
         "correction": correction,
-        "excluded_paths": int(overall["excluded_paths"].iloc[0]),
+        "unassigned_paths": int(overall["unassigned_paths"].iloc[0]),
         "metrics": entries,
     }
     out["warnings"] = messages

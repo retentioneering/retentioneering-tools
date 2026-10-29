@@ -12,8 +12,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   path. It carries an experiment's assignment table onto the event log, or labels
   computed on another stream (clusters found on a truncated stream) onto the full
   one. Paths the mapping does not hold get no value (`<MISSING>` in `diff`); a
-  non-unique index raises `InvalidParameterError`; string keys from JSON match
-  integer path ids, so the MCP `add_segment` step accepts it too.
+  non-unique index raises `InvalidParameterError`, and so does a mapping whose
+  ids match no path id (keyed by another column or grain), while one where fewer
+  than half match warns, as `get_ab_test(assignment=...)` does; string keys from
+  JSON match integer path ids, so the MCP `add_segment` step accepts it too.
 - `get_path_segments(segment_col, path_col=None)` returns one segment value per
   path, `<MULTI>` where the value changes within the path and `<MISSING>` where it
   is null throughout — the inverse of `path_values`, and a quick check that an
@@ -27,19 +29,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   `add_segment(metric_bins=...)` and Filter Paths conditions. A sum of no values
   is 0; a mean or last value of no values is `NaN`, not 0. The JS metric editor
   offers a column dropdown (numeric columns for sum and mean).
-- `get_sample_ratio(segment_col, expected_shares=None, alpha=0.001,
-  path_col=None, assignment=None, by=None)` checks an experiment for sample
-  ratio mismatch: paths per arm against the expected split (chi-square
-  goodness of fit), with `mismatch` also raised by paths that carry more than
-  one arm. `assignment=` counts an assignment table instead of the stream
-  (silent paths included); `by=` repeats the check per day of assignment or per
-  segment fixed at assignment, with Holm-adjusted p-values. The MCP server has
-  a numbers-only `get_sample_ratio` tool.
+- `get_sample_ratio(segment_col=None, expected_shares=None, alpha=0.001,
+  path_col=None, assignment=None, strata_col=None, period=None)` checks an
+  experiment for sample ratio mismatch: paths per arm against the expected
+  split (chi-square goodness of fit), with `mismatch` also raised by paths that
+  carry more than one arm. `assignment=` counts an assignment table instead of
+  the stream (silent paths included; `segment_col` is then optional, and a
+  segment column of the stream is checked against the table);
+  `unassigned_paths` counts the paths left out of the test (stream paths the
+  table does not list, paths with no arm or an arm outside `expected_shares`).
+  `strata_col=` repeats the check per stratum fixed at assignment and
+  `period=` per calendar unit of assignment (`"D"`, `"W"`, `"M"`, spelled as in
+  `get_ab_test`), with Holm-adjusted p-values. The MCP server has a
+  numbers-only `get_sample_ratio` tool.
 - `get_conversion_rate(..., ci_level=None, diff=None)`: `ci_level` adds Wilson
   intervals of the rate (`conversion_rate_ci_low` / `conversion_rate_ci_high`);
   `diff` compares two groups of paths in one row — `group1_*` / `group2_*`
   rates with intervals, base rates and lifts, `delta` with a Newcombe interval
-  and a pooled z-test `p_value` (NaN when undefined). A `conditional` flag
+  and a pooled z-test `p_value` (NaN when undefined); with `diff`,
+  `ci_level=None` means 0.95. A `conditional` flag
   marks a comparison whose denominator is the paths that reached the start
   anchor (a post-exposure population unless the anchor is the path start).
   Groups are resolved per path, so a path whose segment changes inside it
@@ -83,12 +91,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   in one arm only gets a p-value and `support_warning="one_arm_only"`; a row
   where no path of either arm has it is `insufficient_data` with
   `support_warning="no_data"`, and a since-assignment bin with no path in
-  either arm (its window closes after the end of data) is left out. The
-  estimate columns are NaN, never 0, when they are undefined. Streams with
-  tz-aware timestamps and assignment ids that arrive as strings or ints are
-  handled; identical arms, a table whose ids match no path, and a path grain
-  finer than the table's unit are refused. See
-  [ADR-0017](docs/adr/0017-ab-testing-tools.md).
+  either arm (its window closes after the end of data) is left out.
+  `min_support` (default 10) is the pooled number of supporting paths below
+  which a row is `insufficient_data`. Bootstrap rows with fewer than 30
+  supporting paths in an arm get `support_warning="low_support"`, and those
+  where more than 1 % of the replicates have no value in an arm get
+  `"invalid_replicates"` and no interval or p-value. `mde_alpha` is the level
+  the `mde` is computed at (`alpha / m` under a correction); the verdict
+  compares `p_value_adjusted` with `1 - ci_level`. Silent assigned paths are
+  counted in `group1_silent_paths` / `group2_silent_paths`, stream paths in
+  neither group in `unassigned_paths`, and the heterogeneity test of the strata
+  reports `heterogeneity_p_value` with `heterogeneity_dof`. The estimate
+  columns are NaN, never 0, when they are undefined. Streams with tz-aware
+  timestamps and assignment ids that arrive as strings or ints are handled;
+  identical arms, a `diff[0]` that is neither `"arm"` nor a segment column
+  when `assignment=` is given, a malformed assignment table or one whose ids
+  match no path (`InvalidParameterError`), and a path grain finer than the
+  table's unit are refused. See [ADR-0017](docs/adr/0017-ab-testing-tools.md).
 - `get_ab_bootstrap(diff, metrics, ..., contrast=None)` returns the joint
   bootstrap replicates behind it, one row per replicate × metric × stratum ×
   period, so ratios of metrics and period contrasts (a novelty effect: days
@@ -116,7 +135,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   with live demos on `load_ab_test()`.
 - The MCP server has a numbers-only `get_ab_test` tool (overall rows, the top
   strata by effect size — labelled as such in `strata_selection` — and period
-  rows, with `mde`, `correction_family`, `alpha_used`, `exploratory`,
+  rows, with `mde`, `correction_family`, `mde_alpha`, `exploratory`,
   `strata_pre_exposure` and the call's `warnings`) and an A/B scenario in its
   playbook.
 - `get_ab_test` rows end with a `reading` column: one sentence per row built from
@@ -137,8 +156,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   their own unit.
   `get_sample_ratio` returns a `reading` too (`"expected 50/50, observed
   5040/4960 (control/treatment), p 0.42: no mismatch"`, or `"mismatch: ... — the
-  test is invalid until the assignment is fixed"`, naming the `by` groups that
-  mismatch). The MCP `get_ab_test` and `get_sample_ratio` tools return it on
+  test is invalid until the assignment is fixed"`, naming the strata or periods
+  that mismatch). The MCP `get_ab_test` and `get_sample_ratio` tools return it on
   every row with a `unit` (`"pp"` or `"value"`) and the raw `p_value` on strata
   and period rows too, and the playbook's A/B scenario tells the agent to quote it for
   inconclusive rows and to propose a next step (more paths, a longer horizon, a
@@ -189,8 +208,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   `load_ab_test()` with real outputs; how to read the scorecard (verdict, `mde`,
   correction family, strata flags); funnels with intervals and why
   step-to-step rates are descriptive; horizon, since-assignment periods and
-  novelty; blind pre-exposure clusters as strata; sample ratio checks with
-  `by=`; and eight pitfalls with sources. It has a live funnel demo on the A/B
+  novelty; blind pre-exposure clusters as strata; sample ratio checks per
+  stratum and per day; and eight pitfalls with sources. It has a live funnel demo on the A/B
   dataset, a row in Path Analysis's question table, an "A/B tests" section in
   the README and a note in Agent Skills.
 

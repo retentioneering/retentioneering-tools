@@ -51,7 +51,7 @@ def _verdicts(frame, key="metric"):
 
 # step 1: population and SRM; no event precedes its user's assignment
 assert before_assignment == 0
-assert not srm["mismatch"] and not srm["by_levels"]["mismatch"].any()
+assert not srm["mismatch"] and not srm["strata"]["mismatch"].any()
 assert srm["silent_paths"] > 0 and srm["multi_valued_paths"] == 0
 assert overview["shape"]["n_paths"] < len(assignment)
 

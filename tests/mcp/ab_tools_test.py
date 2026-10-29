@@ -43,14 +43,18 @@ class TestGetSampleRatio:
         assert result["p_value"] == round(result["p_value"], 8)
         assert session.pending_tabs == []
 
-    def test__expected_shares_and_by(self) -> None:
+    def test__expected_shares_and_period(self) -> None:
         session = _session()
         result = tools.get_sample_ratio(
-            session, "arm", expected_shares={"treatment": 0.6, "control": 0.4}, by="day"
+            session,
+            "arm",
+            expected_shares={"treatment": 0.6, "control": 0.4},
+            period="D",
         )
         assert result["chi2"] == 0.0
         assert len(result["levels"]) == 2
-        assert [row["by"] for row in result["by_levels"]] == [
+        assert result["period"] == "D"
+        assert [row["period"] for row in result["periods"]] == [
             "2024-01-01",
             "2024-01-02",
         ]
@@ -108,9 +112,9 @@ class TestGetAbTest:
         assert conv["verdict"] == "increase"
         assert conv["test"] == "z_test"
         assert conv["correction_family"] == "metric=conversion"
-        assert conv["alpha_used"] == pytest.approx(0.05)
+        assert conv["mde_alpha"] == pytest.approx(0.05)
         assert "strata" not in conv and "periods" not in conv
-        assert result["excluded_paths"] == 0
+        assert result["unassigned_paths"] == 0
 
     def test__strata_top_three_and_periods(self) -> None:
         session = _ab_session()
@@ -130,7 +134,7 @@ class TestGetAbTest:
         assert {s["stratum"] for s in conv["strata"]} == {"ios", "web"}
         # Holm over the two strata: alpha / 2 per comparison
         assert conv["strata_correction_family"] == "metric=conversion/strata"
-        assert [s["alpha_used"] for s in conv["strata"]] == [pytest.approx(0.025)] * 2
+        assert [s["mde_alpha"] for s in conv["strata"]] == [pytest.approx(0.025)] * 2
         # a source column: the recipe cannot show it was fixed before exposure
         assert conv["strata_pre_exposure"] is False
         assert conv["strata_pre_exposure_source"] == "not_pre_exposure"
@@ -192,7 +196,7 @@ class TestAbDocsInSync:
             for label in (
                 "descriptive",
                 "correction_family",
-                "alpha_used",
+                "mde_alpha",
                 "strata_pre_exposure",
                 "exploratory",
                 "assignment=",
@@ -203,14 +207,14 @@ class TestAbDocsInSync:
                 assert label in doc, label
             assert "Holm-adjusted" not in doc
         playbook = json.dumps(tools.playbook("ab_test"))
-        for label in ("alpha_used", "exploratory", "descriptive", "assignment="):
+        for label in ("mde_alpha", "exploratory", "descriptive", "assignment="):
             assert label in playbook, label
 
     def test__sample_ratio_names_the_holm_family(self) -> None:
         from retentioneering.mcp import server
 
-        assert "Holm across `by` levels" in tools.get_sample_ratio.__doc__
-        assert "Holm across `by` levels" in inspect.getsource(server)
+        assert "Holm across the strata" in tools.get_sample_ratio.__doc__
+        assert "Holm across strata" in inspect.getsource(server)
 
     def test__descriptive_period_rows(self) -> None:
         result = tools.get_ab_test(

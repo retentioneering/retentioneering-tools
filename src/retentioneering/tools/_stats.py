@@ -246,7 +246,7 @@ def mde_proportion(p, n1, n2, alpha: float = 0.05, power: float = 0.8) -> np.nda
 
     ``(z_{1-alpha/2} + z_{power}) * sqrt(p (1 - p) (1/n1 + 1/n2))``. ``p`` is the pooled
     baseline rate; ``alpha`` is the per-comparison level after multiplicity correction
-    (``alpha_used`` in the scorecard). NaN when ``p`` is not in (0, 1) or an ``n`` is 0.
+    (``mde_alpha`` in the scorecard). NaN when ``p`` is not in (0, 1) or an ``n`` is 0.
     """
     p, n1, n2 = _floats(p, n1, n2)
     factor = _mde_factor(alpha, power)

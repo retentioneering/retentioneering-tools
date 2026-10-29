@@ -602,7 +602,8 @@ def _build_server(
         expected_shares: dict | None = None,
         alpha: float = 0.001,
         path_col: str | None = None,
-        by: str | None = None,
+        strata_col: str | None = None,
+        period: str | None = None,
         local_preprocessors: list | None = None,
     ) -> str:
         """
@@ -622,8 +623,10 @@ def _build_server(
             Mismatch threshold, default 0.001.
         path_col:
             The randomised unit (default: primary path column).
-        by:
-            Repeat per group: a segment fixed at assignment, or "day".
+        strata_col:
+            Repeat per stratum: a segment fixed at assignment (signup platform).
+        period:
+            Repeat per calendar unit of the first event: "D", "W" or "M".
         local_preprocessors:
             One-off preprocessing. Never filter on behaviour before an SRM
             check: on such a subset a share difference is an effect, not a bug.
@@ -633,8 +636,9 @@ def _build_server(
         JSON with mismatch, p_value, chi2, dof, multi_valued_paths (assignment
         bug when > 0), unassigned_paths, basis, reading (one sentence: expected vs
         observed split, p and the conclusion; quote it), levels (paths, share,
-        expected_share per arm) and, with `by`, by_levels (p_value_adjusted:
-        Holm across `by` levels).
+        expected_share per arm) and, with strata_col, strata (per stratum: paths,
+        p_value, p_value_adjusted by Holm across strata, mismatch), with period,
+        periods (the same per period).
         """
         result = tools.get_sample_ratio(
             session,
@@ -642,7 +646,8 @@ def _build_server(
             expected_shares,
             alpha,
             path_col,
-            by,
+            strata_col,
+            period,
             local_preprocessors,
         )
         return json.dumps(result, ensure_ascii=False, allow_nan=False)
@@ -702,11 +707,12 @@ def _build_server(
 
         Returns
         -------
-        JSON with excluded_paths and metrics: per metric group sizes and values,
+        JSON with unassigned_paths (stream paths in neither group of diff) and
+        metrics: per metric group sizes and values,
         delta with delta_ci_low / delta_ci_high, rel_delta, p_value, mde (effect
-        detected with 80% power at alpha_used), verdict (increase, decrease,
+        detected with 80% power at mde_alpha), verdict (increase, decrease,
         inconclusive, descriptive, insufficient_data), test, correction_family,
-        alpha_used, support_warning, reading (one sentence per row, from its
+        mde_alpha, support_warning, reading (one sentence per row, from its
         numbers, naming the window it covers; also on strata and periods rows),
         unit ("pp" or "value": the unit reading quotes; strata and periods rows
         carry p_value too); warnings; strata (top 3), strata_selection,

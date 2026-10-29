@@ -469,12 +469,13 @@ class Eventstream:
     @_tracked("get_sample_ratio")
     def get_sample_ratio(
         self,
-        segment_col: str,
+        segment_col: str | None = None,
         expected_shares: dict | None = None,
         alpha: float = 0.001,
         path_col: str | None = None,
         assignment: "pd.Series | pd.DataFrame | None" = None,
-        by: str | None = None,
+        strata_col: str | None = None,
+        period: str | None = None,
     ) -> dict:
         """
         Check an experiment's arm sizes against the expected split (sample ratio mismatch).
@@ -492,10 +493,12 @@ class Eventstream:
 
         Parameters
         ----------
-        segment_col : str
-            Segment column holding the arm (`schema.segment_cols`). With `assignment`
-            it may be absent from the stream; when present, every path's arm on the
-            stream must agree with the table.
+        segment_col : str, optional
+            Segment column holding the arm (`schema.segment_cols`); required without
+            `assignment`. With `assignment` it is optional: `None` or `"arm"` (the
+            table's column) checks the table alone; a segment column of the stream
+            adds the check that every path's arm on the stream agrees with the
+            table. Any other value raises `InvalidParameterError`.
         expected_shares : dict, optional
             `{level: share}`, shares summing to 1 (within 1e-9), at least two levels.
             Default: an equal split over the column's levels (or the table's arms).
@@ -514,20 +517,27 @@ class Eventstream:
             matches as is; none matching raises, fewer than half warns), and a table
             of a coarser unit than `path_col` (user ids with session paths) raises
             `InvalidParameterError`.
-        by : str, optional
-            Repeat the check within groups: a segment column constant per path (a
-            column of the `assignment` DataFrame is used first), or `"day"` — the day
-            of `assigned_at`, or of the path's first event without a table. Valid only
-            for a variable fixed at assignment (signup platform, assignment day): on a
-            variable the treatment can change, per-group shares measure an effect.
-            Raises `InvalidParameterError` for a segment that changes within a path.
+        strata_col : str, optional
+            Repeat the check within strata, as `get_ab_test(strata_col=)` names
+            them: a column of the `assignment` DataFrame (used first) or a segment
+            column constant per path. Valid only for a variable fixed at assignment
+            (signup platform): on a variable the treatment can change, per-stratum
+            shares measure an effect. Raises `InvalidParameterError` for a segment
+            that changes within a path.
+        period : str, optional
+            Repeat the check per calendar unit of `assigned_at` (or of the path's
+            first event without a table), spelled as `get_ab_test(period=)`: `"D"`
+            (day), `"W"` (week; `"W-MON"` etc. pick the week's end), `"M"`, `"Q"`,
+            `"Y"`. A multiple (`"2W"`) or another fixed length raises
+            `InvalidParameterError`; so does `period` together with `strata_col`.
 
         Returns
         -------
         dict
             - `levels` (DataFrame): one row per arm — `level`, `paths`, `share`,
-              `expected_share`, `expected_paths`. With `by`, a leading `by` column;
-              the overall rows carry `by="<ALL>"`, followed by the rows of every group.
+              `expected_share`, `expected_paths`. With `strata_col` (`period`), a
+              leading `stratum` (`period`) column; the overall rows carry
+              `"<ALL>"` there, followed by the rows of every stratum (period).
             - `chi2` (float), `dof` (int), `p_value` (float): the overall test; NaN
               when no path is counted.
             - `alpha` (float): the threshold used.
@@ -536,30 +546,37 @@ class Eventstream:
               stream, or disagreeing with the assignment table).
             - `silent_paths` (int): assignment rows with no events in the stream (0
               without `assignment`).
-            - `unassigned_paths` (int): paths with no arm or an arm outside
-              `expected_shares` (not counted in the test).
+            - `unassigned_paths` (int): paths not counted in the test: stream paths
+              the assignment table does not list, paths with no arm (a missing
+              segment value or table arm), and paths of an arm outside
+              `expected_shares`.
             - `basis` (str): what was counted.
             - `reading` (str): the check in one sentence, built from the numbers
               above: `"expected 50/50, observed 5040/4960 (control/treatment),
               p 0.42: no mismatch"`, or `"mismatch: ... — the test is invalid until
               the assignment is fixed"` when the split is off or paths carry two
-              arms; paths not counted and, with `by`, the groups that mismatch are
-              added.
-            - `by` (str) and `by_levels` (DataFrame) with `by` only: one row per group
-              — `by`, `paths`, `chi2`, `dof`, `p_value`, `p_value_adjusted` (Holm over
-              the groups) and `mismatch` (`p_value_adjusted < alpha`). The overall
-              `mismatch` does not include the groups.
+              arms; paths not counted and the strata or periods that mismatch
+              (`"by platform: ..."`, `"by day: ..."`) are added.
+            - `strata_col` (str) and `strata` (DataFrame), with `strata_col` only:
+              one row per stratum — `stratum`, `paths`, `chi2`, `dof`, `p_value`,
+              `p_value_adjusted` (Holm over the strata) and `mismatch`
+              (`p_value_adjusted < alpha`).
+            - `period` (str) and `periods` (DataFrame), with `period` only: the same
+              per period, with a `period` column (`"2024-03-01"` for days,
+              `"2024-03-04/2024-03-10"` for weeks, `"2024-03"` for months).
+            The overall `mismatch` does not include the strata or periods.
 
         Raises
         ------
         InvalidParameterError
-            `segment_col` not a segment column (without `assignment`); fewer than two
-            arms; `expected_shares` not summing to 1 or naming an unknown level;
-            `alpha` outside (0, 1); `by` not a per-path segment or `"day"`;
-            `path_col` finer than the assignment table's unit.
-        DiffConfigError
-            `assignment` malformed, its index not unique, or no id of it matching a
-            path id.
+            `segment_col` missing or not a segment column (without `assignment`),
+            or neither `None`, `"arm"` nor a segment column (with it); fewer than
+            two arms; `expected_shares` not summing to 1 or naming an unknown level;
+            `alpha` outside (0, 1); `strata_col` not a per-path segment or table
+            column; `period` not one calendar unit, or given with `strata_col`;
+            `path_col` finer than the assignment table's unit; `assignment`
+            malformed (no `arm` column, empty, index not unique) or no id of it
+            matching a path id.
 
         Examples
         --------
@@ -574,8 +591,9 @@ class Eventstream:
                 assignment=groups,          # index user_id, columns arm, assigned_at
             )
 
-            # did the split hold on every day of the rollout?
-            stream.get_sample_ratio("exp_group", by="day")["by_levels"]
+            # did the split hold on every day of the rollout, and on every platform?
+            stream.get_sample_ratio("exp_group", period="D")["periods"]
+            stream.get_sample_ratio(assignment=groups, strata_col="platform")["strata"]
         """
         from retentioneering.tools.sample_ratio import SampleRatio
 
@@ -585,7 +603,8 @@ class Eventstream:
             alpha=alpha,
             path_col=path_col,
             assignment=assignment,
-            by=by,
+            strata_col=strata_col,
+            period=period,
         )
 
     @_tracked("get_ab_test")
@@ -606,7 +625,7 @@ class Eventstream:
         power: float = 0.8,
         n_bootstrap: "int | str" = 1000,
         bootstrap_weights: str = "multinomial",
-        min_events: int = 10,
+        min_support: int = 10,
         random_state: int = 42,
         path_col: str | None = None,
         strata_pre_exposure: bool | None = None,
@@ -647,14 +666,16 @@ class Eventstream:
             Per-path arm table that defines the intention-to-treat population: a Series
             `path_id -> arm` or a DataFrame indexed by path id with columns `arm` and
             optionally `assigned_at`. Paths in the table with no events are in the
-            population (`group*_paths_no_events`); events before `assigned_at` are
+            population (`group*_silent_paths`); events before `assigned_at` are
             dropped; stream paths absent from the table are left out
-            (`excluded_paths`). `diff` names the two arms (`("exp_group", "treatment",
-            "control")`); when `diff[0]` is a segment column of the stream, every
-            path's segment must agree with the table. Ids are matched to `path_col` as
-            they are, or by their string form when none matches as is (ids read from
-            JSON or CSV); no match at all raises `DiffConfigError`, and fewer than half
-            of the table's ids matched gives a `UserWarning`. A naive `assigned_at` on
+            (`unassigned_paths`). `diff` names the two arms: `diff[0]` is `"arm"`
+            (the table alone) or a segment column of the stream, and then every
+            path's segment must agree with the table (`("exp_group", "treatment",
+            "control")`); another `diff[0]` raises `DiffConfigError`. Ids are
+            matched to `path_col` as they are, or by their string form when none
+            matches as is (ids read from JSON or CSV); no match at all raises
+            `InvalidParameterError`, and fewer than half of the table's ids matched
+            gives a `UserWarning`. A naive `assigned_at` on
             a tz-aware stream is read in the stream's timezone; a tz-aware one is
             converted to it. A table of user ids (by overlap, or an index named after
             a coarser path column) with `path_col` set to a finer column (sessions)
@@ -761,13 +782,13 @@ class Eventstream:
             - `"multinomial"` — resample each arm's paths with replacement (arm sizes
               fixed).
             - `"poisson"` — independent Poisson(1) weight per path.
-        min_events : int, default 10
-            Support rule, pooled over the two arms. Support is paths with the event
-            for 0/1 metrics, paths with a non-zero numerator for ratios, paths with a
-            value for totals and values. A row is `verdict="insufficient_data"` with
-            no p-value (the estimates stay) when the pooled support `s1 + s2` is below
-            `min_events`, and for 0/1 metrics also when the paths without the event,
-            `(n1 - s1) + (n2 - s2)`, are. A behaviour present in one arm only (a new
+        min_support : int, default 10
+            Support rule, pooled over the two arms, counted in paths (not events).
+            Support is paths with the event for 0/1 metrics, paths with a non-zero
+            numerator for ratios, paths with a value for totals and values. A row is
+            `verdict="insufficient_data"` with no p-value (the estimates stay) when
+            the pooled support `s1 + s2` is below `min_support`, and for 0/1 metrics
+            also when the paths without the event, `(n1 - s1) + (n2 - s2)`, are. A behaviour present in one arm only (a new
             feature's event, 0 paths in control) is tested and flagged
             `support_warning="one_arm_only"`. Percentile bootstrap intervals
             under-cover with few supporting paths (about 0.93 instead of 0.95 at 60
@@ -796,10 +817,12 @@ class Eventstream:
               the period; for since-assignment bins False when some assigned path's
               window is not closed by the last event, or when `horizon` cuts the bin.
             - `group1_paths`, `group2_paths` (int): paths in the row's population.
-            - `group1_paths_no_events`*, `group2_paths_no_events`* (int): paths of the
+            - `group1_silent_paths`*, `group2_silent_paths`* (int): paths of the
               row's population with no event in the analysed window (`assignment`).
-            - `excluded_paths` (int): paths left out by the diff resolution (stream paths
-              outside the assignment table); the same in every row.
+            - `unassigned_paths` (int): paths of the stream that are in neither
+              group: another level of the diff's segment, ids in neither list, or
+              paths the assignment table does not list (or lists under a third arm);
+              the same in every row.
             - `immature_paths`* (int): paths left out because their window is not closed
               at the stream's end (`horizon`, since-assignment bins).
             - `group1_value`, `group1_ci_low`, `group1_ci_high`, `group2_value`,
@@ -819,33 +842,41 @@ class Eventstream:
               metric's family.
             - `correction_family` (str): what was corrected together, e.g.
               `"metric=conversion/strata"`; `"none"` without correction.
-            - `alpha_used` (float): per-comparison level after correction (`alpha / m`
-              for Holm, Bonferroni and BH — the conservative bound used for `mde` —
-              `alpha` for none or a family of one), `m` = finite p-values in the family.
+            - `mde_alpha` (float): the significance level at which `mde` is
+              computed: `alpha / m` with Holm, Bonferroni and BH (the conservative
+              Bonferroni bound), `alpha` without correction or for a family of one;
+              `alpha = 1 - ci_level`, `m` = finite p-values in the family. It is not
+              the verdict's threshold: compare `p_value_adjusted` with
+              `1 - ci_level`, as `verdict` does.
             - `mde`, `rel_mde` (float): minimum detectable absolute and relative effect
-              at `alpha_used`, `power` and the realised sample sizes.
+              at `mde_alpha`, `power` and the realised sample sizes.
             - `verdict` (str): `"increase"` / `"decrease"` when
-              `p_value_adjusted < 1 - ci_level`, with the sign of `delta`; `"inconclusive"` otherwise
-              (including a NaN p-value); `"descriptive"` for active period rows;
-              `"insufficient_data"` below `min_events`.
+              `p_value_adjusted < 1 - ci_level`, with the sign of `delta`;
+              `"inconclusive"` otherwise (including a NaN p-value); `"descriptive"`
+              for active period rows; `"insufficient_data"` when the pooled support
+              is below `min_support`.
             - `test` (str): `"z_test"`, `"welch_t_test"` or `"bootstrap"`.
             - `ci_basis` (str): `"wilson"`, `"welch"` or `"path_bootstrap"`.
             - `p_basis` (str): `"pooled_z"`, `"welch"` or `"bootstrap_se"`.
-            - `valid_replicates` (Int64, `<NA>` on closed-form rows), `low_support`
-              (bool): bootstrap rows; more than 1 % of replicates without support sets
-              `low_support` and NaN intervals, p-value, `delta_se` and `mde`.
-            - `support_warning` (str): `""`; `"no_data"` when no path of either arm
-              has the behaviour (no event, no non-zero total or numerator, no
-              value): the row is `"insufficient_data"`, whatever the metric type;
-              `"one_arm_only"` when an arm has no
-              supporting path (the p-value stays: the pooled test is valid, but the
-              behaviour does not exist in that arm); `"low_support"` on bootstrap
-              rows with fewer than 30 supporting paths in an arm.
+            - `valid_replicates` (Int64, `<NA>` on closed-form rows): bootstrap
+              replicates in which both arms have a value (a ratio's denominator is
+              not 0).
+            - `support_warning` (str), the first that applies: `"no_data"` when no
+              path of either arm has the behaviour (no event, no non-zero total or
+              numerator, no value): the row is `"insufficient_data"`, whatever the
+              metric type; `"invalid_replicates"` on bootstrap rows where more than
+              1 % of the replicates have no value in an arm: the intervals, p-value,
+              `delta_se` and `mde` are NaN (the point estimates stay);
+              `"one_arm_only"` when an arm has no supporting path (the p-value
+              stays: the pooled test is valid, but the behaviour does not exist in
+              that arm); `"low_support"` on bootstrap rows with fewer than 30
+              supporting paths in an arm (the interval may under-cover); `""`
+              otherwise.
             - `group1_share`*, `group2_share`*, `balance_p_value`* (float): share of the
               stratum within each arm (within the period) and the chi-square p-value of
               the stratum × arm table. A share-balance check only: a balanced
               post-exposure stratum is still selected by the treatment.
-            - `heterogeneity_p_value`* (float), `heterogeneity_df`* (int),
+            - `heterogeneity_p_value`* (float), `heterogeneity_dof`* (int),
               `heterogeneity_strata_used`* (int): Cochran's Q over the strata that pass
               the support guard (>= 5 events and >= 5 non-events per arm for 0/1
               metrics, >= 10 supported paths per arm otherwise); NaN with fewer than two
@@ -873,7 +904,7 @@ class Eventstream:
               out without an `mde`; an interval that excludes 0 only before the
               correction says so). `"increase"` / `"decrease"`: `"... : interval
               [+1.38, +4.12] pp excludes 0 after holm (p 0.00070); relative +12 %"`.
-              `"insufficient_data"`: `"... : pooled support 3 < min_events 20;
+              `"insufficient_data"`: `"... : pooled support 3 < min_support 20;
               estimate shown descriptively"`, or `"... : no data in either arm"`
               with `support_warning="no_data"`. `"descriptive"`: `"... : active
               population: not randomised, describes who was active in the
@@ -884,8 +915,11 @@ class Eventstream:
               this metric only; name one decision metric"`. With
               `correction="bonferroni"` it quotes the simultaneous interval.
 
-            Missing values: `p_value` is NaN when both arms are constant, on
-            insufficient, descriptive and low-support rows; `mde` is NaN when the
+            Missing values: `p_value` is NaN when both arms are constant, when an
+            arm has fewer than two paths with a value (totals and values), on
+            `"insufficient_data"` and `"descriptive"` rows and on rows with
+            `support_warning="invalid_replicates"` (a `"low_support"` row keeps
+            its p-value); `mde` is NaN when the
             delta's standard error is 0 or undefined; `rel_delta*` are NaN when
             `group2_value <= 0`; an arm with no path has NaN estimates;
             `heterogeneity_*` are NaN with fewer than two usable strata. An absent
@@ -895,19 +929,21 @@ class Eventstream:
         ------
         DiffConfigError
             Overlapping or non-constant groups; both values of `diff` naming the same
-            level or arm; assignment index not unique; assignment and segment
-            disagree; no assignment id matches a path id.
+            level or arm; with `assignment`, `diff[0]` neither `"arm"` nor a segment
+            column, or a segment that disagrees with the table.
         InvalidMetricConfigError
             Bad metric entry (unknown metric or event, `*_bulk`, several columns,
             duplicate name, denominator on a 0/1 metric, test not matching the kind).
         InvalidParameterError
-            An enum argument outside its values; `strata_col` not a segment column or
-            not constant per path; `period` with a non-primary `path_col`; a path grain
+            An enum argument outside its values; a malformed `assignment` (not a
+            Series or DataFrame, no `arm` column, empty, index not unique) or one
+            whose ids match no path id; `strata_col` not a segment column or not
+            constant per path; `period` with a non-primary `path_col`; a path grain
             finer than the assignment table's unit; `since_assignment` or `horizon`
             without `assigned_at`; `period_basis` / `period_population` other than the
             default without `period`; `period` or `horizon` a bare number or an
             unsupported alias; a tz-aware `assigned_at` on a naive stream; `ci_level`
-            outside [0.5, 1); `power` outside (0, 1); `min_events < 1`;
+            outside [0.5, 1); `power` outside (0, 1); `min_support < 1`;
             `n_bootstrap < 100`.
         EmptyEventstreamError
             Either group is empty.
@@ -955,7 +991,7 @@ class Eventstream:
             power=power,
             n_bootstrap=n_bootstrap,
             bootstrap_weights=bootstrap_weights,
-            min_events=min_events,
+            min_support=min_support,
             random_state=random_state,
             path_col=path_col,
             strata_pre_exposure=strata_pre_exposure,
@@ -1662,9 +1698,12 @@ class Eventstream:
             the path, so the segment is constant per path. Paths the mapping does
             not hold get no value, which `diff` and `get_path_segments` show as
             `<MISSING>`; ids in the mapping that are not in the eventstream are
-            ignored. A categorical Series keeps its category order. Keys that are
-            strings match non-string path ids by their string form (a dict that
-            went through JSON). A non-unique index raises `InvalidParameterError`.
+            ignored, with a `UserWarning` when fewer than half of them match a path
+            id, and `InvalidParameterError` when none does (a mapping keyed by
+            another column or grain). A categorical Series keeps its category
+            order. Keys that are strings match non-string path ids by their string
+            form (a dict that went through JSON). A non-unique index raises
+            `InvalidParameterError`.
         path_col : str, optional
             Path ID column override for `funnel_events`, `metric_bins` and
             `path_values` modes; defaults to `schema.path_col`.
@@ -2997,8 +3036,7 @@ class Eventstream:
         - with `diff` only: `correction`; `correction_family` — the p-values
           corrected together, spelled as in `get_ab_test`:
           `"metric=delta_conversion_rate/steps"` (the overall-step p-values with
-          a finite value), `"none"` without correction; `excluded_paths` —
-          always 0, since overlapping groups raise instead.
+          a finite value), `"none"` without correction.
 
         `NaN` marks an absent estimate (never 0); widgets send it as `null`.
 
@@ -3089,8 +3127,9 @@ class Eventstream:
         ci_level : float, optional
             Two-sided confidence level in [0.5, 1), e.g. `0.95`. Adds Wilson score
             intervals of the conversion rate (`conversion_rate_ci_low` /
-            `conversion_rate_ci_high`). In `diff` mode it sets the level of every
-            interval (default 0.95 there).
+            `conversion_rate_ci_high`). `None` (default) means no interval without
+            `diff`, and `0.95` with `diff`: diff mode always reports the intervals
+            and the p-value, at this level.
         diff : tuple, optional
             Compare two groups of paths: `("segment_col", value1, value2)` (`value2`
             may be `<REST>`, either value `<MISSING>`) or `(path_ids1, path_ids2)`.
@@ -3138,7 +3177,6 @@ class Eventstream:
               no offset): the denominator is then the paths that reached the start
               anchor, and the p-value describes that selected population (see
               Notes).
-            - `excluded_paths` — always 0 (overlapping groups raise instead).
 
         Notes
         -----
@@ -3317,7 +3355,7 @@ class Eventstream:
         power: float | None = None,
         n_bootstrap: "int | str | None" = None,
         bootstrap_weights: str | None = None,
-        min_events: int | None = None,
+        min_support: int | None = None,
         random_state: int | None = None,
         path_col: str | None = None,
         strata_pre_exposure: bool | None = None,
@@ -3342,7 +3380,7 @@ class Eventstream:
             "power": power,
             "n_bootstrap": n_bootstrap,
             "bootstrap_weights": bootstrap_weights,
-            "min_events": min_events,
+            "min_support": min_support,
             "random_state": random_state,
             "path_col": path_col,
             "strata_pre_exposure": strata_pre_exposure,
@@ -3374,7 +3412,7 @@ class Eventstream:
         power: float = 0.8,
         n_bootstrap: "int | str" = 1000,
         bootstrap_weights: str = "multinomial",
-        min_events: int = 10,
+        min_support: int = 10,
         random_state: int = 42,
         path_col: str | None = None,
         strata_pre_exposure: bool | None = None,
@@ -3395,7 +3433,7 @@ class Eventstream:
             power=power,
             n_bootstrap=n_bootstrap,
             bootstrap_weights=bootstrap_weights,
-            min_events=min_events,
+            min_support=min_support,
             random_state=random_state,
             path_col=path_col,
             strata_pre_exposure=strata_pre_exposure,
@@ -3459,6 +3497,12 @@ state_file : str, optional
     # strata fixed at signup, and weekly ITT rows
     stream.ab_test(diff, metrics, strata_col="platform",
                    strata_pre_exposure=True, period="W")""",
+            ),
+            (
+                "See Also",
+                """get_ab_test : The scorecard as a DataFrame (`ab_test_data` is its alias).
+get_sample_ratio : The sample ratio check; run it before reading any metric.
+get_ab_bootstrap : Joint bootstrap replicates, for contrasts between periods.""",
             ),
         ],
     )

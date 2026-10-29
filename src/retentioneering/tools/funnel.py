@@ -79,7 +79,6 @@ class Funnel:
             if ci_level is None:
                 # Descriptive mode keeps the widgets' event-level split (D2).
                 stream1, stream2 = self.eventstream._split_two(diff, path_col=path_col)
-                excluded_paths = None
             else:
                 # Intervals and tests need disjoint paths: resolve at path level
                 # and refuse a path that falls in both groups.
@@ -94,7 +93,6 @@ class Funnel:
                 stream2 = self.eventstream.filter_events(
                     keep={path_col: list(groups.ids2)}
                 )
-                excluded_paths = groups.excluded_paths
             f1 = Funnel(stream1)._fit_single(steps, path_col)
             f2 = Funnel(stream2)._fit_single(steps, path_col)
 
@@ -123,7 +121,7 @@ class Funnel:
                 "funnel2_total_paths": f2["total_paths"],
             }
             if ci_level is not None:
-                _add_diff_ci(result, ci_level, correction, excluded_paths)
+                _add_diff_ci(result, ci_level, correction)
             return result
 
     def _fit_single(self, steps: list[str], path_col: str) -> dict:
@@ -231,9 +229,7 @@ def _add_single_ci(result: dict, ci_level: float) -> None:
     result["ci_basis"] = {"rate": CI_BASIS["rate"]}
 
 
-def _add_diff_ci(
-    result: dict, ci_level: float, correction: str, excluded_paths: int
-) -> None:
+def _add_diff_ci(result: dict, ci_level: float, correction: str) -> None:
     steps = result["steps"]
     k1, n1, ns1 = _counts(steps, "funnel1_", result["funnel1_total_paths"])
     k2, n2, ns2 = _counts(steps, "funnel2_", result["funnel2_total_paths"])
@@ -270,4 +266,3 @@ def _add_diff_ci(
     result["correction_family"] = (
         "none" if correction == "none" else "metric=delta_conversion_rate/steps"
     )
-    result["excluded_paths"] = int(excluded_paths)

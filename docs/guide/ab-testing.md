@@ -55,11 +55,11 @@ assignment.head(3)
 # 100003   treatment 2026-03-10 06:36:16
 ```
 
-With `assignment=`, every row of the table is in the population. Users who were assigned but never produced an event (*silent* users) count as zeros for 0/1 metrics and totals and are reported in `group1_paths_no_events` / `group2_paths_no_events`; events before `assigned_at` are dropped; paths of the stream that are not in the table are left out and counted in `excluded_paths`. Without `assignment=`, the population is the paths of the stream, which silently drops users with no events.
+With `assignment=`, every row of the table is in the population. Users who were assigned but never produced an event (*silent* users) count as zeros for 0/1 metrics and totals and are reported in `group1_silent_paths` / `group2_silent_paths`; events before `assigned_at` are dropped; paths of the stream that are not in the table are left out and counted in `unassigned_paths`. Without `assignment=`, the population is the paths of the stream, which silently drops users with no events.
 
 ### The comparison: `diff`
 
-`diff=("exp_group", "treatment", "control")` names the two arms, and every delta is **group 1 minus group 2** — treatment minus control. The inferential methods resolve `diff` per path: a path that falls in both groups (a segment that changes within the path, overlapping id lists) raises `DiffConfigError` instead of being counted twice. With an assignment table, `diff[0]` may be a segment column of the stream, and then every path's segment must agree with the table.
+`diff=("exp_group", "treatment", "control")` names the two arms, and every delta is **group 1 minus group 2** — treatment minus control. The inferential methods resolve `diff` per path: a path that falls in both groups (a segment that changes within the path, overlapping id lists) raises `DiffConfigError` instead of being counted twice. With an assignment table, `diff[0]` is `"arm"` (the table alone) or a segment column of the stream, and then every path's segment must agree with the table; any other name raises `DiffConfigError`, so a typo cannot switch the check off.
 
 The descriptive widgets keep their event-level `diff` — a path whose segment changes can contribute to both sides — which is the right tool for "inside vs outside an incident window" and the wrong one for an experiment. [ADR-0017](https://github.com/retentioneering/retentioneering-tools/blob/master/docs/adr/0017-ab-testing-tools.md) records why the two coexist.
 
@@ -126,18 +126,18 @@ The top line is grey. The rest of this page is about reading that correctly, and
 
 Every row is one metric (and one stratum and one period, when requested). The columns come in groups:
 
-- **Who is compared.** `group1_paths`, `group2_paths`; `group1_paths_no_events`, `group2_paths_no_events` (silent paths, with `assignment`); `excluded_paths` (stream paths outside the table); `immature_paths` (paths left out because their observation window had not closed, with `horizon` or since-assignment periods).
+- **Who is compared.** `group1_paths`, `group2_paths`; `group1_silent_paths`, `group2_silent_paths` (silent paths, with `assignment`); `unassigned_paths` (stream paths in neither group: outside the table, or another level of the segment); `immature_paths` (paths left out because their observation window had not closed, with `horizon` or since-assignment periods).
 - **The estimates.** `group1_value` and `group2_value` with `*_ci_low` / `*_ci_high` per arm; `delta` = group 1 − group 2 with `delta_se`, `delta_ci_low`, `delta_ci_high`; `rel_delta` = group 1 / group 2 − 1 with its own interval (NaN when group 2 is 0 or below).
-- **The test.** `p_value` of the row's test; `p_value_adjusted` after the correction; `correction_family`, the text naming what was corrected together; `alpha_used`, the per-comparison level after correction.
-- **What the test could see.** `mde` and `rel_mde`, the minimum detectable absolute and relative effect at `alpha_used`, the `power` you asked for (0.8 by default) and the realised sample sizes.
-- **How it was computed.** `test` (`z_test`, `welch_t_test`, `bootstrap`), `ci_basis` (`wilson`, `welch`, `path_bootstrap`), `p_basis` (`pooled_z`, `welch`, `bootstrap_se`); for bootstrap rows, `valid_replicates` and `low_support` (more than 1 % of replicates without support: NaN interval, no p-value); `support_warning`, empty unless the row's support is unusual: `"one_arm_only"` (one arm has no supporting path) or `"low_support"` (a bootstrap row with fewer than about 30 supported paths per arm, where percentile intervals under-cover).
+- **The test.** `p_value` of the row's test; `p_value_adjusted` after the correction; `correction_family`, the text naming what was corrected together; `mde_alpha`, the level the `mde` is computed at (`alpha / m` under a correction, `alpha = 1 - ci_level`). The verdict does not use `mde_alpha`: it compares `p_value_adjusted` with `1 - ci_level`.
+- **What the test could see.** `mde` and `rel_mde`, the minimum detectable absolute and relative effect at `mde_alpha`, the `power` you asked for (0.8 by default) and the realised sample sizes.
+- **How it was computed.** `test` (`z_test`, `welch_t_test`, `bootstrap`), `ci_basis` (`wilson`, `welch`, `path_bootstrap`), `p_basis` (`pooled_z`, `welch`, `bootstrap_se`); for bootstrap rows, `valid_replicates` (replicates with a value in both arms); `support_warning`, empty unless the row's support is unusual: `"no_data"` (no path of either arm has the behaviour), `"invalid_replicates"` (a bootstrap row where more than 1 % of the replicates have no value in an arm: NaN interval, no p-value), `"one_arm_only"` (one arm has no supporting path) or `"low_support"` (a bootstrap row with fewer than 30 supported paths per arm, where percentile intervals under-cover).
 
 **The verdict** is a pure function of the adjusted p-value. It has five values:
 
 - `increase` / `decrease` — `p_value_adjusted < 1 - ci_level`, with the sign of `delta`;
 - `inconclusive` — everything else with a p-value, including a NaN one;
 - `descriptive` — rows that compare selected groups (`period_population="active"`), with no p-value and no `mde`;
-- `insufficient_data` — too little support pooled across both arms: for a 0/1 metric, fewer than `min_events` (default 10) paths with the event, or fewer than `min_events` without it, in the two arms together; for totals and values, fewer than `min_events` supported paths. The estimates stay, the test does not run. Because support is pooled, a behaviour present in one arm only — a loop the feature creates — still gets a p-value and a verdict, flagged `support_warning="one_arm_only"`.
+- `insufficient_data` — too little support pooled across both arms: for a 0/1 metric, fewer than `min_support` (default 10) paths with the event, or fewer than `min_support` without it, in the two arms together; for totals and values, fewer than `min_support` supported paths. The estimates stay, the test does not run. Because support is pooled, a behaviour present in one arm only — a loop the feature creates — still gets a p-value and a verdict, flagged `support_warning="one_arm_only"`.
 
 **Read an inconclusive row with its interval and `mde`.** Conversion moved by +0.60 pp, with an interval from −1.07 to +2.28 pp. The `mde` of about 2.4 pp is the effect this test detects with 80 % power at the corrected alpha: a design quantity, not a bound on the true effect. The interval is what bounds it, and the honest summary is "an effect larger than about +2.3 pp or below about −1.1 pp is unlikely; a smaller one, in either direction, is possible" — not "the feature does nothing". See [Inconclusive is not "no effect"](#5-inconclusive-is-not-no-effect).
 
@@ -288,7 +288,7 @@ The names come from the clusters' profiles, not from the K-means label numbers, 
 How to read the strata columns:
 
 - **`group1_share`, `group2_share`, `balance_p_value`** — each stratum's share within each arm and a chi-square test of the stratum × arm table (0.775 here). It is a share-balance check only: a stratum computed after exposure can be perfectly balanced and still selected by the treatment (below).
-- **`heterogeneity_p_value`** — Cochran's Q over the strata that pass a support guard (`heterogeneity_df`, `heterogeneity_strata_used`): do the effects differ between strata at all? Here p ≈ 1.4·10⁻⁹.
+- **`heterogeneity_p_value`** — Cochran's Q over the strata that pass a support guard (`heterogeneity_dof`, `heterogeneity_strata_used`): do the effects differ between strata at all? Here p ≈ 1.4·10⁻⁹.
 - **`stratum_vs_rest_p_value`** — this stratum's delta against the delta of all the others pooled (unadjusted). Use it, not "significant here, not significant there", to say a stratum is different.
 - **`strata_pre_exposure`**, **`strata_pre_exposure_source`** — whether the stratum counts as fixed before exposure, and why: `"declared"` when you passed `strata_pre_exposure=True`, `"recipe"` when the stream's recipe shows a truncation that ends at the assignment or exposure marker, `"not_pre_exposure"` otherwise (False, with a `UserWarning`). **`exploratory`** is True unless `strata_pre_exposure` is True. Neither source proves the cut sits before exposure: a declaration is your argument, and the recipe only shows where the stream was cut.
 - **`<MISSING>`** holds the silent users: they produced no events, so they have no cluster.
@@ -329,8 +329,8 @@ stream.get_sample_ratio("exp_group", expected_shares={"control": 0.8, "treatment
 ```
 
 - `mismatch` is raised when `p_value < alpha` — 0.001 by default, stricter than the usual 0.05 because an SRM alarm gates every other result — **or** when any path carries more than one arm (`multi_valued_paths`), which is an assignment bug whatever the shares say.
-- With `assignment=`, the counts are the table's rows, silent users included (`silent_paths`); without it, the paths of the stream. Paths with no arm or an arm outside `expected_shares` are reported in `unassigned_paths`.
-- **`by=`** repeats the check within groups, with Holm-adjusted p-values over the groups in `by_levels`: `by="day"` per day of `assigned_at`, or `by="platform"` per level of a segment fixed at assignment. On Northwind all 42 assignment days pass. A mismatch confined to one day or one platform points at a deploy or a client bug that the overall test can dilute. The overall `mismatch` does not include the groups.
+- With `assignment=`, the counts are the table's rows, silent users included (`silent_paths`), and `segment_col` is optional; without it, the paths of the stream. Paths with no arm — stream paths the table does not list, a missing value — or an arm outside `expected_shares` are reported in `unassigned_paths`.
+- **`period=`** and **`strata_col=`** repeat the check within groups, with Holm-adjusted p-values over the groups: `period="D"` per day of `assigned_at` (also `"W"`, `"M"`, spelled as in `get_ab_test`) in `periods`, or `strata_col="platform"` per level of a segment fixed at assignment in `strata`. On Northwind all 42 assignment days pass. A mismatch confined to one day or one platform points at a deploy or a client bug that the overall test can dilute. The overall `mismatch` does not include the groups.
 
 Run it on the assignment or on the full stream, and per group only for variables fixed at assignment. On a subset defined by behaviour — users who reached the cart — the arms' shares differ whenever the treatment works, and that difference is an effect, not a bug.
 
@@ -354,7 +354,7 @@ In the library: with `assignment=`, a `path_col` finer than the table's unit rai
 
 An overall split can be fine while one day, one platform or one entry point lost users; and Spotify names a filter on exposure — counting only users who "saw" the feature, where seeing it depends on the arm — as its most common cause of SRM ([Spotify, trigger analysis](https://confidence.spotify.com/blog/trigger-analysis.md); Fabijan et al., "Diagnosing sample ratio mismatch in online controlled experiments", KDD 2019).
 
-In the library: `get_sample_ratio(by=...)` per day of assignment or per segment fixed at assignment; `multi_valued_paths` for users who carry two arms. Never read SRM on a post-exposure subset.
+In the library: `get_sample_ratio(period="D")` per day of assignment and `get_sample_ratio(strata_col=...)` per segment fixed at assignment; `multi_valued_paths` for users who carry two arms. Never read SRM on a post-exposure subset.
 
 ### 4. Multiplicity: families, FWER and FDR
 
@@ -366,7 +366,7 @@ In the library: the family is the rows of one metric (`correction_family`); `cor
 
 A grey row says the test could not tell the effect from zero, not that it is zero. Compare the interval with the effect that would matter, and read `mde` to see what the test could have found. Never compute "observed power" from the observed effect — it is a restatement of the p-value. And a surprising significant result is less certain than its p-value suggests when most ideas fail: the false-positive risk depends on the prior success rate of experiments ([Kohavi, Deng & Vermeer, A/B Testing Intuition Busters, KDD 2022](https://airbnb.tech/wp-content/uploads/sites/19/2025/10/ABTestingIntuitionBusters.pdf)).
 
-In the library: `verdict="inconclusive"` is never spelled "no effect"; `mde` is a design quantity at `alpha_used` and the realised sample sizes. An equivalence verdict ("the whole interval sits inside a margin") is not available yet.
+In the library: `verdict="inconclusive"` is never spelled "no effect"; `mde` is a design quantity at `mde_alpha` and the realised sample sizes. An equivalence verdict ("the whole interval sits inside a margin") is not available yet.
 
 ### 6. Peeking and open-ended metrics
 

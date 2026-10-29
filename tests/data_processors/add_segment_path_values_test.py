@@ -122,3 +122,24 @@ def test_recipe_and_mcp_step(stream) -> None:
     )
     result = _apply_preprocessors(stream, [step])
     assert result.get_path_segments("arm").to_dict() == {1: "t", 2: "c", 3: "<MISSING>"}
+
+
+def test_ids_that_match_no_path_raise(stream) -> None:
+    # a mapping keyed by another column would leave every path <MISSING>
+    with pytest.raises(InvalidParameterError, match="only 0 of 2 path_values ids"):
+        stream.add_segment("arm", path_values={"x1": "t", "x2": "c"})
+
+
+def test_user_ids_at_the_session_grain_raise() -> None:
+    sessions = _stream({"u1": ["a", "b", "c"], "u2": ["a"]}, sessions=True)
+    users = pd.Series({"u1": "t", "u2": "c"})
+    with pytest.raises(InvalidParameterError, match="'session_id'"):
+        sessions.add_segment("arm", path_values=users, path_col="session_id")
+
+
+def test_mostly_unmatched_ids_warn_with_the_counts(stream) -> None:
+    values = {1: "t", 2: "c", 97: "t", 98: "c", 99: "t"}
+    with pytest.warns(UserWarning, match="only 2 of 5 path_values ids") as record:
+        out = stream.add_segment("arm", path_values=values)
+    assert {w.filename for w in record} == {__file__}
+    assert out.get_path_segments("arm").to_dict() == {1: "t", 2: "c", 3: "<MISSING>"}

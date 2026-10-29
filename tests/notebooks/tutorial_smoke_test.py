@@ -45,6 +45,9 @@ _ab_test._generate = _generate_from_fixture
 
 # Every claim of the prose, against the kernel's variables after the last cell.
 CHECKS = """
+import json
+
+
 def _verdicts(frame, key="metric"):
     return dict(zip(frame[key], frame["verdict"]))
 
@@ -68,13 +71,20 @@ assert _verdicts(scorecard_28d) == {
 }
 assert (scorecard_28d["immature_paths"] > 0).all()
 
-# step 3: overall steps grey after Holm; two conditional deltas in opposite directions
+# step 3: the widget draws the same scorecard without an error
+assert scorecard_widget.error == "" and json.loads(scorecard_widget.result)
+
+# step 4: the funnel counts paths with events, the scorecard the assignment table
+assert set(scorecard["population"]) == {"assignment"}
+assert funnel["funnel1_total_paths"] < scorecard["group1_paths"].iloc[0]
+assert funnel["funnel2_total_paths"] < scorecard["group2_paths"].iloc[0]
+# overall steps grey after Holm; two conditional deltas in opposite directions
 assert (funnel_table["delta_conversion_rate_p_value_adjusted"] > 0.05).all()
 assert funnel_table.loc["checkout_start", "delta_step_conversion_rate_ci_low"] > 0
 assert funnel_table.loc["payment", "delta_step_conversion_rate_ci_high"] < 0
 assert float(naive.set_index("step").loc["checkout_start -> payment", "naive_p_value"]) < 1e-3
 
-# step 4: weekly drift, since-assignment bins (the 42D sensitivity check), the contrast
+# step 5: weekly drift, since-assignment bins (the 42D sensitivity check), the contrast
 assert weekly["delta"].iloc[0] > 0 > weekly["delta"].iloc[-1]
 assert _verdicts(since, "period")["0-13"] == "increase"
 assert _verdicts(since, "period")["28-41"] == "decrease"
@@ -84,8 +94,14 @@ assert round(_late["delta"] * 100, 1) == -1.5 and round(_late["p_value_adjusted"
 assert since["group1_paths"].nunique() == 1
 assert low > 0 and low < point < high
 
-# step 5: the window is balanced between the arms; blind clusters, both signs after Holm
+# step 6: the window before the first product_view is short ("about three events per user")
+# and balanced between the arms; blind clusters, both signs after Holm
 assert set(window_balance["verdict"]) == {"inconclusive"}
+_window_length = window_balance.set_index("metric").loc["window_length"]
+assert round(_window_length["group1_value"]) == 3 and round(_window_length["group2_value"]) == 3
+assert labels.attrs.get("pre_exposure") is True  # the recipe shows the truncation
+# markers: search_filter (scanner), collections_view (curator), plain catalog browsing (other)
+assert set(marker) == {"search_filter", "collections_view", "catalog"}
 assert sorted(cluster_names.values()) == ["curator", "other", "scanner"]
 assert _verdicts(strata, "stratum") == {
     "<MISSING>": "insufficient_data",
@@ -93,9 +109,10 @@ assert _verdicts(strata, "stratum") == {
     "curator": "decrease",
     "scanner": "increase",
 }
-# "other" shows no detectable change: an interval around 0, about -2.5 to +1.8 pp
+# "other", the largest group, shows no detectable change: about -2.9 to +1.7 pp
 _other = strata.set_index("stratum").loc["other"]
-assert round(_other["delta_ci_low"] * 100, 1) == -2.5 and round(_other["delta_ci_high"] * 100, 1) == 1.8
+assert round(_other["delta_ci_low"] * 100, 1) == -2.9 and round(_other["delta_ci_high"] * 100, 1) == 1.7
+assert _other["group1_paths"] == strata["group1_paths"].max()
 assert strata["balance_p_value"].iloc[0] > 0.05
 assert strata["heterogeneity_p_value"].iloc[0] < 0.05
 assert strata.loc[strata["stratum"] != "<MISSING>", "strata_pre_exposure"].all()
@@ -104,27 +121,35 @@ assert (
 ).all()
 assert not strata["exploratory"].any()
 
-# step 6: the funnels' last step repeats the strata rows
+# step 7: the funnels' last step repeats the strata rows
 for _name, _row in cluster_funnels.items():
     _stratum = strata.set_index("stratum").loc[_name]
     assert abs(_row["order_delta"] - _stratum["delta"]) < 1e-12
 
-# step 7: the loop exists in treatment only
+# step 8: the loop exists in treatment only
 assert graph_treatment.loc["cart", "cart"] > 0 and graph_control.loc["cart", "cart"] == 0
 
-# step 8: descriptive loop -> order (conditional), ITT loop share under the pooled support rule
+# step 9: descriptive loop -> order (conditional), ITT loop share under the pooled support rule
 assert loop_to_order.iloc[0]["group2_paths_with_start"] == 0
 assert loop_to_order["conditional"].all()
 _loop = loop_itt.set_index("stratum")
-assert round(_loop.loc["curator", "group1_value"] * 100) == 26
+assert round(_loop.loc["curator", "group1_value"] * 100) == 21
 assert _loop.loc["curator", "delta_ci_low"] > 0.1
 assert (_loop["group2_value"] == 0).all()
 assert (_loop.drop(index="curator")["group1_value"] == 0).all()
 assert _loop.loc["curator", "support_warning"] == "one_arm_only"
 assert _loop.loc["curator", "verdict"] == "increase"
 assert set(_loop.drop(index="curator")["verdict"]) == {"insufficient_data"}
+assert set(_loop.drop(index="curator")["support_warning"]) == {"no_data"}
 
-# step 9: pre-exposure sign flip; post-exposure split flagged, balance p silent
+# step 10: the window before the first add is balanced; the sign flips with its length, and
+# not with the length of the stricter window; post-exposure split flagged, balance p silent
+assert pre_add_balance["verdict"].iloc[0] == "inconclusive"
+assert by_strict_length["heterogeneity_p_value"].iloc[0] > 0.05
+assert set(by_strict_length.loc[by_strict_length["stratum"] != "<MISSING>", "verdict"]) == {
+    "inconclusive"
+}
+assert by_length["heterogeneity_p_value"].iloc[0] < 0.05
 assert _verdicts(by_length, "stratum")["short"] == "decrease"
 assert _verdicts(by_length, "stratum")["long"] == "increase"
 assert (
@@ -146,8 +171,13 @@ _overlap = pd.crosstab(
 )
 assert ((_overlap > 0.1) & (_overlap < 0.9)).all().all()
 
-# step 10: planted truth
+# step 11: planted truth. Every planted scanner and curator lands in the cluster of that name;
+# the scanner and curator clusters also take in some planted "other" users
 assert adjusted_rand_score(truth, recovered.reindex(truth.index)) >= 0.5
+_truth_table = pd.crosstab(recovered.reindex(truth.index), truth)
+for _type in ("scanner", "curator"):
+    assert _truth_table[_type].drop(index=_type).sum() == 0
+    assert _truth_table.loc[_type, "other"] > 0
 print("tutorial checks passed")
 """
 

@@ -23,7 +23,8 @@ pages, generated reference, ADRs) describes the current API.
 **Known gaps vs. 3.3.0** (deliberately not carried over, may return later — ADR-0012): the
 interactive Preprocessing Graph (visual no-code pipeline builder), and the `Cohorts` and
 `Sequences` tools. `StatTests` is no longer a gap: A/B readouts are covered by `get_ab_test`,
-`get_ab_bootstrap` and `get_sample_ratio` (`[Unreleased]` in `CHANGELOG.md`, ADR-0017).
+`get_ab_bootstrap`, `get_sample_ratio` and the `ab_test` widget (`[Unreleased]` in
+`CHANGELOG.md`, ADR-0017); `datasets.load_ab_test(name=...)` has seven synthetic experiments.
 
 ## Commands
 

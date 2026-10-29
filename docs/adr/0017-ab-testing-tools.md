@@ -66,7 +66,11 @@ novelty effect is measured: as a contrast of since-assignment windows in
 path the same observation window.
 
 **D6 — multiplicity and the verdict.** The family is the set of rows of one
-metric (its strata and periods); metrics are separate families. `correction` is
+metric (its strata and periods); metrics are separate families by default
+(`correction_scope="metric"`), and `correction_scope="all"` makes every row of
+the call one family, for a set of guardrails read together. The docs ask for one
+decision metric declared in advance instead of a correction across a whole
+scorecard. `correction` is
 Holm by default, Bonferroni (which adds simultaneous intervals), Benjamini–
 Hochberg for many exploratory rows, or none; `correction_family` names what was
 corrected together. The `verdict` (`increase` / `decrease` / `inconclusive` /
@@ -85,10 +89,14 @@ an outcome in one arm). Strata carry shares by arm, a share-balance check (not
 a guard against post-exposure strata), Cochran's Q over strata that pass a
 support guard, a stratum-versus-rest test and an `exploratory` flag. Whether a
 stratum is pre-exposure is declared (`strata_pre_exposure=True`, for a source
-column such as a signup platform) or read from a truncation in the recipe that
-ends at the assignment or exposure marker, and recorded in
-`strata_pre_exposure_source`; any other stratum warns and is flagged
-`strata_pre_exposure=False`. Permutation tests are not part of the scorecard.
+column such as a signup platform, or `add_segment(path_values=...,
+pre_exposure=True)`, which records the declaration with the segment) or read
+from a truncation in the recipe, and recorded in `strata_pre_exposure_source`;
+any other stratum warns and is flagged `strata_pre_exposure=False`. The library
+has no notion of an exposure marker: `"recipe"` means that a truncation that
+ends paths at an event preceded the labels, and the library cannot verify that
+it ends at exposure, so the docs ask the analyst to declare a cut the analysis
+relies on. Permutation tests are not part of the scorecard.
 
 **D8 — funnel intervals.** `funnel(ci_level=, correction=)` adds Wilson
 intervals per step and, in diff mode, Newcombe intervals and pooled-z p-values
@@ -129,7 +137,9 @@ and `tools/_bootstrap.py` are pure functions without an `Eventstream`.
    column.
 2. Design from history: an A/A replay on past data to size a test and check
    the false-positive rate of the planned analysis, then `get_ab_design`.
-3. Variance reduction: CUPED and linearisation on pre-exposure metrics.
+3. Variance reduction: CUPED and linearisation on pre-exposure metrics. There
+   is no `covariates=` parameter meanwhile; `get_ab_paths` returns the per-path
+   table behind the scorecard for an adjustment by hand.
 4. Populations: `exposure_event=` / `population="exposed"`, a balance check
    with a studentised within-strata permutation test.
 5. ~~An `ab_test` widget (forest plot, strata and period panels) with the

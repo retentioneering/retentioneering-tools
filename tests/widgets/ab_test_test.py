@@ -336,3 +336,46 @@ class TestStateAndExport:
         w.test = "z_test"
         with pytest.raises(WidgetExportError):
             w.export_html(str(tmp_path / "ab.html"))
+
+
+# ── MCP: the scorecard as a report tab ───────────────────────────────────────
+
+
+class TestMcpReportTab:
+    def test__add_ab_test_registers_the_widget_as_a_tab(self, tmp_path) -> None:
+        from retentioneering.mcp import tools
+        from retentioneering.mcp._report_session import ReportSession
+
+        stream = _stream()
+        session = ReportSession(stream)
+        out = tools.add_ab_test(
+            session, "AB", list(DIFF), METRICS, strata_col="platform", period="W"
+        )
+        json.dumps(out, allow_nan=False)
+        assert out["tab_id"] == "tab-0" and out["label"] == "AB"
+        data = session.pending_tabs[0]["data"]
+        assert data["widget_type"] == "ab_test" and data["sidebar_open"] is False
+        assert data["result"]["strata"] and data["result"]["periods"]
+        expected = stream.get_ab_test(DIFF, METRICS)
+        assert [m["metric"] for m in out["metrics"]] == expected["metric"].tolist()
+        for entry, (_, row) in zip(out["metrics"], expected.iterrows()):
+            assert entry["verdict"] == row["verdict"]
+            assert entry["delta"] == pytest.approx(row["delta"], abs=1e-6)
+            assert entry["p_value_adjusted"] == pytest.approx(
+                row["p_value_adjusted"], abs=1e-8
+            )
+        assert any("strata_pre_exposure" in w for w in out["warnings"])
+
+        path = tmp_path / "report.html"
+        session.export("Report", "Conversion: [AB:conversion].", str(path))
+        assert '"widget_type": "ab_test"' in path.read_text()
+
+    def test__add_ab_test_reports_errors_without_a_tab(self) -> None:
+        from retentioneering.mcp import tools
+        from retentioneering.mcp._report_session import ReportSession
+
+        session = ReportSession(_stream())
+        out = tools.add_ab_test(
+            session, "AB", list(DIFF), [{"metric": "event_count_bulk"}]
+        )
+        assert "error" in out and session.pending_tabs == []

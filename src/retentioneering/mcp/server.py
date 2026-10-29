@@ -468,6 +468,58 @@ def _build_server(
         return json.dumps(result, ensure_ascii=False)
 
     @_tool()
+    def add_ab_test(
+        label: str,
+        diff: list,
+        metrics: list,
+        strata_col: str | None = None,
+        period: str | None = None,
+        period_population: str = "itt",
+        correction: str = "holm",
+        ci_level: float = 0.95,
+        path_col: str | None = None,
+        strata_pre_exposure: bool | None = None,
+        local_preprocessors: list | None = None,
+    ) -> str:
+        """
+        Register an A/B test scorecard tab in the pending report.
+
+        The tab is the ab_test widget (table and forest plot of each metric's
+        delta with its interval, coloured by verdict; Strata / Periods tabs with
+        strata_col / period). Same arguments and numbers as get_ab_test; run
+        get_sample_ratio first; use get_ab_test when you need numbers only.
+
+        Parameters
+        ----------
+        label:
+            Tab label shown in the report. No colons in the label.
+        diff, metrics, strata_col, period, period_population, correction,
+        ci_level, path_col, strata_pre_exposure, local_preprocessors:
+            As in get_ab_test.
+
+        Returns
+        -------
+        JSON with tab_id, label, metrics (verdict, delta, delta_ci_low,
+        delta_ci_high, p_value_adjusted, mde, support_warning, reading when
+        available) and warnings. Link a metric as [label:metric_name].
+        """
+        result = tools.add_ab_test(
+            session,
+            label,
+            diff,
+            metrics,
+            strata_col,
+            period,
+            period_population,
+            correction,
+            ci_level,
+            path_col,
+            strata_pre_exposure,
+            local_preprocessors,
+        )
+        return json.dumps(result, ensure_ascii=False, allow_nan=False)
+
+    @_tool()
     def get_conversion_rate(
         start_anchor: str | dict | list,
         end_anchor: str | dict | list,

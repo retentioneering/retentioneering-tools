@@ -10,8 +10,10 @@ nothing else; every planted story has an acceptance test in
 The store and the test
 ----------------------
 Users are assigned at their first app open (``assigned_at``), 50/50, from Monday
-2026-03-02 for six weeks (``cohort_week`` ``"W1"`` .. ``"W6"``); the data end on
-2026-04-27 00:00, exactly eight weeks after the start. About 3 % of assigned users
+2026-03-02 for six weeks (``cohort_week`` ``"W1"`` .. ``"W6"``); the generator's
+window ends on 2026-04-27 00:00, exactly eight weeks after the start, and the last
+event (2026-04-26 22:04) is the end of data that ``horizon`` and since-assignment
+bins use. About 3 % of assigned users
 never produce a tracked event ("silent" users): they are in the assignment table of
 :func:`load_ab_test_assignment` but not in the events. Every session opens with
 browsing (``home``, ``catalog``, ``search``, ``search_filter``, ``product_view``,

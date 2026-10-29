@@ -25,6 +25,8 @@ import json
 import math
 from typing import Any
 
+import pandas as pd
+
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.mcp._agent_logic import (
     _apply_preprocessors,
@@ -559,7 +561,10 @@ def get_conversion_rate(
         delta_ci_low / delta_ci_high and p_value. Groups are whole paths: a path
         whose segment changes inside it is an error, not a split. The interval
         assumes path_col is the unit that was assigned (user-level test -> user
-        paths).
+        paths). The denominator is the paths with the start anchor: when that is
+        an event the treatment can change ("cart"), the groups are selected after
+        exposure and the p_value describes, it does not test; use get_ab_test for
+        the effect of the treatment.
 
     Returns
     -------
@@ -673,7 +678,7 @@ def get_sample_ratio(
     multi_valued_paths (paths with >1 arm: an assignment bug), unassigned_paths,
     basis, and levels — one row per arm with paths, share, expected_share. With
     `by`: by_levels, one row per group with paths, chi2, p_value,
-    p_value_adjusted (Holm) and mismatch.
+    p_value_adjusted (Holm across `by` levels) and mismatch.
     """
     if (err := _require_stream(session)) is not None:
         return err
@@ -749,7 +754,10 @@ def get_ab_test(
 
     Run get_sample_ratio first: if the arms do not have the planned sizes, no
     metric of the test can be trusted. Returns numbers only (no report tab): quote
-    them in backticks.
+    them in backticks. The arms come from the segment in `diff`; an
+    intention-to-treat analysis over an assignment table (assignment=, with silent
+    assigned users, assigned_at, horizon) is not available through MCP: it needs
+    the Python API (Eventstream.get_ab_test).
 
     Parameters
     ----------
@@ -767,12 +775,14 @@ def get_ab_test(
     strata_col:
         A segment constant per path and fixed BEFORE exposure (platform at signup, a
         cluster found on a stream truncated before the first exposure). Adds the top
-        three strata by |delta| per metric with Holm-adjusted p-values and a
-        heterogeneity p-value. A stratum defined by post-exposure behaviour compares
-        selected groups, not randomised ones.
+        three strata by |delta| per metric with p-values adjusted with `correction`
+        and a heterogeneity p-value. A stratum defined by post-exposure behaviour
+        compares selected groups, not randomised ones: strata_pre_exposure=false and
+        exploratory=true flag it.
     period:
-        Pandas offset alias ("D", "W", "M"): adds one row per calendar period. ITT by
-        default (every assigned path counts in every period).
+        Calendar unit ("D", "W", "M", "Q") or fixed length ("7D"): adds one row per
+        calendar period. ITT by default (every path that entered before the period's
+        end counts in it, 0 when silent).
     period_population:
         "itt" (default, inferential) or "active" (only paths active in the period —
         survivors; rows are descriptive, no p-value).
@@ -790,15 +800,21 @@ def get_ab_test(
     -------
     diff, path_col, ci_level, correction, excluded_paths, and metrics — one entry per
     metric: group1_paths, group2_paths, group1_value, group2_value, delta,
-    delta_ci_low, delta_ci_high, rel_delta, p_value, mde (the smallest effect the test
-    could detect), verdict ("increase", "decrease", "inconclusive",
-    "insufficient_data"), test; with strata_col: strata (top 3 by |delta|: stratum,
-    group1_share, group2_share, delta, delta_ci_low, delta_ci_high, p_value_adjusted,
-    verdict), strata_count and heterogeneity_p_value; with period: periods (period,
-    period_complete, delta, delta_ci_low, delta_ci_high, p_value_adjusted, verdict).
+    delta_ci_low, delta_ci_high, rel_delta, p_value, mde (the effect the test detects
+    with 80% power at alpha_used), verdict ("increase", "decrease", "inconclusive",
+    "descriptive", "insufficient_data"), test, correction_family (what was adjusted
+    together), alpha_used (per-comparison level after the correction); with
+    strata_col: strata (top 3 by |delta|: stratum, group1_share, group2_share, delta,
+    delta_ci_low, delta_ci_high, p_value_adjusted, alpha_used, verdict),
+    strata_count, heterogeneity_p_value, strata_correction_family,
+    strata_pre_exposure (true / false / null = unknown) and exploratory (true unless
+    the strata are known to be pre-exposure); with period: periods (period,
+    period_complete, delta, delta_ci_low, delta_ci_high, p_value_adjusted,
+    alpha_used, verdict) and periods_correction_family. "descriptive" marks
+    period_population="active" rows (survivors, no p-value).
 
-    "inconclusive" is NOT "no effect": say which effects the interval still allows
-    and compare it with mde.
+    "inconclusive" is NOT "no effect": say which effects the interval still allows;
+    the mde is not a bound on the effect.
     """
     if (err := _require_stream(session)) is not None:
         return err
@@ -862,6 +878,8 @@ def get_ab_test(
         "mde",
         "verdict",
         "test",
+        "correction_family",
+        "alpha_used",
     )
     entries = []
     for row in overall.to_dict("records"):
@@ -873,6 +891,12 @@ def get_ab_test(
             entry["heterogeneity_p_value"] = _json_number(
                 part["heterogeneity_p_value"].iloc[0] if len(part) else None, 8
             )
+            flag = part["strata_pre_exposure"].iloc[0] if len(part) else pd.NA
+            entry["strata_correction_family"] = (
+                str(part["correction_family"].iloc[0]) if len(part) else None
+            )
+            entry["strata_pre_exposure"] = None if pd.isna(flag) else bool(flag)
+            entry["exploratory"] = bool(part["exploratory"].all())
             entry["strata"] = [
                 _row(
                     r,
@@ -884,6 +908,7 @@ def get_ab_test(
                         "delta_ci_low",
                         "delta_ci_high",
                         "p_value_adjusted",
+                        "alpha_used",
                         "verdict",
                     ),
                 )
@@ -891,6 +916,9 @@ def get_ab_test(
             ]
         if periods is not None:
             part = periods[periods["metric"] == row["metric"]]
+            entry["periods_correction_family"] = (
+                str(part["correction_family"].iloc[0]) if len(part) else None
+            )
             entry["periods"] = [
                 _row(
                     r,
@@ -901,6 +929,7 @@ def get_ab_test(
                         "delta_ci_low",
                         "delta_ci_high",
                         "p_value_adjusted",
+                        "alpha_used",
                         "verdict",
                     ),
                 )

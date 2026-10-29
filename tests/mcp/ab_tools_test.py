@@ -1,5 +1,6 @@
 """Numbers-only MCP tools of the A/B toolkit."""
 
+import inspect
 import json
 
 import pandas as pd
@@ -106,6 +107,8 @@ class TestGetAbTest:
         assert conv["delta_ci_low"] < conv["delta"] < conv["delta_ci_high"]
         assert conv["verdict"] == "increase"
         assert conv["test"] == "z_test"
+        assert conv["correction_family"] == "metric=conversion"
+        assert conv["alpha_used"] == pytest.approx(0.05)
         assert "strata" not in conv and "periods" not in conv
         assert result["excluded_paths"] == 0
 
@@ -125,6 +128,13 @@ class TestGetAbTest:
         deltas = [abs(s["delta"]) for s in conv["strata"]]
         assert deltas == sorted(deltas, reverse=True)
         assert {s["stratum"] for s in conv["strata"]} == {"ios", "web"}
+        # Holm over the two strata: alpha / 2 per comparison
+        assert conv["strata_correction_family"] == "metric=conversion/strata"
+        assert [s["alpha_used"] for s in conv["strata"]] == [pytest.approx(0.025)] * 2
+        # a source column: the recipe cannot tell when it was fixed
+        assert conv["strata_pre_exposure"] is None
+        assert conv["exploratory"] is True
+        assert conv["periods_correction_family"] == "metric=conversion/periods"
         assert [p["period"] for p in conv["periods"]] == [
             "2024-01-01/2024-01-07",
             "2024-01-08/2024-01-14",
@@ -150,3 +160,45 @@ class TestGetAbTest:
         assert docs["method"] == "get_ab_test"
         assert "verdict" in docs["docs"]
         assert "get_ab_test" in tools.playbook("ab_test")
+
+
+class TestAbDocsInSync:
+    """ADR-0009: the MCP tool, its server wrapper and the playbook say the same."""
+
+    def test__get_ab_test_labels(self) -> None:
+        from retentioneering.mcp import server
+
+        server_src = inspect.getsource(server)
+        for doc in (tools.get_ab_test.__doc__, server_src):
+            for label in (
+                "descriptive",
+                "correction_family",
+                "alpha_used",
+                "strata_pre_exposure",
+                "exploratory",
+                "assignment=",
+            ):
+                assert label in doc, label
+            assert "Holm-adjusted" not in doc
+        playbook = json.dumps(tools.playbook("ab_test"))
+        for label in ("alpha_used", "exploratory", "descriptive", "assignment="):
+            assert label in playbook, label
+
+    def test__sample_ratio_names_the_holm_family(self) -> None:
+        from retentioneering.mcp import server
+
+        assert "Holm across `by` levels" in tools.get_sample_ratio.__doc__
+        assert "Holm across `by` levels" in inspect.getsource(server)
+
+    def test__descriptive_period_rows(self) -> None:
+        result = tools.get_ab_test(
+            _ab_session(),
+            ["arm", "treatment", "control"],
+            _METRICS[:1],
+            period="W",
+            period_population="active",
+        )
+        json.dumps(result, allow_nan=False)
+        assert {p["verdict"] for p in result["metrics"][0]["periods"]} == {
+            "descriptive"
+        }

@@ -518,7 +518,10 @@ def _build_server(
         diff:
             ["segment_col", "value1", "value2"]: group1_* / group2_* columns,
             delta (group1 - group2) with delta_ci_low / delta_ci_high and
-            p_value. Assumes path_col is the unit that was assigned.
+            p_value. Assumes path_col is the unit that was assigned. The
+            denominator is paths with the start anchor: if the treatment can
+            change who reaches it ("cart"), the p_value describes selected
+            paths, it does not test; use get_ab_test for the effect.
 
         Returns
         -------
@@ -576,7 +579,8 @@ def _build_server(
         -------
         JSON with mismatch, p_value, chi2, dof, multi_valued_paths (assignment
         bug when > 0), unassigned_paths, basis, levels (paths, share,
-        expected_share per arm) and, with `by`, by_levels (Holm-adjusted p).
+        expected_share per arm) and, with `by`, by_levels (p_value_adjusted:
+        Holm across `by` levels).
         """
         result = tools.get_sample_ratio(
             session,
@@ -605,7 +609,10 @@ def _build_server(
         Compare two arms of an experiment on path metrics: delta, interval, verdict, MDE.
 
         Run get_sample_ratio first. Numbers only, no report tab: quote in backticks.
-        "inconclusive" is NOT "no effect": report the interval and the mde.
+        "inconclusive" is NOT "no effect": report the interval; the mde is not a
+        bound on the effect. Arms come from the segment in diff: an ITT analysis
+        over an assignment table (assignment=) is not available through MCP, only
+        in the Python API.
 
         Parameters
         ----------
@@ -617,9 +624,10 @@ def _build_server(
             "denominator" (ratio of sums, e.g. revenue / orders).
         strata_col:
             A per-path segment fixed BEFORE exposure: adds the top 3 strata by
-            |delta| per metric (Holm) and a heterogeneity p-value.
+            |delta| per metric (adjusted with `correction`) and a heterogeneity
+            p-value; strata_pre_exposure / exploratory flag post-exposure strata.
         period:
-            "D", "W", "M": adds ITT rows per calendar period.
+            "D", "W", "M", "Q" or "7D": adds ITT rows per calendar period.
         period_population:
             "itt" (default) or "active" (survivors only; descriptive, no p).
         correction:
@@ -634,9 +642,12 @@ def _build_server(
         Returns
         -------
         JSON with excluded_paths and metrics: per metric group sizes and values,
-        delta with delta_ci_low / delta_ci_high, rel_delta, p_value, mde, verdict,
-        test; strata (top 3) and heterogeneity_p_value with strata_col; periods with
-        period.
+        delta with delta_ci_low / delta_ci_high, rel_delta, p_value, mde (effect
+        detected with 80% power at alpha_used), verdict (increase, decrease,
+        inconclusive, descriptive, insufficient_data), test, correction_family,
+        alpha_used; strata (top 3), heterogeneity_p_value,
+        strata_correction_family, strata_pre_exposure and exploratory with
+        strata_col; periods and periods_correction_family with period.
         """
         result = tools.get_ab_test(
             session,

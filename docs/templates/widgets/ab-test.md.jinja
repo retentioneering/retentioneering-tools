@@ -16,17 +16,20 @@ same result — and the widget makes up to three calls to it:
 
 Every other argument — `assignment`, `horizon`, `test`, `correction`,
 `correction_scope`, `ci_level`, `path_col`, ... — applies to all three
-(`correction_scope` is set in code; the sidebar does not show it). Each tab therefore holds
+(the sidebar shows `correction_scope` as "Correction family"). Each tab therefore holds
 exactly the rows `get_ab_test` returns for that call, so any number in the
 widget can be reproduced, and quoted, from code.
 
 The sidebar edits the arms, the metrics (the same editor as Segment Overview,
 with a row label and an optional ratio-of-sums denominator), `ci_level`
-(90 / 95 / 99 %), `correction`, `test`, the strata column and whether it was
-fixed before exposure, `period` (day / week / month) and its basis, and
-`horizon`. Every change recomputes. The `assignment` table is passed in code
-only; a `state_file` keeps everything else, and the table must be passed again
-when the widget is reopened.
+(90 / 95 / 99 %), `correction` and its family (`correction_scope`), `test`, the
+strata column and whether it was fixed before exposure, `period` (day / week /
+month) and its basis, and `horizon`. Every change recomputes. Changing the
+horizon or the metrics after seeing a result is peeking: declare the read first,
+then look. The `assignment` table is passed in code only (with it, the arm column
+list also offers the table's own `arm`, for `diff=("arm", ...)`); a `state_file`
+keeps everything else, and the table must be passed again when the widget is
+reopened.
 
 ### Reading the scorecard and the forest plot
 
@@ -48,10 +51,12 @@ Below the table, a forest plot puts every delta on one line:
   relative delta and its interval.
 
 The interval is **per comparison and never adjusted**; the verdict reads the
-**adjusted** p-value (`correction` within the rows of one metric). So a row can
-have an interval that excludes 0 and still be `inconclusive`. Metrics are not
-corrected against each other unless `correction_scope="all"`: name one decision
-metric before reading the plot — trust the
+**adjusted** p-value (`correction` within the rows of one metric, or across every
+row of every metric with `correction_scope="all"`; the note under the plot says
+which). So a row can have an interval that excludes 0 and still be
+`inconclusive`. With the default family metrics are not corrected against each
+other: name one decision metric before reading the plot, and read each guardrail
+on its own against a harm margin declared before the test — trust the
 verdict for the decision, and `correction="bonferroni"` when you need a
 simultaneous interval (`delta_ci_low_adj` / `delta_ci_high_adj` in the
 headless result).
@@ -59,13 +64,22 @@ headless result).
 **An inconclusive row is not "no effect".** Its interval says which effects the
 data still allow; the MDE says which effect this design would have detected
 with the requested power — a property of the design, not a bound on the true
-effect. When the library computes a `reading` for each row, the scorecard shows
-it in a **Reading** column (hover for the whole sentence, click to expand); it
-spells out what is inconclusive, on what basis, and what would settle it.
+effect. The scorecard shows each row's `reading` in a **Reading** column (hover
+for the whole sentence, click to expand); it spells out what is inconclusive, on
+what basis, and how many paths a new test, sized before it starts, would need to
+detect a smaller effect. It reads the row's numbers only: it does not check the
+sample ratio or the unit.
 
-A **support** badge flags rows the test still ran on but that need a second
-look: `one arm only` (the behaviour exists in one arm — a loop the treatment
-created) and `low support` (a bootstrap interval over few paths).
+A **support** badge (hover for its meaning) flags a row's support:
+
+- `no data` — no path of either arm has the behaviour, or an arm has no
+  estimate: nothing to compare, the row is `insufficient_data`;
+- `invalid replicates` — more than 1 % of bootstrap replicates had no value in an
+  arm: no interval or p-value, the estimate is descriptive;
+- `one arm only` — the behaviour exists in one arm only (a loop the treatment
+  created): the test ran;
+- `low support` — a bootstrap interval over fewer than 30 supporting paths in an
+  arm, where percentile intervals under-cover: the verdict stays.
 
 ### Strata
 
@@ -109,14 +123,18 @@ that changes with exposure age (novelty), bin by
 
 - **The path is the randomised unit.** Intervals treat paths as independent; a
   session grain for a per-user experiment gives intervals that are too narrow.
-  With `assignment=`, a grain finer than the table's is refused.
+  With `assignment=`, a grain finer than the table's is refused. Without a
+  table, a segment `diff` is refused at the session grain when the arm is
+  constant within at least 99 % of the users holding several sessions (and at
+  least 10 such users), and warns from 90 %.
 - **The population.** Without `assignment`, the arms are the paths of the
   stream — users with at least one event, split by the `diff` segment. With an
   assignment table the comparison is intention-to-treat: every assigned path,
   silent ones counting as zeros, events before `assigned_at` dropped.
 - **Metrics chosen before looking.** Metrics are separate correction families:
-  with five metrics at 5 % each, one false "increase" somewhere is likely when
-  nothing changed. Name the decision metric up front.
+  with five metrics at 5 % each, the chance of a false "increase" or "decrease"
+  somewhere when nothing changed is about 1 in 4. Name the decision metric up
+  front.
 - **Strata fixed before exposure**, as above, and no filter on post-exposure
   behaviour (users who reached checkout) before the test.
 - **The arms have the planned sizes.** Check with
@@ -154,9 +172,10 @@ its dot: effects from about −1 pp to about +2.3 pp remain possible.
 ### Strata and periods
 
 `platform` is fixed at signup, so it is declared pre-exposure. The weekly rows
-show conversion's delta positive in the first weeks and below zero later — an
-effect that fades with exposure, which the
-[A/B Testing guide](/docs/ab-testing#periods-horizon-and-novelty) measures by
+drift from positive in the first weeks to below zero later. Calendar weeks mix
+users of every exposure age, so this does not measure how the effect changes
+with exposure; the
+[A/B Testing guide](/docs/ab-testing#periods-horizon-and-novelty) does that by
 time since assignment.
 
 <DemoWidget cmd={`stream.ab_test(
@@ -172,6 +191,30 @@ time since assignment.
 )`} path="/docs-demos/widgets/ab-test/strata-periods.html" height={720} />
 {% endblock %}
 {% block extra %}
+### test
+
+{{ bullets(doc.parameters, "test") }}
+
+### correction
+
+{{ bullets(doc.parameters, "correction") }}
+
+### correction_scope
+
+{{ bullets(doc.parameters, "correction_scope") }}
+
+### period_basis
+
+{{ bullets(doc.parameters, "period_basis") }}
+
+### period_population
+
+{{ bullets(doc.parameters, "period_population") }}
+
+### bootstrap_weights
+
+{{ bullets(doc.parameters, "bootstrap_weights") }}
+
 ## `ab_test_data` and `get_ab_test`
 
 `ab_test_data` and `get_ab_test` are the same method under two names. The

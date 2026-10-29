@@ -1,0 +1,51 @@
+[
+  {
+    "scenario": "binary_null",
+    "control_wilson_coverage": 0.955792217226223,
+    "treatment_wilson_coverage": 0.955792217226223,
+    "newcombe_coverage": 0.9519040896623479,
+    "probability_mass": 0.9999999999999996
+  },
+  {
+    "scenario": "binary_effect",
+    "control_wilson_coverage": 0.955792217226223,
+    "treatment_wilson_coverage": 0.9408389969934703,
+    "newcombe_coverage": 0.9510063628120831,
+    "probability_mass": 0.9999999999999994
+  },
+  {
+    "scenario": "binary_unequal_null",
+    "control_wilson_coverage": 0.9363983902254395,
+    "treatment_wilson_coverage": 0.9563143008911515,
+    "newcombe_coverage": 0.9511546061546589,
+    "probability_mass": 0.9999999999999991
+  },
+  {
+    "scenario": "rare_null",
+    "control_wilson_coverage": 0.9735740883604809,
+    "treatment_wilson_coverage": 0.9735740883604809,
+    "newcombe_coverage": 0.9999900653327749,
+    "probability_mass": 0.9999999999999996
+  },
+  {
+    "scenario": "rare_effect",
+    "control_wilson_coverage": 0.9735740883604809,
+    "treatment_wilson_coverage": 0.9200678354431138,
+    "newcombe_coverage": 0.9995063205214848,
+    "probability_mass": 0.9999999999999999
+  },
+  {
+    "scenario": "zero_boundary",
+    "control_wilson_coverage": 1.0,
+    "treatment_wilson_coverage": 1.0,
+    "newcombe_coverage": 1.0,
+    "probability_mass": 1.0
+  },
+  {
+    "scenario": "one_boundary",
+    "control_wilson_coverage": 1.0,
+    "treatment_wilson_coverage": 1.0,
+    "newcombe_coverage": 1.0,
+    "probability_mass": 1.0
+  }
+]

@@ -16,6 +16,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Experiment Wilson intervals now include the exact 0/1 endpoints for zero/all
+  successes; floating-point cancellation could previously exclude a true
+  boundary probability. An independent, opt-in coverage audit documents
+  finite-sample limitations separately from this numerical correction.
+
 - `time_median` and `time_q95` edge weights in `transition_graph` and
   `transition_graph_data` measure the exact gap between events instead of
   counting whole-second boundaries, so a 125 ms span no longer reads as 0 s or

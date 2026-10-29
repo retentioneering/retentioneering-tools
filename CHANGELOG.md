@@ -100,6 +100,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   strict JSON: NaN and infinite values are sent as `null`, which the front end
   shows as "no estimate", instead of bare `NaN` tokens that the browser's
   `JSON.parse` rejects.
+- `rete.datasets.load_ab_test()` and `load_ab_test_assignment()`: "Northwind Home",
+  a synthetic 50/50 A/B test of a `quick_add` feature (about 10,000 users, eight
+  weeks, generated deterministically from `seed=2026`, no data file). Segments
+  `exp_group`, `platform`, `cohort_week`; custom columns `order_value` and
+  `order_items` on `order_success` rows; the assignment table includes silent
+  users. Seven planted stories (grey top line, a conditional funnel step that only
+  looks significant, two pre-exposure user types with opposite effects, a
+  treatment-only cart loop, novelty since assignment, no AOV shift, a sign flip by
+  pre-exposure path length) are listed in the module docstring and each one is
+  checked by a test; `with_truth=True` adds the planted `user_type`.
 
 ### Fixed
 

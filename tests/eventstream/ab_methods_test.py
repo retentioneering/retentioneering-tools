@@ -79,6 +79,9 @@ class TestGetAbBootstrap:
         ]
         assert len(table) == 150 * 2
 
-    def test_rejects_auto_replicates(self) -> None:
-        with pytest.raises(InvalidParameterError):
-            _stream().get_ab_bootstrap(DIFF, METRICS, n_bootstrap="auto")
+    def test_replicates_validated_as_in_get_ab_test(self) -> None:
+        table = _stream().get_ab_bootstrap(DIFF, METRICS, n_bootstrap="auto")
+        assert table["replicate"].nunique() == 1000
+        for bad in (1, 99, "many", True):
+            with pytest.raises(InvalidParameterError):
+                _stream().get_ab_bootstrap(DIFF, METRICS, n_bootstrap=bad)

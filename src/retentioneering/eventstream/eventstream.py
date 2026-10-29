@@ -477,7 +477,11 @@ class Eventstream:
         assignment : pandas.Series or pandas.DataFrame, optional
             Per-path arm table: a Series `path_id -> arm`, or a DataFrame indexed by
             path id with a column `arm` (and optionally `assigned_at`). The counts are
-            the table's rows, including paths with no events in the stream.
+            the table's rows, including paths with no events in the stream. Ids are
+            matched to `path_col` as in `get_ab_test` (by string form when none
+            matches as is; none matching raises, fewer than half warns), and a table
+            of a coarser unit than `path_col` (user ids with session paths) raises
+            `InvalidParameterError`.
         by : str, optional
             Repeat the check within groups: a segment column constant per path (a
             column of the `assignment` DataFrame is used first), or `"day"` — the day
@@ -513,9 +517,11 @@ class Eventstream:
         InvalidParameterError
             `segment_col` not a segment column (without `assignment`); fewer than two
             arms; `expected_shares` not summing to 1 or naming an unknown level;
-            `alpha` outside (0, 1); `by` not a per-path segment or `"day"`.
+            `alpha` outside (0, 1); `by` not a per-path segment or `"day"`;
+            `path_col` finer than the assignment table's unit.
         DiffConfigError
-            `assignment` malformed or its index not unique.
+            `assignment` malformed, its index not unique, or no id of it matching a
+            path id.
 
         Examples
         --------
@@ -604,9 +610,15 @@ class Eventstream:
             dropped; stream paths absent from the table are left out
             (`excluded_paths`). `diff` names the two arms (`("exp_group", "treatment",
             "control")`); when `diff[0]` is a segment column of the stream, every
-            path's segment must agree with the table. A table of user ids with
-            `path_col` set to a finer column (sessions) raises `InvalidParameterError`:
-            per-session intervals of a per-user experiment are too narrow.
+            path's segment must agree with the table. Ids are matched to `path_col` as
+            they are, or by their string form when none matches as is (ids read from
+            JSON or CSV); no match at all raises `DiffConfigError`, and fewer than half
+            of the table's ids matched gives a `UserWarning`. A naive `assigned_at` on
+            a tz-aware stream is read in the stream's timezone; a tz-aware one is
+            converted to it. A table of user ids (by overlap, or an index named after
+            a coarser path column) with `path_col` set to a finer column (sessions)
+            raises `InvalidParameterError`: per-session intervals of a per-user
+            experiment are too narrow.
         strata_col : str, optional
             A segment column (`schema.segment_cols`) constant per path. Rows are produced
             per stratum, with shares by arm, a share-balance p-value, a heterogeneity
@@ -616,13 +628,20 @@ class Eventstream:
             computed from behaviour on a stream that was not truncated triggers a
             `UserWarning` and `strata_pre_exposure=False`.
         period : str or pandas offset, optional
-            Rows per period. With `period_basis="calendar"`: a pandas offset alias
-            (`"D"`, `"W"`, `"M"`, `"Q"`, ...), or a fixed length (`"7D"`, `"12h"`)
-            whose bins start at midnight of the stream's first day. With
-            `"since_assignment"`: a fixed length (`"7D"`, `"14D"`, `"W"` = 7 days).
-            Requires the primary path column.
+            Rows per period. With `period_basis="calendar"`: a calendar unit (`"D"`,
+            `"W"`, `"W-MON"`, `"M"`, `"Q"`, `"Y"`; the offset spellings `"ME"`,
+            `"MS"`, `"QE"`, `"QS"`, `"YE"`, `"YS"` or `pd.offsets.MonthEnd()` mean the
+            same), or a fixed length (`"7D"`, `"12h"`) whose bins start at midnight of
+            the stream's first day. A multiple of weeks, months, quarters or years
+            (`"2W"`, `"3M"`) bins that many units, counted from the unit holding the
+            stream's first day; another calendar unit with a multiple raises
+            `InvalidParameterError`. Calendar units follow the stream's timezone.
+            With `"since_assignment"`: a fixed length (`"7D"`, `"14D"`, `"W"` = 7
+            days). A bare number (`14`, `"14"`) has no unit and raises
+            `InvalidParameterError`. Requires the primary path column.
         period_basis : {"calendar", "since_assignment"}, default "calendar"
-            What `period` bins.
+            What `period` bins; a value other than `"calendar"` without `period`
+            raises `InvalidParameterError`.
 
             - `"calendar"` — periods are calendar bins of the event timestamp; the
               population of a period is every path assigned before the period's end
@@ -632,12 +651,18 @@ class Eventstream:
               `assignment` DataFrame with `assigned_at`); labels are `"0-6"`, `"7-13"`
               (days) or `"0-11h"` (hours). A path is in a bin's population only when
               the bin's window closes before the stream's end; the others are counted
-              in `immature_paths`. This is the basis for novelty effects.
+              in `immature_paths`. A bin that `horizon` cuts (`horizon="10D"` with
+              `period="7D"`: the bin `"7-13"` holds days 7 to 9) keeps its label and
+              gets `period_complete=False`. This is the basis for novelty effects.
         period_population : {"itt", "active"}, default "itt"
-            Which paths a period row compares.
+            Which paths a period row compares; a value other than `"itt"` without
+            `period` raises `InvalidParameterError`.
 
-            - `"itt"` — every assigned path is in every period (counts 0 when silent);
-              rows are inferential.
+            - `"itt"` — intention to treat: every path that entered the experiment
+              before the period's end (calendar basis: `assigned_at`, or the path's
+              first event without it) or whose window covers the bin
+              (since-assignment basis), counting 0 when silent in the period; rows
+              are inferential.
             - `"active"` — only paths with an event in the period; such rows compare
               survivors, so they are descriptive: `verdict="descriptive"`, `p_value`
               and `mde` NaN.
@@ -646,7 +671,8 @@ class Eventstream:
             `[assigned_at, assigned_at + horizon)` count, and paths whose window ends
             after the stream's last day are left out and counted in `immature_paths`.
             Needs an `assignment` DataFrame with `assigned_at`. Equalises exposure time
-            between early and late entrants.
+            between early and late entrants. A bare number (`14`) has no unit and
+            raises `InvalidParameterError`.
         test : {"auto", "z_test", "welch_t_test", "bootstrap"}, default "auto"
             - `"auto"` — 0/1 metrics use `"z_test"`, totals and values
               `"welch_t_test"`, ratio metrics `"bootstrap"`.
@@ -668,7 +694,8 @@ class Eventstream:
             - `"none"` — no correction.
         ci_level : float, default 0.95
             Two-sided confidence level of every interval (per comparison, not adjusted
-            for multiplicity); `1 - ci_level` is the significance level of the verdict.
+            for multiplicity), in `[0.5, 1)`; `1 - ci_level` is the significance level
+            of the verdict.
         power : float, default 0.8
             Power used for `mde`.
         n_bootstrap : int or "auto", default 1000
@@ -684,8 +711,11 @@ class Eventstream:
         min_events : int, default 10
             Support rule per arm: paths with the event for 0/1 metrics, paths with a
             non-zero numerator for ratios, paths with a value for totals and values.
-            Below it the row is `verdict="insufficient_data"` with no p-value (the
-            estimates stay).
+            The rule is `min(s1, s2) >= min_events` over the two arms' supports, so it
+            needs enough supporting paths in each arm: a behaviour that exists in one
+            arm only (a new feature's event, 0 paths in control) is reported with a
+            NaN p-value and `verdict="insufficient_data"` however large the
+            difference, and is read descriptively from the estimates, which stay.
         random_state : int, default 42
             Seed of the bootstrap.
         path_col : str, optional
@@ -746,7 +776,7 @@ class Eventstream:
             - `p_basis` (str): `"pooled_z"`, `"welch"` or `"bootstrap_se"`.
             - `valid_replicates` (Int64, `<NA>` on closed-form rows), `low_support`
               (bool): bootstrap rows; more than 1 % of replicates without support sets
-              `low_support`, NaN intervals and no p-value.
+              `low_support` and NaN intervals, p-value, `delta_se` and `mde`.
             - `group1_share`*, `group2_share`*, `balance_p_value`* (float): share of the
               stratum within each arm (within the period) and the chi-square p-value of
               the stratum × arm table. A share-balance check only: a balanced
@@ -774,8 +804,9 @@ class Eventstream:
         Raises
         ------
         DiffConfigError
-            Overlapping or non-constant groups; assignment index not unique; assignment
-            and segment disagree.
+            Overlapping or non-constant groups; both values of `diff` naming the same
+            level or arm; assignment index not unique; assignment and segment
+            disagree; no assignment id matches a path id.
         InvalidMetricConfigError
             Bad metric entry (unknown metric or event, `*_bulk`, several columns,
             duplicate name, denominator on a 0/1 metric, test not matching the kind).
@@ -783,7 +814,11 @@ class Eventstream:
             An enum argument outside its values; `strata_col` not a segment column or
             not constant per path; `period` with a non-primary `path_col`; a path grain
             finer than the assignment table's unit; `since_assignment` or `horizon`
-            without `assigned_at`; `ci_level` / `power` outside (0, 1); `min_events < 1`.
+            without `assigned_at`; `period_basis` / `period_population` other than the
+            default without `period`; `period` or `horizon` a bare number or an
+            unsupported alias; a tz-aware `assigned_at` on a naive stream; `ci_level`
+            outside [0.5, 1); `power` outside (0, 1); `min_events < 1`;
+            `n_bootstrap < 100`.
         EmptyEventstreamError
             Either group is empty.
 
@@ -848,7 +883,7 @@ class Eventstream:
         period_population: str = "itt",
         horizon=None,
         contrast: dict | None = None,
-        n_bootstrap: int = 1000,
+        n_bootstrap: "int | str" = 1000,
         bootstrap_weights: str = "multinomial",
         random_state: int = 42,
         path_col: str | None = None,
@@ -876,8 +911,9 @@ class Eventstream:
             periods (summed numerators over summed denominators). Needs `period`.
             Example: `{"novelty": (["0-13"], ["28-41"])}` with `period="14D",
             period_basis="since_assignment"`.
-        n_bootstrap : int, default 1000
-            Number of replicates.
+        n_bootstrap : int or "auto", default 1000
+            Number of replicates, at least 100; `"auto"` as in `get_ab_test` (the
+            replicates `get_ab_test` would draw).
 
         Returns
         -------
@@ -919,10 +955,6 @@ class Eventstream:
         """
         from retentioneering.tools.ab_test import ABTest
 
-        if isinstance(n_bootstrap, str):
-            from retentioneering.exceptions import InvalidParameterError
-
-            raise InvalidParameterError("n_bootstrap", n_bootstrap, ["an int >= 1"])
         return ABTest.from_stream(
             self,
             diff,
@@ -2709,14 +2741,15 @@ class Eventstream:
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         ci_level : float, optional
-            Two-sided confidence level in (0, 1), e.g. `0.95`: draws an interval
+            Two-sided confidence level in [0.5, 1), e.g. `0.95`: draws an interval
             whisker on every bar and adds the delta's interval and p-value to the
             table. Also switchable in the sidebar (Off / 90% / 95% / 99%). In diff
             mode the groups are then resolved per path and a path in both groups
             raises `DiffConfigError`; see `funnel_data` for every number shown.
         correction : {"none", "holm", "bonferroni", "bh"}, default "none"
             Multiple-comparison correction over the overall-step p-values; see
-            `funnel_data`.
+            `funnel_data`. A value other than `"none"` needs `ci_level`
+            (`InvalidParameterError` otherwise).
         height : int, default 420
             Widget height in pixels.
         sidebar_open : bool, default True
@@ -2740,6 +2773,12 @@ class Eventstream:
         """
         from retentioneering.widgets.funnel import FunnelWidget, _UNSET
 
+        if correction not in (None, "none") and ci_level is None:
+            from retentioneering.exceptions import InvalidParameterError
+
+            raise InvalidParameterError(
+                "correction", correction, ["'none' without ci_level", "a ci_level="]
+            )
         return FunnelWidget(
             eventstream=self,
             steps=steps if steps is not None else _UNSET,
@@ -2775,7 +2814,7 @@ class Eventstream:
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         ci_level : float, optional
-            Two-sided confidence level in (0, 1), e.g. `0.95`. Adds a Wilson score
+            Two-sided confidence level in [0.5, 1), e.g. `0.95`. Adds a Wilson score
             interval to every rate and, with `diff`, a Newcombe hybrid score
             interval to every delta and a pooled two-proportion z-test p-value to
             every **overall** delta (see Returns). In diff mode the groups are then
@@ -2787,7 +2826,8 @@ class Eventstream:
         correction : {"none", "holm", "bonferroni", "bh"}, default "none"
             Multiple-comparison correction applied across the funnel's steps to the
             overall-delta p-values (`delta_conversion_rate_p_value_adjusted`); used
-            only with `ci_level` and `diff`. `"none"` copies the raw p-values;
+            only with `ci_level` and `diff`, and a value other than `"none"` without
+            `ci_level` raises `InvalidParameterError`. `"none"` copies the raw p-values;
             `"holm"` (Holm step-down) and `"bonferroni"` control the family-wise
             error rate; `"bh"` (Benjamini–Hochberg) controls the false discovery
             rate. Steps whose p-value is undefined (`NaN`) are left out of the
@@ -2934,7 +2974,7 @@ class Eventstream:
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         ci_level : float, optional
-            Two-sided confidence level in (0, 1), e.g. `0.95`. Adds Wilson score
+            Two-sided confidence level in [0.5, 1), e.g. `0.95`. Adds Wilson score
             intervals of the conversion rate (`conversion_rate_ci_low` /
             `conversion_rate_ci_high`). In `diff` mode it sets the level of every
             interval (default 0.95 there).
@@ -2948,7 +2988,13 @@ class Eventstream:
             with the diff columns. The intervals and the p-value treat every path as
             an independent unit, so they assume `path_col` is the unit that was
             assigned to a group: session paths of a user-level experiment give
-            intervals that are too narrow.
+            intervals that are too narrow. The denominator is the paths where the
+            start anchor occurred: when the anchor is an event inside the experiment
+            (`"cart"` after a treatment that changes who reaches the cart), the
+            groups are selected after exposure, not randomised, so the delta and
+            the p-value describe the selected paths; they do not test the
+            treatment. Test with `get_ab_test` (or `"path_start"` as the start
+            anchor) for an unconditional comparison.
 
         Returns
         -------

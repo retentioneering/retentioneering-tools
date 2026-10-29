@@ -663,6 +663,8 @@ class TestScorecard:
         assert row.low_support
         assert row.valid_replicates < 990
         assert np.isnan(row.delta_ci_low) and np.isnan(row.p_value)
+        # an absent estimate is NaN: no SE and no MDE either
+        assert np.isnan(row.delta_se) and np.isnan(row.mde) and np.isnan(row.rel_mde)
         assert row.group1_value == pytest.approx(10.0)  # the point estimate stays
         assert row.verdict == "inconclusive"
 
@@ -749,3 +751,224 @@ def _random_assignment() -> pd.DataFrame:
     first = stream.df.groupby("user_id", observed=True)["timestamp"].min()
     arm = stream.get_path_segments("arm")
     return pd.DataFrame({"arm": arm, "assigned_at": first.reindex(arm.index)})
+
+
+# ---------------------------------------------------------------- review fixes
+def _with_ids(stream: Eventstream, ids) -> Eventstream:
+    """The same stream with ``user_id`` replaced through ``ids`` (a callable)."""
+    df = stream.to_dataframe()
+    df = df[[c for c in df.columns if c not in ("event_index", "event_subindex")]]
+    df["user_id"] = ids(df["user_id"])
+    return Eventstream(
+        df, {"segment_cols": ["arm", "platform"], "custom_cols": ["value"]}
+    )
+
+
+def _tz_tiny(tz: str) -> Eventstream:
+    df = _tiny().to_dataframe()
+    df = df[["user_id", "event", "timestamp", "arm", "session_id", "platform"]]
+    df["timestamp"] = df["timestamp"].dt.tz_localize(tz)
+    return Eventstream(
+        df,
+        {"path_cols": ["user_id", "session_id"], "segment_cols": ["arm", "platform"]},
+    )
+
+
+class TestCalendarPeriodAliases:
+    @pytest.mark.parametrize("alias", ["ME", "MS", pd.offsets.MonthEnd()])
+    def test_month_spellings_match_m(self, alias) -> None:
+        ref = _fit(_random(), period="M", correction="none")
+        assert list(ref["period"]) == ["2024-01", "2024-02"]
+        assert list(ref["period_start"]) == list(
+            pd.to_datetime(["2024-01-01", "2024-02-01"])
+        )
+        assert list(ref["period_complete"]) == [True, False]
+        pd.testing.assert_frame_equal(
+            _fit(_random(), period=alias, correction="none"), ref
+        )
+
+    @pytest.mark.parametrize("alias", ["Q", "QE", "QS"])
+    def test_quarter(self, alias) -> None:
+        out = _fit(_random(), period=alias)
+        assert list(out["period"]) == ["2024Q1"]
+        assert out["period_start"].iloc[0] == pd.Timestamp("2024-01-01")
+        assert out["period_end"].iloc[0] == pd.Timestamp("2024-04-01")
+        assert not out["period_complete"].iloc[0]
+
+    def test_two_weeks_bin_two_weeks_itt(self) -> None:
+        out = _fit(_tiny(), assignment=_table(), period="2W", correction="none")
+        # two Monday-to-Sunday weeks per bin, from the week of the first day
+        assert list(out["period"]) == ["2024-01-01/2024-01-14", "2024-01-15/2024-01-28"]
+        assert list(out["period_end"]) == list(
+            pd.to_datetime(["2024-01-15", "2024-01-29"])
+        )
+        # ITT: paths assigned before the bin's end, silent ones included
+        assert list(out["group1_paths"]) == [4, 4]
+        assert list(out["group2_paths"]) == [3, 3]
+        np.testing.assert_allclose(out["group1_value"], [2 / 4, 0.0])
+        np.testing.assert_allclose(out["group2_value"], [1 / 3, 1 / 3])
+
+    def test_multiple_of_another_calendar_unit_is_refused(self) -> None:
+        with pytest.raises(InvalidParameterError, match="multiple"):
+            _fit(_random(), period="2B")
+
+    @pytest.mark.parametrize("value", [14, 14.0, "14", " 7 ", "1.5"])
+    def test_bare_numbers_are_refused(self, value) -> None:
+        with pytest.raises(InvalidParameterError, match="14D"):
+            _fit(_tiny(), period=value)
+        with pytest.raises(InvalidParameterError, match="14D"):
+            _fit(_tiny(), assignment=_table(), horizon=value)
+        with pytest.raises(InvalidParameterError, match="14D"):
+            _fit(
+                _tiny(),
+                assignment=_table(),
+                period=value,
+                period_basis="since_assignment",
+            )
+
+    def test_horizon_still_takes_a_spelled_out_duration(self) -> None:
+        a = _fit(_tiny(), assignment=_table(), horizon="10 days")
+        b = _fit(_tiny(), assignment=_table(), horizon="10D")
+        pd.testing.assert_frame_equal(a, b)
+
+
+class TestModeSwitchesAndLevels:
+    @pytest.mark.parametrize(
+        "kwargs",
+        [{"period_population": "active"}, {"period_basis": "since_assignment"}],
+    )
+    def test_period_modes_need_period(self, kwargs) -> None:
+        with pytest.raises(InvalidParameterError, match="without period"):
+            _fit(_tiny(), assignment=_table(), **kwargs)
+
+    @pytest.mark.parametrize("level", [0.3, 0.0, 1.0, 1e-6])
+    def test_ci_level_range(self, level) -> None:
+        with pytest.raises(InvalidParameterError, match="0.5"):
+            _fit(_tiny(), ci_level=level)
+        assert len(_fit(_tiny(), ci_level=0.5)) == 1
+
+    def test_identical_arms_are_refused(self) -> None:
+        same = ("arm", "treatment", "treatment")
+        with pytest.raises(DiffConfigError, match="itself"):
+            _tiny().get_ab_test(same, [CONV])
+        with pytest.raises(DiffConfigError, match="itself"):
+            _tiny().get_ab_test(same, [CONV], assignment=_table())
+
+
+class TestAssignmentIds:
+    def test_int_ids_match_a_table_of_strings(self) -> None:
+        stream = _with_ids(_random(), lambda ids: ids.str[1:].astype(int))
+        table = _random_assignment()
+        ref = _fit(_random(), assignment=table)
+        table.index = table.index.str[1:].astype(int).astype(str)
+        out = _fit(stream, assignment=table)
+        cols = ["group1_paths", "group2_paths", "group1_value", "group2_value"]
+        pd.testing.assert_frame_equal(out[cols], ref[cols])
+        assert (out["group1_paths_no_events"] == 0).all()
+
+    def test_no_matching_id_raises(self) -> None:
+        table = _random_assignment()
+        table.index = table.index.str.upper()
+        with pytest.raises(DiffConfigError, match="none of the 1200"):
+            _fit(_random(), assignment=table)
+
+    def test_partial_match_warns_with_the_counts(self) -> None:
+        table = _random_assignment()
+        ids = list(table.index)
+        ids[:700] = [i.upper() for i in ids[:700]]
+        table.index = ids
+        with pytest.warns(UserWarning, match="only 500 of 1200") as record:
+            _random().get_ab_test(DIFF, [CONV], assignment=table)
+        assert {w.filename for w in record} == {__file__}
+
+    def test_unit_named_by_the_table_index(self) -> None:
+        # session ids equal user ids: the overlap check alone cannot tell the unit
+        df = _tiny().to_dataframe()[["user_id", "event", "timestamp", "arm"]]
+        df["session_id"] = df["user_id"]
+        stream = Eventstream(
+            df, {"path_cols": ["user_id", "session_id"], "segment_cols": ["arm"]}
+        )
+        table = _table().rename_axis("user_id")
+        with pytest.raises(InvalidParameterError, match="too narrow"):
+            _fit(stream, assignment=table, path_col="session_id")
+        _fit(stream, assignment=table.rename_axis(None), path_col="session_id")
+
+
+class TestTimezones:
+    def test_utc_stream_and_utc_table_match_the_naive_run(self) -> None:
+        table = _table()
+        table["assigned_at"] = table["assigned_at"].dt.tz_localize("UTC")
+        for kwargs in (
+            {"period": "W"},
+            {"horizon": "7D"},
+            {"period": "7D", "period_basis": "since_assignment"},
+        ):
+            ref = _fit(_tiny(), [CONV, ORDERS], assignment=_table(), **kwargs)
+            out = _fit(_tz_tiny("UTC"), [CONV, ORDERS], assignment=table, **kwargs)
+            for col in ("group1_paths", "group2_paths", "group1_value", "delta"):
+                np.testing.assert_array_equal(out[col], ref[col])
+        # a naive table on a tz-aware stream is read in the stream's timezone
+        ref = _fit(_tiny(), [CONV, ORDERS], assignment=_table(), period="W")
+        out = _fit(_tz_tiny("UTC"), [CONV, ORDERS], assignment=_table(), period="W")
+        np.testing.assert_array_equal(out["group1_value"], ref["group1_value"])
+
+    def test_calendar_weeks_in_the_stream_timezone(self) -> None:
+        ref = _fit(_tiny(), period="W")
+        out = _fit(_tz_tiny("Europe/Berlin"), period="W")
+        assert list(out["period"]) == list(ref["period"])
+        assert list(out["period_start"]) == list(
+            ref["period_start"].dt.tz_localize("Europe/Berlin")
+        )
+        np.testing.assert_array_equal(out["group1_paths"], ref["group1_paths"])
+
+    def test_tz_aware_table_on_a_naive_stream_is_refused(self) -> None:
+        table = _table()
+        table["assigned_at"] = table["assigned_at"].dt.tz_localize("UTC")
+        with pytest.raises(InvalidParameterError, match="naive"):
+            _fit(_tiny(), assignment=table)
+
+
+class TestHorizonCutBins:
+    def test_bin_cut_by_the_horizon_is_incomplete(self) -> None:
+        rows = []
+        for user, arm in (("t1", "treatment"), ("c1", "control")):
+            for day in ("01", "09", "20"):
+                rows.append((user, "view", pd.Timestamp(f"2024-01-{day}"), arm))
+        df = pd.DataFrame(rows, columns=["user_id", "event", "timestamp", "arm"])
+        stream = Eventstream(df, {"segment_cols": ["arm"]})
+        table = pd.DataFrame(
+            {
+                "arm": ["treatment", "control"],
+                "assigned_at": pd.Timestamp("2024-01-01"),
+            },
+            index=["t1", "c1"],
+        )
+        metric = {"name": "views", "metric": "length"}
+
+        def fit(horizon):
+            return _fit(
+                stream,
+                [metric],
+                assignment=table,
+                period="7D",
+                period_basis="since_assignment",
+                horizon=horizon,
+            )
+
+        # every window of the 7-13 bin closes before the stream's end (01-21), but
+        # the 10-day horizon cuts the bin at day 10
+        out = fit("10D")
+        assert list(out["period"]) == ["0-6", "7-13"]
+        assert list(out["immature_paths"]) == [0, 0]
+        assert list(out["period_complete"]) == [True, False]
+        assert list(fit("14D")["period_complete"]) == [True, True]
+
+
+class TestWarningLocation:
+    def test_post_exposure_warning_points_at_the_caller(self) -> None:
+        stream = _random().add_segment(
+            "length_bin", metric_bins={"metric": {"metric": "length"}, "edges": [3]}
+        )
+        with pytest.warns(UserWarning, match="post-exposure") as record:
+            stream.get_ab_test(DIFF, [CONV], strata_col="length_bin")
+        assert {w.filename for w in record} == {__file__}

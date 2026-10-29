@@ -1534,3 +1534,44 @@ class TestAbPaths:
         card = stream.get_ab_test(DIFF, [CONV]).iloc[0]
         means = paths.groupby("arm")["conv"].mean()
         assert means["treatment"] == pytest.approx(card.group1_value)
+
+
+class TestDeclaredPreExposure:
+    """U6: add_segment(..., pre_exposure=) is read by get_ab_test as "declared"."""
+
+    def test_declaration_is_read_without_a_warning(self) -> None:
+        stream = _random()
+        labels = stream.get_path_segments("platform")
+        labels.attrs.clear()  # rebuilt labels carry no provenance
+        declared = stream.add_segment("entry", path_values=labels, pre_exposure=True)
+        assert declared.recipe()[-1]["pre_exposure"] is True
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            out = ABTest.from_stream(declared, DIFF, [CONV], strata_col="entry").fit()
+        assert set(out["strata_pre_exposure_source"]) == {"declared"}
+        assert out["strata_pre_exposure"].all() and not out["exploratory"].any()
+        assert declared.get_path_segments("entry").attrs["pre_exposure"] is True
+        # survives a JSON round trip of the recipe
+        import json
+
+        from retentioneering.ops import apply_ops
+
+        replay = apply_ops(stream, json.loads(json.dumps(declared.recipe()[-1:])))
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            again = ABTest.from_stream(replay, DIFF, [CONV], strata_col="entry").fit()
+        assert set(again["strata_pre_exposure_source"]) == {"declared"}
+
+    def test_declared_false_and_undeclared(self) -> None:
+        stream = _random()
+        labels = stream.get_path_segments("platform")
+        labels.attrs.clear()
+        post = stream.add_segment("entry", path_values=labels, pre_exposure=False)
+        out = ABTest.from_stream(post, DIFF, [CONV], strata_col="entry").fit()
+        assert set(out["strata_pre_exposure_source"]) == {"not_pre_exposure"}
+        assert out["exploratory"].all()
+        plain = stream.add_segment("entry", path_values=labels)
+        with pytest.warns(UserWarning, match="does not show"):
+            ABTest.from_stream(plain, DIFF, [CONV], strata_col="entry").fit()
+        with pytest.raises(InvalidParameterError, match="pre_exposure"):
+            stream.add_segment("entry", path_values=labels, pre_exposure="yes")

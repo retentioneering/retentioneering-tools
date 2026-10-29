@@ -37,12 +37,15 @@ an add. In control the add is ``add_to_cart``; in treatment 70 % of adds are
 ``quick_add`` (the feature, treatment only) and the rest ``add_to_cart``. After the add
 come ``cart``, ``checkout_start``, ``payment`` and ``order_success``.
 
-Where the treatment sits: ``quick_add`` follows a ``product_view`` almost every
-time, so users see the button from their first ``product_view``, the strict
-exposure point. The button changes nothing before the first add: the browsing
-before a user's first add is generated identically in both arms, so anything
-measured on the window before the first add is a pre-exposure attribute (the
-tutorial's choice of exposure marker).
+Where the treatment sits: the button is on the product page (``quick_add``
+follows a ``product_view`` almost every time), so users see it from their first
+``product_view``, the exposure point: the window before the first
+``product_view`` is pre-exposure (the tutorial's cut,
+``truncate_paths("path_start", [{"pattern": "product_view", "offset": -1},
+"path_end"])``). The browsing before a user's first add is also generated
+identically in both arms, so the longer window before the first add carries no
+treatment difference in this dataset either (story 3 uses it); with real data,
+cut at the exposure point.
 
 Fixed at assignment (pre-exposure, declare ``strata_pre_exposure=True``):
 ``platform`` (``"mobile"`` / ``"desktop"``) and ``cohort_week``. Both are constant

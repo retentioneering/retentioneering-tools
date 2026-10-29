@@ -85,3 +85,36 @@ class TestGetAbBootstrap:
         for bad in (1, 99, "many", True):
             with pytest.raises(InvalidParameterError):
                 _stream().get_ab_bootstrap(DIFF, METRICS, n_bootstrap=bad)
+
+
+class TestGetMetricsName:
+    """U9: get_metrics honours `name` as get_ab_test does."""
+
+    def test_name_labels_the_column(self) -> None:
+        stream = _stream()
+        out = stream.get_metrics(
+            [
+                {
+                    "name": "conversion",
+                    "metric": "has_event",
+                    "metric_args": {"event": "order"},
+                },
+                {"metric": "length"},
+            ]
+        )
+        assert list(out.columns) == ["conversion", "length"]
+        plain = stream.get_metrics(
+            [{"metric": "has_event", "metric_args": {"event": "order"}}]
+        )
+        assert (out["conversion"] == plain.iloc[:, 0]).all()
+
+    def test_bad_names_raise(self) -> None:
+        from retentioneering.exceptions import InvalidMetricConfigError
+
+        stream = _stream()
+        with pytest.raises(InvalidMetricConfigError, match="duplicate"):
+            stream.get_metrics([{"name": "a", "metric": "length"}] * 2)
+        with pytest.raises(InvalidMetricConfigError, match="single column"):
+            stream.get_metrics(
+                [{"name": "flags", "metric": "has_event_bulk", "metric_args": {}}]
+            )

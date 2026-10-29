@@ -749,7 +749,17 @@ def _cuts_at_an_event(op: dict) -> bool:
 
 
 def _strata_provenance(stream, strata_col: str) -> bool | None:
-    """Whether ``strata_col`` was fixed before exposure, read from the stream's recipe.
+    """Whether ``strata_col`` was fixed before exposure (see :func:`_provenance`)."""
+    return _provenance(stream, strata_col)[0]
+
+
+def _provenance(stream, strata_col: str) -> tuple[bool | None, str | None]:
+    """``(flag, how)``: whether ``strata_col`` was fixed before exposure, read from
+    the stream's recipe, and ``"declared"`` (``add_segment(..., pre_exposure=)``) or
+    ``"recipe"`` (inferred from the ops) for how it is known.
+
+    An explicit ``add_segment(name, ..., pre_exposure=True|False)`` is the analyst's
+    declaration and wins.
 
     Returns True when the op that produced the column ran after a ``truncate_paths``
     that ends each path at an event (the cut-off the analyst chose as the exposure
@@ -772,6 +782,9 @@ def _strata_provenance(stream, strata_col: str) -> bool | None:
             "add_segment",
         ):
             continue
+        declared = op.get("pre_exposure")
+        if isinstance(declared, bool):
+            return declared, "declared"
         truncated = any(
             o.get("type") == "truncate_paths" and _cuts_at_an_event(o)
             for o in lineage[:position]
@@ -780,13 +793,13 @@ def _strata_provenance(stream, strata_col: str) -> bool | None:
             flag = op.get("_path_values_pre_exposure")
             if flag is None:
                 flag = getattr(op["path_values"], "attrs", {}).get("pre_exposure")
-            return flag if isinstance(flag, bool) else None
+            return (flag, "recipe") if isinstance(flag, bool) else (None, None)
         if op["type"] == "add_clusters" or any(
             op.get(mode) is not None for mode in _BEHAVIOUR_SEGMENT_MODES
         ):
-            return True if truncated else False
-        return None
-    return None
+            return (True if truncated else False), "recipe"
+        return None, None
+    return None, None
 
 
 #: ``strata_pre_exposure_source`` values.
@@ -800,7 +813,10 @@ def _strata_flag(
     cannot show that the strata were fixed before exposure."""
     if declared is not None:
         return declared, "declared" if declared else "not_pre_exposure"
-    recipe = None if from_table else _strata_provenance(stream, strata_col)
+    recipe, how = (None, None) if from_table else _provenance(stream, strata_col)
+    if how == "declared":
+        # add_segment(..., pre_exposure=) on the stream: the analyst's declaration
+        return recipe, "declared" if recipe else "not_pre_exposure"
     if recipe is True:
         return True, "recipe"
     if recipe is False:

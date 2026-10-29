@@ -719,7 +719,10 @@ class Eventstream:
             `add_segment(path_values=...)`); see `strata_pre_exposure`.
         strata_pre_exposure : bool, optional
             Whether the strata were fixed before exposure. `None` (default) reads the
-            recipe: True only when the column was computed after a `truncate_paths`
+            recipe: a declaration made with `add_segment(name, ...,
+            pre_exposure=True|False)` first (`strata_pre_exposure_source="declared"`,
+            no warning); otherwise True only when the column was computed after a
+            `truncate_paths`
             that ends paths at an event (the analyst's exposure marker; a no-op
             truncation to `path_end` does not count), or carried from such a stream
             by `add_segment(path_values=get_path_segments(...))`; otherwise False,
@@ -941,7 +944,9 @@ class Eventstream:
             - `strata_pre_exposure`* (boolean): whether the strata count as fixed
               before exposure (see the `strata_pre_exposure` parameter).
             - `strata_pre_exposure_source`* (str): `"declared"` (the parameter was
-              True), `"recipe"` (the recipe shows the cut) or `"not_pre_exposure"`.
+              True, or the column was added with `add_segment(...,
+              pre_exposure=True)`), `"recipe"` (the recipe shows the cut) or
+              `"not_pre_exposure"`.
             - `exploratory`* (bool): True unless `strata_pre_exposure` is True.
             - `reading` (str): one sentence that reads the row from its own
               numbers, templated per `verdict`; 0/1 metrics in percentage points
@@ -1657,6 +1662,9 @@ class Eventstream:
             Metric configs, each with a `metric` name and optional `metric_args`.
             No `agg` field here — these are per-path values, not aggregates. See
             the [Path Metrics](/docs/path-metrics) documentation page for the full metric reference.
+            An optional `name` labels the column, as in `get_ab_test` (a metric
+            that expands into several columns, a `*_bulk` one, takes no `name`;
+            names must be unique).
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
 
@@ -1675,10 +1683,38 @@ class Eventstream:
                 {"metric": "event_count", "metric_args": {"event": "purchase"}},
             ])
         """
-        from retentioneering.metrics.metric_builder import MetricBuilder
+        from retentioneering.exceptions import InvalidMetricConfigError
+        from retentioneering.metrics.metric_builder import MetricBuilder, MetricConfig
 
-        builder = MetricBuilder(self)
-        return builder.build_metrics(metrics, path_col)
+        names = [
+            entry.get("name") if isinstance(entry, dict) else None
+            for entry in (metrics or [])
+        ]
+        if not any(name is not None for name in names):
+            return MetricBuilder(self).build_metrics(metrics, path_col)
+        configs = [{k: v for k, v in entry.items() if k != "name"} for entry in metrics]
+        given = [n for n in names if n is not None]
+        bad = [n for n in given if not isinstance(n, str) or not n]
+        if bad:
+            raise InvalidMetricConfigError(f"'name' must be a non-empty str, got {bad}")
+        dup = sorted({n for n in given if given.count(n) > 1})
+        if dup:
+            raise InvalidMetricConfigError(f"duplicate metric name(s) {dup}")
+        frame = MetricBuilder(self).build_metrics(configs, path_col)
+        parsed = MetricConfig(configs).parsed_configs
+        rename = {}
+        for name, entry, info in zip(names, configs, parsed):
+            if name is None:
+                continue
+            columns = info.get("metric_names") or []
+            if len(columns) != 1:
+                raise InvalidMetricConfigError(
+                    f"metric {name!r}: '{entry.get('metric')}' produces "
+                    f"{len(columns) or 'one per level'} columns; 'name' labels a "
+                    "single column"
+                )
+            rename[columns[0]] = name
+        return frame.rename(columns=rename)
 
     @_tracked("dp_add_events")
     @_op
@@ -1784,6 +1820,7 @@ class Eventstream:
         metric_bins=None,
         path_col=None,
         path_values=None,
+        pre_exposure: bool | None = None,
     ) -> "Eventstream":
         """
         Add a new categorical segment column to the eventstream.
@@ -1873,6 +1910,17 @@ class Eventstream:
         path_col : str, optional
             Path ID column override for `funnel_events`, `metric_bins` and
             `path_values` modes; defaults to `schema.path_col`.
+        pre_exposure : bool, optional
+            Declare whether the segment was fixed before the experiment's
+            exposure (a platform at signup, clusters found on paths cut before the
+            exposure event). The declaration is recorded in the recipe, so every
+            later `get_ab_test(strata_col=name)` (and the widget, and MCP) reads
+            it as `strata_pre_exposure_source="declared"` without a warning; it
+            also lands in `get_path_segments(name).attrs["pre_exposure"]`. `None`
+            (default) leaves it to the recipe: labels from `get_path_segments` on
+            a stream truncated at an event carry `attrs["pre_exposure"]=True`
+            through `path_values`, labels rebuilt in pandas lose it. The library
+            cannot check the claim: it does not know which event exposes a path.
 
         Examples
         --------
@@ -1911,8 +1959,17 @@ class Eventstream:
             # one value per path, e.g. the experiment arm from an assignment table
             groups = pd.read_csv("ab_groups.csv", index_col="user_id")
             stream.add_segment("exp_group", path_values=groups["exp_group"])
+
+            # labels fixed before exposure, declared for get_ab_test(strata_col=)
+            stream.add_segment("entry", path_values=entry_labels, pre_exposure=True)
         """
         from retentioneering.data_processors.add_segment import AddSegment
+        from retentioneering.exceptions import InvalidParameterError
+
+        if pre_exposure is not None and not isinstance(pre_exposure, bool):
+            raise InvalidParameterError(
+                "pre_exposure", pre_exposure, ["None", "True", "False"]
+            )
 
         new_df, new_schema = AddSegment(
             name,

@@ -192,24 +192,35 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   seeds. User ids do not overlap between datasets. The Eventstream guide has a
   table of the datasets.
 - Tutorial notebook `notebooks/ab_testing_tutorial.ipynb`: one analysis of the
-  Northwind Home experiment from the assignment table to the final readout — SRM,
-  a scorecard with two reads declared before any result (the whole window, and
-  the first 28 days after assignment), funnel intervals and why a conditional
+  Northwind Home experiment in eleven steps, from the assignment table to a
+  decision — SRM, a scorecard with two reads and one decision metric declared
+  before any result (the whole window, and the first 28 days after assignment),
+  the same scorecard as an `ab_test` widget, funnel intervals (on the paths with
+  events, unlike the scorecard's assignment population) and why a conditional
   step's p-value misleads, calendar weeks versus the since-assignment novelty
-  contrast, a balance check of the pre-exposure window and blind clusters on it
-  as declared strata, the treatment-only cart loop as a descriptive rate and as
-  an ITT metric, pre- versus post-exposure strata, and the planted truth. Every number is printed by a library
-  call, and every step says what it proves and what remains a hypothesis. It runs
-  against the development install until this release ships; CI executes it.
+  contrast, a balance check of the window before the first `product_view`
+  (where `quick_add`, a product-page button, is first seen) and blind clusters
+  on it declared pre-exposure with `add_segment(..., pre_exposure=True)`, the
+  treatment-only cart loop as a descriptive rate and as an ITT metric, pre-
+  versus post-exposure strata, the planted truth, and the decision the facts
+  support. Every number is printed by a library call, and every step says what
+  it proves and what remains a hypothesis. It runs against the development
+  install until this release ships; CI executes it.
 - Docs: a Tools reference section (`get_ab_test`, `get_ab_bootstrap`,
   `get_sample_ratio`) rendered from the docstrings and listed in `llms.txt`.
 - Docs: an A/B Testing guide (`docs/guide/ab-testing.md`) — the unit, the
   intention-to-treat population, `diff` and the metrics; a worked example on
   `load_ab_test()` with real outputs; how to read the scorecard (verdict, `mde`,
-  correction family, strata flags); funnels with intervals and why
+  correction family and `correction_scope`, strata flags, what the `"recipe"`
+  source does and does not prove); funnels with intervals and why
   step-to-step rates are descriptive; horizon, since-assignment periods and
-  novelty; blind pre-exposure clusters as strata; sample ratio checks per
-  stratum and per day; and eight pitfalls with sources. It has a live funnel demo on the A/B
+  novelty; blind pre-exposure clusters as strata, from the exposure point to
+  `add_segment(..., pre_exposure=True)`; sample ratio checks per stratum and
+  per day; "From scorecard to decision" (decision metric and horizon declared
+  up front, guardrails, the SRM gate, an inconclusive interval against the
+  effect that matters, a discovered segment as a follow-up test); eight
+  pitfalls with sources; and what is not available (CUPED, equivalence,
+  sequential tests), with `get_ab_paths` for an adjustment by hand. It has a live funnel demo on the A/B
   dataset, a row in Path Analysis's question table, an "A/B tests" section in
   the README and a note in Agent Skills.
 

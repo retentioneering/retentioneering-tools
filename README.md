@@ -311,7 +311,11 @@ stream.get_ab_test(
 )
 ```
 
-The [A/B testing guide](https://retentioneering.com/docs/ab-testing) explains how to read the scorecard, which comparisons are randomised and which only describe, and the pitfalls of mixing the two. The [tutorial notebook](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_tutorial.ipynb) walks through the bundled dataset in ten steps.
+`stream.ab_test(...)` takes the same arguments and draws the scorecard as a [widget](https://retentioneering.com/docs/widgets/ab-test): a table and a forest plot of the deltas, with Strata and Periods tabs.
+
+`rete.datasets.list_ab_tests()` names six more practice experiments, some of them broken on purpose; `load_ab_test(name=...)` and `load_ab_test_assignment(name=...)` load one.
+
+The [A/B testing guide](https://retentioneering.com/docs/ab-testing) explains how to read the scorecard, which comparisons are randomised and which only describe, the pitfalls of mixing the two, and how to go from a scorecard to a decision. The [tutorial notebook](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_tutorial.ipynb) walks through the bundled dataset in eleven steps.
 
 ## Explore agent runs, conversations and other event sequences
 

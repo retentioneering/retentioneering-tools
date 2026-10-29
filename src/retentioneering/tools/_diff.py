@@ -26,6 +26,9 @@ Examples
 from __future__ import annotations
 
 import json
+import os
+import sys
+import warnings
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -43,7 +46,14 @@ if TYPE_CHECKING:
     from retentioneering.eventstream import Eventstream
     from retentioneering.tools.types import T_Diff
 
-__all__ = ["DiffGroups", "resolve_diff", "normalize_assignment", "path_segment_values"]
+__all__ = [
+    "DiffGroups",
+    "resolve_diff",
+    "normalize_assignment",
+    "align_assignment",
+    "path_segment_values",
+    "warn_user",
+]
 
 REST = "<REST>"
 MISSING = "<MISSING>"
@@ -54,6 +64,25 @@ _HINT = (
     "use a finer grain (e.g. path_col='session_id') if the value changes between "
     "sessions, or a path-level segment (add_segment(name, path_values=...))."
 )
+
+
+_PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def warn_user(message: str, category: type[Warning] = UserWarning) -> None:
+    """Emit a warning attributed to the first frame outside the library.
+
+    A fixed ``stacklevel`` breaks whenever a decorator or a helper adds a frame; this
+    walks up the stack instead, so the warning points at the caller's line.
+    """
+    frame = sys._getframe(1)
+    level = 2
+    while frame is not None and os.path.abspath(frame.f_code.co_filename).startswith(
+        _PACKAGE_DIR + os.sep
+    ):
+        frame = frame.f_back
+        level += 1
+    warnings.warn(message, category, stacklevel=level)
 
 
 @dataclass(frozen=True)
@@ -204,7 +233,64 @@ def normalize_assignment(assignment: pd.Series | pd.DataFrame) -> pd.DataFrame:
     return table
 
 
-def _segment_groups(stream, segment_col, v1, v2, path_col):
+#: Below this share of table ids found in the stream, ``align_assignment`` warns.
+MIN_MATCHED_SHARE = 0.5
+
+
+def align_assignment(
+    table: pd.DataFrame, stream: "Eventstream", path_col: str
+) -> pd.DataFrame:
+    """Match the ids of a normalised assignment table to the stream's path ids.
+
+    When no table id matches a path id directly, the ids are matched by their string
+    form (as ``add_segment(path_values=...)`` does: ids that went through JSON or a CSV
+    arrive as strings or ints), and the matched rows take the stream's id.
+
+    Raises
+    ------
+    DiffConfigError
+        No table id matches a path id of ``path_col`` even by string form (the table
+        is keyed by another column, or the ids are spelled differently).
+
+    Warns
+    -----
+    UserWarning
+        Fewer than half of the table's ids match a path: the others count as silent
+        paths (assigned, no events), which is rarely what a table keyed by the right
+        column produces.
+    """
+    stream_ids = pd.Index(pd.unique(stream.df[path_col]))
+    matched = table.index.isin(stream_ids)
+    if not matched.any() and len(stream_ids):
+        as_str = pd.Index(stream_ids.astype(str))
+        if as_str.is_unique:
+            pos = as_str.get_indexer(pd.Index(table.index.astype(str)))
+            if (pos >= 0).any():
+                ids = [
+                    stream_ids[p] if p >= 0 else own for p, own in zip(pos, table.index)
+                ]
+                aligned = pd.Index(ids, name=table.index.name)
+                if aligned.is_unique:
+                    table = table.set_axis(aligned, axis=0)
+                    matched = pos >= 0
+    n_matched, n_table = int(matched.sum()), len(table)
+    if n_matched == 0:
+        raise DiffConfigError(
+            f"none of the {n_table} assignment ids matches a '{path_col}' id of the "
+            f"stream (table ids e.g. {list(table.index[:3])}, stream ids e.g. "
+            f"{list(stream_ids[:3])}): index the table by '{path_col}'."
+        )
+    if n_matched < MIN_MATCHED_SHARE * n_table:
+        warn_user(
+            f"only {n_matched} of {n_table} assignment ids "
+            f"({n_matched / n_table:.0%}) match a '{path_col}' id of the stream; the "
+            f"other {n_table - n_matched} count as silent paths (assigned, no events). "
+            f"Check that the table is indexed by '{path_col}'."
+        )
+    return table
+
+
+def _segment_groups(stream, segment_col, v1, v2, path_col, require_constant=True):
     if segment_col not in stream.schema.segment_cols:
         raise DiffConfigError(f"'{segment_col}' is not a segment column")
     all_vals = set(stream.get_segment_levels().get(segment_col, []))
@@ -229,6 +315,11 @@ def _segment_groups(stream, segment_col, v1, v2, path_col):
                 segment_level=v2,
                 segment_col=segment_col,
                 available_levels=sorted(all_vals, key=str),
+            )
+        if require_constant and v2 == v1:
+            raise DiffConfigError(
+                f"diff compares '{segment_col}' level {v1!r} with itself: name two "
+                "different levels."
             )
         v2_vals = [v2]
 
@@ -278,6 +369,10 @@ def _assignment_groups(stream, diff, path_col, assignment):
                 segment_level=v2,
                 segment_col="assignment",
                 available_levels=sorted(arms, key=str),
+            )
+        if v2 == v1:
+            raise DiffConfigError(
+                f"diff compares arm '{v1}' with itself: name two different arms."
             )
         v2_vals = {v2}
     paths1 = table.index[table["arm"] == v1]
@@ -347,8 +442,9 @@ def resolve_diff(
     Raises
     ------
     DiffConfigError
-        Malformed ``diff``; overlapping groups with ``require_constant=True``; assignment
-        index not unique; assignment and segment disagree.
+        Malformed ``diff``; overlapping groups or both values naming the same level
+        (or arm) with ``require_constant=True``; assignment index not unique;
+        assignment and segment disagree.
     SegmentLevelNotFoundError
         A segment value does not occur (and is not ``<REST>``/``<MISSING>``).
     PathIdNotFoundError
@@ -374,13 +470,18 @@ def resolve_diff(
         if len(diff) == 3:
             segment_col = diff[0]
             paths1, paths2, label1, label2, non_constant, overlap = _segment_groups(
-                stream, segment_col, diff[1], diff[2], path_col
+                stream, segment_col, diff[1], diff[2], path_col, require_constant
             )
             if require_constant and non_constant:
                 raise DiffConfigError(
                     f"'{segment_col}' is not constant within {non_constant} of the "
                     f"compared paths ({path_col}); {overlap} of them fall in both "
                     f"groups ({label1!r} and {label2!r}). {_HINT}"
+                )
+            if require_constant and overlap:
+                raise DiffConfigError(
+                    f"{overlap} path(s) fall in both groups ({label1!r} and "
+                    f"{label2!r}). {_HINT}"
                 )
             excluded = non_constant
             basis = "segment"

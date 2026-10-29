@@ -31,10 +31,12 @@ from retentioneering.tools import _stats
 from retentioneering.tools._diff import (
     MISSING,
     MULTI,
+    align_assignment,
     coerce_level,
     normalize_assignment,
     per_path_label,
 )
+from retentioneering.tools.ab_test import _check_unit
 
 if TYPE_CHECKING:
     from retentioneering.eventstream import Eventstream
@@ -144,6 +146,11 @@ class SampleRatio:
             basis = f"paths in stream ({path_col})"
         else:
             table = normalize_assignment(assignment)
+            _check_unit(stream, path_col, table)
+            table = align_assignment(table, stream, path_col)
+            if isinstance(assignment, pd.DataFrame):
+                # `by` reads the caller's columns: keep them on the matched ids
+                assignment = assignment.set_axis(table.index, axis=0)
             stream_paths = pd.Index(pd.unique(stream.df[path_col]))
             silent = int((~table.index.isin(stream_paths)).sum())
             if stream_labels is not None:

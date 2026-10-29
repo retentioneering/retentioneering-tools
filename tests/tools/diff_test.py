@@ -229,3 +229,18 @@ def test_per_path_label(two_users, constant) -> None:
     assert labels.to_dict() == {"u1": "<MULTI>", "u2": "c"}
     labels = per_path_label(constant.df, "arm", "user_id")
     assert labels["u9"] == "<MISSING>" and labels["u0"] == "c"
+
+
+class TestIdenticalArms:
+    def test_segment_level_against_itself(self, constant) -> None:
+        with pytest.raises(DiffConfigError, match="itself"):
+            resolve_diff(constant, ("arm", "t", "t"))
+
+    def test_legacy_event_split_is_unchanged(self, constant) -> None:
+        groups = resolve_diff(constant, ("arm", "t", "t"), require_constant=False)
+        assert list(groups.ids1) == list(groups.ids2)
+
+    def test_arm_against_itself(self, constant) -> None:
+        table = pd.Series({"u0": "c", "u1": "t"})
+        with pytest.raises(DiffConfigError, match="itself"):
+            resolve_diff(constant, ("arm", "t", "t"), assignment=table)

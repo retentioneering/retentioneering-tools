@@ -93,24 +93,31 @@ The planted stories of Northwind Home:
 4. Treatment curators who used ``quick_add`` reopen the cart: the loop
    ``cart -> cart -> cart`` exists in treatment only (the ``cart -> cart`` self-edge is
    0 in control), and looping sessions rarely reach checkout.
-5. Novelty since assignment: the treatment's checkout propensity is multiplied by 1.35
-   in days 0-13 after assignment, by 0.9 in days 14-27 and by 0.7 from day 28 on, so
-   the conversion effect in days 0-13 minus the effect in days 28-41 is positive with
-   a confidence interval that excludes 0 at 10,000 users.
+5. The effect changes with exposure age: the treatment's checkout propensity is
+   multiplied by 1.35 in days 0-13 after assignment, by 0.9 in days 14-27 and by 0.7
+   from day 28 on, so the conversion effect is positive in the first two weeks and
+   slightly negative from week five, and the effect in days 0-13 minus the effect in
+   days 28-41 is positive with a confidence interval that excludes 0 at 10,000
+   users. Why is a hypothesis the data cannot settle: novelty, or users buying early
+   what they would have bought later.
 6. ``order_value`` is lognormal and does not depend on the arm (planted AOV shift 0):
    AOV is inconclusive.
-7. The sign of the effect flips by pre-exposure path length: users with fewer than
-   10 events before their first add (``metric_bins`` with ``edges=[10]`` on
-   ``length`` of the pre-exposure window; a median split gives the same picture)
-   convert less in treatment, users with longer windows convert more; both bins are
-   significant after Holm.
+7. The sign of the effect flips by the length of the window before the first add
+   (wider than the exposure point, the first ``product_view``; generated identically
+   in both arms, so balanced by construction here): users with fewer than 10 events
+   before their first add (``metric_bins`` with ``edges=[10]`` on ``length`` of that
+   window; a median split gives the same picture) convert less in treatment, users
+   with longer windows convert more; both bins are significant after Holm.
 
-Correct conclusion (the tutorial's readout): over the whole window the effect on
-conversion is inconclusive; within each user's first 28 days it is positive, and
-it fades after the first two weeks (novelty). The effect differs between
-pre-exposure user types (scanners gain, curators lose, the curators' carts turn
-into a reopen loop): ship or not is a product call on these facts, and the next
-experiment targets the loop.
+Correct conclusion (the tutorial's readout): over the whole window, the declared
+decision read, the effect on conversion is inconclusive, so the default of no
+launch stands: do not ship to everyone. Within each user's first 28 days it is
+positive; by time since assignment it is positive in the first two weeks and
+slightly negative from week five. The effect differs between pre-exposure user
+types (scanners gain, curators lose, the curators' carts turn into a reopen
+loop); these are discovered segments, hypotheses for the next tests: one of the
+feature for search-led users with the stratum declared, and one on the curators'
+cart loop.
 """
 
 from __future__ import annotations

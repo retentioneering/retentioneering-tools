@@ -17,7 +17,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - `get_path_segments(segment_col, path_col=None)` returns one segment value per
   path, `<MULTI>` where the value changes within the path and `<MISSING>` where it
   is null throughout — the inverse of `path_values`, and a quick check that an
-  experiment arm is constant per user.
+  experiment arm is constant per user. The result records in
+  `attrs["pre_exposure"]` whether the segment was computed on a stream truncated
+  before exposure, so a stratum carried over with `add_segment(path_values=...)`
+  keeps its provenance.
 - Path metrics over custom columns: `column_sum`, `column_mean` and
   `column_last` take `metric_args={"column": <custom column>}` and work wherever
   a registry metric does — `get_metrics`, Segment Overview, Cluster Analysis,
@@ -77,6 +80,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   0–13 minus days 28–41) get their own intervals.
 - The MCP server has a numbers-only `get_ab_test` tool (overall rows, the top
   strata by effect size and period rows) and an A/B scenario in its playbook.
+- `rete.datasets.load_ab_test()` and `load_ab_test_assignment()`: "Northwind Home",
+  a synthetic 50/50 A/B test of a `quick_add` feature (about 10,000 users, eight
+  weeks, generated deterministically from `seed=2026`, no data file). Segments
+  `exp_group`, `platform`, `cohort_week`; custom columns `order_value` and
+  `order_items` on `order_success` rows; the assignment table includes silent
+  users. Seven planted stories (grey top line, a conditional funnel step that only
+  looks significant, two pre-exposure user types with opposite effects, a
+  treatment-only cart loop, novelty since assignment, no AOV shift, a sign flip by
+  pre-exposure path length) are listed in the module docstring and each one is
+  checked by a test; `with_truth=True` adds the planted `user_type`.
+- Tutorial notebook `notebooks/ab_testing_tutorial.ipynb`: one analysis of the
+  Northwind Home experiment from the assignment table to the final readout — SRM,
+  a scorecard with two reads declared before any result (the whole window, and
+  the first 28 days after assignment), funnel intervals and why a conditional
+  step's p-value misleads, calendar weeks versus the since-assignment novelty
+  contrast, a balance check of the pre-exposure window and blind clusters on it
+  as declared strata, the treatment-only cart loop as a descriptive rate and as
+  an ITT metric, pre- versus post-exposure strata, and the planted truth. Every number is printed by a library
+  call, and every step says what it proves and what remains a hypothesis. It runs
+  against the development install until this release ships; CI executes it.
 - Docs: a Tools reference section (`get_ab_test`, `get_ab_bootstrap`,
   `get_sample_ratio`) rendered from the docstrings and listed in `llms.txt`.
 - Docs: an A/B Testing guide (`docs/guide/ab-testing.md`) — the unit, the
@@ -98,36 +121,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - The funnel table's relative delta now divides by group 2 (the control):
   `(rate1 - rate2) / rate2`, the base `get_ab_test`'s `rel_delta` uses; it was
   `(rate1 - rate2) / rate1`. It reads "n/a" when group 2's rate is 0.
-
-- `get_path_segments` records in `attrs["pre_exposure"]` whether the segment
-  was computed on a stream truncated before exposure, so a stratum carried over
-  with `add_segment(path_values=...)` keeps its provenance.
 - `MetricBuilder.build_metrics` takes `validate=False` to skip the check that
   the configured events exist, for metrics computed on a slice of a stream.
-
 - Every widget encodes its computed `result` (and distribution results) as
   strict JSON: NaN and infinite values are sent as `null`, which the front end
   shows as "no estimate", instead of bare `NaN` tokens that the browser's
   `JSON.parse` rejects.
-- `rete.datasets.load_ab_test()` and `load_ab_test_assignment()`: "Northwind Home",
-  a synthetic 50/50 A/B test of a `quick_add` feature (about 10,000 users, eight
-  weeks, generated deterministically from `seed=2026`, no data file). Segments
-  `exp_group`, `platform`, `cohort_week`; custom columns `order_value` and
-  `order_items` on `order_success` rows; the assignment table includes silent
-  users. Seven planted stories (grey top line, a conditional funnel step that only
-  looks significant, two pre-exposure user types with opposite effects, a
-  treatment-only cart loop, novelty since assignment, no AOV shift, a sign flip by
-  pre-exposure path length) are listed in the module docstring and each one is
-  checked by a test; `with_truth=True` adds the planted `user_type`.
-- Tutorial notebook `notebooks/ab_testing_tutorial.ipynb`: one analysis of the
-  Northwind Home experiment from the assignment table to the final readout — SRM,
-  the scorecard, funnel intervals and why a conditional step's p-value misleads,
-  calendar weeks versus a fixed exposure age (`horizon=`) versus the
-  since-assignment novelty contrast, blind pre-exposure clusters as strata, the
-  treatment-only cart loop as a descriptive rate and as an ITT metric, pre- versus
-  post-exposure strata, and the planted truth. Every number is printed by a library
-  call, and every step says what it proves and what remains a hypothesis. It runs
-  against the development install until this release ships; CI executes it.
 
 ### Fixed
 

@@ -236,7 +236,7 @@ stream.get_conversion_rate(
 |---|---|---|---|---|---|
 | 0.240 | 0.330 | -0.090 | -0.144 | -0.034 | 0.0018 |
 
-Every per-path column comes once per group (`group1_paths_with_start`, `group1_converted`, `group1_conversion_rate` with its interval, `group1_base_rate`, `group1_lift`, and the same for `group2_`), followed by `delta` (group 1 minus group 2) with a Newcombe interval and a pooled two-proportion `p_value` (`NaN` when it is undefined). The groups are whole paths: on `load_ecom()` 180 users switch platform between sessions, so the same call at user grain raises `DiffConfigError` instead of counting those users in both groups — compare sessions, or carry a per-path label with `add_segment(path_values=...)`. The interval treats every path as an independent unit, which is right only when `path_col` is the unit that was assigned: sessions of a user-level experiment give intervals that are too narrow.
+Every per-path column comes once per group (`group1_paths_with_start`, `group1_converted`, `group1_conversion_rate` with its interval, `group1_base_rate`, `group1_lift`, and the same for `group2_`), followed by `delta` (group 1 minus group 2) with a Newcombe interval and a pooled two-proportion `p_value` (`NaN` when it is undefined). The groups are whole paths: on `load_ecom()` 180 users switch platform between sessions, so the same call at user grain raises `DiffConfigError` instead of counting those users in both groups — compare sessions, or carry a per-path label with `add_segment(path_values=...)`. The interval treats every path as an independent unit, which is right only when `path_col` is the unit that was assigned: sessions of a user-level experiment give intervals that are too narrow. Two more things limit what this example says. `platform` is not randomised, so the delta compares two groups of sessions, it does not measure an effect of the platform. And the start anchor `add_to_cart` makes the rate conditional — the denominator is whoever reached it — so the result carries `conditional=True` (False only when the start anchor is the path start); in an experiment, a treatment that changes who reaches the anchor makes the delta and its `p_value` descriptive, and the effect on the whole arm is a job for `get_ab_test` with a `has_event` or `matches_pattern` metric and `assignment=`.
 
 ### Path-level labels
 
@@ -248,7 +248,7 @@ stream.get_path_segments("platform").value_counts()
 stream.get_path_segments("platform", path_col="session_id").value_counts()   # no <MULTI>
 ```
 
-It is the inverse of [`add_segment(name, path_values=...)`](/docs/data-processors/add-segment), which broadcasts one value per path onto every event — together they carry an assignment table onto the event log, or clusters found on a truncated stream back onto the full one. `<MULTI>` paths are what the inferential methods (`get_conversion_rate(diff=...)`, `get_sample_ratio`) refuse to split.
+It is the inverse of [`add_segment(name, path_values=...)`](/docs/data-processors/add-segment), which broadcasts one value per path onto every event — together they carry an assignment table onto the event log, or clusters found on a truncated stream back onto the full one. `<MULTI>` paths are what the inferential methods (`get_ab_test`, `get_ab_bootstrap`, `get_conversion_rate(diff=...)`, `funnel(ci_level=...)`) refuse to split, with `DiffConfigError`; `get_sample_ratio` counts them as `multi_valued_paths` and reports a mismatch, because for a sample ratio check a path with two arms is the finding.
 
 ### Sample ratio mismatch
 
@@ -303,17 +303,17 @@ scorecard = stream.get_ab_test(
 
 `delta` is group 1 minus group 2. The test follows the metric: a 0/1 metric gets a pooled two-proportion z-test with Wilson and Newcombe intervals, a per-path total or value gets Welch's t-test, a ratio of sums (average order value = revenue / orders) gets a joint path bootstrap — paths are resampled within each arm and every metric is recomputed on the same resample, so the ratio's interval respects that revenue and orders come from the same users. `test=` (or a per-metric `"test"`) overrides the choice where it fits the metric.
 
-**Read an inconclusive row with its interval and `mde`.** Above, conversion moved by +0.60 pp with an interval from -1.07 to +2.28 pp, and the test could only have detected about 2.4 pp: an inconclusive result says the effect is smaller than that, not that it is zero. The verdict is `increase` / `decrease` only when the multiplicity-adjusted p-value is below `1 - ci_level`; `insufficient_data` marks rows with fewer than `min_events` (default 10) events per arm.
+**Read an inconclusive row with its interval and `mde`.** Above, conversion moved by +0.60 pp with an interval from -1.07 to +2.28 pp: an effect larger than about +2.3 pp or below about -1.1 pp is unlikely, and a smaller one, in either direction, is possible. The `mde` (about 2.4 pp) is the effect the test detects with 80 % power at the corrected alpha — a design quantity, not a bound on the true effect: an inconclusive result does not say the effect is smaller than the `mde`, the interval says how large it can be. The verdict is `increase` / `decrease` only when the multiplicity-adjusted p-value is below `1 - ci_level`; `insufficient_data` marks rows whose support, pooled across both arms, is below `min_events` (default 10); a behaviour present in one arm only still gets a p-value, flagged `support_warning="one_arm_only"`.
 
 **The population.** `assignment=` makes the assignment table the population (intention to treat): users who were assigned but never produced an event count as zeros (`group1_paths_no_events`), events before `assigned_at` are dropped, and stream paths missing from the table are counted in `excluded_paths`. Without it the population is the paths of the stream. Either way the unit is the path: with a user-level assignment, a session `path_col` raises, because per-session intervals of a per-user experiment are too narrow.
 
-**Strata.** `strata_col=` repeats every metric per level of a segment that is constant per path, with each stratum's share in both arms, a share-balance p-value, Cochran's heterogeneity test and a stratum-versus-rest test. The p-values are corrected within each metric (`correction="holm"` by default; `"bonferroni"` also adds simultaneous intervals, `"bh"` controls the false discovery rate), and `correction_family` says what was corrected together. A stratum must be fixed before exposure: find it on a stream truncated before the first exposure and carry it over with [`add_segment(path_values=...)`](/docs/data-processors/add-segment). A stratum computed from behaviour on the full stream (clusters, `metric_bins`) raises a warning and is flagged `strata_pre_exposure=False` — the treatment can move users between such strata, so their rows compare selected groups, not randomised ones. Rows are `exploratory=True` unless the stratum is known to be pre-exposure.
+**Strata.** `strata_col=` repeats every metric per level of a segment that is constant per path, with each stratum's share in both arms, a share-balance p-value, Cochran's heterogeneity test and a stratum-versus-rest test. The p-values are corrected within each metric (`correction="holm"` by default; `"bonferroni"` also adds simultaneous intervals, `"bh"` controls the false discovery rate), and `correction_family` says what was corrected together. A stratum must be fixed before exposure: find it on a stream truncated before the first exposure and carry it over with [`add_segment(path_values=...)`](/docs/data-processors/add-segment). A source column fixed at assignment, such as a signup platform, is declared with `strata_pre_exposure=True`. A stratum that is neither declared nor read from a truncation in the stream's recipe — clusters or `metric_bins` on the full stream — raises a warning and is flagged `strata_pre_exposure=False` — the treatment can move users between such strata, so their rows compare selected groups, not randomised ones. `strata_pre_exposure_source` says which case applies (`"declared"`, `"recipe"`, `"not_pre_exposure"`), and rows are `exploratory=True` unless the stratum counts as pre-exposure.
 
 **Periods and windows.** `period="W"` gives one row per calendar week, each on every user assigned by the end of that week (ITT per period). `period_population="active"` restricts each week to users active in it; such rows compare survivors and are marked `descriptive`, with no p-value. `period_basis="since_assignment"` bins events by time since each user's assignment (`"0-13"`, `"14-27"` days for `period="14D"`), and keeps a user in a bin only when the bin's window closed before the data ends (`immature_paths` counts the others). `horizon="28D"` gives every user the same 28-day window from assignment.
 
 ### Joint bootstrap replicates
 
-`get_ab_bootstrap()` returns the replicates behind the bootstrap: one row per replicate, metric, stratum and period, with both arms' values and the delta, all computed on the same resampled users. Combine them freely — a novelty effect is the difference between an early and a late window, with an interval that accounts for the same users being in both:
+`get_ab_bootstrap()` returns the replicates behind the bootstrap: one row per replicate, metric, stratum and period, with both arms' values and the delta, all computed on the same resampled users. Combine them freely — a novelty effect is the difference between an early and a late window, with an interval that accounts for the same users being in both. `contrast=` compares the same paths in every contrasted bin — the library keeps only the paths whose windows closed in all of them — so the horizon below is a choice of window that makes the population explicit, not a requirement:
 
 ```python
 reps = stream.get_ab_bootstrap(
@@ -323,11 +323,12 @@ reps = stream.get_ab_bootstrap(
     assignment=assignment,
     period="14D",
     period_basis="since_assignment",
+    horizon="42D",
     contrast={"novelty": (["0-13"], ["28-41"])},
 )
 novelty = reps.loc[reps["contrast"] == "novelty", "delta"]
 novelty.mean(), novelty.quantile([0.025, 0.975]).tolist()
-# (0.0423, [0.0247, 0.0585])  — the effect fades: +4.2 pp more in days 0-13 than in days 28-41
+# (0.0490, [0.0281, 0.0692])  — the effect is 4.9 pp larger in days 0-13 than in days 28-41
 ```
 
 ### Reproducing an eventstream

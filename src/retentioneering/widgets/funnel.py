@@ -14,6 +14,10 @@ class FunnelWidget(RetentioneeringWidget):
     steps = traitlets.Unicode("[]").tag(sync=True)
     diff = traitlets.Unicode("").tag(sync=True)
     path_col = traitlets.Unicode("").tag(sync=True)
+    # 0.0 = intervals off. A Float rather than Float(allow_none) keeps the JS
+    # side a plain number (host.get("ci_level") || 0).
+    ci_level = traitlets.Float(0.0).tag(sync=True)
+    correction = traitlets.Unicode("none").tag(sync=True)
 
     # ── catalogues ────────────────────────────────────────────────────────────
     event_list = traitlets.Unicode("[]").tag(sync=True)
@@ -28,7 +32,15 @@ class FunnelWidget(RetentioneeringWidget):
     height = traitlets.Int(420).tag(sync=True)
     sidebar_open = traitlets.Bool(True).tag(sync=True)
 
-    _persist_names = ("steps", "diff", "path_col", "height", "sidebar_open")
+    _persist_names = (
+        "steps",
+        "diff",
+        "path_col",
+        "ci_level",
+        "correction",
+        "height",
+        "sidebar_open",
+    )
 
     def __init__(
         self,
@@ -36,6 +48,8 @@ class FunnelWidget(RetentioneeringWidget):
         steps=_UNSET,
         diff=_UNSET,
         path_col=_UNSET,
+        ci_level=_UNSET,
+        correction=_UNSET,
         height=_UNSET,
         sidebar_open=_UNSET,
         state_file=None,
@@ -71,6 +85,12 @@ class FunnelWidget(RetentioneeringWidget):
         _diff_val = diff if diff is not _UNSET else None
         self.diff = json.dumps(list(_diff_val)) if _diff_val else ""
         self.path_col = path_col if path_col is not _UNSET else ""
+        self.ci_level = (
+            float(ci_level) if ci_level is not _UNSET and ci_level is not None else 0.0
+        )
+        self.correction = (
+            correction if correction is not _UNSET and correction else "none"
+        )
         self.height = height if height is not _UNSET else 420
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
 
@@ -81,6 +101,8 @@ class FunnelWidget(RetentioneeringWidget):
                     ("steps", steps),
                     ("diff", diff),
                     ("path_col", path_col),
+                    ("ci_level", ci_level),
+                    ("correction", correction),
                     ("height", height),
                     ("sidebar_open", sidebar_open),
                 )
@@ -90,7 +112,10 @@ class FunnelWidget(RetentioneeringWidget):
 
         self._recompute()
         self._initialized = True
-        self.observe(self._on_params_change, names=["steps", "diff", "path_col"])
+        self.observe(
+            self._on_params_change,
+            names=["steps", "diff", "path_col", "ci_level", "correction"],
+        )
         self._start_state_autosave()
 
     def _on_params_change(self, _change):
@@ -108,6 +133,8 @@ class FunnelWidget(RetentioneeringWidget):
             steps=steps,
             diff=_parse_diff(params.get("diff")),
             path_col=params.get("path_col") or self.path_col or None,
+            ci_level=params.get("ci_level", self.ci_level) or None,
+            correction=params.get("correction") or self.correction or "none",
         )
 
     #: See RetentioneeringWidget.compute_tools.
@@ -123,19 +150,38 @@ class FunnelWidget(RetentioneeringWidget):
             diff = _parse_diff(self.diff)
             pid = self.path_col or None
             self.result = self._encode_result(
-                self._compute_raw(steps=steps, diff=diff, path_col=pid)
+                self._compute_raw(
+                    steps=steps,
+                    diff=diff,
+                    path_col=pid,
+                    ci_level=self.ci_level or None,
+                    correction=self.correction or "none",
+                )
             )
-        except RetentioneeringError:
-            raise
+        except RetentioneeringError as exc:
+            # At construction the caller's arguments are wrong: raise in the cell.
+            # Later the change came from the sidebar (e.g. intervals switched on
+            # for a diff whose groups overlap): show it in the widget instead of
+            # raising inside a traitlet observer, where nobody sees it.
+            if not self._initialized:
+                raise
+            self.error = str(exc)
+            self.result = "{}"
         except Exception as exc:
             self.error = str(exc)
             self.result = "{}"
         finally:
             self.is_loading = False
 
-    def _compute_raw(self, steps, diff=None, path_col=None) -> dict:
+    def _compute_raw(
+        self, steps, diff=None, path_col=None, ci_level=None, correction="none"
+    ) -> dict:
         result = self._eventstream.funnel_data(
-            steps=steps, diff=diff, path_col=path_col
+            steps=steps,
+            diff=diff,
+            path_col=path_col,
+            ci_level=ci_level,
+            correction=correction,
         )
         if diff:
             if len(diff) == 3:
@@ -144,20 +190,12 @@ class FunnelWidget(RetentioneeringWidget):
             else:
                 result["group1_label"] = "Group 1"
                 result["group2_label"] = "Group 2"
-            steps_list = result.get("steps", [])
-            if steps_list:
-                r1 = steps_list[0].get("funnel1_conversion_rate") or 0
-                r2 = steps_list[0].get("funnel2_conversion_rate") or 0
-                up1 = steps_list[0].get("funnel1_unique_paths", 0)
-                up2 = steps_list[0].get("funnel2_unique_paths", 0)
-                result["group1_total"] = round(up1 / r1) if r1 > 0 else up1
-                result["group2_total"] = round(up2 / r2) if r2 > 0 else up2
-        else:
-            steps_list = result.get("steps", [])
-            if steps_list:
-                r = steps_list[0].get("conversion_rate") or 0
-                up = steps_list[0].get("unique_paths", 0)
-                result["total_paths"] = round(up / r) if r > 0 else up
+            # The tool returns the group sizes; the old back-calculation
+            # (unique_paths / conversion_rate of step 1) gave 0 whenever no path
+            # of a group reached step 1.
+            if result.get("steps"):
+                result["group1_total"] = result.get("funnel1_total_paths", 0)
+                result["group2_total"] = result.get("funnel2_total_paths", 0)
         return result
 
     # ── HTML export (export_html/render_static: see RetentioneeringWidget) ────
@@ -171,6 +209,8 @@ class FunnelWidget(RetentioneeringWidget):
             "steps": json.loads(self.steps or "[]"),
             "diff": json.loads(self.diff) if self.diff else None,
             "path_col": self.path_col or "",
+            "ci_level": self.ci_level,
+            "correction": self.correction or "none",
             "path_cols": json.loads(self.path_cols or "[]"),
             "segment_levels": json.loads(self.segment_levels or "{}"),
             "event_list": json.loads(self.event_list or "[]"),

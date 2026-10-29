@@ -12,13 +12,21 @@ including those with no events (they count as zeros), with events before
 The test follows the metric: a pooled z-test with Wilson and Newcombe intervals
 for 0/1 metrics, Welch's t-test for per-path totals and values, and a joint
 path bootstrap for ratio metrics (an entry with a `denominator`). The
-`verdict` reads only the adjusted p-value; the interval is per comparison. A
-walk-through with a real experiment is in the
-[Eventstream guide](/docs/eventstream#ab-test-scorecard).
+`verdict` reads only the adjusted p-value; the interval is per comparison. The
+[A/B Testing guide](/docs/ab-testing) is a walk-through on the bundled synthetic
+experiment, `load_ab_test()`.
 
 {% endblock %}
 
 {% block extra_params %}
+### test
+
+{{ bullets(doc.parameters, "test") }}
+
+### correction
+
+{{ bullets(doc.parameters, "correction") }}
+
 ### period_basis
 
 {{ bullets(doc.parameters, "period_basis") }}

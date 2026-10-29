@@ -92,6 +92,12 @@ class TestProportions:
             low, high = st.delta_log_ratio_ci(*args)
             assert np.isnan(low) and np.isnan(high)
 
+    def test_delta_log_ratio_all_converted_is_nan(self) -> None:
+        # k == n zeroes that arm's variance term: the interval would be a point
+        for args in [(30, 30, 30, 30), (30, 30, 1, 1), (5, 10, 10, 10)]:
+            low, high = st.delta_log_ratio_ci(*args)
+            assert np.isnan(low) and np.isnan(high)
+
     def test_exact_binomial_matches_scipy(self) -> None:
         for k, n in [(0, 10), (10, 10), (1, 1), (37, 120)]:
             ref = stats.binomtest(k, n).proportion_ci(0.95, method="exact")
@@ -149,6 +155,7 @@ class TestMde:
         se = 2.0 * np.sqrt(1 / 50 + 1 / 80)
         assert st.mde_mean(2.0, 50, 80) == pytest.approx(st.mde_from_se(se))
         assert np.isnan(st.mde_from_se(np.nan))
+        assert np.isnan(st.mde_from_se(0.0))  # a constant metric detects nothing
 
     def test_power_validated(self) -> None:
         with pytest.raises(InvalidParameterError):

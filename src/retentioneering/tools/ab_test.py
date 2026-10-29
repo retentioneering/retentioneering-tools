@@ -81,6 +81,7 @@ __all__ = [
     "BOOTSTRAP_COLUMNS",
     "TESTS",
     "CORRECTIONS",
+    "CORRECTION_SCOPES",
     "VERDICTS",
     "PERIOD_BASES",
     "PERIOD_POPULATIONS",
@@ -90,6 +91,7 @@ __all__ = [
 
 TESTS = ("auto", "z_test", "welch_t_test", "bootstrap")
 CORRECTIONS = ("holm", "bonferroni", "bh", "none")
+CORRECTION_SCOPES = ("metric", "all")
 VERDICTS = ("increase", "decrease", "inconclusive", "descriptive", "insufficient_data")
 PERIOD_BASES = ("calendar", "since_assignment")
 PERIOD_POPULATIONS = ("itt", "active")
@@ -113,8 +115,12 @@ COLUMNS: tuple[str, ...] = (
     "period_start",
     "period_end",
     "period_complete",
+    "population",
     "group1_paths",
     "group2_paths",
+    "group1_support",
+    "group2_support",
+    "conditional",
     "group1_silent_paths",
     "group2_silent_paths",
     "unassigned_paths",
@@ -618,9 +624,9 @@ def _check_unit(stream, path_col: str, table: pd.DataFrame | None) -> None:
     finer = cols[position + 1 :]
     if ids.name in finer:
         raise InvalidParameterError(
-            "path_col",
-            path_col,
-            [f"'{ids.name}' (the grain of the table)", f"a table indexed by {path_col}"],
+            "assignment",
+            f"a table indexed by '{ids.name}'",
+            [f"a table indexed by '{path_col}'", f"path_col='{ids.name}'"],
             reason=(
                 f"the assignment table is indexed by '{ids.name}', a finer path "
                 f"column: every {path_col} would take the arm of the {ids.name} with "
@@ -1342,6 +1348,7 @@ class ABTest:
     ci_level: float = 0.95
     power: float = 0.8
     correction: str = "holm"
+    correction_scope: str = "metric"
     n_bootstrap: int | str = 1000
     bootstrap_weights: str = "multinomial"
     min_support: int = 10
@@ -1369,6 +1376,7 @@ class ABTest:
         horizon: Any | None = None,
         test: str = "auto",
         correction: str = "holm",
+        correction_scope: str = "metric",
         ci_level: float = 0.95,
         power: float = 0.8,
         n_bootstrap: int | str = 1000,
@@ -1383,6 +1391,7 @@ class ABTest:
         for name, value, allowed in (
             ("test", test, TESTS),
             ("correction", correction, CORRECTIONS),
+            ("correction_scope", correction_scope, CORRECTION_SCOPES),
             ("period_basis", period_basis, PERIOD_BASES),
             ("period_population", period_population, PERIOD_POPULATIONS),
             ("bootstrap_weights", bootstrap_weights, BOOTSTRAP_WEIGHTS),
@@ -1524,6 +1533,7 @@ class ABTest:
             ci_level=float(ci_level),
             power=float(power),
             correction=correction,
+            correction_scope=correction_scope,
             n_bootstrap=n_bootstrap,
             bootstrap_weights=bootstrap_weights,
             min_support=int(min_support),
@@ -1545,7 +1555,10 @@ class ABTest:
         if self.n_bootstrap != "auto":
             return int(self.n_bootstrap)
         rows = self.matrix.cells[self.matrix.cells["role"] == "row"]
-        m = int(rows.groupby("metric").size().max())
+        if self.correction_scope == "all":
+            m = len(rows)
+        else:
+            m = int(rows.groupby("metric").size().max())
         return max(1000, math.ceil(20 * m / self.alpha))
 
     def fit(self) -> pd.DataFrame:
@@ -1743,6 +1756,17 @@ class ABTest:
             record["period"] = row["period"]
         record["group1_paths"] = int(in1.sum())
         record["group2_paths"] = int(in2.sum())
+        # paths with a value: every path for 0/1 metrics and totals, paths with a
+        # value for values, paths with a non-zero denominator for ratios
+        if spec.kind in ("value", "ratio"):
+            sup1, sup2 = int(((den > 0) & in1).sum()), int(((den > 0) & in2).sum())
+        else:
+            sup1, sup2 = record["group1_paths"], record["group2_paths"]
+        record["group1_support"] = sup1
+        record["group2_support"] = sup2
+        record["conditional"] = bool(
+            sup1 < record["group1_paths"] or sup2 < record["group2_paths"]
+        )
         if matrix.with_assignment:
             silent = ~matrix.has_events
             record["group1_silent_paths"] = int((in1 & silent).sum())
@@ -1791,6 +1815,7 @@ class ABTest:
 
         valid = pd.NA
         invalid_replicates = False
+        constant = False
         if test == "z_test":
             k1, n1 = float(num[in1].sum()), float(in1.sum())
             k2, n2 = float(num[in2].sum()), float(in2.sum())
@@ -1803,6 +1828,7 @@ class ABTest:
             _, p, se = _stats.two_proportion_z(k1, n1, k2, n2)
             rl, rh = _stats.delta_log_ratio_ci(k1, n1, k2, n2, level)
             pooled = (k1 + k2) / (n1 + n2) if n1 + n2 else nan
+            constant = pooled in (0.0, 1.0)
             extra["ci_at"] = lambda lv: _stats.newcombe_ci(k1, n1, k2, n2, lv)
             extra["mde_at"] = lambda a: _stats.mde_proportion(
                 pooled, n1, n2, a, self.power
@@ -1815,6 +1841,7 @@ class ABTest:
             g2 = float(x2.mean()) if n2 else nan
             v1 = float(x1.var(ddof=1)) if n1 > 1 else nan
             v2 = float(x2.var(ddof=1)) if n2 > 1 else nan
+            constant = n1 > 1 and n2 > 1 and v1 == 0 and v2 == 0
             _, df, p, se = _stats.welch_t(g1, v1, n1, g2, v2, n2)
             l1, h1 = _t_interval(g1, v1, n1, level)
             l2, h2 = _t_interval(g2, v2, n2, level)
@@ -1857,12 +1884,27 @@ class ABTest:
             extra["mde_at"] = lambda a, se_f=se_f: _stats.mde_from_se(
                 se_f, a, self.power
             )
+            constant = bool(se == 0)
+            if constant:
+                # every replicate gives the same delta: no spread, no interval
+                dl = dh = rl = rh = nan
+                extra["ci_at"] = lambda lv: (nan, nan)
             if invalid_replicates:
                 # an absent estimate is NaN: no interval, no p, no SE, no MDE
                 l1 = h1 = l2 = h2 = dl = dh = rl = rh = p = se = nan
                 extra["ci_at"] = lambda lv: (nan, nan)
                 extra["mde_at"] = lambda a: nan
 
+        if constant:
+            # a zero standard error is not an estimate of the spread (S-13)
+            se = nan
+        extra["constant"] = constant
+        # values and ratios: an arm with no value has no estimate; nothing to
+        # compare (R2-03), whatever the pooled support
+        if spec.kind in ("value", "ratio") and support_warning != "no_data":
+            if not (_finite(g1) and _finite(g2)):
+                support_warning = "no_data"
+                extra["support"] = False
         delta = g1 - g2
         if not (isinstance(g2, float) and g2 > 0):
             rel = rl = rh = nan
@@ -1919,7 +1961,8 @@ class ABTest:
             dims.append("strata")
         if self.matrix.periods is not None:
             dims.append("periods")
-        return f"metric={metric}" + (f"/{' x '.join(dims)}" if dims else "")
+        family = "all_metrics" if self.correction_scope == "all" else f"metric={metric}"
+        return family + (f"/{' x '.join(dims)}" if dims else "")
 
     def _adjust(self, rows: pd.DataFrame, extras: list[dict]) -> pd.DataFrame:
         """Apply the correction per family, add ``mde_alpha``, ``mde`` at ``mde_alpha``
@@ -1934,13 +1977,19 @@ class ABTest:
         rows["p_value_adjusted"] = np.nan
         rows["correction_family"] = ""
         rows["mde_alpha"] = self.alpha
-        for metric, index in rows.groupby("metric", sort=False).groups.items():
+        if self.correction_scope == "all":
+            families = {None: rows.index}
+        else:
+            families = rows.groupby("metric", sort=False).groups
+        for metric, index in families.items():
             p = rows.loc[index, "p_value"].to_numpy(dtype=float)
             rows.loc[index, "p_value_adjusted"] = adjust(p)
             m = int(np.isfinite(p).sum())
             if self.correction != "none" and m > 1:
                 rows.loc[index, "mde_alpha"] = self.alpha / m
-            rows.loc[index, "correction_family"] = self._family_label(metric)
+            rows.loc[index, "correction_family"] = [
+                self._family_label(name) for name in rows.loc[index, "metric"]
+            ]
         mde, low_adj, high_adj = [], [], []
         for pos, extra in enumerate(extras):
             a = float(rows["mde_alpha"].iloc[pos])
@@ -2097,6 +2146,7 @@ class ABTest:
             else:
                 rows["immature_paths"] = int(matrix.immature[0])
         rows["valid_replicates"] = pd.array(rows["valid_replicates"], dtype="Int64")
+        rows["population"] = "assignment" if matrix.with_assignment else "stream"
         # several metrics and no strata or periods: each row is a headline read,
         # and the correction does not span the metrics
         several = (
@@ -2113,6 +2163,9 @@ class ABTest:
                 non_support_count=extra["non_support_count"],
                 window=self._window(row),
                 several_metrics=several,
+                constant=extra["constant"],
+                correction_scope=self.correction_scope,
+                n_metrics=len(self.specs),
             )
             for row, extra in zip(rows.to_dict("records"), extras)
         ]
@@ -2125,8 +2178,8 @@ class ABTest:
 _SUPPORT_WARNING_TEXT = {
     "one_arm_only": "one_arm_only: the behaviour exists in one arm only",
     "low_support": (
-        f"low_support: under {LOW_SUPPORT_PATHS} supporting paths in an arm, the "
-        "bootstrap interval may under-cover"
+        "low support: coverage below nominal (under "
+        f"{LOW_SUPPORT_PATHS} supporting paths in an arm)"
     ),
 }
 
@@ -2216,6 +2269,9 @@ def row_reading(
     non_support_count: int | None = None,
     window: str | None = None,
     several_metrics: bool = False,
+    constant: bool = False,
+    correction_scope: str = "metric",
+    n_metrics: int = 1,
 ) -> str:
     """One sentence that reads a scorecard row from its own numbers.
 
@@ -2248,6 +2304,13 @@ def row_reading(
         assignment"``.
     several_metrics : bool
         The scorecard has several metrics and no strata or periods.
+    constant : bool
+        The metric is constant in both arms (no spread, so no p-value).
+    correction_scope : str
+        ``"metric"`` (each metric its own family) or ``"all"`` (one family over
+        every row of every metric).
+    n_metrics : int
+        Number of metrics in the scorecard.
     """
     scale, unit = (100.0, " pp") if kind == "binary" else (1.0, "")
     verdict = row["verdict"]
@@ -2277,7 +2340,18 @@ def row_reading(
     parts: list[str] = []
     no_data = row.get("support_warning") == "no_data"
     if no_data:
-        parts.append("no data in either arm")
+        empty = [
+            arm
+            for arm in ("group1", "group2")
+            if not _finite(row.get(f"{arm}_value")) or row.get(f"{arm}_paths") == 0
+        ]
+        if support_count == 0 or len(empty) != 1:
+            parts.append("no data in either arm")
+        else:
+            parts.append(
+                f"no value in {empty[0]}: the metric is undefined in that arm, so "
+                "there is nothing to compare"
+            )
     elif verdict == "descriptive":
         parts.append(
             "active population: not randomised, describes who was active in the period"
@@ -2312,7 +2386,7 @@ def row_reading(
                     "no interval or p-value: more than 1 % of bootstrap replicates "
                     "had no value in an arm; estimate shown descriptively"
                 )
-            elif _finite(row["delta_se"]) and row["delta_se"] == 0:
+            elif constant:
                 parts.append("no p-value: the metric is constant in both arms")
             else:
                 parts.append(
@@ -2359,15 +2433,22 @@ def row_reading(
         )
     if not bool(row.get("period_complete", True)):
         parts.append("window not complete")
+    if bool(row.get("conditional", False)) and not no_data:
+        parts.append(
+            f"conditional: a value for {row['group1_support']} of "
+            f"{row['group1_paths']} and {row['group2_support']} of "
+            f"{row['group2_paths']} paths; compares those paths, not the whole arms"
+        )
     warning = row.get("support_warning") or ""
     if warning in _SUPPORT_WARNING_TEXT:
         parts.append(_SUPPORT_WARNING_TEXT[warning])
     if several_metrics:
-        parts.append(
-            "corrected within this metric only; name one decision metric"
-            if correction != "none"
-            else "not corrected across metrics; name one decision metric"
-        )
+        if correction == "none":
+            parts.append("not corrected across metrics; name one decision metric")
+        elif correction_scope == "all":
+            parts.append(f"corrected across all {n_metrics} metrics")
+        else:
+            parts.append("corrected within this metric only; name one decision metric")
     text = "; ".join(parts)
     return f"{window}: {text}" if window else text
 

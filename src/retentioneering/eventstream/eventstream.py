@@ -621,6 +621,7 @@ class Eventstream:
         horizon=None,
         test: str = "auto",
         correction: str = "holm",
+        correction_scope: str = "metric",
         ci_level: float = 0.95,
         power: float = 0.8,
         n_bootstrap: "int | str" = 1000,
@@ -642,15 +643,34 @@ class Eventstream:
         design detects with the requested power, not a bound on the true effect. The
         last column, `reading`, says this for each row in one sentence.
 
+        Population: with `assignment=` every assigned path, silent ones included
+        (intention to treat, `population="assignment"`); without it the stream's
+        paths, that is paths with at least one event (`population="stream"`), so
+        assigned users who never produced an event are not counted. Multiplicity:
+        the correction runs within each metric's rows; metrics are not corrected
+        against each other unless `correction_scope="all"`, so name one decision
+        metric before reading. Window: the whole observation period by default;
+        `horizon="28D"` reads 28 days per path. Different windows answer different
+        questions (an early lift can fade), so choose the window and the decision
+        metric before reading the table.
+
+        Not available here: variance reduction (CUPED, regression adjustment),
+        sequential tests and equivalence tests. `get_ab_paths` returns the per-path
+        table behind the scorecard for doing them by hand.
+
         Parameters
         ----------
         diff : tuple
             `("segment_col", group1_value, group2_value)` or `(ids1, ids2)`. Groups are
             resolved at path level; a path that falls in both groups raises
             `DiffConfigError`. `delta = group1 - group2`. A segment form assumes the
-            segment was assigned per path: when the experiment randomised users and
-            `path_col` is a session, the intervals are too narrow (use the user grain,
-            or pass `assignment`, which refuses a finer grain).
+            segment was assigned per path: when it is constant within every path of
+            a coarser path column (the same arm in all sessions of each user, with
+            at least 10 users holding several sessions), a finer `path_col` raises
+            `InvalidParameterError`, since per-session intervals of a per-user
+            experiment are too narrow; if sessions were randomised one by one, pass
+            an `assignment` table indexed by `session_id`. A two-element `diff` is
+            the id-list form: two strings raise `DiffConfigError`.
         metrics : list of dict
             Registry metric configs (as for `get_metrics`, one column per path) with
             optional keys `name` (row label), `denominator` (a registry config; the
@@ -675,12 +695,17 @@ class Eventstream:
             matched to `path_col` as they are, or by their string form when none
             matches as is (ids read from JSON or CSV); no match at all raises
             `InvalidParameterError`, and fewer than half of the table's ids matched
-            gives a `UserWarning`. A naive `assigned_at` on
-            a tz-aware stream is read in the stream's timezone; a tz-aware one is
-            converted to it. A table of user ids (by overlap, or an index named after
-            a coarser path column) with `path_col` set to a finer column (sessions)
-            raises `InvalidParameterError`: per-session intervals of a per-user
-            experiment are too narrow.
+            gives a `UserWarning`. A naive `assigned_at` on a tz-aware stream is
+            read in the stream's timezone (a wall time skipped by a daylight-saving
+            change moves forward; one that occurs twice, in the hour the clocks go
+            back, raises `InvalidParameterError`: pass a tz-aware `assigned_at`); a
+            tz-aware one is converted to it. A table of user ids (by overlap, or an
+            index named after a coarser path column) with `path_col` set to a finer
+            column (sessions) raises `InvalidParameterError`: per-session intervals
+            of a per-user experiment are too narrow. The reverse, a table whose
+            index is named after a finer path column (`session_id` read per user),
+            raises too; an unnamed index whose ids are more often ids of a finer
+            column than of `path_col` gives a `UserWarning`.
         strata_col : str, optional
             A segment column (`schema.segment_cols`) constant per path, or a column of
             the `assignment` DataFrame (used first when both exist, so silent assigned
@@ -758,14 +783,24 @@ class Eventstream:
               the bootstrap standard error.
             An explicit test that does not fit a metric raises `InvalidMetricConfigError`.
         correction : {"holm", "bonferroni", "bh", "none"}, default "holm"
-            Multiplicity correction within each metric's family (the rows of one
-            metric: its strata and periods); metrics are separate families.
+            Multiplicity correction within each family; `correction_scope` sets
+            the family (by default the rows of one metric: its strata and periods).
             - `"holm"` — Holm step-down (family-wise error).
             - `"bonferroni"` — Bonferroni; also adds simultaneous `delta_ci_low_adj` /
               `delta_ci_high_adj`.
             - `"bh"` — Benjamini-Hochberg (false discovery rate), for many exploratory
               rows.
             - `"none"` — no correction.
+        correction_scope : {"metric", "all"}, default "metric"
+            What one correction family holds.
+
+            - `"metric"` — the rows of one metric (its strata and periods); metrics
+              are separate families and are not corrected against each other: name
+              one decision metric, and read the others as guardrails or
+              secondary.
+            - `"all"` — every row of every metric in one family (a declared set
+              of guardrails, or a scorecard read without a single decision metric);
+              `correction_family` is `"all_metrics"`.
         ci_level : float, default 0.95
             Two-sided confidence level of every interval (per comparison, not adjusted
             for multiplicity), in `[0.5, 1)`; `1 - ci_level` is the significance level
@@ -788,12 +823,17 @@ class Eventstream:
             numerator for ratios, paths with a value for totals and values. A row is
             `verdict="insufficient_data"` with no p-value (the estimates stay) when
             the pooled support `s1 + s2` is below `min_support`, and for 0/1 metrics
-            also when the paths without the event, `(n1 - s1) + (n2 - s2)`, are. A behaviour present in one arm only (a new
-            feature's event, 0 paths in control) is tested and flagged
-            `support_warning="one_arm_only"`. Percentile bootstrap intervals
-            under-cover with few supporting paths (about 0.93 instead of 0.95 at 60
-            paths per arm): bootstrap rows below 30 supporting paths in an arm are
-            flagged `support_warning="low_support"`.
+            also when the paths without the event, `(n1 - s1) + (n2 - s2)`, are.
+            A behaviour present in one arm only (a new feature's event, 0 paths in
+            control) is tested and flagged `support_warning="one_arm_only"`; a value
+            or ratio metric with no value in an arm has no estimate there and is
+            `insufficient_data` (`support_warning="no_data"`). Percentile bootstrap
+            intervals under-cover with few supporting paths: bootstrap rows below 30
+            supporting paths in an arm keep their verdict and are flagged
+            `support_warning="low_support"`. Simulated under a true null (300 paths
+            per arm): at 60 supporting paths per arm the 95 % interval covered about
+            0.93; at about 6 per arm (2 % of paths with an order) a ratio row
+            rejected 6 % of the time and covered 0.91.
         random_state : int, default 42
             Seed of the bootstrap.
         path_col : str, optional
@@ -816,7 +856,18 @@ class Eventstream:
               first event's day to the last event's timestamp, the end of data) cuts
               the period; for since-assignment bins False when some assigned path's
               window is not closed by the last event, or when `horizon` cuts the bin.
+            - `population` (str): `"assignment"` (intention to treat over the
+              `assignment` table, silent paths included) or `"stream"` (the
+              stream's paths, each with at least one event).
             - `group1_paths`, `group2_paths` (int): paths in the row's population.
+            - `group1_support`, `group2_support` (int): paths with a value: every
+              path for 0/1 metrics and totals, paths with a value for values
+              (`time_between` needs both events), paths with a non-zero
+              denominator for ratios.
+            - `conditional` (bool): True when a support is below its arm's paths:
+              the metric compares the paths that have a value (buyers for an
+              order value), not the whole arms, so the row is not intention to
+              treat even with `assignment`.
             - `group1_silent_paths`*, `group2_silent_paths`* (int): paths of the
               row's population with no event in the analysed window (`assignment`).
             - `unassigned_paths` (int): paths of the stream that are in neither
@@ -841,7 +892,8 @@ class Eventstream:
             - `p_value_adjusted` (float): correction over the finite p-values of the
               metric's family.
             - `correction_family` (str): what was corrected together, e.g.
-              `"metric=conversion/strata"`; `"none"` without correction.
+              `"metric=conversion/strata"`, `"all_metrics"` with
+              `correction_scope="all"`; `"none"` without correction.
             - `mde_alpha` (float): the significance level at which `mde` is
               computed: `alpha / m` with Holm, Bonferroni and BH (the conservative
               Bonferroni bound), `alpha` without correction or for a family of one;
@@ -863,15 +915,16 @@ class Eventstream:
               not 0).
             - `support_warning` (str), the first that applies: `"no_data"` when no
               path of either arm has the behaviour (no event, no non-zero total or
-              numerator, no value): the row is `"insufficient_data"`, whatever the
-              metric type; `"invalid_replicates"` on bootstrap rows where more than
+              numerator, no value), or when a value or ratio metric has no value in
+              one arm (no estimate there): the row is `"insufficient_data"`,
+              whatever the metric type; `"invalid_replicates"` on bootstrap rows where more than
               1 % of the replicates have no value in an arm: the intervals, p-value,
               `delta_se` and `mde` are NaN (the point estimates stay);
               `"one_arm_only"` when an arm has no supporting path (the p-value
               stays: the pooled test is valid, but the behaviour does not exist in
               that arm); `"low_support"` on bootstrap rows with fewer than 30
-              supporting paths in an arm (the interval may under-cover); `""`
-              otherwise.
+              supporting paths in an arm (coverage below nominal, see
+              `min_support`; the verdict stays); `""` otherwise.
             - `group1_share`*, `group2_share`*, `balance_p_value`* (float): share of the
               stratum within each arm (within the period) and the chi-square p-value of
               the stratum × arm table. A share-balance check only: a balanced
@@ -906,21 +959,26 @@ class Eventstream:
               [+1.38, +4.12] pp excludes 0 after holm (p 0.00070); relative +12 %"`.
               `"insufficient_data"`: `"... : pooled support 3 < min_support 20;
               estimate shown descriptively"`, or `"... : no data in either arm"`
-              with `support_warning="no_data"`. `"descriptive"`: `"... : active
+              with `support_warning="no_data"` (`"no value in group1: ..."` when
+              only one arm has no value). `"descriptive"`: `"... : active
               population: not randomised, describes who was active in the
               period"`. Appended when set: `"exploratory: strata not pre-exposure
               (declare strata_pre_exposure=True if they are)"`, `"window not
-              complete"` (`period_complete` False), the `support_warning`, and,
-              with several metrics and no strata or periods, `"corrected within
-              this metric only; name one decision metric"`. With
+              complete"` (`period_complete` False), `"conditional: a value for 812
+              of 4960 and 790 of 5040 paths; ..."` (`conditional` True), the
+              `support_warning` (`"low support: coverage below nominal ..."`),
+              and, with several metrics and no strata or periods, `"corrected
+              within this metric only; name one decision metric"` (`"corrected
+              across all 3 metrics"` with `correction_scope="all"`). With
               `correction="bonferroni"` it quotes the simultaneous interval.
 
             Missing values: `p_value` is NaN when both arms are constant, when an
             arm has fewer than two paths with a value (totals and values), on
             `"insufficient_data"` and `"descriptive"` rows and on rows with
             `support_warning="invalid_replicates"` (a `"low_support"` row keeps
-            its p-value); `mde` is NaN when the
-            delta's standard error is 0 or undefined; `rel_delta*` are NaN when
+            its p-value); `delta_se` and `mde` are NaN when the metric is
+            constant in both arms (a zero spread is not an estimate) or the
+            spread is undefined; `rel_delta*` are NaN when
             `group2_value <= 0`; an arm with no path has NaN estimates;
             `heterogeneity_*` are NaN with fewer than two usable strata. An absent
             estimate is NaN, never 0.
@@ -939,8 +997,10 @@ class Eventstream:
             Series or DataFrame, no `arm` column, empty, index not unique) or one
             whose ids match no path id; `strata_col` not a segment column or not
             constant per path; `period` with a non-primary `path_col`; a path grain
-            finer than the assignment table's unit; `since_assignment` or `horizon`
-            without `assigned_at`; `period_basis` / `period_population` other than the
+            finer than the assignment table's unit or than the unit the `diff`
+            segment is constant on; a table indexed by a finer path column; an
+            ambiguous naive `assigned_at` across a daylight-saving change;
+            `since_assignment` or `horizon` without `assigned_at`; `period_basis` / `period_population` other than the
             default without `period`; `period` or `horizon` a bare number or an
             unsupported alias; a tz-aware `assigned_at` on a naive stream; `ci_level`
             outside [0.5, 1); `power` outside (0, 1); `min_support < 1`;
@@ -966,8 +1026,16 @@ class Eventstream:
             )
             scorecard[["metric", "delta", "delta_ci_low", "delta_ci_high", "mde", "verdict"]]
 
-            # pre-exposure strata, Holm within each metric
-            stream.get_ab_test(diff, metrics, strata_col="behaviour")
+            # pre-exposure strata, Holm within each metric: cluster the paths cut
+            # before the exposure event, carry the labels back, declare them
+            before = stream.truncate_paths(
+                "path_start", [{"pattern": "product_view", "offset": -1}, "path_end"])
+            labels = before.add_clusters(...).get_path_segments("cluster")
+            stream = stream.add_segment("entry", path_values=labels, pre_exposure=True)
+            stream.get_ab_test(diff, metrics, assignment=assignment, strata_col="entry")
+
+            # one family over every metric (a declared set of guardrails)
+            stream.get_ab_test(diff, guardrails, correction_scope="all")
 
             # weekly ITT rows, and a fixed 28-day window per user
             stream.get_ab_test(diff, metrics, assignment=assignment, period="W")
@@ -987,6 +1055,7 @@ class Eventstream:
             horizon=horizon,
             test=test,
             correction=correction,
+            correction_scope=correction_scope,
             ci_level=ci_level,
             power=power,
             n_bootstrap=n_bootstrap,
@@ -1010,6 +1079,7 @@ class Eventstream:
         period_population: str = "itt",
         horizon=None,
         contrast: dict | None = None,
+        correction_scope: str = "metric",
         n_bootstrap: "int | str" = 1000,
         bootstrap_weights: str = "multinomial",
         random_state: int = 42,
@@ -1046,9 +1116,12 @@ class Eventstream:
             `horizon` is a choice of window, not a requirement. Needs `period`.
             Example: `{"novelty": (["0-13"], ["28-41"])}` with `period="14D",
             period_basis="since_assignment"`.
+        correction_scope : {"metric", "all"}, default "metric"
+            As in `get_ab_test`; here it only sets the family size `m` of
+            `n_bootstrap="auto"`, so the replicates match the scorecard's.
         n_bootstrap : int or "auto", default 1000
             Number of replicates, at least 100; `"auto"` as in `get_ab_test` (the
-            replicates `get_ab_test` would draw).
+            replicates `get_ab_test` would draw at `ci_level=0.95`).
 
         Returns
         -------
@@ -1101,6 +1174,7 @@ class Eventstream:
             period_basis=period_basis,
             period_population=period_population,
             horizon=horizon,
+            correction_scope=correction_scope,
             n_bootstrap=n_bootstrap,
             bootstrap_weights=bootstrap_weights,
             random_state=random_state,
@@ -3351,6 +3425,7 @@ class Eventstream:
         horizon=None,
         test: str | None = None,
         correction: str | None = None,
+        correction_scope: str | None = None,
         ci_level: float | None = None,
         power: float | None = None,
         n_bootstrap: "int | str | None" = None,
@@ -3376,6 +3451,7 @@ class Eventstream:
             "horizon": horizon,
             "test": test,
             "correction": correction,
+            "correction_scope": correction_scope,
             "ci_level": ci_level,
             "power": power,
             "n_bootstrap": n_bootstrap,
@@ -3408,6 +3484,7 @@ class Eventstream:
         horizon=None,
         test: str = "auto",
         correction: str = "holm",
+        correction_scope: str = "metric",
         ci_level: float = 0.95,
         power: float = 0.8,
         n_bootstrap: "int | str" = 1000,
@@ -3429,6 +3506,7 @@ class Eventstream:
             horizon=horizon,
             test=test,
             correction=correction,
+            correction_scope=correction_scope,
             ci_level=ci_level,
             power=power,
             n_bootstrap=n_bootstrap,

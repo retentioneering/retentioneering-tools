@@ -1,5 +1,6 @@
 """A/B scorecard (``tools/ab_test.py``): metric specs, the metric matrix, the scorecard."""
 
+import math
 import warnings
 
 import numpy as np
@@ -12,6 +13,7 @@ from retentioneering.exceptions import (
     InvalidMetricConfigError,
     InvalidParameterError,
 )
+from retentioneering.tools._stats import holm as st_holm
 from retentioneering.tools.ab_test import ABMetricSpec, ABTest, parse_metrics
 
 DIFF = ("arm", "treatment", "control")
@@ -415,8 +417,12 @@ class TestScorecard:
         out = ABTest.from_stream(_random(), DIFF, [CONV]).fit()
         assert list(out.columns) == [
             "metric",
+            "population",
             "group1_paths",
             "group2_paths",
+            "group1_support",
+            "group2_support",
+            "conditional",
             "unassigned_paths",
             "group1_value",
             "group1_ci_low",
@@ -1258,7 +1264,13 @@ class TestUnitGuard:
                 rows.append((f"u{user}", f"u{user}s{s}", "visit", ts, arm))
                 if (user + s) % 3 == 0:
                     rows.append(
-                        (f"u{user}", f"u{user}s{s}", "order", ts + pd.Timedelta(1, "m"), arm)
+                        (
+                            f"u{user}",
+                            f"u{user}s{s}",
+                            "order",
+                            ts + pd.Timedelta(1, "m"),
+                            arm,
+                        )
                     )
         df = pd.DataFrame(
             rows, columns=["user_id", "session_id", "event", "timestamp", "arm"]
@@ -1267,16 +1279,16 @@ class TestUnitGuard:
             df, {"path_cols": ["user_id", "session_id"], "segment_cols": ["arm"]}
         )
         diff = ("arm", "treatment", "control")
-        with pytest.raises(InvalidParameterError, match="constant within every user_id"):
+        with pytest.raises(
+            InvalidParameterError, match="constant within every user_id"
+        ):
             ABTest.from_stream(stream, diff, [CONV], path_col="session_id")
         with pytest.raises(InvalidParameterError, match="too narrow"):
             stream.get_sample_ratio("arm", path_col="session_id")
         # the user grain runs; a session table named after its grain is taken at
         # its word
         assert len(ABTest.from_stream(stream, diff, [CONV]).fit()) == 1
-        table = (
-            df.drop_duplicates("session_id").set_index("session_id")["arm"]
-        )
+        table = df.drop_duplicates("session_id").set_index("session_id")["arm"]
         out = ABTest.from_stream(
             stream, diff, [CONV], assignment=table, path_col="session_id"
         ).fit()
@@ -1299,7 +1311,9 @@ class TestDaylightSaving:
             table[f"u{i}"] = (arm, start.tz_localize(None))
         table["u0"] = (table["u0"][0], pd.Timestamp(at))
         df = pd.DataFrame(rows, columns=["user_id", "event", "timestamp"])
-        frame = pd.DataFrame.from_dict(table, orient="index", columns=["arm", "assigned_at"])
+        frame = pd.DataFrame.from_dict(
+            table, orient="index", columns=["arm", "assigned_at"]
+        )
         return Eventstream(df), frame
 
     def test_ambiguous_wall_time_raises_a_clear_error(self) -> None:
@@ -1317,12 +1331,144 @@ class TestDaylightSaving:
         assert out["group1_paths"].iloc[0] + out["group2_paths"].iloc[0] == 40
         stream, table = self._stream_and_table("2026-10-25 02:30")
         table["assigned_at"] = table["assigned_at"].dt.tz_localize("UTC")
-        assert len(ABTest.from_stream(stream, DIFF, [CONV], assignment=table).fit()) == 1
+        assert (
+            len(ABTest.from_stream(stream, DIFF, [CONV], assignment=table).fit()) == 1
+        )
 
 
 def test_metric_key_errors_point_at_metric_args() -> None:
     with pytest.raises(InvalidMetricConfigError, match="under 'metric_args'") as info:
         ABMetricSpec.from_user({"metric": "has_event", "event": "order"})
-    assert "{'metric': 'has_event', 'metric_args': {'event': 'order'}}" in str(info.value)
+    assert "{'metric': 'has_event', 'metric_args': {'event': 'order'}}" in str(
+        info.value
+    )
     with pytest.raises(InvalidMetricConfigError, match="'metric_args': "):
         ABMetricSpec.from_user({"has_event": "order"})
+
+
+# ---------------------------------------------------------------- wave 5 usability
+MEAN_VALUE = {
+    "name": "mean_value",
+    "metric": "column_mean",
+    "metric_args": {"column": "value"},
+}
+
+
+class TestPopulationAndSupport:
+    """U1 / U8: the population of a row and how many of its paths have a value."""
+
+    def test_population_column(self) -> None:
+        stream = _random()
+        assert set(_fit(stream)["population"]) == {"stream"}
+        out = _fit(stream, assignment=_random_assignment())
+        assert set(out["population"]) == {"assignment"}
+
+    def test_support_and_conditional(self) -> None:
+        stream = _random()
+        out = ABTest.from_stream(stream, DIFF, [CONV, ORDERS, MEAN_VALUE, AOV]).fit()
+        out = out.set_index("metric")
+        for name in ("conv", "orders"):
+            row = out.loc[name]
+            assert row.group1_support == row.group1_paths
+            assert row.group2_support == row.group2_paths
+            assert not row.conditional
+            assert "conditional" not in row.reading
+        metrics = stream.get_metrics(
+            [{"metric": "column_mean", "metric_args": {"column": "value"}}]
+        ).iloc[:, 0]
+        arm = stream.get_path_segments("arm")
+        has = metrics.notna()
+        for name in ("mean_value", "aov"):
+            row = out.loc[name]
+            assert row.group1_support == int((has & (arm == "treatment")).sum())
+            assert row.group2_support == int((has & (arm == "control")).sum())
+            assert row.conditional
+            assert (
+                f"conditional: a value for {row.group1_support} of {row.group1_paths}"
+                in row.reading
+            )
+
+
+class TestEmptyArmAndConstantRows:
+    """R2-03 / S-13: no estimate in an arm, and no spread at all."""
+
+    @staticmethod
+    def _no_orders_in_treatment() -> Eventstream:
+        df = _random().to_dataframe()
+        df = df[~((df["arm"] == "treatment") & (df["event"] == "order"))]
+        df = df[["user_id", "event", "timestamp", "arm", "platform", "value"]]
+        return Eventstream(
+            df, {"segment_cols": ["arm", "platform"], "custom_cols": ["value"]}
+        )
+
+    def test_value_and_ratio_with_an_empty_arm(self) -> None:
+        stream = self._no_orders_in_treatment()
+        out = ABTest.from_stream(stream, DIFF, [MEAN_VALUE, AOV, CONV]).fit()
+        out = out.set_index("metric")
+        for name in ("mean_value", "aov"):
+            row = out.loc[name]
+            assert row.verdict == "insufficient_data", name
+            assert row.support_warning == "no_data"
+            assert np.isnan(row.group1_value) and np.isnan(row.p_value)
+            assert "no value in group1" in row.reading
+        # a 0/1 metric is still tested: the behaviour exists in one arm only
+        conv = out.loc["conv"]
+        assert conv.verdict == "decrease"
+        assert conv.support_warning == "one_arm_only"
+
+    def test_constant_metric_has_no_standard_error(self) -> None:
+        stream = _random()
+        ratio = {
+            "name": "views_per_view",
+            "metric": "event_count",
+            "metric_args": {"event": "view"},
+            "denominator": {"metric": "event_count", "metric_args": {"event": "view"}},
+        }
+        out = ABTest.from_stream(stream, DIFF, [ratio], n_bootstrap=200).fit()
+        row = out.iloc[0]
+        assert row.delta == 0
+        assert np.isnan(row.delta_se) and np.isnan(row.mde)
+        assert np.isnan(row.delta_ci_low) and np.isnan(row.delta_ci_high)
+        assert np.isnan(row.p_value)
+        assert "constant in both arms" in row.reading
+
+
+class TestCorrectionScope:
+    """U2: one family per metric (default) or over every metric."""
+
+    def test_all_metrics_in_one_family(self) -> None:
+        stream = _random(effect=0.05)
+        metrics = [CONV, ORDERS, REVENUE]
+        per_metric = ABTest.from_stream(stream, DIFF, metrics).fit()
+        joint = ABTest.from_stream(stream, DIFF, metrics, correction_scope="all").fit()
+        assert (per_metric["p_value_adjusted"] == per_metric["p_value"]).all()
+        expected = st_holm(joint["p_value"].to_numpy())
+        np.testing.assert_allclose(joint["p_value_adjusted"], expected)
+        assert set(joint["correction_family"]) == {"all_metrics"}
+        assert joint["mde_alpha"].tolist() == pytest.approx([0.05 / 3] * 3)
+        assert all(
+            r.endswith("corrected across all 3 metrics") for r in joint["reading"]
+        )
+        assert all(
+            r.endswith("corrected within this metric only; name one decision metric")
+            for r in per_metric["reading"]
+        )
+
+    def test_strata_rows_and_auto_replicates(self) -> None:
+        stream = _random()
+        test = ABTest.from_stream(
+            stream,
+            DIFF,
+            [CONV, ORDERS],
+            strata_col="platform",
+            strata_pre_exposure=True,
+            correction_scope="all",
+            n_bootstrap="auto",
+        )
+        out = test.fit()
+        assert set(out["correction_family"]) == {"all_metrics/strata"}
+        assert test.resolved_n_bootstrap() == max(1000, math.ceil(20 * 4 / 0.05))
+
+    def test_invalid_scope(self) -> None:
+        with pytest.raises(InvalidParameterError, match="correction_scope"):
+            ABTest.from_stream(_random(), DIFF, [CONV], correction_scope="metrics")

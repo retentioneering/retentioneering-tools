@@ -368,13 +368,10 @@ def _assignment_groups(stream, diff, path_col, assignment):
         )
     table = normalize_assignment(assignment)
     arms = set(table["arm"].unique().tolist())
-    where = (
-        f"the assignment table's arm column '{ASSIGNMENT_ARM}'"
-        + (
-            f" (diff[0] is {segment_col!r}; diff[1] and diff[2] name the table's arms)"
-            if segment_col != ASSIGNMENT_ARM
-            else ""
-        )
+    where = f"the assignment table's arm column '{ASSIGNMENT_ARM}'" + (
+        f" (diff[0] is {segment_col!r}; diff[1] and diff[2] name the table's arms)"
+        if segment_col != ASSIGNMENT_ARM
+        else ""
     )
     v1 = coerce_level(v1, arms)
     if v1 not in arms:

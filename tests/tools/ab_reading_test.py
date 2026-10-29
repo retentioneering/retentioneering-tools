@@ -192,7 +192,12 @@ class TestInconclusive:
 
     def test_constant_arms(self) -> None:
         text = _read(
-            _row(p_value=float("nan"), p_value_adjusted=float("nan"), delta_se=0.0)
+            _row(
+                p_value=float("nan"),
+                p_value_adjusted=float("nan"),
+                delta_se=float("nan"),
+            ),
+            constant=True,
         )
         assert text == "no p-value: the metric is constant in both arms"
 
@@ -330,8 +335,8 @@ class TestFlags:
         assert none == "no data in either arm"
         low = _read(_row(support_warning="low_support"), kind="ratio")
         assert low.endswith(
-            "; low_support: under 30 supporting paths in an arm, the bootstrap "
-            "interval may under-cover"
+            "; low support: coverage below nominal (under 30 supporting paths in an "
+            "arm)"
         )
 
     def test_window_comes_first(self) -> None:
@@ -358,7 +363,7 @@ class TestFlags:
             _row(exploratory=True, period_complete=False, support_warning="low_support")
         )
         tail = text.split("are needed; ")[1]
-        assert tail.startswith(EXPLORATORY + "; window not complete; low_support:")
+        assert tail.startswith(EXPLORATORY + "; window not complete; low support:")
 
 
 # ----------------------------------------------------------------- through the tool

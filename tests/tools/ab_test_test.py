@@ -82,6 +82,11 @@ def _fit(stream, metrics=(CONV,), **kwargs) -> pd.DataFrame:
     return ABTest.from_stream(stream, DIFF, list(metrics), **kwargs).fit()
 
 
+def _exploratory():
+    """The warning of strata the recipe does not show as fixed before exposure."""
+    return pytest.warns(UserWarning, match="was fixed before exposure")
+
+
 # ---------------------------------------------------------------- random fixture
 def _random(n: int = 1200, seed: int = 0, effect: float = 0.0) -> Eventstream:
     rng = np.random.default_rng(seed)
@@ -334,7 +339,8 @@ class TestMatrix:
             _fit(stream, strata_col="platform")
 
     def test_strata_labels_and_silent_paths(self) -> None:
-        out = _fit(_tiny(), assignment=_table(), strata_col="platform")
+        with _exploratory():
+            out = _fit(_tiny(), assignment=_table(), strata_col="platform")
         assert list(out["stratum"]) == ["<MISSING>", "ios", "web"]
         assert list(out["group1_paths"]) == [1, 1, 2]  # t4 has no events, no platform
         assert list(out["group2_paths"]) == [0, 1, 2]
@@ -516,10 +522,12 @@ class TestScorecard:
 
     def test_verdict_comes_from_the_adjusted_p(self) -> None:
         stream = _counts_stream(_THREE)
-        plain = ABTest.from_stream(
-            stream, DIFF, [CONV], strata_col="group", correction="none"
-        ).fit()
-        holm = ABTest.from_stream(stream, DIFF, [CONV], strata_col="group").fit()
+        with _exploratory():
+            plain = ABTest.from_stream(
+                stream, DIFF, [CONV], strata_col="group", correction="none"
+            ).fit()
+        with _exploratory():
+            holm = ABTest.from_stream(stream, DIFF, [CONV], strata_col="group").fit()
         a_plain, a_holm = plain.iloc[0], holm.iloc[0]
         assert a_plain.p_value < 0.05 and a_plain.verdict == "increase"
         assert a_holm.p_value == pytest.approx(a_plain.p_value)
@@ -532,9 +540,10 @@ class TestScorecard:
     def test_mde_at_the_corrected_alpha(self) -> None:
         from retentioneering.tools import _stats as st
 
-        out = ABTest.from_stream(
-            _counts_stream(_THREE), DIFF, [CONV], strata_col="group"
-        ).fit()
+        with _exploratory():
+            out = ABTest.from_stream(
+                _counts_stream(_THREE), DIFF, [CONV], strata_col="group"
+            ).fit()
         row = out.iloc[0]
         assert row.mde_alpha == pytest.approx(0.05 / 3)
         assert row.mde == pytest.approx(
@@ -546,19 +555,21 @@ class TestScorecard:
         """m13: 1 - 0.95 is 0.050000000000000044 in floating point."""
         stream = _counts_stream(_THREE)
         assert _fit(stream).iloc[0].mde_alpha == 0.05
-        out = ABTest.from_stream(stream, DIFF, [CONV], strata_col="group").fit()
+        with _exploratory():
+            out = ABTest.from_stream(stream, DIFF, [CONV], strata_col="group").fit()
         assert out.iloc[0].mde_alpha == round(0.05 / 3, 12)
 
     def test_bonferroni_adds_simultaneous_intervals(self) -> None:
         from retentioneering.tools import _stats as st
 
-        out = ABTest.from_stream(
-            _counts_stream(_THREE),
-            DIFF,
-            [CONV],
-            strata_col="group",
-            correction="bonferroni",
-        ).fit()
+        with _exploratory():
+            out = ABTest.from_stream(
+                _counts_stream(_THREE),
+                DIFF,
+                [CONV],
+                strata_col="group",
+                correction="bonferroni",
+            ).fit()
         row = out.iloc[0]
         assert (row.delta_ci_low_adj, row.delta_ci_high_adj) == pytest.approx(
             st.newcombe_ci(60, 200, 40, 200, 1 - 0.05 / 3)
@@ -569,9 +580,14 @@ class TestScorecard:
     def test_benjamini_hochberg(self) -> None:
         from retentioneering.tools import _stats as st
 
-        out = ABTest.from_stream(
-            _counts_stream(_THREE), DIFF, [CONV], strata_col="group", correction="bh"
-        ).fit()
+        with _exploratory():
+            out = ABTest.from_stream(
+                _counts_stream(_THREE),
+                DIFF,
+                [CONV],
+                strata_col="group",
+                correction="bh",
+            ).fit()
         np.testing.assert_allclose(
             out["p_value_adjusted"], st.benjamini_hochberg(out["p_value"].to_numpy())
         )
@@ -584,13 +600,18 @@ class TestScorecard:
             ("none", "treatment"): (40, 15),  # control never converts
             ("none", "control"): (40, 0),
         }
-        out = (
-            ABTest.from_stream(
-                _counts_stream(cells), DIFF, [CONV], strata_col="group", min_support=10
+        with _exploratory():
+            out = (
+                ABTest.from_stream(
+                    _counts_stream(cells),
+                    DIFF,
+                    [CONV],
+                    strata_col="group",
+                    min_support=10,
+                )
+                .fit()
+                .set_index("stratum")
             )
-            .fit()
-            .set_index("stratum")
-        )
         both = out.loc["all"]
         assert np.isnan(both.p_value) and np.isnan(both.p_value_adjusted)
         # no path without the event in either arm: below the pooled support rule
@@ -617,9 +638,10 @@ class TestScorecard:
         cells = dict(_THREE)
         cells[("d", "treatment")] = (40, 3)  # fewer than 5 events: not used in Q
         cells[("d", "control")] = (40, 4)
-        out = ABTest.from_stream(
-            _counts_stream(cells), DIFF, [CONV], strata_col="group", min_support=1
-        ).fit()
+        with _exploratory():
+            out = ABTest.from_stream(
+                _counts_stream(cells), DIFF, [CONV], strata_col="group", min_support=1
+            ).fit()
         assert list(out["stratum"]) == ["a", "b", "c", "d"]
         np.testing.assert_allclose(out["group1_share"], [200 / 640] * 3 + [40 / 640])
         assert out["balance_p_value"].iloc[0] == pytest.approx(1.0)
@@ -633,9 +655,10 @@ class TestScorecard:
 
     def test_stratum_vs_rest(self) -> None:
         cells = {k: v for k, v in _THREE.items() if k[0] in ("a", "b")}
-        out = ABTest.from_stream(
-            _counts_stream(cells), DIFF, [CONV], strata_col="group"
-        ).fit()
+        with _exploratory():
+            out = ABTest.from_stream(
+                _counts_stream(cells), DIFF, [CONV], strata_col="group"
+            ).fit()
         # with two strata the complement of one is the other: the same test as Q
         np.testing.assert_allclose(
             out["stratum_vs_rest_p_value"], out["heterogeneity_p_value"], rtol=1e-9
@@ -697,15 +720,16 @@ class TestScorecard:
         assert row.verdict == "inconclusive"
 
     def test_poisson_weights_and_auto_replicates(self) -> None:
-        test = ABTest.from_stream(
-            _counts_stream(_THREE),
-            DIFF,
-            [CONV],
-            strata_col="group",
-            n_bootstrap="auto",
-            bootstrap_weights="poisson",
-            test="bootstrap",
-        )
+        with _exploratory():
+            test = ABTest.from_stream(
+                _counts_stream(_THREE),
+                DIFF,
+                [CONV],
+                strata_col="group",
+                n_bootstrap="auto",
+                bootstrap_weights="poisson",
+                test="bootstrap",
+            )
         assert test.resolved_n_bootstrap() == 1200
         out = test.fit()
         assert set(out["valid_replicates"]) == {1200}
@@ -785,9 +809,15 @@ class TestBootstrapTable:
             test.bootstrap({"x": (["0-6"], ["7-13"])})
 
     def test_strata_and_periods(self) -> None:
-        table = ABTest.from_stream(
-            _random(), DIFF, [CONV], strata_col="platform", period="W", n_bootstrap=100
-        ).bootstrap()
+        with _exploratory():
+            table = ABTest.from_stream(
+                _random(),
+                DIFF,
+                [CONV],
+                strata_col="platform",
+                period="W",
+                n_bootstrap=100,
+            ).bootstrap()
         assert {"stratum", "period"} <= set(table.columns)
         assert table.groupby(["stratum", "period"]).size().eq(100).all()
 
@@ -1194,8 +1224,9 @@ class TestIntegerIds:
         # unnamed: most ids are not users -> the match-share and the finer-grain
         # warnings, and the 40 that do match disagree with the stream's arm
         with pytest.warns(UserWarning, match="only 40 of 120"):
-            with pytest.raises(DiffConfigError, match="disagrees"):
-                _fit(stream, assignment=sessions.rename_axis(None))
+            with pytest.warns(UserWarning, match="are session_id ids"):
+                with pytest.raises(DiffConfigError, match="disagrees"):
+                    _fit(stream, assignment=sessions.rename_axis(None))
         # the right pairing runs
         assert len(_fit(stream, assignment=users)) == 1
         named = sessions.rename_axis("session_id")

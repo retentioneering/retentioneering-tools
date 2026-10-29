@@ -385,4 +385,5 @@ def test_unit_guard_with_integer_ids() -> None:
         }
     )
     with pytest.warns(UserWarning, match="only 40 of 120"):
-        stream.get_sample_ratio("arm", assignment=sessions)
+        with pytest.warns(UserWarning, match="are session_id ids"):
+            stream.get_sample_ratio("arm", assignment=sessions)

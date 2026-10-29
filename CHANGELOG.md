@@ -39,9 +39,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   intervals of the rate (`conversion_rate_ci_low` / `conversion_rate_ci_high`);
   `diff` compares two groups of paths in one row — `group1_*` / `group2_*`
   rates with intervals, base rates and lifts, `delta` with a Newcombe interval
-  and a pooled z-test `p_value` (NaN when undefined). Groups are resolved per
-  path, so a path whose segment changes inside it raises `DiffConfigError`
-  instead of being counted in both groups. The MCP `get_conversion_rate` tool
+  and a pooled z-test `p_value` (NaN when undefined). A `conditional` flag
+  marks a comparison whose denominator is the paths that reached the start
+  anchor (a post-exposure population unless the anchor is the path start).
+  Groups are resolved per path, so a path whose segment changes inside it
+  raises `DiffConfigError` instead of being counted in both groups. The MCP `get_conversion_rate` tool
   takes the same two arguments.
 - `funnel_data(..., ci_level=None, correction="none")` and `funnel(...,
   ci_level=None, correction=None)` put confidence intervals on the funnel: a
@@ -56,7 +58,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   `DiffConfigError`. The funnel widget draws an interval whisker on every bar,
   shows each delta's interval and p-value (and the adjusted one) in the table,
   marks conditional step deltas with † and colours a delta only when its
-  interval excludes 0 — never a conditional one. A sidebar selector switches
+  adjusted p-value clears the level — never a conditional one. A sidebar selector switches
   intervals Off / 90% / 95% / 99% and picks the correction; both are saved with
   the widget state and kept, read-only, in HTML exports. The Funnel docs page
   explains what each number assumes and has a live example.
@@ -71,15 +73,29 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   `assignment=` makes the population intention-to-treat (silent paths count,
   events before `assigned_at` are dropped) and refuses a path grain finer than
   the assignment unit; `period_basis="since_assignment"` and `horizon=` give
-  every path the same exposure time; strata rows carry shares, balance,
-  heterogeneity and stratum-versus-rest p-values and an `exploratory` flag. See
+  every path the same exposure time (calendar periods take pandas aliases such
+  as `"W"`, `"M"`, `"Q"`; a bare number is refused); strata rows carry shares,
+  balance, heterogeneity and stratum-versus-rest p-values, an `exploratory`
+  flag and `strata_pre_exposure_source` (`"declared"` with
+  `strata_pre_exposure=True`, `"recipe"`, or `"not_pre_exposure"`), and a
+  stratum column present in the assignment table is read from there so silent
+  paths keep their stratum. Support is pooled across the arms: a behaviour seen
+  in one arm only gets a p-value and `support_warning="one_arm_only"`. The
+  estimate columns are NaN, never 0, when they are undefined. Streams with
+  tz-aware timestamps and assignment ids that arrive as strings or ints are
+  handled; identical arms, a table whose ids match no path, and a path grain
+  finer than the table's unit are refused. See
   [ADR-0017](docs/adr/0017-ab-testing-tools.md).
 - `get_ab_bootstrap(diff, metrics, ..., contrast=None)` returns the joint
   bootstrap replicates behind it, one row per replicate × metric × stratum ×
   period, so ratios of metrics and period contrasts (a novelty effect: days
-  0–13 minus days 28–41) get their own intervals.
+  0–13 minus days 28–41) get their own intervals; a contrast compares the same
+  paths in every contrasted period.
 - The MCP server has a numbers-only `get_ab_test` tool (overall rows, the top
-  strata by effect size and period rows) and an A/B scenario in its playbook.
+  strata by effect size — labelled as such in `strata_selection` — and period
+  rows, with `mde`, `correction_family`, `alpha_used`, `exploratory`,
+  `strata_pre_exposure` and the call's `warnings`) and an A/B scenario in its
+  playbook.
 - `rete.datasets.load_ab_test()` and `load_ab_test_assignment()`: "Northwind Home",
   a synthetic 50/50 A/B test of a `quick_add` feature (about 10,000 users, eight
   weeks, generated deterministically from `seed=2026`, no data file). Segments

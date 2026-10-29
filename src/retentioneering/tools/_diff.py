@@ -234,7 +234,7 @@ def normalize_assignment(assignment: pd.Series | pd.DataFrame) -> pd.DataFrame:
 
 
 #: Below this share of table ids found among the stream's paths, ``align_assignment``
-#: raises: the table is keyed by another column (or another grain).
+#: warns: most assigned paths are silent, or the table is keyed by another column.
 MIN_MATCHED_SHARE = 0.5
 
 
@@ -250,10 +250,16 @@ def align_assignment(
     Raises
     ------
     DiffConfigError
-        Fewer than half of the table's ids match a path id of ``path_col`` even by
-        string form: the table is keyed by another column or grain (a session table
-        analysed per user), or the ids are spelled differently. Silent assigned paths
-        are a minority in a valid table.
+        No table id matches a path id of ``path_col`` even by string form: the table
+        is keyed by another column or grain (a session table analysed per user), or
+        the ids are spelled differently.
+
+    Warns
+    -----
+    UserWarning
+        Fewer than half of the table's ids match a path: either most assigned paths
+        are silent (valid, e.g. an e-mail campaign) or the ids are partly misspelled.
+        The warning names the counts so the two cases can be told apart.
     """
     stream_ids = pd.Index(pd.unique(stream.df[path_col]))
     matched = table.index.isin(stream_ids)
@@ -270,13 +276,22 @@ def align_assignment(
                     table = table.set_axis(aligned, axis=0)
                     matched = pos >= 0
     n_matched, n_table = int(matched.sum()), len(table)
-    if n_matched < MIN_MATCHED_SHARE * n_table:
+    detail = (
+        f"only {n_matched} of {n_table} assignment ids "
+        f"({n_matched / n_table:.0%}) match a '{path_col}' id of the stream "
+        f"(table ids e.g. {list(table.index[:3])}, stream ids e.g. "
+        f"{list(stream_ids[:3])})"
+    )
+    if n_matched == 0 and n_table:
         raise DiffConfigError(
-            f"only {n_matched} of {n_table} assignment ids "
-            f"({n_matched / n_table:.0%}) match a '{path_col}' id of the stream "
-            f"(table ids e.g. {list(table.index[:3])}, stream ids e.g. "
-            f"{list(stream_ids[:3])}); the rest would count as silent paths. Index "
-            f"the table by '{path_col}', the grain the analysis runs at."
+            f"{detail}; every path would count as silent. Index the table by "
+            f"'{path_col}', the grain the analysis runs at."
+        )
+    if n_matched < MIN_MATCHED_SHARE * n_table:
+        warn_user(
+            f"{detail}; the rest count as silent paths (0 for every metric). That is "
+            "right when most assigned paths never produced an event, and wrong when "
+            f"the ids are spelled differently: index the table by '{path_col}'."
         )
     return table
 

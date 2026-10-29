@@ -900,12 +900,12 @@ class TestAssignmentIds:
         with pytest.raises(DiffConfigError, match="only 0 of 1200"):
             _fit(_random(), assignment=table)
 
-    def test_mostly_unmatched_ids_raise_with_the_counts(self) -> None:
+    def test_mostly_unmatched_ids_warn_with_the_counts(self) -> None:
         table = _random_assignment()
         ids = list(table.index)
         ids[:700] = [i.upper() for i in ids[:700]]
         table.index = ids
-        with pytest.raises(DiffConfigError, match="only 500 of 1200"):
+        with pytest.warns(UserWarning, match="only 500 of 1200"):
             _random().get_ab_test(DIFF, [CONV], assignment=table)
         ids[:700] = [i.lower() for i in ids[:700]]
         ids[:500] = [i.upper() for i in ids[:500]]
@@ -1150,10 +1150,12 @@ class TestIntegerIds:
         # per-user table, per-session analysis: every user id is also a session id
         with pytest.raises(InvalidParameterError, match="too narrow"):
             _fit(stream, assignment=users, path_col="session_id")
-        # per-session table read at the user grain: most ids are not users
+        # per-session table read at the user grain: most ids are not users -> the
+        # match-share warning, and the 40 that do match disagree with the stream's arm
         sessions = df.groupby("session_id")["arm"].first()
-        with pytest.raises(DiffConfigError, match="only 40 of 120"):
-            _fit(stream, assignment=sessions)
+        with pytest.warns(UserWarning, match="only 40 of 120"):
+            with pytest.raises(DiffConfigError, match="disagrees"):
+                _fit(stream, assignment=sessions)
         # the right pairing runs
         assert len(_fit(stream, assignment=users)) == 1
         named = sessions.rename_axis("session_id")

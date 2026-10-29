@@ -285,9 +285,9 @@ def test_assignment_ids_that_match_nothing_raise() -> None:
         stream.get_sample_ratio("arm", assignment=table)
 
 
-def test_assignment_ids_mostly_unmatched_raise() -> None:
-    # 40 of 100 table ids are paths: the table is keyed by another grain
-    with pytest.raises(DiffConfigError, match="only 40 of 100"):
+def test_assignment_ids_mostly_unmatched_warn() -> None:
+    # 40 of 100 table ids are paths: silent majority, or another grain -> warn
+    with pytest.warns(UserWarning, match="only 40 of 100"):
         _stream(_arms(20, 20)).get_sample_ratio(
             "arm", assignment=pd.Series(_arms(50, 50))
         )
@@ -325,5 +325,5 @@ def test_unit_guard_with_integer_ids() -> None:
             for s in range(1, 121)
         }
     )
-    with pytest.raises(DiffConfigError, match="only 40 of 120"):
+    with pytest.warns(UserWarning, match="only 40 of 120"):
         stream.get_sample_ratio("arm", assignment=sessions)

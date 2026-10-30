@@ -198,7 +198,11 @@ pooled support, adjusted together with Benjamini–Hochberg by default
 looking, so it is exploratory by construction: a discovery's reading ends "a
 hypothesis to confirm as the declared metric of a new test, not a decision".
 `edges=[(source, target), ...]` declared before the test makes a confirmatory
-family. Intervals are per row; only Bonferroni adds simultaneous ones.
+family. Intervals are per row; only Bonferroni adds simultaneous ones, which
+for bootstrapped rows are normal on the bootstrap SE (a percentile at
+`1 - alpha / m` is beyond `n_bootstrap` replicates at a screen's `m`), so they
+agree with the adjusted p-value. The scorecard still takes that percentile; with
+many metrics or strata it has the same problem, left to a later change.
 
 **A3 — per-path quantities, conditional ratios.** `unique_paths` (0/1, z-test)
 and `avg_per_path` (count, Welch) average over every path of the arm and are
@@ -214,8 +218,10 @@ paths that ended, silent paths ended at step 1; step 0 is not a cell.
 twin): it is validated against the graph's `diff`, `edge_weight` and
 `path_col`, shipped as a JSON payload, exported in static HTML, and not
 persisted in `state_file`. Significant edges are drawn in their sign's colour and
-bypass the edge filter; inconclusive edges turn grey, untested ones dashed. When
-the sidebar changes the weight or the diff, the overlay steps aside.
+bypass the edge filter; inconclusive edges turn grey, untested ones dashed, edges
+without a row faint, and the tooltip shows the test's values (shares for
+`unique_paths`) so its units agree with the test. When the sidebar changes the
+weight, the diff or the path column, the overlay steps aside.
 
 Validation: on `load_ab_test()` the screens find the planted cart loop (story 4)
 and, with `proba_out`, the conditional checkout step (story 2) flagged

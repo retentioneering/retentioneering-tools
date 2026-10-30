@@ -163,6 +163,41 @@ the displayed diff values with the red/blue color code, and hovering one
 shows the same per-group breakdown tooltip as a graph edge — both group
 values and the diff between them.
 
+### Significance of an A/B diff: `ab_transitions`
+
+In diff mode every edge with a non-zero difference is coloured, noise
+included. For a randomised experiment,
+[`get_ab_transitions`](/docs/tools/get-ab-transitions) tests every edge
+between the arms, and passing its frame to the graph draws the result on
+top of the diff:
+
+```python
+edges = stream.get_ab_transitions(("exp_group", "treatment", "control"), assignment=assignment)
+stream.transition_graph(diff=("exp_group", "treatment", "control"), ab_transitions=edges)
+```
+
+Significant edges keep their sign's colour (red where group 1 is higher,
+blue where it is lower) at full opacity and stay visible whatever the edge
+filter; inconclusive edges turn thin and grey, edges below the support rule
+(not tested) grey and dashed, and edges the frame has no row for — a
+filtered frame, or an edge outside its window — faintest. The edge tooltip
+switches to the test's values: for `unique_paths` the arms' shares of paths
+in %, not the graph's path counts (with arms of different sizes the two
+differences can even have opposite signs), then the delta's interval, the
+adjusted p-value and the verdict. The legend names the correction, the
+number of tested edges, ITT and the horizon, and says when the frame was
+filtered; in a static export it starts open.
+
+The frame must match the graph: the same `diff` (segment form or id
+lists, the same groups in the same order), the same `edge_weight` (the
+graph takes the frame's when `edge_weight` is not given) and the same
+`path_col`; `path_pattern` is refused, since the frame covers every path
+of the arms. When the sidebar switches to another weight, diff or path
+column, the overlay steps aside with a notice. The frame is the data, so
+there is no `_data` twin, and `state_file` does not store it. With an
+`assignment` table the test's shares count the silent users, so they can
+differ slightly from the values the graph draws from the stream.
+
 {% endblock %}
 
 {% block demo_examples %}

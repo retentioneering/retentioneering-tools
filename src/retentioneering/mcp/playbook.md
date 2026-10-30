@@ -218,9 +218,11 @@ times counts once. For a per-visit figure, carve out the subpopulation with
 6. Optional, after the scorecard: which transitions or steps changed.
    `get_ab_transitions(diff=[...])` tests every edge of the graph (share of paths with
    the transition by default; `edge_weight="avg_per_path"` for repeats, `"proba_out"`
-   for "of the paths leaving X, where do they go") and `get_ab_steps(diff=[...])`
+   for "of the transitions out of X, where do they go") and `get_ab_steps(diff=[...])`
    every step-matrix cell, with p-values adjusted over the tested rows (`n_tested`,
-   Benjamini-Hochberg by default: about 5 % of the discoveries may be false). This is
+   Benjamini-Hochberg by default: on average at most about 5 % of the discoveries are
+   false; the discoveries' deltas are biased away from 0, so size the confirming test
+   on a smaller effect). This is
    an exploratory screen, never the decision: report it after the scorecard as "where
    the arms differ", and turn a significant edge into the declared metric of the next
    test (e.g. `matches_pattern`). Quote each row's `reading`. `conditional=true` rows

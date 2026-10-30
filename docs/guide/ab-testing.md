@@ -336,8 +336,8 @@ transition graph with `diff` shows where the arms' paths part, but every edge in
 is a point estimate: with 92 edges, some differences are noise. [`get_ab_transitions()`](/docs/tools/get-ab-transitions)
 puts an interval and a test on each edge, and [`get_ab_steps()`](/docs/tools/get-ab-steps)
 on each cell of the step matrix, with the p-values adjusted over every tested row
-(Benjamini–Hochberg by default: among the rows called significant, about 5 % are
-expected to be false discoveries). Arms, population and window are the scorecard's:
+(Benjamini–Hochberg by default: among the rows called significant, the share of
+false discoveries is at most about 5 % on average). Arms, population and window are the scorecard's:
 
 ```python
 edges = stream.get_ab_transitions(diff, assignment=assignment)
@@ -362,8 +362,9 @@ are abandoned, it does not stop anyone paying.
 
 Pass the frame to the graph to see it: `stream.transition_graph(diff=diff,
 ab_transitions=edges)` draws significant edges in their sign's colour, inconclusive
-ones grey and untested ones dashed, and adds the interval and the adjusted p-value
-to each edge's tooltip. `get_ab_steps(diff, max_steps=8, assignment=assignment)`
+ones grey, untested ones dashed and edges without a row in the frame faint, and its
+tooltip shows the test's values (the arms' shares, not the graph's path counts),
+the interval and the adjusted p-value. `get_ab_steps(diff, max_steps=8, assignment=assignment)`
 does the same per step: 93 cells tested, `quick_add` higher and `add_to_cart` lower
 at steps 3 to 8, and `cart` at step 8 higher by +1.71 pp [+0.89, +2.55].
 
@@ -390,10 +391,21 @@ a `matches_pattern` metric, or a handful of edges named before the test with
   population, or cut it at a pre-exposure event (`truncate_paths`) and declare why.
 - *Per-row intervals.* The interval of each row is at `ci_level` for that row
   alone, not for all of them at once; the verdict reads the adjusted p-value, so an
-  interval can exclude 0 on a grey row (`p 0.24 after bh is not below alpha 0.05`).
-  Only `correction="bonferroni"` adds simultaneous intervals.
-- *Cells and edges are not independent.* A path that reaches a step earlier moves
-  several cells of the step matrix; a new event moves every edge around it. Read the
+  interval can exclude 0 on a grey row (with `edge_weight="proba_out"`,
+  `cart -> checkout_start` reads `per-comparison interval [-4.79, -0.12] pp excludes
+  0, but p 0.24 after bh is not below alpha 0.05`). Only `correction="bonferroni"`
+  adds simultaneous intervals.
+- *The winner's curse.* The rows that pass the screen are selected for a large
+  estimate, so their deltas, and their intervals, sit further from 0 than the true
+  effects on average — most for the rows just past the threshold. Quote a
+  discovery's interval as where the screen found it, and size the confirming test
+  on a smaller effect.
+- *A window is not churn.* Under `horizon=`, `path_end` is the last event inside each
+  user's window: `X -> path_end` says the window closed after `X`, not that the user
+  left. Without a horizon, it is the last event of the observation period.
+- *Cells and edges are not independent.* A path that reaches an event a step earlier
+  moves that event's cells at two steps; a path one event longer moves a `path_end`
+  cell; a new event moves every edge around it. Read the
   screen as a map of where the difference lives, not as a count of effects.
 
 Under a true null (20 seeds of `load_ab_test("aa_calibration", seed=...)`) the screen called

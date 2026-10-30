@@ -185,7 +185,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   ...]` declared before the test makes a confirmatory family. An arm's value
   equals `transition_graph_data` for that arm on the stream's paths. An
   exploratory screen: a discovery's reading calls it a hypothesis for a declared
-  metric of a new test.
+  metric of a new test. With `correction="bonferroni"` the simultaneous
+  intervals of the bootstrapped ratios are `delta ± z · delta_se`, consistent
+  with the adjusted p-value. Shared denominators are resampled once per event,
+  so a graph of 80 event types (6,500 edges) takes about 2 s for `proba_out`.
 - `get_ab_steps(diff, max_steps=10, *, assignment=None, horizon=None, ...)` does
   the same for the step matrix: per cell `(event, step)`, the share of each arm's
   paths whose k-th event is the event (`path_end` for a shorter path), pooled
@@ -194,10 +197,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - `transition_graph(diff=..., ab_transitions=frame)` highlights the frame of
   `get_ab_transitions` on the diff graph: significant edges in their sign's
   colour (and kept whatever the edge filter), inconclusive ones grey, untested
-  ones dashed, and the edge tooltip adds the delta, its interval, the adjusted
-  p-value and the verdict; the legend names the correction and the family size.
-  The frame must match the graph's `diff`, `edge_weight` and `path_col`; it is
-  carried by the static HTML export and not stored in `state_file`.
+  ones dashed, edges without a row in the frame faint; under the overlay the edge
+  tooltip shows the test's values (for `unique_paths` the arms' shares, not the
+  graph's path counts), the delta's interval, the adjusted p-value and the
+  verdict, and the legend names the correction, the family size, ITT, the
+  horizon and a filtered frame. The frame must match the graph's `diff`
+  (segment form or id lists), `edge_weight` and `path_col`; `path_pattern` is
+  refused. It is carried by the static HTML export (legend open) and not stored
+  in `state_file`.
 - MCP: `get_ab_transitions` and `get_ab_steps` tools (numbers only: counts per
   verdict, the family size, group sizes, population and the top rows with their
   readings). The playbook's A/B scenario places them after the scorecard, as an

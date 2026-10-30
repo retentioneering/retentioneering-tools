@@ -21,7 +21,10 @@ p-value, as in [`get_ab_transitions`](/docs/tools/get-ab-transitions). The inter
 are per cell, not simultaneous.
 
 Cells are not independent: a path that reaches `checkout` one step earlier moves
-two cells in the same row and every later `path_end` cell. Read the screen as
+the `checkout` cells of two steps, and a path one event longer or shorter moves a
+`path_end` cell (`path_end` at step k counts the paths with fewer than k events).
+Under `horizon`, a path ends with the last event of its window, not when the user
+left. Read the screen as
 "where the paths of the two arms part", and confirm one hypothesis as the declared
 metric of a new test.
 

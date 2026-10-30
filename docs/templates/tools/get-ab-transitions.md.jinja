@@ -41,12 +41,22 @@ An edge is tested when its pooled support reaches `min_support`: paths with the
 transition, and for `unique_paths` paths without it too. The rest are reported with
 their estimates, `verdict="insufficient_data"`, and are not in the family. The
 p-values of the tested edges are adjusted together (`correction`,
-Benjamini-Hochberg by default: among the edges called significant, about
-`1 - ci_level` of them are expected to be false discoveries), the verdict reads only
-the adjusted p-value, and `attrs["n_tested"]` and `correction_family` say what the
-family was. The intervals are per edge and not simultaneous; only
+Benjamini-Hochberg by default: among the edges called significant, the share of
+false discoveries is at most about `1 - ci_level` on average), the verdict reads
+only the adjusted p-value, and `attrs["n_tested"]` and `correction_family` say what
+the family was. The intervals are per edge and not simultaneous; only
 `correction="bonferroni"` adds simultaneous ones (`delta_ci_low_adj`,
-`delta_ci_high_adj`).
+`delta_ci_high_adj`, at `1 - alpha / n_tested`): Newcombe or Welch for the per-path
+weights, and `delta ± z · delta_se` for the bootstrapped ratios, because a
+percentile that far in the tail is beyond what `n_bootstrap` replicates resolve (it
+is their minimum or maximum); they exclude 0 exactly when `p_value_adjusted` is
+below alpha.
+
+The discoveries are selected for a large estimate, so their deltas and intervals
+sit further from 0 than the true effects on average (the winner's curse): size a
+confirming test on a smaller effect. Under `horizon`, `path_end` is the last event
+inside each path's window, so `X -> path_end` means the window closed after `X`,
+not that the user left.
 
 The family is every edge with enough support, found after looking at the data: a
 screen. Its discoveries are where the arms differ, not decisions. To confirm one,
@@ -86,11 +96,17 @@ edges are tested:
 `transition_graph(diff=..., ab_transitions=frame)` draws the frame over the diff
 graph: significant edges in their sign's colour (red where group 1 is higher, blue
 where it is lower) at full opacity, inconclusive edges thin and grey, untested ones
-grey and dashed, and the edge tooltip adds the delta, its interval, the adjusted
-p-value and the verdict. A significant edge stays visible whatever the graph's edge
-filter. The frame must have the graph's `diff`, `edge_weight` and `path_col`; when
-the sidebar switches to another weight or diff, the overlay steps aside and says so.
-A filtered frame (`frame[frame["verdict"] != "inconclusive"]`) is accepted.
+grey and dashed, and edges without a row in the frame (filtered out, or outside its
+window) faintest. The edge tooltip shows the test's values — for `unique_paths` the
+arms' shares in %, not the graph's path counts, whose difference can even have the
+other sign when the arms differ in size — the delta, its interval, the adjusted
+p-value and the verdict; the legend names the correction, the family size, ITT and
+the horizon. A significant edge stays visible whatever the graph's edge filter. The
+frame must have the graph's `diff` (segment form or id lists), `edge_weight` and
+`path_col`, and `path_pattern` is refused; when the sidebar switches to another
+weight, diff or path column, the overlay steps aside and says so. A filtered frame
+(`frame[frame["verdict"] != "inconclusive"]`) is accepted, and the legend says it was
+filtered.
 
 {% endblock %}
 

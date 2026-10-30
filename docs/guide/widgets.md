@@ -14,9 +14,11 @@ stream.funnel()
 stream.segment_overview()
 stream.cluster_analysis()
 stream.ab_test()
+stream.ab_transitions(diff)
+stream.ab_steps(diff)
 ```
 
-All parameters are optional. You can call any widget without arguments and configure it interactively using the sidebar that appears on the right side of the widget.
+All parameters are optional, except the arms (`diff`) of the two A/B matrices. You can call any other widget without arguments and configure it interactively using the sidebar that appears on the right side of the widget.
 
 ## Common parameters
 
@@ -101,6 +103,8 @@ Headless methods follow the naming pattern `<widget>_data()`:
 | `stream.segment_overview()` | [`stream.segment_overview_data()`](/docs/widgets/segment-overview#headless-mode) |
 | `stream.cluster_analysis()` | [`stream.cluster_analysis_data()`](/docs/widgets/cluster-analysis#headless-mode) |
 | `stream.ab_test()` | [`stream.ab_test_data()`](/docs/widgets/ab-test#headless-mode) — alias of [`get_ab_test()`](/docs/tools/get-ab-test), the name the A/B docs use |
+| `stream.ab_transitions(diff)` | [`stream.ab_transitions_data(diff)`](/docs/widgets/ab-transitions#headless-mode) — alias of [`get_ab_transitions()`](/docs/tools/get-ab-transitions) |
+| `stream.ab_steps(diff)` | [`stream.ab_steps_data(diff)`](/docs/widgets/ab-steps#headless-mode) — alias of [`get_ab_steps()`](/docs/tools/get-ab-steps) |
 
 ```python
 # Get transition matrix as a DataFrame
@@ -140,6 +144,17 @@ stream.ab_test(
     assignment=assignment,
 )
 ```
+
+[`stream.ab_transitions(diff)`](/docs/widgets/ab-transitions) and
+[`stream.ab_steps(diff)`](/docs/widgets/ab-steps) draw the edge and step screens
+of [`get_ab_transitions`](/docs/tools/get-ab-transitions) and
+[`get_ab_steps`](/docs/tools/get-ab-steps) as difference matrices: one cell per
+edge (event and step), its background the delta, its text the delta and its
+interval, and a wide outline for the test (black when the adjusted p-value is
+below alpha, grey with a cross when it is not, dashed when the cell was not
+tested). [`get_ab_transitions_table`](/docs/tools/get-ab-transitions-table) and
+[`get_ab_steps_table`](/docs/tools/get-ab-steps-table) return the same cells as a
+table for `to_csv` / `to_excel`.
 
 ## Exporting to HTML
 

@@ -1,0 +1,44 @@
+{% extends "_tool_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+The table is [`get_ab_steps`](/docs/tools/get-ab-steps) called with the same
+arguments and pivoted, with nothing recomputed: the frame's `(event, step)` rows
+become the cells of a matrix shaped like the diff step matrix of
+[`step_matrix_data`](/docs/widgets/step-matrix), and each cell becomes a group of
+explicit statistic columns, one per name in `values`. The default, `("delta",
+"delta_ci_low", "delta_ci_high", "p_value_adjusted")`, gives every cell its
+delta `group1 − group2`, its interval at `ci_level` and its adjusted p-value:
+
+```python
+table = stream.get_ab_steps_table(diff, max_steps=8, assignment=assignment)
+table.loc["quick_add", 7]
+```
+
+The rows are the events with a cell in the frame, `path_end` last and the
+others by name, the order of the [A/B Steps](/docs/widgets/ab-steps) widget;
+the column groups are the steps from 1 to `max_steps` (step 0, the synthetic
+`path_start`, is not a cell). An event without a row at a step (no compared path
+has it there) is NaN in every statistic; an untested cell keeps its delta and
+interval and has a NaN p-value. Any statistic column of the frame can be asked
+for, in any order, including `verdict` and `reading`; the values are shares of
+the arm's paths. The frame's `attrs` (`n_tested`, `correction`, `ci_level`,
+`alpha`, the arms, the population, `max_steps`) travel with the table, plus
+`values`.
+
+The intervals are per cell, not simultaneous, and the family of the adjusted
+p-values is every tested cell, as in the frame.
+
+### Export
+
+`to_csv` writes the two header rows, and `pd.read_csv(path, header=[0, 1],
+index_col=0)` reads them back (the steps come back as text). With
+`styled=True` the result is a pandas `Styler` of the same table (`.data`) drawn
+as the widget draws a cell: the `delta` column on a red or blue background by
+the delta's sign; a significant cell with a bold black border around its group;
+a tested, not significant one in grey; an untested one in light grey italics
+with a dashed border. `Styler.to_excel` keeps the colours and the borders; it
+needs `openpyxl`, which the library does not install.
+
+{% endblock %}

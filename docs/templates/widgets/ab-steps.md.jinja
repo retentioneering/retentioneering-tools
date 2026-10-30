@@ -1,0 +1,111 @@
+{% extends "_widget_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+The A/B Steps widget draws the step screen of
+[`get_ab_steps`](/docs/tools/get-ab-steps) as a matrix: it computes nothing of
+its own. Its headless twin, `ab_steps_data`, is an alias of `get_ab_steps`
+(same arguments, same frame), and every cell of the matrix is one row of that
+frame: the event is the row, the step the column. A cell's value in an arm is
+the share of its paths whose step-th event is that event, the number
+[`step_matrix(diff=...)`](/docs/widgets/step-matrix) shows for that arm, and its
+delta is the diff step matrix's cell.
+
+### Reading a cell
+
+- **The background is the delta** `group1 − group2`: red where group 1 is
+  higher, blue where it is lower (the colours of the diff step matrix), on a
+  scale symmetric around 0 whose full colour is the largest `|delta|` among the
+  cells shown; **Colour scale maximum** clips it so that small deltas show.
+- **The text is the delta and its interval** at `ci_level`, in percentage points
+  of the arm's paths. When the cells get too small (**Cell size: Compact**, or
+  more than 24 steps), the interval moves to the tooltip.
+- **The wide outline is the test**, read off `p_value_adjusted`:
+  - **black**: the adjusted p-value is below `alpha = 1 − ci_level`;
+  - **light grey with a grey cross**: tested, not significant. Not evidence of
+    no difference: read the interval;
+  - **dashed light grey with a cross, muted text**: not tested (too little
+    pooled support for `min_support`, or no spread). The tooltip says why;
+  - **an empty cell** has no row: no compared path has that event at that step.
+
+The tooltip carries the whole row: both arms' values, the delta and its
+interval, `rel_delta`, `p_value`, `p_value_adjusted` with the correction and the
+family size, the MDE, the support, the support warning, the verdict and the
+row's `reading`, verbatim. The header names the arms, the steps, the
+population, the correction over how many tested cells, and `alpha`.
+
+**The intervals are per cell, not simultaneous**: each holds at `ci_level` for
+its cell alone, while the outline reads the adjusted p-value, so a grey cell's
+interval can exclude 0. With `correction="bonferroni"`, **Intervals:
+Simultaneous** shows the frame's simultaneous intervals instead.
+
+Cells are not independent: a path that reaches an event a step earlier moves
+that event's cells at two steps, and `path_end` at step k counts the paths with
+fewer than k events. Read the matrix as a map of where the arms' paths part,
+not as a count of effects; confirm a hypothesis as the declared metric of a new
+test.
+
+### Sidebar and view
+
+The sidebar edits `max_steps`, `correction`, `ci_level` and `min_support`, and
+every change recomputes the frame. `assignment`, `horizon`, `path_col` and
+`power` are set in code and shown read-only. View controls change nothing in
+the frame: show or hide the intervals; dim or hide the events without a
+significant cell; the colour scale maximum; sort the events by name, by largest
+`|delta|` or by number of significant cells; pin or hide an event. The steps
+keep their order. A `state_file` keeps the data arguments and the view; `diff`
+and `assignment` are passed again when the widget is reopened. A static export
+keeps the view controls and locks the data ones.
+
+{% endblock %}
+{% block demo_examples %}
+## Examples
+
+The examples run on the bundled synthetic experiment, `load_ab_test()`, with its
+assignment table, `load_ab_test_assignment()`, as `assignment`.
+
+### Eight steps from the start of each path
+
+<DemoWidget cmd={`stream.ab_steps(
+    ("exp_group", "treatment", "control"),
+    max_steps=8,
+    assignment=assignment,
+)`} path="/docs-demos/widgets/ab-steps/eight-steps.html" height={640} />
+
+93 cells are tested and 14 are black: `quick_add` is higher and `add_to_cart`
+lower in the treatment arm at every step from 3, and `cart` is higher at step 8.
+{% endblock %}
+{% block extra %}
+### correction
+
+{{ bullets(doc.parameters, "correction") }}
+
+## `ab_steps_data` and `get_ab_steps`
+
+`ab_steps_data` and `get_ab_steps` are the same method under two names. The
+library's docs use `get_ab_steps`, the name of the analysis tools;
+`ab_steps_data` exists so that every widget has a `<widget>_data` twin. The full
+parameter and column reference is on the
+[A/B Step Screen](/docs/tools/get-ab-steps) page.
+
+### As a table for export
+
+[`get_ab_steps_table`](/docs/tools/get-ab-steps-table) takes the same arguments
+and returns the frame pivoted into the shape of the diff step matrix: one row
+per event, and for every step a group of statistic columns (`values=`, by
+default the delta, its interval and the adjusted p-value). Nothing is
+recomputed. `to_csv` and `to_excel` write the two header rows, and
+`styled=True` returns a pandas `Styler` with this widget's encoding, which
+`to_excel` keeps:
+
+```python
+table = stream.get_ab_steps_table(diff, max_steps=8, assignment=assignment)
+table.to_csv("steps.csv")             # pd.read_csv("steps.csv", header=[0, 1], index_col=0)
+stream.get_ab_steps_table(diff, max_steps=8, styled=True).to_excel("steps.xlsx")
+```
+
+See also [A/B Transitions](/docs/widgets/ab-transitions), the same matrix per
+edge.
+
+{% endblock %}

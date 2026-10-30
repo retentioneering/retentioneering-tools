@@ -268,7 +268,9 @@ _NOT_METRIC_KEYS = {
 def _metric_args_hint(entry: dict[str, Any], unknown: set) -> str:
     """The fix for keys outside an entry's schema: metric arguments go under
     ``metric_args`` (``{"metric": "has_event", "event": "x"}`` is a common guess)."""
-    misplaced = {key: _NOT_METRIC_KEYS[key] for key in unknown if key in _NOT_METRIC_KEYS}
+    misplaced = {
+        key: _NOT_METRIC_KEYS[key] for key in unknown if key in _NOT_METRIC_KEYS
+    }
     if misplaced:
         return " ".join(f"'{key}': {why}." for key, why in sorted(misplaced.items()))
     metric = entry.get("metric")
@@ -2591,8 +2593,7 @@ def row_reading(
                 parts.append(f"{interval} includes 0 ({p_part})")
             else:
                 parts.append(
-                    f"{interval} includes 0 ({p_part}); effects outside it are "
-                    "unlikely"
+                    f"{interval} includes 0 ({p_part}); effects outside it are unlikely"
                 )
         elif after:
             parts.append(

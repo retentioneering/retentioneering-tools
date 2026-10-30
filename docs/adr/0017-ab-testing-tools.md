@@ -247,7 +247,10 @@ The two screens get widgets of their own, `ab_transitions(diff, edge_weight)` an
 `ab_steps(diff, max_steps)`, with the `_data` twins `ab_transitions_data` and
 `ab_steps_data`: documented aliases of `get_ab_transitions` / `get_ab_steps`, as
 `ab_test_data` is of `get_ab_test` (ADR-0006, D1). Each cell of the matrix is one
-row of the twin's frame, sent as it is; the widgets compute nothing.
+row of the twin's frame, sent as it is; the widgets compute nothing. The rows travel
+column by column, a value repeated down a column once: 80 event types are 6,561
+rows with a long `reading` each, about 8 MB as one object per row and under 2 MB
+this way, every cell kept.
 
 **M1 — one encoding.** The background is the delta on a diverging scale around 0
 in the diff palette (red where group 1 is higher, blue where it is lower: the

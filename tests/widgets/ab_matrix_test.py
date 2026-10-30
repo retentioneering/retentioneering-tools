@@ -28,7 +28,11 @@ from retentioneering.exceptions import (
 )
 from retentioneering.tools.ab_tables import cell_status, matrix_axes
 from retentioneering.tools.ab_transitions import EDGE_WEIGHTS
-from retentioneering.widgets._ab_matrix import VIEW_DEFAULTS, untested_reason
+from retentioneering.widgets._ab_matrix import (
+    VIEW_DEFAULTS,
+    decode_payload,
+    untested_reason,
+)
 from retentioneering.widgets.ab_steps import ABStepsWidget
 from retentioneering.widgets.ab_transitions import ABTransitionsWidget
 
@@ -38,8 +42,12 @@ BOOTSTRAPPED = ("proba_out", "proba_in", "share_of_total")
 
 
 def _strict(text: str):
-    return json.loads(
-        text, parse_constant=lambda c: pytest.fail(f"bare {c} in widget JSON")
+    """A widget's JSON, strictly parsed; a matrix result with its rows decoded
+    (``decode_payload``), as the browser reads it."""
+    return decode_payload(
+        json.loads(
+            text, parse_constant=lambda c: pytest.fail(f"bare {c} in widget JSON")
+        )
     )
 
 
@@ -142,9 +150,11 @@ class TestPayloadIsTheFrame:
         self, transitions, steps
     ) -> None:
         widget, payload = transitions
-        assert widget.dispatch_compute("ab_transitions_data", {}) == payload
+        assert decode_payload(widget.dispatch_compute("ab_transitions_data", {})) == (
+            payload
+        )
         widget, payload = steps
-        assert widget.dispatch_compute("ab_steps_data", {}) == payload
+        assert decode_payload(widget.dispatch_compute("ab_steps_data", {})) == payload
 
     def test__nan_is_null_in_strict_json(self, transitions) -> None:
         widget, payload = transitions
@@ -152,6 +162,69 @@ class TestPayloadIsTheFrame:
         assert untested and all(r["delta"] is not None for r in untested)
         json.dumps(payload, allow_nan=False)
         json.dumps(widget._export_data(), allow_nan=False)
+
+
+def _markov_stream(n_events: int = 80, n_users: int = 3000, seed: int = 0):
+    """Paths of a Markov chain over ``n_events`` event types in which almost every
+    transition occurs (81 sources x 81 targets for 80 types); the treatment arm
+    moves ten rows of the chain."""
+    rng = np.random.default_rng(seed)
+    events = np.array([f"event_{i:02d}" for i in range(n_events)])
+    chain = rng.dirichlet(np.full(n_events, 2.0), size=n_events)
+    frames = []
+    for arm, n in (("treatment", n_users + 100), ("control", n_users - 100)):
+        moved = chain.copy()
+        if arm == "treatment":
+            moved[:10] = rng.dirichlet(np.full(n_events, 2.0), size=10)
+        cumulative = moved.cumsum(axis=1)
+        length = rng.integers(20, 120, size=n)
+        current = rng.integers(0, n_events, size=n)
+        steps = []
+        for _ in range(int(length.max())):
+            steps.append(current)
+            u = rng.random(n)[:, None]
+            current = np.minimum((cumulative[current] < u).sum(axis=1), n_events - 1)
+        path = np.stack(steps, axis=1)
+        keep = np.arange(path.shape[1])[None, :] < length[:, None]
+        user, step = np.nonzero(keep)
+        frames.append(
+            pd.DataFrame(
+                {
+                    "user_id": [f"{arm}{u}" for u in user],
+                    "event": events[path[keep]],
+                    "timestamp": pd.Timestamp("2026-01-01")
+                    + pd.to_timedelta(user * 10_000 + step * 30, unit="s"),
+                    "exp_group": arm,
+                }
+            )
+        )
+    return Eventstream(
+        pd.concat(frames, ignore_index=True), {"segment_cols": ["exp_group"]}
+    )
+
+
+class TestPayloadSize:
+    def test__80_event_types_travel_column_by_column(self) -> None:
+        stream = _markov_stream()
+        widget = stream.ab_transitions(DIFF)
+        frame = stream.get_ab_transitions(DIFF)
+        assert len(frame) > 6_500
+        size = len(widget.result.encode())
+        payload = _strict(widget.result)
+        assert len(payload["row_keys"]) == len(payload["col_keys"]) == 81
+        # nothing is lost: every cell of every row, the reading included
+        _assert_rows_are_the_frame(payload["rows"], frame)
+        # one dict per row (every column name and every reading with every cell)
+        # was about 8 MB here; column by column with repeated values sent once
+        rows_size = len(json.dumps(payload, allow_nan=False).encode())
+        assert rows_size > 7_000_000
+        assert size < 0.3 * rows_size and size < 2_500_000
+        encoded = json.loads(widget.result)["frame"]["columns"]
+        kinds = {c["name"]: "codes" in c or "values" not in c for c in encoded}
+        assert kinds["source"] and kinds["target"] and kinds["edge_weight"]
+        # the static export embeds the same payload
+        export = json.dumps(widget._export_data(), allow_nan=False)
+        assert len(export.encode()) < size + 10_000
 
 
 class TestTwins:
@@ -655,7 +728,8 @@ class TestStateAndExport:
             data = widget._export_data()
             _strict(json.dumps(data, allow_nan=False))
             assert data["widget_type"] == widget.widget_type
-            assert data["result"] == payload and data["diff"] == list(DIFF)
+            assert decode_payload(data["result"]) == payload
+            assert data["diff"] == list(DIFF)
             for name in widget._persist_names:
                 assert name in data, name
             assert widget._export_data(sidebar_open=False)["sidebar_open"] is False

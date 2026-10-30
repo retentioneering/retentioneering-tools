@@ -5,9 +5,9 @@ import { createRequire } from 'node:module';
 import {
   MATRIX_BLUE, MATRIX_RED, MAX_ALPHA, OUTLINE_BLACK, OUTLINE_GREY, TEXT_MUTED,
   axisStats, backgroundAlpha, cellBackground, cellId, cellLook, cellStatus, cellText, crossImage, decimalsFor,
-  deltaSign, familyText, fmtArmValue, fmtP, fmtSigned, indexRows, intervalNote, intervalOf, keepsSignificance,
+  decodeColumn, decodeFrame, deltaSign, familyText, fmtArmValue, fmtP, fmtSigned, indexRows, intervalNote, intervalOf, keepsSignificance,
   orderKeys, parsePayload, populationText, readingHint, scaleMax, unitInfo,
-  type MatrixPayload, type MatrixRow,
+  type EncodedColumn, type EncodedFrame, type MatrixPayload, type MatrixRow,
 } from '../src/ab_matrix_encoding';
 import { Legend, Matrix, type View } from '../src/ab_matrix';
 import { AB_BLUE, AB_RED, abEdgeClass } from '../../viz-core/src/utils/ab-transitions';
@@ -39,15 +39,68 @@ const constant: MatrixRow = {
   p_value: null, p_value_adjusted: null, verdict: 'inconclusive',
 };
 
+/** `encode_column` of widgets/_ab_matrix.py: levels and codes when at most half
+ *  the values are distinct, the levels alone for one value, else the values. */
+function encodeColumn(values: unknown[]): EncodedColumn {
+  const levels: unknown[] = [];
+  const codes = values.map((v) => {
+    const i = levels.findIndex((l) => JSON.stringify(l) === JSON.stringify(v));
+    return i >= 0 ? i : levels.push(v) - 1;
+  });
+  if (!values.length || 2 * levels.length > values.length) return { values };
+  return levels.length === 1 ? { levels } : { levels, codes };
+}
+
+/** `encode_frame`: every key of the rows, null where a row lacks it. */
+function encodeFrame(rows: MatrixRow[]): EncodedFrame {
+  const names = [...new Set(rows.flatMap((r) => Object.keys(r)))];
+  return {
+    length: rows.length,
+    columns: names.map((name) => ({ name, ...encodeColumn(rows.map((r) => r[name] ?? null)) })),
+  };
+}
+
+const ROWS = [sig, up, ns, untested, constant];
+const REASONS = [null, null, null, 'pooled support 8 < min_support 10', 'no p-value: no spread'];
 const payload: MatrixPayload = parsePayload(JSON.stringify({
-  tool: 'get_ab_transitions', rows: [sig, up, ns, untested, constant],
-  untested_reason: [null, null, null, 'pooled support 8 < min_support 10', 'no p-value: no spread'],
+  tool: 'get_ab_transitions', frame: encodeFrame(ROWS), untested_reason: encodeColumn(REASONS),
   row_keys: ['path_start', 'add_to_cart', 'cart', 'checkout_start'],
   col_keys: ['cart', 'home', 'payment', 'search'],
   group1_label: 'treatment', group2_label: 'control', alpha: 0.05, ci_level: 0.95, correction: 'bh',
   n_tested: 3, n_rows: 5, population: 'stream', horizon: null, path_col: 'user_id', min_support: 10,
   simultaneous: false, warnings: [], unit: 'pp', conditional: false, edge_weight: 'unique_paths', edges: 'all',
 }))!;
+
+test('the frame travels column by column and decodes to its rows', () => {
+  // as widgets/_ab_matrix.py's encode_frame sends it: plain, dictionary, constant
+  const frame: EncodedFrame = {
+    length: 4,
+    columns: [
+      { name: 'source', levels: ['home', 'cart'], codes: [0, 0, 1, 1] },
+      { name: 'delta', values: [0.1, null, -0.0, 0.25] },
+      { name: 'edge_weight', levels: ['unique_paths'] },
+    ],
+  };
+  assert.deepEqual(decodeFrame(frame), [
+    { source: 'home', delta: 0.1, edge_weight: 'unique_paths' },
+    { source: 'home', delta: null, edge_weight: 'unique_paths' },
+    { source: 'cart', delta: -0.0, edge_weight: 'unique_paths' },
+    { source: 'cart', delta: 0.25, edge_weight: 'unique_paths' },
+  ]);
+  assert.deepEqual(Object.keys(decodeFrame(frame)[0]), ['source', 'delta', 'edge_weight']);
+  assert.deepEqual(decodeColumn({ levels: [null] }, 3), [null, null, null]);
+  assert.deepEqual(decodeColumn(undefined, 2), [null, null]);
+  assert.deepEqual(decodeFrame({ length: 0, columns: [{ name: 'delta', values: [] }] }), []);
+  // the payload's rows and reasons are the rows and reasons encoded
+  assert.equal(payload.rows.length, ROWS.length);
+  assert.equal(payload.rows[0].reading, sig.reading);
+  assert.equal(payload.rows[3].support_warning, 'one_arm_only');
+  assert.equal(payload.rows[2].group1_value, null);
+  assert.deepEqual(payload.untested_reason, REASONS);
+  // a result without a frame (the "{}" of an error) is no payload
+  assert.equal(parsePayload('{}'), null);
+  assert.equal(parsePayload(JSON.stringify({ rows: ROWS, row_keys: [], col_keys: [] })), null);
+});
 
 test('the hues are the diff palette of the graph overlay and the step matrix', () => {
   assert.equal(MATRIX_RED, AB_RED);

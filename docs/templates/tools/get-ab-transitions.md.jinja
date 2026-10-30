@@ -65,9 +65,10 @@ events). Declaring a few edges before the test with `edges=[(source, target),
 ...]` makes them the whole family, and their rows the only ones returned.
 
 Simulated under a true null (20 seeds of the synthetic A/A data, about 37 tested
-edges each), no run gave a discovery at `unique_paths`, `avg_per_path`, `proba_out`
-or `share_of_total`, and the raw p-values of `unique_paths`, `avg_per_path` and
-`proba_out` were uniform (share below 0.05: 0.041, 0.043 and 0.051).
+edges each), no run gave a discovery at any of the five weights, and the raw
+p-values were uniform (share below 0.05: 0.041 for `unique_paths`, 0.043 for
+`avg_per_path`, 0.050 for `proba_out`, 0.044 for `proba_in` and 0.053 for
+`share_of_total`).
 
 ### Reading a row
 

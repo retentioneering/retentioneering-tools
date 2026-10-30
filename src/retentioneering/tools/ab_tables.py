@@ -134,6 +134,20 @@ def ab_table(frame: pd.DataFrame, values: Any = TABLE_VALUES) -> pd.DataFrame:
     return table
 
 
+def require_jinja2() -> None:
+    """``styled=True`` returns a pandas ``Styler``, which needs ``jinja2`` (not a
+    dependency of retentioneering). Without it pandas raises an ``AttributeError``
+    from ``DataFrame.style`` after the frame is computed; this says what is missing,
+    before anything is computed."""
+    try:
+        import jinja2  # noqa: F401
+    except ImportError:
+        raise ImportError(
+            "styled=True returns a pandas Styler, which needs jinja2: "
+            "pip install jinja2 (the table itself, styled=False, does not)"
+        ) from None
+
+
 def cell_status(row: dict | None, alpha: float) -> str:
     """How the widgets draw a cell: ``"significant"`` (adjusted p-value below
     ``alpha``: black outline), ``"not_significant"`` (tested: grey outline and a

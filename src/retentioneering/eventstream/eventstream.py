@@ -1372,8 +1372,14 @@ class Eventstream:
         styled: bool = False,
     ):
         # The docstring is assembled below from get_ab_transitions'.
-        from retentioneering.tools.ab_tables import ab_table, style_table
+        from retentioneering.tools.ab_tables import (
+            ab_table,
+            require_jinja2,
+            style_table,
+        )
 
+        if styled:
+            require_jinja2()
         frame = self.get_ab_transitions(
             diff,
             edge_weight,
@@ -1412,8 +1418,14 @@ class Eventstream:
         styled: bool = False,
     ):
         # The docstring is assembled below from get_ab_steps'.
-        from retentioneering.tools.ab_tables import ab_table, style_table
+        from retentioneering.tools.ab_tables import (
+            ab_table,
+            require_jinja2,
+            style_table,
+        )
 
+        if styled:
+            require_jinja2()
         frame = self.get_ab_steps(
             diff,
             max_steps,
@@ -1485,7 +1497,9 @@ values : str or list of str, default ("delta", "delta_ci_low", "delta_ci_high", 
                 "Raises",
                 """DiffConfigError, InvalidParameterError, EmptyEventstreamError
     As in `get_ab_transitions`; a `values` entry that is not a statistic column
-    of its frame raises `InvalidParameterError`.""",
+    of its frame raises `InvalidParameterError`.
+ImportError
+    `styled=True` without `jinja2`, before anything is computed.""",
             ),
             (
                 "Examples",
@@ -1546,7 +1560,9 @@ values : str or list of str, default ("delta", "delta_ci_low", "delta_ci_high", 
                 "Raises",
                 """DiffConfigError, InvalidParameterError, EmptyEventstreamError
     As in `get_ab_steps`; a `values` entry that is not a statistic column of its
-    frame raises `InvalidParameterError`.""",
+    frame raises `InvalidParameterError`.
+ImportError
+    `styled=True` without `jinja2`, before anything is computed.""",
             ),
             (
                 "Examples",

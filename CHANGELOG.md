@@ -75,7 +75,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   (and per stratum with `strata_col`, per period with `period`) with per-arm
   estimates, the delta with a per-comparison interval, a relative delta, the
   p-value and its adjusted value (`correction="holm"` by default, also
-  `"bonferroni"` with simultaneous intervals, `"bh"`, `"none"`), the minimum
+  `"bonferroni"` with simultaneous intervals, normal on the bootstrap SE for
+  ratio metrics, `"bh"`, `"none"`), the minimum
   detectable effect at `mde_alpha` and a `verdict` read from the adjusted
   p-value against `1 - ci_level`. The test follows the metric: z-test for 0/1
   metrics, Welch for totals and values, a joint path bootstrap for ratio

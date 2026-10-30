@@ -95,7 +95,9 @@ threshold. The test follows the metric kind: pooled
 z-test with Wilson / Newcombe intervals for 0/1 metrics, Welch for per-path
 totals and values, a joint path bootstrap for ratios of sums (multinomial
 weights within arm, batched, seeded per arm, percentile interval, p-value from
-the bootstrap standard error). A support rule (`min_support`, counted in
+the bootstrap standard error; Bonferroni's simultaneous interval is normal on
+that standard error, since a percentile at `1 - alpha / m` rests on the last
+few replicates). A support rule (`min_support`, counted in
 supporting paths, not events) marks rows too thin to test; support is pooled across the arms, so a behaviour present in one
 arm only still gets a p-value, flagged in `support_warning` (a per-arm rule
 hid exactly the effects a new feature creates, and a guardrail that wipes out

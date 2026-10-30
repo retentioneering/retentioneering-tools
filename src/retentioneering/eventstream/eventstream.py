@@ -715,7 +715,7 @@ class Eventstream:
 
             - `"holm"` — Holm step-down (family-wise error).
             - `"bonferroni"` — Bonferroni; adds simultaneous `delta_ci_low_adj` /
-              `delta_ci_high_adj`.
+              `delta_ci_high_adj` (normal on the bootstrap SE for ratio metrics).
             - `"bh"` — Benjamini-Hochberg (false discovery rate).
             - `"none"` — no correction.
         correction_scope : {"metric", "all"}, default "metric"

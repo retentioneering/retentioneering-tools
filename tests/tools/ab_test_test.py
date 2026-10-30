@@ -594,6 +594,42 @@ class TestScorecard:
         assert row.delta_ci_low_adj < row.delta_ci_low
         assert row.p_value_adjusted == pytest.approx(min(1.0, 3 * row.p_value))
 
+    def test_bonferroni_interval_of_a_bootstrap_row_is_normal_on_its_se(
+        self,
+    ) -> None:
+        """A percentile at 1 - alpha / m sits on the last few replicates: the
+        simultaneous interval of a bootstrap row is delta +- z * SE instead, so
+        it agrees with the adjusted p-value (which comes from the same SE)."""
+        from scipy import stats
+
+        share = {
+            "name": "order_share",
+            "metric": "event_count",
+            "metric_args": {"event": "order"},
+            "denominator": {"metric": "length"},
+        }
+        with _exploratory():
+            out = ABTest.from_stream(
+                _random(effect=0.1),
+                DIFF,
+                [AOV, share],
+                strata_col="platform",
+                correction="bonferroni",
+                n_bootstrap=300,
+            ).fit()
+        rows = out[np.isfinite(out["p_value"])]
+        assert len(rows) == 4
+        assert (rows["p_value_adjusted"] < 0.05).any()
+        z = stats.norm.ppf(1 - rows["mde_alpha"] / 2)
+        np.testing.assert_allclose(
+            rows["delta_ci_low_adj"], rows["delta"] - z * rows["delta_se"]
+        )
+        np.testing.assert_allclose(
+            rows["delta_ci_high_adj"], rows["delta"] + z * rows["delta_se"]
+        )
+        excludes_zero = (rows["delta_ci_low_adj"] > 0) | (rows["delta_ci_high_adj"] < 0)
+        assert (excludes_zero == (rows["p_value_adjusted"] < 0.05)).all()
+
     def test_benjamini_hochberg(self) -> None:
         from retentioneering.tools import _stats as st
 

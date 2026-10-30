@@ -233,7 +233,7 @@ function renderMatrix(v: View = view) {
   return renderToStaticMarkup(React.createElement(Matrix, {
     payload, kind: 'transitions', rowKeys: payload.row_keys, colKeys: payload.col_keys.map(String), index,
     dimRows: new Set<string>(), dimCols: new Set<string>(), scale: scaleMax(payload.rows, v.color_clip), view: v,
-    pinned: new Set<string>(), hidden: new Set<string>(), onTogglePin: () => {}, onToggleHidden: () => {},
+    pinned: new Set<string>(), onTogglePin: () => {}, onToggleHidden: () => {},
     tipRef: { current: null },
   }));
 }

@@ -21,7 +21,7 @@ import {
   axisStats, cellBackground, cellId, cellLook, cellStatus, cellText, crossImage, deltaSign, familyText,
   fmtArmValue, fmtP, fmtSigned, decimalsFor, indexRows, intervalNote, intervalOf, keepsSignificance,
   orderKeys, parsePayload, populationText, readingHint, scaleMax, unitInfo,
-  MATRIX_BLUE, MATRIX_RED, MAX_ALPHA, OUTLINE_BLACK, OUTLINE_GREY, OUTLINE_WIDTH, TEXT_MUTED,
+  MATRIX_BLUE, MATRIX_RED, MAX_ALPHA, OUTLINE_BLACK, OUTLINE_WIDTH, TEXT_MUTED,
 } from "./ab_matrix_encoding";
 
 export type Kind = "transitions" | "steps";
@@ -122,13 +122,9 @@ function SidebarToggle({ onClick }: { onClick: () => void }) {
   );
 }
 
-function EyeIcon({ hidden }: { hidden: boolean }) {
-  return hidden ? (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" /><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
-      <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" /><line x1="2" y1="2" x2="22" y2="22" />
-    </svg>
-  ) : (
+/** The hide button's eye (a hidden event leaves the matrix; the sidebar lists it). */
+function EyeIcon() {
+  return (
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" />
     </svg>
@@ -175,8 +171,8 @@ const TipLine = ({ label, value, color }: { label: string; value: React.ReactNod
   </div>
 );
 
-function Tooltip({ apiRef, payload, kind, intervalKind }: {
-  apiRef: React.MutableRefObject<TipApi | null>; payload: MatrixPayload; kind: Kind; intervalKind: IntervalKind;
+function Tooltip({ apiRef, payload, kind }: {
+  apiRef: React.MutableRefObject<TipApi | null>; payload: MatrixPayload; kind: Kind;
 }) {
   const [tip, setTip] = React.useState<TipTarget | null>(null);
   React.useEffect(() => {
@@ -267,14 +263,13 @@ export interface MatrixProps {
   scale: number;
   view: View;
   pinned: Set<string>;
-  hidden: Set<string>;
   onTogglePin: (key: string) => void;
   onToggleHidden: (key: string) => void;
   tipRef: React.MutableRefObject<TipApi | null>;
 }
 
 export const Matrix = React.memo(function Matrix({
-  payload, kind, rowKeys, colKeys, index, dimRows, dimCols, scale, view, pinned, hidden, onTogglePin, onToggleHidden, tipRef,
+  payload, kind, rowKeys, colKeys, index, dimRows, dimCols, scale, view, pinned, onTogglePin, onToggleHidden, tipRef,
 }: MatrixProps) {
   const unit = unitInfo(payload);
   const size = view.cell_size === "auto" ? (colKeys.length > 24 ? "compact" : "normal") : view.cell_size;
@@ -313,7 +308,7 @@ export const Matrix = React.memo(function Matrix({
             textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11, fontWeight: isPinned ? 700 : 500, color: "#374151",
           }}>{c}</div>
           <button title="Hide event (row and column)" aria-label={`Hide ${c}`} onClick={() => onToggleHidden(c)} style={iconBtn(false, "#ef4444")}>
-            <EyeIcon hidden={false} />
+            <EyeIcon />
           </button>
         </div>
       </th>
@@ -350,7 +345,7 @@ export const Matrix = React.memo(function Matrix({
                 <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
                   <span title={r} style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11, fontWeight: isPinned ? 700 : 500, color: "#374151" }}>{r}</span>
                   <button title={isPinned ? "Unpin" : "Pin to the top"} aria-label={`Pin ${r}`} onClick={() => onTogglePin(r)} style={iconBtn(isPinned, "#f59e0b")}><PinIcon pinned={isPinned} /></button>
-                  <button title={kind === "transitions" ? "Hide event (row and column)" : "Hide event"} aria-label={`Hide ${r}`} onClick={() => onToggleHidden(r)} style={iconBtn(hidden.has(r), "#ef4444")}><EyeIcon hidden={false} /></button>
+                  <button title={kind === "transitions" ? "Hide event (row and column)" : "Hide event"} aria-label={`Hide ${r}`} onClick={() => onToggleHidden(r)} style={iconBtn(false, "#ef4444")}><EyeIcon /></button>
                 </div>
               </td>
               {colKeys.map((c) => {
@@ -476,7 +471,7 @@ function ClipInput({ view, unitScale, suffix, autoScale, onCommit }: {
   );
 }
 
-function fixedText(key: string, value: unknown, host: RenderContext["host"]): string {
+function fixedText(key: string, value: unknown): string {
   if (key === "edges") {
     const list = parseJson<unknown[]>(value, []);
     return Array.isArray(list) && list.length ? `${list.length} declared` : "all (screen)";
@@ -509,7 +504,7 @@ function Sidebar({ kind, host, isStatic, isLoading, params, view, setParam, setV
     ...(kind === "transitions"
       ? (["horizon", "path_col", "edges", "test", "power", "n_bootstrap", "bootstrap_weights", "random_state"] as const)
       : (["horizon", "path_col", "power"] as const)
-    ).map((k) => [k, fixedText(k, params[k], host)] as [string, string]),
+    ).map((k) => [k, fixedText(k, params[k])] as [string, string]),
   ];
   const hint = kind === "transitions" ? readingHint(String(params.edge_weight)) : null;
 
@@ -658,7 +653,6 @@ export function render({ host, el, isStatic = false }: RenderContext) {
     const [params, setParams] = React.useState(() => readParams(host, kind));
     const [view, setViewState] = React.useState<View>(() => readView(host));
     const tipRef = React.useRef<TipApi | null>(null);
-    const scrollRef = React.useRef<HTMLDivElement | null>(null);
 
     useHostSubscriptions(host, [
       ["result", () => setPayload(parsePayload(host.get("result")))],
@@ -782,11 +776,11 @@ export function render({ host, el, isStatic = false }: RenderContext) {
               </div>
             )}
           </div>
-          <div ref={scrollRef} data-testid="ab-scroll" style={{ flex: 1, minHeight: 0, overflow: "auto", position: "relative" }}>
+          <div data-testid="ab-scroll" style={{ flex: 1, minHeight: 0, overflow: "auto", position: "relative" }}>
             {payload && layout && layout.rowKeys.length > 0 && (
               <Matrix payload={payload} kind={kind} rowKeys={layout.rowKeys} colKeys={layout.colKeys} index={layout.index}
                 dimRows={layout.dimRows} dimCols={layout.dimCols} scale={layout.scale} view={view} pinned={pinned}
-                hidden={hidden} onTogglePin={togglePin} onToggleHidden={toggleHidden} tipRef={tipRef} />
+                onTogglePin={togglePin} onToggleHidden={toggleHidden} tipRef={tipRef} />
             )}
             {payload && layout && layout.rowKeys.length === 0 && (
               <div style={{ padding: 24, color: "#9ca3af", fontSize: 13, textAlign: "center" }}>
@@ -797,7 +791,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
               <div style={{ padding: 24, color: "#9ca3af", fontSize: 13, textAlign: "center" }}>No data</div>
             )}
           </div>
-          {payload && <Tooltip apiRef={tipRef} payload={payload} kind={kind} intervalKind={view.interval_kind} />}
+          {payload && <Tooltip apiRef={tipRef} payload={payload} kind={kind} />}
           {isLoading && <ComputingSpinner />}
         </div>
         {sidebarOpen && (

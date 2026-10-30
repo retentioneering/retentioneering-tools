@@ -1,12 +1,12 @@
 """Funnel: sequential step counts, optionally with intervals and tests.
 
 Without ``ci_level`` the output is the historic one plus the path totals. With
-``ci_level`` every rate gets a Wilson interval and, in diff mode, every delta a
-Newcombe interval; only the overall-rate deltas (unconditional denominators) get a
-pooled z-test p-value. Step-to-step deltas after the first step are conditional on
-reaching the previous step, which the treatment itself can change, so they are
-descriptive: their interval stays, flagged ``step_conditional``, and they never get a
-p-value.
+``ci_level`` every rate gets a Clopper-Pearson interval and every delta gets a
+conservative Bonferroni Clopper-Pearson difference interval. Only the overall
+rate deltas receive two-sided Fisher exact p-values. Step-to-step deltas after
+the first step condition on reaching the previous step, which treatment can
+change: they remain descriptive, flagged ``step_conditional``, without p-values.
+The difference interval and Fisher test are separate procedures, not duals.
 """
 
 from dataclasses import dataclass
@@ -36,7 +36,11 @@ _ADJUST = {
 }
 
 #: How every interval and p-value of a CI-mode result is computed.
-CI_BASIS = {"rate": "wilson", "delta": "newcombe", "p_value": "pooled_z"}
+CI_BASIS = {
+    "rate": "clopper_pearson",
+    "delta": "clopper_pearson_bonferroni",
+    "p_value": "fisher_exact_two_sided",
+}
 
 
 @dataclass
@@ -186,7 +190,7 @@ def _add_single_ci(result: dict, ci_level: float) -> None:
     steps = result["steps"]
     k, n_all, n_step = _counts(steps, "", result["total_paths"])
     for name, n in (("conversion_rate", n_all), ("step_conversion_rate", n_step)):
-        low, high = _stats.wilson_ci(k, n, ci_level)
+        low, high = _stats.exact_binomial_ci(k, n, ci_level)
         _put(steps, f"{name}_ci_low", low)
         _put(steps, f"{name}_ci_high", high)
     result["ci_level"] = ci_level
@@ -204,14 +208,14 @@ def _add_diff_ci(result: dict, ci_level: float, correction: str) -> None:
             ("conversion_rate", n),
             ("step_conversion_rate", ns),
         ):
-            low, high = _stats.wilson_ci(k, denominator, ci_level)
+            low, high = _stats.exact_binomial_ci(k, denominator, ci_level)
             _put(steps, f"{group}_{name}_ci_low", low)
             _put(steps, f"{group}_{name}_ci_high", high)
 
-    low, high = _stats.newcombe_ci(k1, n1, k2, n2, ci_level)
+    low, high = _stats.exact_difference_ci(k1, n1, k2, n2, ci_level)
     _put(steps, "delta_conversion_rate_ci_low", low)
     _put(steps, "delta_conversion_rate_ci_high", high)
-    p_value = np.atleast_1d(_stats.two_proportion_z(k1, n1, k2, n2)[1])
+    p_value = np.atleast_1d(_stats.fisher_exact_p(k1, n1, k2, n2))
     _put(steps, "delta_conversion_rate_p_value", p_value)
     adjusted = p_value if correction == "none" else _ADJUST[correction](p_value)
     _put(steps, "delta_conversion_rate_p_value_adjusted", adjusted)
@@ -219,7 +223,7 @@ def _add_diff_ci(result: dict, ci_level: float, correction: str) -> None:
     # Step-to-step deltas: interval only. After the first step the denominator
     # (paths that reached the previous step) is itself an outcome of the
     # treatment, so the comparison is descriptive and gets no p-value.
-    low, high = _stats.newcombe_ci(k1, ns1, k2, ns2, ci_level)
+    low, high = _stats.exact_difference_ci(k1, ns1, k2, ns2, ci_level)
     _put(steps, "delta_step_conversion_rate_ci_low", low)
     _put(steps, "delta_step_conversion_rate_ci_high", high)
     for i, step in enumerate(steps):

@@ -6,7 +6,7 @@
 Paths are resampled within each arm, once per replicate, and every metric,
 stratum and period is evaluated on the same resample. Any quantity built from
 the rows of one replicate — a ratio of two metrics, the difference between two
-periods, the share of replicates where one arm wins — therefore preserves the joint dependence of those estimates, provided paths
+periods, the empirical fraction of positive draws (not a posterior probability or p-value) — therefore preserves the joint dependence of those estimates, provided paths
 are independent analysis units. A percentile interval is available only when the
 statistic is defined in every replicate and has nonzero bootstrap variation;
 dropping undefined draws would silently change the sampling distribution.
@@ -16,6 +16,12 @@ Fixed horizons and since-assignment periods require an explicit, exclusive
 `observation_end` logging cutoff, just as the scorecard does. The same seed, data
 and configuration reproduce the draw; numerical draws from the pre-integration
 implementation are not a compatibility promise.
+
+Contrasts additionally require identical measurement eligibility across the
+contrasted periods; changing missingness rejects even with a common roster.
+Requests are capped at 1,000,000 draws and 10,000,000 replicate-by-contribution
+entries. Numeric overflow raises. These are advanced approximate summaries;
+large B cannot recover unobserved tail information or repair dependent units.
 
 Replicate rows carry no `reading`: the sentence that reads each metric is on the
 scorecard row of `get_ab_test`.

@@ -1,0 +1,270 @@
+"""Fresh reproducible audit. Run once per source tree via PYTHONPATH; never edits it."""
+from __future__ import annotations
+import argparse, hashlib, importlib.metadata, inspect, json, math, os, pathlib, platform, sys, time, warnings
+import numpy as np
+import pandas as pd
+import oracle
+from retentioneering import Eventstream
+from retentioneering.tools import _bootstrap as bs
+
+ROOT = pathlib.Path(__file__).resolve().parent
+SCHEMA = {'path_cols':['user_id'], 'event_col':'event', 'timestamp_col':'timestamp',
+          'segment_cols':['arm'], 'custom_cols':['num','den']}
+SEED = 31415927
+
+def clean(x):
+    if isinstance(x,dict): return {str(k):clean(v) for k,v in x.items()}
+    if isinstance(x,(tuple,list)): return [clean(v) for v in x]
+    if isinstance(x,pd.DataFrame): return clean(x.to_dict('records'))
+    if isinstance(x,np.ndarray): return clean(x.tolist())
+    if isinstance(x,np.generic): return clean(x.item())
+    if x is pd.NA or x is pd.NaT: return None
+    if isinstance(x,float) and not math.isfinite(x): return None
+    if isinstance(x,(pd.Timestamp,pd.Timedelta)): return str(x)
+    return x
+
+def save(name,obj):
+    (ROOT/name).write_text(json.dumps(clean(obj),indent=2,allow_nan=False)+'\n')
+
+def build(c,t,paired=False, repeat=1):
+    rows=[]; a=[]
+    for group,values in [('control',np.asarray(c,float)),('treatment',np.asarray(t,float))]:
+        if values.ndim==1: values=np.column_stack([values,np.ones(len(values))])
+        for i,v in enumerate(values):
+            uid=f'{group}_{i:06d}'
+            a.append({'user_id':uid,'arm':group,'assigned_at':pd.Timestamp('2026-01-01')})
+            for j in range(2 if paired else 1):
+                for rep in range(repeat):
+                    rows.append({'user_id':uid,'arm':group,'event':'value',
+                                 'timestamp':pd.Timestamp('2026-01-01 12:00')+pd.Timedelta(days=j,seconds=rep),
+                                 'num':v[j] if paired else v[0]/repeat,
+                                 'den':1.0 if paired else v[1]/repeat})
+    df=pd.DataFrame(rows)
+    s=Eventstream(df,schema=SCHEMA,preprocess=False)
+    return s,pd.DataFrame(a).set_index('user_id'),df
+
+def specs(kind, total=False):
+    metric='column_sum' if total else 'column_mean'
+    m={'name':kind,'metric':metric,'metric_args':{'column':'num'},'test':'bootstrap'}
+    if kind=='ratio': m['denominator']={'metric':metric,'metric_args':{'column':'den'}}
+    return [m]
+
+def score(c,t,kind='mean',B=999,seed=SEED,weights='multinomial',repeat=1):
+    s,a,df=build(c,t,repeat=repeat)
+    kwargs={'diff':('arm','treatment','control'),'metrics':specs(kind,total=repeat>1),
+            'assignment':a,'n_bootstrap':B,'random_state':seed,'bootstrap_weights':weights}
+    return s.get_ab_test(**kwargs), s, a, kwargs, df
+
+def native(s,a,kind,B=999,seed=SEED):
+    component=lambda col:{'metric':'event_value_sum','metric_args':{'event':'value','value_col':col}}
+    if kind=='mean': m={'name':kind,'agg':'mean',**component('num')}
+    else:
+        m={'name':kind,'agg':kind if kind=='mean_of_ratios' else 'ratio_of_sums',
+           'numerator':component('num'),'denominator':component('den')}
+        if kind=='mean_of_ratios':m['eligibility']='denominator_positive'
+    return s.experiment_data(assignments=a.reset_index(),variant_col='arm',metrics=[m],
+        observation={'start':'2026-01-01','end':'2026-01-04','assignment_time_col':'assigned_at','complete':True},
+        bootstrap={'n_resamples':B,'random_state':seed})
+
+def expected(c,t,kind):
+    if kind=='ratio':
+        cc=oracle.finite_joint(np.asarray(c)[:,0],np.asarray(c)[:,1]); tt=oracle.finite_joint(np.asarray(t)[:,0],np.asarray(t)[:,1])
+        c,t=np.column_stack(cc),np.column_stack(tt)
+    else:
+        c,t=np.asarray(c),np.asarray(t)
+        if c.ndim>1:c=c[:,0]
+        if t.ndim>1:t=t[:,0]
+        c,t=c[np.isfinite(c)],t[np.isfinite(t)]
+    return {'control':oracle.arm_stat(c,kind),'treatment':oracle.arm_stat(t,kind),'delta':oracle.contrast(c,t,kind)}
+
+def fixture_audit(label):
+    fixtures={
+      'exact_mean':([1,4,9,16],[2,5,10,17],'mean'),
+      'ratio_vs_mean_ratios':([[1,1],[9,3],[0,0],[7,2]],[[6,1],[6,3],[1,0],[9,2]],'ratio'),
+      'joint_missing':([[1,1],[99,np.nan],[np.nan,99],[8,2],[4,2]],[[2,1],[777,np.nan],[np.nan,77],[12,2],[6,2]],'ratio'),
+      'all_zero_den':([[1,0],[2,0],[3,0]],[[3,0],[4,0],[5,0]],'ratio'),
+      'rare_den':(np.column_stack([np.r_[1.,np.zeros(19)],np.r_[1.,np.zeros(19)]]),np.column_stack([np.r_[2.,np.zeros(19)],np.r_[1.,np.zeros(19)]]),'ratio'),
+      'constant':([5]*25,[7]*25,'mean'),
+      'one_constant':([5]*25,np.linspace(5,9,25),'mean'),
+      'singleton':([2],[4],'mean'),
+      'unbalanced_tail':(np.r_[np.ones(11),1000.],np.r_[np.ones(119),300.],'mean'),
+    }
+    base_c=np.arange(1.,41.);base_t=np.arange(2.,42.)
+    for scale in [1e-200,1e-100,1.,1e100,1e200,1e306,1e307]:
+        fixtures[f'mean_scale_{scale}']=(base_c*scale,base_t*scale,'mean')
+        fixtures[f'ratio_scale_{scale}']=(np.column_stack([base_c*scale,(base_c+3)*scale]),np.column_stack([base_t*scale,(base_t+3)*scale]),'ratio')
+    outputs={}
+    for name,(c,t,kind) in fixtures.items():
+        record={'expected':expected(c,t,kind)}
+        try:
+            result,s,a,kwargs,df=score(c,t,kind)
+            df.to_csv(ROOT/f'{label}_{name}_input.csv',index=False)
+            record['scorecard']=result
+            reps=s.get_ab_bootstrap(**kwargs)
+            record['public_draw_summary']=oracle.interval(reps.delta,record['expected']['delta'])
+            np.savez_compressed(ROOT/f'{label}_{name}_draws.npz',delta=reps.delta,group1=reps.group1_value,group2=reps.group2_value)
+            if hasattr(s,'experiment_data'):
+                try:record['native']=native(s,a,kind)
+                except Exception as e: record['native_error']={'type':type(e).__name__,'message':str(e)}
+                if name=='ratio_vs_mean_ratios':record['native_mean_of_ratios']=native(s,a,'mean_of_ratios')
+        except Exception as e: record['error']={'type':type(e).__name__,'message':str(e)}
+        outputs[name]=record
+    # Unit-level sums invariant to splitting into repeat events.
+    c=np.linspace(1,100,32);t=np.linspace(3,102,48)
+    single,s,a,k,df=score(c,t,repeat=1)
+    repeated,_,_,_,df2=score(c,t,repeat=7)
+    outputs['repeat_event_invariance']={'one_event':single,'seven_events':repeated,
+        'expected':expected(c,t,'mean')}
+    # Explicit scheme comparison; there is no inferred automatic switch.
+    for scheme in ['multinomial','poisson']:
+        row,s,a,k,df=score([1,4],[2,5],weights=scheme)
+        reps=s.get_ab_bootstrap(**k)
+        outputs['scheme_'+scheme]={'scorecard':row,'finite_draws':int(np.isfinite(reps.delta).sum()),'requested':999}
+    save(f'{label}_fixtures.json',outputs)
+    return outputs
+
+def paired_audit(label):
+    rng=np.random.default_rng(SEED)
+    c0=rng.normal(100,30,40);t0=rng.normal(100,30,60)
+    c=np.column_stack([c0,c0+rng.normal(1,1,40)]);t=np.column_stack([t0,t0+rng.normal(2,1,60)])
+    s,a,df=build(c,t,paired=True)
+    kw={'diff':('arm','treatment','control'),'metrics':specs('mean'),'assignment':a,
+        'period':'D','n_bootstrap':1999,'random_state':SEED,'observation_end':'2026-01-03'}
+    if 'observation_end' not in inspect.signature(s.get_ab_bootstrap).parameters:
+        kw.pop('observation_end')
+    reps=s.get_ab_bootstrap(**kw)
+    labels=list(reps.period.unique())
+    contrast={'change':([labels[1]],[labels[0]])}
+    allreps=s.get_ab_bootstrap(**kw,contrast=contrast)
+    draws=allreps.loc[allreps.contrast=='change','delta'].to_numpy()
+    expected=oracle.contrast(c,t,'paired_mean')
+    literal=oracle.bootstrap(c,t,'paired_mean',n_resamples=4999,seed=SEED)
+    np.savez_compressed(ROOT/f'{label}_paired_draws.npz',public=draws,literal=literal,control=c,treatment=t)
+    df.to_csv(ROOT/f'{label}_paired_input.csv',index=False)
+    result={'period_labels':labels,'expected':expected,'public':oracle.interval(draws,expected),
+            'literal':oracle.interval(literal,expected),
+            'paired_mean_se_analytic':float(np.sqrt(np.var(c[:,1]-c[:,0],ddof=1)/len(c)+np.var(t[:,1]-t[:,0],ddof=1)/len(t))),
+            'incorrect_independent_period_se':float(np.sqrt(np.var(c[:,0],ddof=1)/len(c)+np.var(c[:,1],ddof=1)/len(c)+np.var(t[:,0],ddof=1)/len(t)+np.var(t[:,1],ddof=1)/len(t)))}
+    save(f'{label}_paired.json',result)
+    # Missing period values retain the assigned cohort but change eligible units.
+    # The frozen oracle is applied to explicitly jointly eligible complete pairs.
+    c=np.tile(np.array([[1.,2.],[100.,np.nan],[np.nan,100.]]),(10,1))
+    t=np.tile(np.array([[2.,3.],[200.,np.nan],[np.nan,400.]]),(10,1))
+    s,a,df=build(c,t,paired=True)
+    kw['assignment']=a
+    missing_reps=s.get_ab_bootstrap(**kw,contrast=contrast)
+    draws=missing_reps.loc[missing_reps.contrast=='change','delta'].to_numpy()
+    cc=np.column_stack(oracle.finite_joint(c[:,0],c[:,1]));tt=np.column_stack(oracle.finite_joint(t[:,0],t[:,1]))
+    complete=oracle.contrast(cc,tt,'paired_mean')
+    observed=(np.nanmean(t[:,1])-np.nanmean(t[:,0]))-(np.nanmean(c[:,1])-np.nanmean(c[:,0]))
+    save(f'{label}_paired_missing.json',{'complete_pair_effect':complete,'period_specific_eligible_effect':observed,
+        'public':oracle.interval(draws,observed),'all_period_rows':s.get_ab_test(**kw)})
+    df.to_csv(ROOT/f'{label}_paired_missing_input.csv',index=False)
+    missing_reps.to_csv(ROOT/f'{label}_paired_missing_draws.csv',index=False)
+
+def kernel_audit(label):
+    # Seed conventions are adapters, not changes to frozen estimand oracle.
+    c=np.array([[1.,1.],[8.,2.],[0.,0.],[17.,5.]])
+    t=np.array([[2.,1.],[7.,2.],[1.,0.],[25.,5.],[3.,1.]])
+    num=np.r_[t[:,0],c[:,0]];den=np.r_[t[:,1],c[:,1]];arm=np.r_[np.zeros(len(t),int),np.ones(len(c),int)]
+    r=bs.bootstrap_paths(num,den,arm,4999,random_state=SEED)
+    literal=oracle.bootstrap(c,t,'ratio',n_resamples=4999,seed=SEED)
+    # Check exact equivalence by capturing implementation's count weights, expanding
+    # their sampled unit identities, and recomputing the frozen ratio from scratch.
+    import retentioneering.tools._bootstrap as mod
+    original=mod._draw if label=='pr217' else None
+    if label=='pr217':
+        children=np.random.SeedSequence(SEED).spawn(2)
+        counts=[mod._draw(np.random.default_rng(children[i]),'multinomial',4999,len(v)) for i,v in enumerate([t,c])]
+    else:
+        from retentioneering.stats.resampling import draw_weights
+        children=np.random.SeedSequence(SEED).spawn(2)[::-1]
+        counts=[draw_weights(np.random.default_rng(children[i]),'multinomial',4999,len(v)) for i,v in enumerate([t,c])]
+    literal_same=[]
+    for b in range(4999):
+        tt=np.repeat(t,counts[0][b].astype(int),axis=0);cc=np.repeat(c,counts[1][b].astype(int),axis=0)
+        literal_same.append(oracle.contrast(cc,tt,'ratio'))
+    err=np.nanmax(np.abs(r.delta[:,0]-literal_same))
+    result={'count_expansion_max_abs_error':float(err),'n':4999,
+            'public_kernel':oracle.interval(r.delta[:,0],oracle.contrast(c,t,'ratio')),
+            'independent_rng_literal':oracle.interval(literal,oracle.contrast(c,t,'ratio'))}
+    # Availability comparison on 998 finite values and one invalid value.
+    x=np.linspace(-1,1,999);x[0]=np.nan
+    result['one_invalid_draw']={'percentile':bs.percentile_ci(x),'bootstrap_se':bs.bootstrap_se(x),'bootstrap_p':bs.bootstrap_p(np.array([.1]),x)}
+    # Direct public kernel numeric scaling exposes summation overflow separately
+    # from event aggregation and scorecard diagnostics.
+    for scale in [1e-200,1e200,1e306]:
+        z=bs.bootstrap_paths(np.r_[np.arange(2.,42.),np.arange(1.,41.)]*scale,None,np.r_[np.zeros(40,int),np.ones(40,int)],999,random_state=SEED)
+        result[f'kernel_scale_{scale}']={'valid':int(z.valid[0]),'first_delta':z.delta[0,0],
+            'percentile':bs.percentile_ci(z.delta),'bootstrap_p':bs.bootstrap_p(np.array([scale]),z.delta)}
+    save(f'{label}_kernel.json',result)
+
+def simulations(label,trials=300,B=399):
+    rng=np.random.default_rng(SEED+202)
+    records=[]
+    for condition in ['normal_40_60','lognormal_15_150','rare_mixture_30_90','paired_40_60']:
+        for j in range(trials):
+            if condition=='normal_40_60':c=rng.normal(10,1,40);t=rng.normal(10,1,60)
+            elif condition=='lognormal_15_150':c=rng.lognormal(0,2,15);t=rng.lognormal(0,2,150)
+            elif condition=='rare_mixture_30_90':c=1+100*(rng.random(30)<.01);t=1+100*(rng.random(90)<.01)
+            else:
+                c0=rng.normal(100,30,40);t0=rng.normal(100,30,60)
+                c=np.column_stack([c0,c0+rng.normal(0,1,40)]);t=np.column_stack([t0,t0+rng.normal(0,1,60)])
+            seed=SEED+10000+j
+            if condition=='paired_40_60':
+                arr=np.vstack([t,c]);den=np.ones_like(arr)
+                arm=np.r_[np.zeros(len(t),int),np.ones(len(c),int)]
+                res=bs.bootstrap_paths(arr,den,arm,B,random_state=seed)
+                draws=(res.group1[:,1]-res.group1[:,0])-(res.group2[:,1]-res.group2[:,0])
+                est=oracle.contrast(c,t,'paired_mean')
+            else:
+                arr=np.r_[t,c];arm=np.r_[np.zeros(len(t),int),np.ones(len(c),int)]
+                res=bs.bootstrap_paths(arr,None,arm,B,random_state=seed)
+                draws=res.delta[:,0];est=oracle.contrast(c,t)
+            lo,hi=bs.percentile_ci(draws)
+            p=float(bs.bootstrap_p(np.array([est]),draws)[0])
+            rec={'condition':condition,'trial':j,'seed':seed,'estimate':est,'low':float(lo[0]),'high':float(hi[0]),'p':p,'valid':int(np.isfinite(draws).sum())}
+            rec['available']=bool(np.isfinite(lo[0]) and np.isfinite(hi[0]))
+            rec['covered']=bool(rec['available'] and lo[0]<=0<=hi[0]);rec['rejected']=bool(np.isfinite(p) and p<.05)
+            rec['ci_excludes_null']=bool(rec['available'] and not rec['covered'])
+            # A few end-to-end bridge cases preserve exact public API validation.
+            if j<5 and condition!='paired_40_60':
+                row,_,_,_,_=score(c,t,B=B,seed=seed)
+                rec['public_bridge']=row.to_dict('records')[0]
+            records.append(rec)
+        save(f'{label}_simulation_raw.json',records)
+    summary=[]
+    for condition in dict.fromkeys(r['condition'] for r in records):
+        rs=[r for r in records if r['condition']==condition];n=len(rs);avail=sum(r['available'] for r in rs);cov=sum(r['covered'] for r in rs);rej=sum(r['rejected'] for r in rs);mis=sum(r['rejected']!=r['ci_excludes_null'] for r in rs)
+        summary.append({'condition':condition,'trials':n,'B':B,'available':avail,'covered':cov,'coverage_all':cov/n,
+            'coverage_all_wilson95':oracle.wilson(cov,n),'coverage_available':cov/avail if avail else None,
+            'coverage_available_wilson95':oracle.wilson(cov,avail),'rejections':rej,'type1':rej/n,'type1_wilson95':oracle.wilson(rej,n),
+            'p_ci_disagreement':mis})
+    pd.DataFrame([{k:v for k,v in r.items() if k!='public_bridge'} for r in records]).to_csv(ROOT/f'{label}_simulation_raw.csv',index=False)
+    save(f'{label}_simulation_summary.json',summary)
+
+def main():
+    parser=argparse.ArgumentParser();parser.add_argument('--label',required=True);parser.add_argument('--mode',choices=['fixtures','simulation','all'],default='all');parser.add_argument('--trials',type=int,default=300)
+    args=parser.parse_args();start=time.time()
+    import retentioneering
+    source=pathlib.Path(retentioneering.__file__).resolve()
+    save(f'{args.label}_provenance.json',{'python':sys.version,'platform':platform.platform(),'source':str(source),
+        'versions':{x:importlib.metadata.version(x) for x in ['numpy','pandas','scipy','duckdb']},
+        'seed':SEED,'oracle_sha256':hashlib.sha256((ROOT/'oracle.py').read_bytes()).hexdigest(),
+        'run_review_sha256':hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest(),
+        'source_hashes':{str(p.relative_to(source.parent)):hashlib.sha256(p.read_bytes()).hexdigest() for p in source.parent.rglob('*.py') if p.name in ['_bootstrap.py','ab_test.py','experiments.py','resampling.py','experiment.py']}})
+    outcomes={}
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        if args.mode in ['all','fixtures']:
+            for name,fn in [('fixtures',fixture_audit),('paired',paired_audit),('kernel',kernel_audit)]:
+                try:
+                    fn(args.label);outcomes[name]='completed'
+                except Exception as e:
+                    outcomes[name]={'error_type':type(e).__name__,'message':str(e)}
+        if args.mode in ['all','simulation']:simulations(args.label,args.trials)
+    save(f'{args.label}_{args.mode}_warnings.json',[{'category':str(w.category.__name__),'message':str(w.message),'filename':w.filename,'line':w.lineno} for w in caught])
+    save(f'{args.label}_{args.mode}_outcomes.json',outcomes)
+    print(json.dumps({'label':args.label,'mode':args.mode,'seconds':time.time()-start,'warnings':len(caught),'outcomes':outcomes}))
+
+if __name__=='__main__':main()

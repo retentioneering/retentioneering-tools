@@ -43,21 +43,21 @@ Write each as {"metric": <name>, "metric_args": {...}}; get_ab_test also takes
 "name" (row label), "denominator" (a second config: ratio of sums) and "test".
 Arguments always go under "metric_args".
 
-0/1 per path (A/B: z-test, delta in percentage points; a silent path counts 0):
+0/1 per path (A/B: Fisher exact by default, delta in percentage points; a silent path counts 0):
   has_event        {"event": "purchase"}
   has_any_event    {"events": ["add_to_cart", "quick_add"]}   (union of events)
   has_all_events   {"events": ["cart", "checkout"]}
   matches_pattern  {"pattern": "cart->.*->purchase"}
   in_segment       {"segment_name": "platform", "segment_level": "ios"}
                    (+ "mode": "any" | "all" | "event_share", "threshold")
-Totals per path (A/B: Welch; a silent path counts 0):
+Totals per path (A/B: descriptive by default; explicit Welch/bootstrap approximate; a silent path counts 0):
   event_count      {"event": "purchase"}
   length           {}                        events per path
   active_days      {} or {"active_events": ["purchase"]}   distinct days
   column_sum       {"column": "amount"}      a value column, see describe()
   event_value_sum  {"event": "purchase", "value_col": "amount"}
                    sum matching finite values; matching missing/invalid values fail
-Values, undefined for some paths (A/B: Welch over the paths with a value;
+Values, undefined for some paths (A/B: descriptive by default over paths with a value;
 the row is conditional=true when a path has none):
   duration         {}                        seconds, first to last event
   time_between     {"start_event": "cart", "end_event": "purchase"}  seconds
@@ -68,7 +68,7 @@ Not one number per path (rejected by get_ab_test):
   in_segment_bulk  {"segment_name": "platform"}     one column per event/level
   first_event_time {}                               a timestamp
 
-Ratio of sums, e.g. average order value (A/B: joint bootstrap; conditional):
+Ratio of sums, e.g. average order value (A/B: descriptive by default; explicit approximate joint bootstrap; conditional):
   {"name": "aov", "metric": "column_sum", "metric_args": {"column": "amount"},
    "denominator": {"metric": "event_count", "metric_args": {"event": "purchase"}}}""",
     "report_links": """\
@@ -286,12 +286,15 @@ def _static_instructions(tail: str = "") -> str:
         "",
         "### A/B test (did the treatment work?)",
         "Call get_sample_ratio(arm_col) FIRST and quote its reading; a mismatch",
-        "  voids every metric.",
+        "is a diagnostic alarm to investigate. Null mismatch or unavailable inference",
+        "is not evidence of balance. Read p_value_method and sampling_assumption.",
         "Ask for ONE decision metric and any guardrails (each with the harm it may",
-        "  do) BEFORE the first get_ab_test call; metrics are not corrected against",
-        "  each other, and guardrails are read alone against their margin.",
+        "  do) BEFORE the first get_ab_test call. All declared rows are corrected",
+        "  together by default; a guardrail needs its declared harm margin.",
         "Then get_ab_test(diff=[arm_col, 'treatment', 'control'], metrics=[...]):",
-        "  report delta with its interval, the mde and the verdict. 'inconclusive' is",
+        "  Binary defaults use Fisher exact; nonbinary defaults are descriptive.",
+        "  Explicit nonbinary Welch/bootstrap and guarded z remain approximate.",
+        "  Report delta, available intervals, normal-approximation mde and verdict. 'inconclusive' is",
         "  NOT 'no effect': quote the row's reading. Never propose running the test",
         "  longer or re-reading it at another horizon (peeking): a next step is a",
         "  NEW test, sized and with its horizon fixed before it starts.",

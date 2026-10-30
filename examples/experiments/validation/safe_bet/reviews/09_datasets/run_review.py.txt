@@ -1,0 +1,313 @@
+"""Configurable public-API audit. The sibling oracle.py is immutable/frozen."""
+import argparse
+import hashlib
+import importlib.util
+import json
+import platform
+import sys
+import traceback
+import warnings
+from dataclasses import asdict
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+from oracle import arm_summary, effect, per_user, ratio_of_totals, srm_two_arm
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--source', type=Path, required=True)
+parser.add_argument('--output', type=Path, required=True)
+parser.add_argument('--bootstrap', type=int, default=100)
+args = parser.parse_args()
+sys.path.insert(0, str(args.source.resolve() / 'src'))
+from retentioneering import Eventstream, datasets
+
+args.output.mkdir(parents=True, exist_ok=True)
+checks, facts, errors = [], [], []
+
+
+def save_json(path, obj):
+    path.write_text(json.dumps(obj, indent=2, default=lambda v: str(v)) + '\n')
+
+
+def check(case, api, field, actual, expected):
+    same = actual is None and expected is None
+    try:
+        same = bool(np.isclose(actual, expected, rtol=1e-10, atol=1e-11, equal_nan=True))
+    except (TypeError, ValueError):
+        same = actual == expected
+    checks.append(dict(case=case, api=api, field=field, actual=actual, expected=expected, passed=bool(same)))
+
+
+def specs(target, value=None):
+    conversion = dict(metric='has_event', metric_args=dict(event=target))
+    count = dict(metric='event_count', metric_args=dict(event=target))
+    legacy = [dict(name='conversion', **conversion), dict(name='orders', **count)]
+    modern = [dict(name='conversion', agg='mean', **conversion), dict(name='orders', agg='mean', **count)]
+    if value:
+        total = dict(metric='event_value_sum', metric_args=dict(event=target, value_col=value))
+        legacy += [dict(name='revenue', **total), dict(name='aov', **total, denominator=count)]
+        modern += [dict(name='revenue', agg='mean', **total), dict(name='aov', agg='ratio_of_sums', numerator=total, denominator=count)]
+    return legacy, modern
+
+
+def oracle_table(roster, raw, target, value=None, start=None, end=None):
+    return per_user(roster.reset_index().rename(columns={'arm':'group'}), raw,
+                    user_col=roster.index.name, target=target, value_col=value, start=start, end=end)
+
+
+def summary_values(user_table):
+    result = arm_summary(user_table).set_index('group')
+    result['orders'] = result.mean_event_count
+    result['conversion'] = result.conversion_rate
+    if 'mean_value' in result:
+        result['revenue'] = result.mean_value
+        ratio = ratio_of_totals(user_table, user_table, numerator_col='value_sum').set_index('group')
+        result['aov'] = ratio.ratio
+    return result
+
+
+def post_assignment(raw, assignment):
+    mapped = raw[assignment.index.name].map(assignment.assigned_at)
+    return raw.loc[pd.to_datetime(raw.timestamp).ge(mapped)].copy()
+
+
+def compare_legacy(name, raw, stream, assignment, target, value, cutoff, out):
+    legacy, modern = specs(target, value)
+    post = post_assignment(raw, assignment)
+    users = oracle_table(assignment, post, target, value)
+    users.to_csv(out / 'oracle_users.csv.gz', index=False)
+    expected = summary_values(users)
+    expected.to_csv(out / 'oracle_arms.csv')
+    paths = stream.get_ab_paths(('arm','treatment','control'), legacy, assignment=assignment)
+    paths.to_csv(out / 'api_paths.csv.gz')
+    idx = assignment.index.name
+    u = users.set_index(idx).reindex(paths.index)
+    for col, oracle_col in [('conversion','converted'), ('orders','event_count'), ('revenue','value_sum'), ('aov_numerator','value_sum'), ('aov_denominator','event_count')]:
+        if col in paths:
+            check(name, 'get_ab_paths', col + ':max_abs_difference', float(np.max(np.abs(paths[col]-u[oracle_col]))), 0.0)
+    active = post[idx].unique()
+    check(name, 'get_ab_paths', 'silent_count', int(paths.silent.sum()), int((~assignment.index.isin(active)).sum()))
+    check(name, 'get_ab_paths', 'roster_count', len(paths), len(assignment))
+    score = stream.get_ab_test(('arm','treatment','control'), legacy, assignment=assignment,
+                               n_bootstrap=args.bootstrap, observation_end=cutoff)
+    score.to_csv(out / 'api_score.csv', index=False)
+    for row in score.to_dict('records'):
+        c, t = expected.loc['control',row['metric']], expected.loc['treatment',row['metric']]
+        for field, exp in [('group1_value',t), ('group2_value',c), ('delta',t-c),
+                           ('group1_paths',int(expected.loc['treatment','n_users'])), ('group2_paths',int(expected.loc['control','n_users']))]:
+            check(name, 'get_ab_test', row['metric']+':'+field, row[field], exp)
+    srm = stream.get_sample_ratio(assignment=assignment)
+    save_json(out / 'api_srm.json', {k:v.to_dict('records') if isinstance(v,pd.DataFrame) else v for k,v in srm.items()})
+    oracle_srm = srm_two_arm(assignment.reset_index().rename(columns={'arm':'group'}), 'control','treatment')
+    save_json(out / 'oracle_srm.json', oracle_srm)
+    for field, oracle_field in [('chi2','chi_square'),('p_value','p_value')]:
+        check(name,'get_sample_ratio',field,srm[field],oracle_srm[oracle_field])
+    # Independent assignment-only strata preserve every silent user's segment.
+    strata = assignment.copy()
+    strata['audit_bucket'] = np.where(np.arange(len(strata)) % 2 == 0, 'even','odd')
+    sliced = stream.get_ab_test(('arm','treatment','control'), legacy[:2], assignment=strata,
+        strata_col='audit_bucket', strata_pre_exposure=True, period='7D', observation_end=cutoff)
+    sliced.to_csv(out / 'api_segment_period.csv',index=False)
+    for i, row in sliced.iterrows():
+        selected = strata.loc[strata.audit_bucket.eq(row.stratum) & strata.assigned_at.lt(row.period_end)]
+        expected_cell = summary_values(oracle_table(selected,post,target,start=row.period_start,end=row.period_end))
+        for arm, prefix in [('treatment','group1'),('control','group2')]:
+            if arm in expected_cell.index:
+                check(name,'segment_period',f'{i}:{prefix}_value',row[prefix+'_value'],expected_cell.loc[arm,row.metric])
+                check(name,'segment_period',f'{i}:{prefix}_paths',row[prefix+'_paths'],expected_cell.loc[arm,'n_users'])
+    return score, expected
+
+
+def compare_fixed(name, raw, stream, assignment, target, value, start, end, out):
+    _, modern = specs(target,value)
+    roster = assignment.loc[assignment.assigned_at.le(pd.Timestamp(start))]
+    raw = raw.loc[raw.user_id.isin(roster.index)].copy()
+    stream = stream.filter_events(func=lambda frame: frame.user_id.isin(roster.index))
+    expected_users = oracle_table(roster,raw,target,value,start,end)
+    expected_users.to_csv(out / 'fixed_oracle_users.csv.gz',index=False)
+    expected = summary_values(expected_users)
+    expected.to_csv(out / 'fixed_oracle_arms.csv')
+    payload = stream.experiment_data(assignments=roster.reset_index(),variant_col='arm',
+       observation=dict(start=str(start),end=str(end),assignment_time_col='assigned_at',complete=True),
+       metrics=modern,event_catalog={'event':sorted(raw.event.unique())},expected_allocation=0.5,
+       binary_intervals=dict(method='newcombe',confidence_level=0.95))
+    save_json(out / 'api_experiment.json',payload)
+    for row in payload['summary']:
+        c,t = expected.loc['control',row['metric']],expected.loc['treatment',row['metric']]
+        for field, exp in [('control',c),('treatment',t),('absolute_effect',t-c),
+                           ('control_units',expected.loc['control','n_users']),('treatment_units',expected.loc['treatment','n_users'])]:
+            check(name,'experiment_data',row['metric']+':'+field,row[field],exp)
+    selected = raw.loc[raw.timestamp.ge(pd.Timestamp(start)) & raw.timestamp.lt(pd.Timestamp(end))]
+    for row in payload['diagnostics']:
+        ids = roster.index[roster.arm.eq(row['arm'])]
+        check(name,'experiment_data','observed:'+row['arm'],row['n_observed'],int(selected.loc[selected.user_id.isin(ids),'user_id'].nunique()))
+    return payload
+
+
+configs = {
+    'northwind_home':('order_success','order_value','2026-04-27'),
+    'srm_platform_bug':('order_success','order_value','2026-06-08'),
+    'session_assignment':('order_success','order_value','2026-06-29'),
+    'aa_calibration':('order_success','order_value','2026-08-03'),
+    'trial_conversion':('subscribe',None,'2026-02-18'),
+    'push_campaign':('purchase','order_value','2026-10-01'),
+}
+
+
+def run_dataset(name):
+    target,value,cutoff=configs[name]
+    out=args.output/name
+    out.mkdir(exist_ok=True)
+    print('START',name,flush=True)
+    stream = datasets.load_ab_test(name)
+    raw = stream.to_dataframe()
+    assignment = datasets.load_ab_test_assignment(name)
+    raw.to_csv(out/'events.csv.gz',index=False)
+    assignment.to_csv(out/'assignment.csv.gz')
+    unit=assignment.index.name
+    mapped=raw[unit].map(assignment.assigned_at)
+    fact=dict(dataset=name,event_rows=len(raw),observed_users=raw.user_id.nunique(),assigned_units=len(assignment),
+        assignment_unit=unit,assignment_duplicates=int(assignment.index.duplicated().sum()),
+        unassigned_event_units=int((~raw[unit].isin(assignment.index)).sum()),
+        silent_units=int((~assignment.index.isin(raw[unit])).sum()),
+        preassignment_events=int(raw.timestamp.lt(mapped).sum()),missing_timestamp=int(raw.timestamp.isna().sum()),
+        mixed_user_arms=int(raw.groupby('user_id').exp_group.nunique().gt(1).sum()),
+        event_counts=raw.event.value_counts().to_dict(),schema=repr(stream.schema),
+        raw_hash=hashlib.sha256(pd.util.hash_pandas_object(raw,index=True).values.tobytes()).hexdigest())
+    facts.append(fact)
+    save_json(out/'facts.json',fact)
+    if name=='session_assignment':
+        for label,kw in [('user_stream',{}),('user_assignment',{'assignment':assignment}),('session_assignment',{'assignment':assignment,'path_col':'session_id'})]:
+            try:
+                stream.get_ab_test(('exp_group','treatment','control'),specs(target,value)[0],**kw)
+                check(name,'unit_guard',label,'accepted','rejected')
+            except Exception as e:
+                check(name,'unit_guard',label,'rejected','rejected')
+                save_json(out/(label+'_rejection.json'),dict(type=type(e).__name__,message=str(e)))
+        # First session per user is a separate, explicitly limited estimand.
+        first = raw.sort_values('timestamp').groupby('user_id').session_id.first()
+        first_raw=raw.loc[raw.session_id.isin(first)].copy()
+        first_assignment=first_raw.groupby('user_id').agg(arm=('exp_group','first'),assigned_at=('timestamp','min'))
+        first_stream=Eventstream(first_raw,schema=asdict(stream.schema))
+        compare_legacy(name+'_first_session',first_raw,first_stream,first_assignment,target,value,cutoff,out)
+    else:
+        score,expected=compare_legacy(name,raw,stream,assignment,target,value,cutoff,out)
+        compare_fixed(name,raw,stream,assignment,target,value,pd.Timestamp(cutoff)-pd.Timedelta('7D'),cutoff,out)
+        if name=='push_campaign':
+            selected=raw[['user_id','exp_group']].drop_duplicates().rename(columns={'exp_group':'group'})
+            observed=arm_summary(per_user(selected,raw,target=target)).set_index('group')
+            save_json(out/'population_sign.json',dict(itt=effect(expected.loc['control','conversion'],expected.loc['treatment','conversion']),
+                stream_only=effect(observed.loc['control','conversion_rate'],observed.loc['treatment','conversion_rate'])))
+        if name=='trial_conversion':
+            mature=assignment.loc[assignment.assigned_at+pd.Timedelta('21D')<=pd.Timestamp(cutoff)]
+            events=post_assignment(raw,mature)
+            events=events.loc[events.timestamp.lt(events.user_id.map(mature.assigned_at)+pd.Timedelta('21D'))]
+            expected_h=summary_values(oracle_table(mature,events,target))
+            h=stream.get_ab_test(('arm','treatment','control'),specs(target)[0],assignment=assignment,horizon='21D',observation_end=cutoff)
+            h.to_csv(out/'horizon_score.csv',index=False)
+            for row in h.to_dict('records'):
+                check(name,'horizon',row['metric']+':delta',row['delta'],expected_h.loc['treatment',row['metric']]-expected_h.loc['control',row['metric']])
+                check(name,'horizon',row['metric']+':immature',row['immature_paths'],len(assignment)-len(mature))
+    print('DONE',name,flush=True)
+
+
+def run_lumeo():
+    out=args.output/'lumeo';out.mkdir(exist_ok=True)
+    root=args.source/'notebooks/data/lumeo'
+    manifest=json.loads((root/'manifest.json').read_text())
+    tables={}
+    for name,info in manifest['files'].items():
+        path=root/info['path'];frame=pd.read_csv(path)
+        tables[name]=frame
+        check('lumeo','integrity',name+':sha256',hashlib.sha256(path.read_bytes()).hexdigest(),info['sha256'])
+        check('lumeo','integrity',name+':rows',len(frame),info['rows'])
+        check('lumeo','integrity',name+':columns',list(frame),info['columns'])
+    raw=tables['events'];raw.timestamp=pd.to_datetime(raw.timestamp)
+    assignment=tables['assignments'].rename(columns={'exp_group':'arm'}).set_index('user_id')
+    assignment.assigned_at=pd.to_datetime(assignment.assigned_at)
+    assignment=assignment.loc[assignment.assigned_at.lt(pd.Timestamp('2026-05-11'))]
+    raw=raw.loc[raw.user_id.isin(assignment.index)].copy()
+    raw['exp_group']=raw.user_id.map(assignment.arm)
+    schema=dict(path_cols=['user_id','session_id'],segment_cols=['exp_group'],custom_cols=['order_value_gbp','order_items'])
+    stream=Eventstream(raw,schema=schema)
+    compare_fixed('lumeo',raw,stream,assignment,'order_success','order_value_gbp','2026-05-11','2026-05-25',out)
+    window=raw.loc[raw.timestamp.ge('2026-05-11') & raw.timestamp.lt('2026-05-25')]
+    window_stream=Eventstream(window,schema=schema)
+    compare_legacy('lumeo',window,window_stream,assignment,'order_success','order_value_gbp','2026-05-25',out)
+    for arm,assigned,active,sessions in [('control',1696,117,244),('treatment',1623,99,173)]:
+        arm_window=window.loc[window.exp_group.eq(arm)]
+        check('lumeo','data_card',arm+':assigned',int(assignment.arm.eq(arm).sum()),assigned)
+        check('lumeo','data_card',arm+':active',arm_window.user_id.nunique(),active)
+        check('lumeo','data_card',arm+':sessions',arm_window.session_id.nunique(),sessions)
+        check('lumeo','data_card',arm+':buyers',arm_window.loc[arm_window.event.eq('order_success'),'user_id'].nunique(),6)
+    screens,clicks=tables['screens'],tables['clicks']
+    check('lumeo','integrity','screen_unique',screens.screen_instance_id.is_unique,True)
+    check('lumeo','integrity','tap_unique',clicks.tap_id.is_unique,True)
+    check('lumeo','integrity','tap_screen_membership',clicks.screen_instance_id.isin(screens.screen_instance_id).all(),True)
+    fact=dict(dataset='lumeo',event_rows=len(tables['events']),cohort_events=len(raw),cohort_assignments=len(assignment),
+        prewindow_events=int(raw.timestamp.lt('2026-05-11').sum()),window_events=len(window),
+        complete_zero_tap_screens=int((screens.recording_complete & screens.n_taps.eq(0)).sum()),
+        incomplete_screens=int((~screens.recording_complete).sum()))
+    facts.append(fact);save_json(out/'facts.json',fact)
+    print('DONE lumeo',flush=True)
+
+
+def run_heldout():
+    out=args.output/'heldout';out.mkdir(exist_ok=True)
+    a=pd.DataFrame(dict(user_id=range(1,13),arm=['control']*6+['treatment']*6,assigned_at=pd.Timestamp('2026-01-01'))).set_index('user_id')
+    rows=[(1,'2025-12-31',1000),(1,'2026-01-01',2),(1,'2026-01-02',4),
+          (2,'2026-01-03',1000),(7,'2026-01-01',8),(8,'2026-01-02',10),
+          (9,'2026-01-03',1000),(10,'2025-12-31',1000)]
+    raw=pd.DataFrame(rows,columns=['user_id','timestamp','value']);raw['event']='buy';raw.timestamp=pd.to_datetime(raw.timestamp)
+    raw['session_id']=raw.user_id.astype(str)+'_1';raw['exp_group']=raw.user_id.map(a.arm)
+    # Add an unrelated recorded event so zero-purchase fixtures retain a source stream.
+    raw=pd.concat([raw,pd.DataFrame(dict(user_id=[3],timestamp=[pd.Timestamp('2026-01-02')],value=[np.nan],event=['view'],session_id=['3_1'],exp_group=['control']))],ignore_index=True)
+    schema=dict(path_cols=['user_id','session_id'],segment_cols=['exp_group'],custom_cols=['value'])
+    raw.to_csv(out/'fixture_events.csv',index=False);a.to_csv(out/'fixture_assignments.csv')
+    s=Eventstream(raw,schema=schema)
+    p=compare_fixed('heldout',raw,s,a,'buy','value','2026-01-01','2026-01-03',out)
+    check('heldout','hand_computation','control_revenue',p['summary'][2]['control'],1)
+    check('heldout','hand_computation','treatment_revenue',p['summary'][2]['treatment'],3)
+    # Window filtering uses original complete roster even when most people are silent.
+    win=raw.loc[raw.timestamp.ge('2026-01-01') & raw.timestamp.lt('2026-01-03')]
+    compare_legacy('heldout_window',win,Eventstream(win,schema=schema),a,'buy','value','2026-01-03',out)
+    modern=specs('buy','value')[1]
+    obs=dict(start='2026-01-01',end='2026-01-03',assignment_time_col='assigned_at',complete=True)
+    variants={
+        'unknown_event_user':(pd.concat([raw,raw.iloc[[1]].assign(user_id=99,session_id='99_1')],ignore_index=True),a),
+        'duplicate_assignment':(raw,pd.concat([a,a.iloc[[0]]])),
+        'missing_order_value':(raw.assign(value=raw.value.mask(raw.index==1)),a),
+    }
+    for label,(events,roster) in variants.items():
+        try:
+            got=Eventstream(events,schema=schema).experiment_data(assignments=roster.reset_index(),variant_col='arm',observation=obs,metrics=modern)
+            save_json(out/(label+'.json'),got);check('heldout','reject_invalid',label,'accepted','rejected')
+        except Exception as e:
+            save_json(out/(label+'.json'),dict(type=type(e).__name__,message=str(e)))
+            check('heldout','reject_invalid',label,'rejected','rejected')
+    zero=Eventstream(raw.loc[raw.event.ne('buy')],schema=schema).experiment_data(assignments=a.reset_index(),variant_col='arm',observation=obs,metrics=modern,event_catalog={'event':['buy','view']})
+    save_json(out/'zero_denominator.json',zero)
+    check('heldout','zero_denominator','aov_control',zero['summary'][3]['control'],None)
+    check('heldout','zero_denominator','aov_treatment',zero['summary'][3]['treatment'],None)
+    print('DONE heldout',flush=True)
+
+
+save_json(args.output/'environment.json',dict(python=platform.python_version(),pandas=pd.__version__,numpy=np.__version__,
+    source=str(args.source.resolve()),oracle_sha256=hashlib.sha256(Path(__file__).with_name('oracle.py').read_bytes()).hexdigest(),
+    source_hashes={str(p.relative_to(args.source)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted((args.source/'src').rglob('*.py'))},
+    bootstrap_replicates=args.bootstrap,seed=9072026,note='Aggregate agreement only; no inferential coverage claim'))
+for name in configs:
+    try: run_dataset(name)
+    except Exception:
+        error=dict(case=name,traceback=traceback.format_exc());errors.append(error);print(error['traceback'],flush=True)
+for name,fn in [('lumeo',run_lumeo),('heldout',run_heldout)]:
+    try:fn()
+    except Exception:
+        error=dict(case=name,traceback=traceback.format_exc());errors.append(error);print(error['traceback'],flush=True)
+pd.DataFrame(checks).to_csv(args.output/'checks.csv',index=False)
+save_json(args.output/'facts.json',facts)
+save_json(args.output/'errors.json',errors)
+save_json(args.output/'summary.json',dict(checks=len(checks),passed=sum(c['passed'] for c in checks),failed=sum(not c['passed'] for c in checks),errors=len(errors)))
+print(json.dumps(dict(checks=len(checks),failed=sum(not c['passed'] for c in checks),errors=len(errors))),flush=True)

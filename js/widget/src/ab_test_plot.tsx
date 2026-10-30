@@ -36,6 +36,14 @@ export interface ABRow {
   correction_family?: string;
   mde?: number | null;
   rel_mde?: number | null;
+  mde_basis?: string;
+  ci_basis?: string;
+  p_basis?: string;
+  delta_ci_low_adj?: number | null;
+  delta_ci_high_adj?: number | null;
+  delta_ci_adjusted_basis?: string;
+  delta_ci_adjusted_status?: string;
+  strata_diagnostics_basis?: string;
   verdict?: string;
   test?: string;
   support_warning?: string;
@@ -124,9 +132,10 @@ export const VERDICT_LABELS: Record<string, string> = {
 
 export const SUPPORT_NOTES: Record<string, string> = {
   no_data: "No path of either arm has the behaviour, or an arm has no estimate (no path, or no value): nothing to compare, no test.",
-  one_arm_only: "The behaviour exists in one arm only: the pooled test is valid, the behaviour is new.",
-  invalid_replicates: "More than 1 % of bootstrap replicates had no value in an arm: no interval or p-value, the estimate is descriptive.",
+  one_arm_only: "The behaviour was observed in one arm only. Read the selected method and its support status before interpreting the contrast.",
+  invalid_replicates: "At least one bootstrap replicate had no value in an arm: no interval or p-value, the estimate is descriptive.",
   low_support: "Few supporting paths behind a bootstrap interval: percentile intervals under-cover here.",
+  insufficient_expected_cells: "The approximate z-test requires at least five expected successes and failures in each arm. No inferential p-value is available.",
 };
 
 // ── number formatting ──────────────────────────────────────────────────────
@@ -242,6 +251,41 @@ const th: React.CSSProperties = { padding: "6px 8px", fontSize: 11, fontWeight: 
 const td: React.CSSProperties = { padding: "5px 8px", fontSize: 12, textAlign: "right", color: "#111827", borderBottom: "1px solid #f3f4f6", whiteSpace: "nowrap", verticalAlign: "top" };
 const tdl: React.CSSProperties = { ...td, textAlign: "left", fontWeight: 500 };
 const sub: React.CSSProperties = { fontSize: 10, color: "#6b7280", fontWeight: 400 };
+
+export function methodLabel(value: string | undefined): string {
+  const labels: Record<string, string> = {
+    fisher_exact: "Fisher exact", descriptive: "Descriptive", z_test: "Approximate z-test",
+    welch_t_test: "Approximate Welch test", bootstrap: "Approximate bootstrap",
+    clopper_pearson_bonferroni: "Conservative exact Clopper–Pearson difference",
+    fisher_exact_two_sided: "Fisher exact, two-sided", newcombe_approximate: "Newcombe (approximate)",
+    pooled_z_asymptotic: "Pooled z (asymptotic)", welch_approximate: "Welch (approximate)",
+    welch_asymptotic: "Welch (asymptotic)", path_bootstrap_approximate: "Percentile bootstrap (approximate)",
+    path_bootstrap_percentile_approximate: "Percentile bootstrap (approximate)",
+    bootstrap_se_asymptotic: "Bootstrap SE (asymptotic)", not_requested: "Not requested",
+    normal_approximation: "Normal planning approximation", unavailable: "Unavailable",
+    insufficient_tail_resamples: "Insufficient resamples in the adjusted tails",
+    asymptotic_exploratory: "Asymptotic exploratory diagnostics (unadjusted)",
+  };
+  return value ? (labels[value] ?? value.replace(/_/g, " ")) : "Unavailable";
+}
+
+function MethodDetails({ row }: { row: ABRow }) {
+  return <div style={sub} data-testid="method-details">
+    {methodLabel(row.test)}
+    {row.ci_basis && <div>CI: {methodLabel(row.ci_basis)}</div>}
+    {row.p_basis && <div>p: {methodLabel(row.p_basis)}</div>}
+  </div>;
+}
+
+function AdjustedInterval({ row, format }: { row: ABRow; format: MetricFormat }) {
+  if (!row.delta_ci_adjusted_status) return null;
+  return <div style={sub} data-testid="adjusted-interval">
+    Bonferroni CI: {row.delta_ci_adjusted_status === "ok"
+      ? fmtInterval(row.delta_ci_low_adj, row.delta_ci_high_adj, format, row.delta)
+      : `unavailable — ${methodLabel(row.delta_ci_adjusted_status)}`}
+    <div>{methodLabel(row.delta_ci_adjusted_basis)}</div>
+  </div>;
+}
 
 export function VerdictBadge({ verdict }: { verdict?: string }) {
   const color = verdictColor(verdict);
@@ -405,7 +449,7 @@ export function ScorecardTable({ rows, result }: { rows: ABRow[]; result: ABResu
             <th style={th}>Δ ({g1} − {g2})</th>
             <th style={th}>Relative</th>
             <th style={th} title="p-value after the correction within the metric's family">p adj</th>
-            <th style={th} title="Minimum detectable effect at mde_alpha and the requested power: a design quantity, not a bound on the effect">MDE</th>
+            <th style={th} title="Normal planning approximation at mde_alpha and the requested power; not exact power for the selected test or a bound on the effect">MDE (approx.)</th>
             <th style={{ ...th, textAlign: "left" }}>Verdict</th>
             {hasWarning && <th style={{ ...th, textAlign: "left" }}>Support</th>}
             {hasReading && <th style={{ ...th, textAlign: "left" }}>Reading</th>}
@@ -417,7 +461,7 @@ export function ScorecardTable({ rows, result }: { rows: ABRow[]; result: ABResu
             return (
               <tr key={`${row.metric}-${i}`} data-testid="scorecard-row" data-event={row.metric}
                 style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
-                <td style={tdl}>{row.metric}<div style={sub}>{row.test}</div></td>
+                <td style={tdl}>{row.metric}<MethodDetails row={row} /></td>
                 <td style={td}>{fmtValue(row.group1_value, f)}
                   <div style={sub}>n={(row.group1_paths ?? 0).toLocaleString("en-US")}</div></td>
                 <td style={td}>{fmtValue(row.group2_value, f)}
@@ -425,13 +469,16 @@ export function ScorecardTable({ rows, result }: { rows: ABRow[]; result: ABResu
                 <td data-testid="delta-cell" style={{ ...td, fontWeight: 600, background: deltaBackground(row.verdict) }}>
                   {fmtDelta(row.delta, f, row.delta_ci_low, row.delta_ci_high)}
                   <div data-testid="delta-interval" style={sub}>{fmtInterval(row.delta_ci_low, row.delta_ci_high, f, row.delta)}</div>
+                  <AdjustedInterval row={row} format={f} />
                 </td>
                 <td style={td}>{fmtRel(row.rel_delta)}
-                  <div style={sub}>[{fmtRel(row.rel_delta_ci_low)}, {fmtRel(row.rel_delta_ci_high)}]</div></td>
+                  <div style={sub}>{row.test === "fisher_exact"
+                    ? "Relative CI unavailable for Fisher exact"
+                    : `[${fmtRel(row.rel_delta_ci_low)}, ${fmtRel(row.rel_delta_ci_high)}]`}</div></td>
                 <td style={td} title={`raw ${formatPValue(row.p_value)}; ${row.correction_family ?? ""}; mde_alpha ${isNum(row.mde_alpha) ? +row.mde_alpha.toFixed(4) : "n/a"}`}>
                   {fmtP(row.p_value_adjusted)}
                 </td>
-                <td style={td}>{fmtMagnitude(row.mde, f)}</td>
+                <td style={td}>{fmtMagnitude(row.mde, f)}{row.mde_basis && <div style={sub}>{methodLabel(row.mde_basis)}</div>}</td>
                 <td style={{ ...tdl, fontWeight: 400 }}><VerdictBadge verdict={row.verdict} /></td>
                 {hasWarning && <td style={{ ...tdl, fontWeight: 400 }}><SupportBadge warning={row.support_warning} /></td>}
                 {hasReading && <ReadingCell text={row.reading as string | null | undefined} />}
@@ -454,9 +501,9 @@ export function intervalNote(result: ABResult) {
   const correction = result.correction ?? "holm";
   return (
     <>
-      {`${+(level * 100).toFixed(1)}%`} intervals, per comparison and never adjusted. The verdict reads the
+      {`${+(level * 100).toFixed(1)}%`} primary intervals are per comparison. Any Bonferroni interval is separately labelled with its availability. The verdict reads the
       p-value adjusted with {correction === "none" ? "no correction" : correction} {familyText(result.correction_scope)},
-      against {+(1 - level).toFixed(4)}; an interval can exclude 0 while the verdict stays inconclusive.
+      against {+(1 - level).toFixed(4)}. Tests and intervals use different constructions; their decisions need not agree. Read each row's exact or approximate method label.
       Inconclusive is not "no effect": the interval shows which effects remain possible.
     </>
   );
@@ -510,13 +557,14 @@ export function StrataView({ result }: { result: ABResult }) {
           <div key={metric} data-testid="strata-metric" style={{ marginBottom: 18 }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "baseline", padding: "0 8px 4px" }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{metric}</span>
+              {first?.strata_diagnostics_basis && <span style={sub} data-testid="strata-diagnostics-basis">Secondary diagnostics: {methodLabel(first.strata_diagnostics_basis)}</span>}
               <span data-testid="strata-heterogeneity" style={{ fontSize: 11, color: "#374151" }}
-                title="Cochran's Q over the strata that pass the support guard: do the strata deltas differ?">
+                title="Optional asymptotic exploratory Cochran's Q over supported strata; unavailable by default and not part of the primary correction family.">
                 heterogeneity p {fmtP(first?.heterogeneity_p_value)}
                 {isNum(first?.heterogeneity_strata_used) ? ` (${first?.heterogeneity_strata_used} strata used)` : ""}
               </span>
               <span data-testid="strata-balance" style={{ fontSize: 11, color: "#374151" }}
-                title="Chi-square of the stratum × arm table: are the strata equally shared by the arms? A balanced post-exposure stratum is still selected by the treatment.">
+                title="Optional asymptotic Pearson diagnostic with adequate expected cells; unavailable by default. A balanced post-exposure stratum is still selected by treatment.">
                 balance p {fmtP(first?.balance_p_value)}
               </span>
             </div>
@@ -540,12 +588,14 @@ export function StrataView({ result }: { result: ABResult }) {
                       <td style={{ ...tdl, fontStyle: row.exploratory ? "italic" : undefined }}>
                         {row.stratum}{row.exploratory ? " *" : ""}
                         <div style={sub}>n={row.group1_paths ?? 0}/{row.group2_paths ?? 0}</div>
+                        <MethodDetails row={row} />
                       </td>
                       <td style={td}>{fmtShare(row.group1_share)}</td>
                       <td style={td}>{fmtShare(row.group2_share)}</td>
                       <td style={{ ...td, fontWeight: 600, background: deltaBackground(row.verdict) }}>
                         {fmtDelta(row.delta, f, row.delta_ci_low, row.delta_ci_high)}
                         <div style={sub}>{fmtInterval(row.delta_ci_low, row.delta_ci_high, f, row.delta)}</div>
+                        <AdjustedInterval row={row} format={f} />
                       </td>
                       <td style={td}>{fmtP(row.p_value_adjusted)}</td>
                       <td style={td}>{fmtP(row.stratum_vs_rest_p_value)}</td>
@@ -687,11 +737,12 @@ export function PeriodsView({ result }: { result: ABResult }) {
                   {mrows.map((row, i) => (
                     <tr key={`${row.period}-${i}`} data-testid="period-row"
                       data-complete={String(row.period_complete !== false)} data-descriptive={String(row.verdict === "descriptive")}>
-                      <td style={tdl}>{row.period}{row.period_complete === false ? " ◌" : ""}</td>
+                      <td style={tdl}>{row.period}{row.period_complete === false ? " ◌" : ""}<MethodDetails row={row} /></td>
                       <td style={td}>{row.group1_paths ?? 0}/{row.group2_paths ?? 0}</td>
                       <td style={{ ...td, fontWeight: 600, background: deltaBackground(row.verdict) }}>
                         {fmtDelta(row.delta, f, row.delta_ci_low, row.delta_ci_high)}
                         <div style={sub}>{fmtInterval(row.delta_ci_low, row.delta_ci_high, f, row.delta)}</div>
+                        <AdjustedInterval row={row} format={f} />
                       </td>
                       <td style={td}>{fmtP(row.p_value_adjusted)}</td>
                       <td style={{ ...tdl, fontWeight: 400 }}><VerdictBadge verdict={row.verdict} /> <SupportBadge warning={row.support_warning} /></td>

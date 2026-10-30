@@ -1,0 +1,21 @@
+{
+  "tables": 9604,
+  "max_errors": {
+    "fisher_error": 4.440892098500626e-16,
+    "newcombe_error": 3.3306690738754696e-16,
+    "exact_error": 2.1094237467877974e-15
+  },
+  "coverage_points": 2527,
+  "min_coverage": {
+    "na": 1,
+    "nb": 1000,
+    "pa": 0,
+    "pb": 0.5,
+    "coverage": 0.9876471772742152
+  },
+  "original_oracle_sha256": "b87ea41de0a571dd70d59cb31b61c92f2ffaf2f6a0c63a5ba78c6b90241db227",
+  "supplemental_oracle_sha256": "db82027c6588119e8d29a15e90f8615d07931579acc5e1a91b515ea6e40882b6",
+  "source": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo",
+  "primitive_sha256": "fa0be7df1d857c54a1bddd23bef2beb2c46262b0f8f3b2c7b68eb8a1bb4da44b",
+  "statement": "Finite-grid exact enumeration, no Monte Carlo. Uniform coverage justification is the CP tail bound plus union bound, not this grid."
+}

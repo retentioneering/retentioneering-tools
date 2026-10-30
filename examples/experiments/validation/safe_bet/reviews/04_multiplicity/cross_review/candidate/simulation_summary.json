@@ -1,0 +1,42 @@
+[
+  {
+    "scenario": "normal",
+    "quantity": "covers",
+    "successes": 372,
+    "trials": 400,
+    "rate": 0.93,
+    "mc_se": 0.01275735082217307,
+    "wilson_low": 0.9006910535722495,
+    "wilson_high": 0.9511283733002555
+  },
+  {
+    "scenario": "normal",
+    "quantity": "rejects",
+    "successes": 29,
+    "trials": 400,
+    "rate": 0.0725,
+    "mc_se": 0.012965699942540702,
+    "wilson_low": 0.05095051840227673,
+    "wilson_high": 0.10218249325354675
+  },
+  {
+    "scenario": "lognormal",
+    "quantity": "covers",
+    "successes": 294,
+    "trials": 400,
+    "rate": 0.735,
+    "mc_se": 0.02206666037260736,
+    "wilson_low": 0.6896629392432349,
+    "wilson_high": 0.7758662824196457
+  },
+  {
+    "scenario": "lognormal",
+    "quantity": "rejects",
+    "successes": 78,
+    "trials": 400,
+    "rate": 0.195,
+    "mc_se": 0.01981003533565753,
+    "wilson_low": 0.15915064134621448,
+    "wilson_high": 0.2366518581977064
+  }
+]

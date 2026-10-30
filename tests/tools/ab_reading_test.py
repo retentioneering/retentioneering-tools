@@ -1,11 +1,11 @@
 """The ``reading`` sentence of the A/B scorecard and of the sample ratio check."""
 
-import math
 import warnings
 
 import numpy as np
 import pandas as pd
 import pytest
+from scipy import stats
 
 from retentioneering.datasets import ab_test, load_ab_test, load_ab_test_assignment
 from retentioneering.eventstream.eventstream import Eventstream
@@ -96,7 +96,7 @@ class TestFormatting:
         assert _paths_needed(0.0) is None
 
     def test_the_multiplier_brings_the_mde_down_to_the_target(self) -> None:
-        # the claim of the sentence: with factor x the paths, the design detects target
+        # the planning approximation scales inversely with the square root of sample size
         mde = float(_stats.mde_proportion(0.24, 4960, 5040, 0.05, 0.8))
         target, factor = _paths_needed(mde * 100)
         scaled = float(
@@ -112,9 +112,9 @@ class TestInconclusive:
         # comparison; the multiplier sizes a new test, not this one
         assert _read(_row()) == (
             "per-comparison interval [-1.07, +2.28] pp includes 0 (p 0.48 after "
-            "holm); effects outside it are unlikely; the design detects 2.39 pp at "
-            "alpha 0.0125 — to detect 1 pp, about 5.7× the paths are needed in a "
-            "new test sized before it starts"
+            "holm); the interval does not exclude zero; normal-approximation MDE 2.39 pp at "
+            "alpha 0.0125 — to detect 1 pp, about 5.7× the paths is a planning approximation; "
+            "verify power for the chosen test before it starts"
         )
 
     def test_without_an_effective_correction(self) -> None:
@@ -131,8 +131,11 @@ class TestInconclusive:
             kind="count",
         )
         assert text.startswith("interval [-0.28, +3.28] includes 0 (p 0.48)")
-        assert "pp" not in text
-        assert "the design detects 2.55 at alpha 0.05 — to detect 1, about 6.5×" in text
+        assert " pp " not in text
+        assert (
+            "normal-approximation MDE 2.55 at alpha 0.05 — to detect 1, about 6.5×"
+            in text
+        )
 
     def test_small_values_keep_three_significant_digits(self) -> None:
         text = _read(
@@ -142,7 +145,10 @@ class TestInconclusive:
             kind="value",
         )
         assert "interval [-0.0086, +0.0377] includes 0" in text
-        assert "detects 0.0331 at alpha 0.05 — to detect 0.01, about 11.0×" in text
+        assert (
+            "normal-approximation MDE 0.0331 at alpha 0.05 — to detect 0.01, about 11.0×"
+            in text
+        )
 
     def test_interval_excluding_zero_before_the_correction(self) -> None:
         text = _read(
@@ -172,12 +178,14 @@ class TestInconclusive:
         text = _read(_row(mde=float("nan")))
         assert text == (
             "per-comparison interval [-1.07, +2.28] pp includes 0 (p 0.48 after "
-            "holm); effects outside it are unlikely"
+            "holm); the interval does not exclude zero"
         )
 
     def test_no_interval(self) -> None:
         text = _read(_row(delta_ci_low=float("nan"), delta_ci_high=float("nan")))
-        assert text.startswith("no interval; p 0.48 after holm; the design detects")
+        assert text.startswith(
+            "no interval; p 0.48 after holm; normal-approximation MDE"
+        )
 
     def test_invalid_replicates_bootstrap(self) -> None:
         text = _read(
@@ -264,7 +272,7 @@ class TestSignificant:
         )
         assert text == (
             "p 0.049 is below alpha 0.05, though the interval [-0.01, +3.00] pp "
-            "includes 0 (borderline: test and interval disagree at the threshold)"
+            "includes 0 (the test and interval use different constructions)"
         )
 
     def test_significant_without_an_interval(self) -> None:
@@ -373,7 +381,7 @@ class TestFlags:
         text = _read(
             _row(exploratory=True, period_complete=False, support_warning="low_support")
         )
-        tail = text.split("sized before it starts; ")[1]
+        tail = text.split("before it starts; ")[1]
         assert tail.startswith(EXPLORATORY + "; window not complete; low support:")
         # R3D-10: a flagged row does not claim that outside effects are unlikely
         assert "effects outside it" not in text
@@ -391,7 +399,9 @@ class TestFlags:
             },
         ):
             text = _read(_row(**flags))
-            assert "includes 0 (p 0.48 after holm); the design" in text, flags
+            assert (
+                "includes 0 (p 0.48 after holm); normal-approximation MDE" in text
+            ), flags
             assert "effects outside it" not in text, flags
 
 
@@ -439,7 +449,7 @@ class TestScorecardColumn:
         row = out.iloc[0]
         low, high = row["delta_ci_low"] * 100, row["delta_ci_high"] * 100
         assert f"[{low:+.2f}, {high:+.2f}] pp" in row["reading"]
-        assert f"detects {row['mde'] * 100:.2f} pp" in row["reading"]
+        assert f"normal-approximation MDE {row['mde'] * 100:.2f} pp" in row["reading"]
 
     def test_strata_and_period_rows(self) -> None:
         with warnings.catch_warnings():
@@ -447,7 +457,7 @@ class TestScorecardColumn:
             strata = ABTest.from_stream(
                 _stream(), DIFF, [CONV], strata_col="platform"
             ).fit()
-        assert strata["reading"].str.endswith(EXPLORATORY).all()
+        assert strata["reading"].str.contains(EXPLORATORY, regex=False).all()
         assert strata["verdict"].eq("descriptive").all()
         assert strata["p_value_adjusted"].isna().all()
         assert strata["reading"].str.contains("pre-exposure membership").all()
@@ -497,9 +507,11 @@ class TestNoData:
             stream, DIFF, [metric], strata_col="platform", strata_pre_exposure=True
         ).fit()
         web = out.set_index("stratum").loc["web"]
-        assert web["verdict"] == "insufficient_data"
+        assert web["verdict"] == (
+            "descriptive" if metric["metric"] == "event_count" else "insufficient_data"
+        )
         assert web["support_warning"] == "no_data"
-        assert web["reading"] == (
+        assert web["reading"].startswith(
             "over the whole observation period: no data in either arm"
         )
 
@@ -512,9 +524,7 @@ class TestNoData:
         )
         row = ABTest.from_stream(stream, DIFF, [CHAT], min_support=1).fit().iloc[0]
         assert row["support_warning"] == "one_arm_only"
-        assert row["reading"].endswith(
-            "; one_arm_only: the behaviour exists in one arm only"
-        )
+        assert "; one_arm_only: the behaviour exists in one arm only" in row["reading"]
 
 
 class TestBundledDataset:
@@ -535,9 +545,11 @@ class TestBundledDataset:
         )
         assert out["reading"].iloc[0] == (
             "over the whole observation period: "
-            "interval [-1.07, +2.28] pp includes 0 (p 0.48); effects outside it are "
-            "unlikely; the design detects 2.39 pp at alpha 0.05 — to detect 1 pp, "
-            "about 5.7× the paths are needed in a new test sized before it starts"
+            "interval [-2.12, +3.33] pp includes 0 (p 0.48); the interval does not "
+            "exclude zero; normal-approximation MDE 2.39 pp at alpha 0.05 — to detect 1 pp, "
+            "about 5.7× the paths is a planning approximation; verify power for the chosen "
+            "test before it starts; Fisher exact test; conservative binomial interval, "
+            "not an inversion of the test"
         )
 
     def test_horizon_conversion_is_an_increase(self, data) -> None:
@@ -557,7 +569,8 @@ class TestBundledDataset:
         )
         assert out["reading"].iloc[0] == (
             "within 14 days of assignment: "
-            "interval [+1.34, +4.08] pp excludes 0 (p 0.00011); relative +21 %"
+            "interval [+0.47, +4.94] pp excludes 0 (p 0.00011); relative +21 %; "
+            "Fisher exact test; conservative binomial interval, not an inversion of the test"
         )
 
     def test_period_rows_name_their_window(self, data) -> None:
@@ -573,7 +586,7 @@ class TestBundledDataset:
         weeks = stream.get_ab_test(diff, metrics, assignment=assignment, period="W")
         week = weeks.set_index("period").loc["2026-03-09/2026-03-15", "reading"]
         assert week.startswith(
-            "calendar week 2026-03-09: per-comparison interval [+0.52, +2.92] pp"
+            "calendar week 2026-03-09: p 0.044 after holm is below alpha 0.05"
         )
         months = stream.get_ab_test(diff, metrics, assignment=assignment, period="M")
         assert months["reading"].iloc[0].startswith("calendar month 2026-03: ")
@@ -635,7 +648,9 @@ class TestSampleRatioReading:
             f"expected 50/50, observed 5040/4960 (control/treatment), "
             f"p {_p_text(result['p_value'])}: no mismatch"
         )
-        assert math.isclose(result["p_value"], 0.42371, rel_tol=1e-3)
+        assert result["p_value"] == pytest.approx(
+            stats.binomtest(5040, 10000, 0.5).pvalue
+        )
 
     def test_mismatch(self) -> None:
         result = _srm_stream(4700, 5300).get_sample_ratio("arm")
@@ -687,7 +702,7 @@ class TestSampleRatioReading:
             "unassigned_paths": 0,
         }
         assert sample_ratio_reading(result) == (
-            "expected 50/50, observed 0/0 (a/b): no path counted, the check cannot run"
+            "expected 50/50, observed 0/0 (a/b): check unavailable; no path counted"
         )
 
     def test_names_the_strata_that_mismatch(self) -> None:

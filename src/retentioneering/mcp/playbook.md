@@ -168,9 +168,14 @@ times counts once. For a per-visit figure, carve out the subpopulation with
 
 1. `get_sample_ratio(segment_col="<arm col>")` — before any metric. Quote its
    `reading`. `mismatch=true` (arms off the planned split, or paths carrying two arms)
-   means the assignment or the logging is broken; report that and stop. With
+   is an allocation diagnostic alarm; investigate assignment, exclusions and logging
+   before interpreting outcomes. It does not identify a particular failure.
+   `mismatch=null` or an unavailable `inference_status` is not balanced allocation.
+   Report the method, sampling assumption and support reason; do not pass the gate.
+   Two arms use exact binomial inference under independent Bernoulli assignment;
+   multiarm Pearson inference is approximate and withheld for sparse expected counts. With
    `period="D"` or `strata_col="<segment fixed at assignment>"` the `reading` also
-   names the days or strata that mismatch — a mismatch in one platform or from one day on voids the test
+   names the days or strata that mismatch — an alarm in one platform or day also requires investigation
    even when the overall split looks fine.
 2. Before the first `get_ab_test` call, ask which metric decides and which metrics
    are guardrails, each with the largest harm it may do (e.g. revenue per user must
@@ -186,11 +191,15 @@ times counts once. For a per-visit figure, carve out the subpopulation with
     {"name": "aov", "metric": "column_sum", "metric_args": {"column": "amount"},
      "denominator": {"metric": "event_count", "metric_args": {"event": "purchase"}}}]
    ```
+   Auto uses Fisher exact with conservative exact binary difference intervals.
+   Nonbinary outcomes are descriptive by default. Explicit Welch/bootstrap are
+   approximate advanced methods for nonbinary outcomes; explicit z is guarded
+   and approximate. Never equate absent inference with no effect.
 3. Report per metric: `delta` with `[delta_ci_low, delta_ci_high]`, the `verdict` and
    the `mde`. Quote in backticks (no tab is registered). Every row has a `reading`:
    one sentence built from its numbers. For an `inconclusive` row, quote its `reading`
    verbatim (in backticks) — it says what the interval includes, the p-value after
-   the correction, what the design detects and how many paths a new test needs for a
+   the correction, the normal MDE planning approximation and approximate paths a new test needs for a
    smaller effect — and then, if useful, propose a next step (below). The `reading`
    reads the row's numbers only: it does not check the sample ratio, the unit or
    whether strata are pre-exposure, which is why step 1 comes first. It starts with
@@ -203,6 +212,10 @@ times counts once. For a per-visit figure, carve out the subpopulation with
    arbitrary exploration or peeking. `correction_scope="metric"` is an explicit
    opt-in for predeclared families. A guardrail passes only when its interval
    clears a declared harm margin; an inconclusive result is not evidence of safety.
+   MDE is not exact power for the selected test; read `mde_basis`. Tests and
+   intervals have different constructions and need not agree. Fisher relative
+   intervals are unavailable; only the relative point remains when defined.
+   Bonferroni bootstrap endpoints are withheld for `insufficient_tail_resamples`.
    Every row's `scope` labels the family. `unit` is percentage points (`pp`) for
    binary outcomes whose numeric delta fields are shares, otherwise `value`.
 4. Optional: `strata_col=` for a segment fixed before exposure (platform at signup),

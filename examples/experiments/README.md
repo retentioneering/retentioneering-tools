@@ -17,7 +17,8 @@ It reports interval availability, coverage over all simulations, conditional
 coverage among available intervals, exact Monte Carlo uncertainty, binary-null
 test rejections, an all-zero boundary and a repeated-session invariant.
 
-A recorded local smoke with 40 trials per scenario and 250 units per arm gave:
+A historical pre-safe-default local smoke with explicit approximate Newcombe
+intervals, 40 trials per scenario and 250 units per arm gave:
 
 | Scenario | Covered | Exact 95% Monte Carlo interval |
 |---|---:|---:|
@@ -51,3 +52,7 @@ separate interval/test rejection rates, and exact binary-count enumeration.
 It includes heavy-tailed money, correlated ratio-of-sums, unequal groups and
 silent assignments. The checked-in report documents failures of nominal coverage
 as well as successes; these runs are deliberately excluded from routine CI.
+
+The current tutorials explicitly select conservative exact binary intervals;
+the historical table above is not their new-method calibration. See
+[the supported-inference boundary](../../docs/guide/ab-testing.md#supported-inference).

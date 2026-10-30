@@ -29,6 +29,8 @@ Three things live here:
 from __future__ import annotations
 
 import inspect
+import json
+from copy import deepcopy
 from dataclasses import dataclass, field
 from functools import wraps
 from typing import TYPE_CHECKING, Any
@@ -135,7 +137,9 @@ def op(func):
                     params[pname] = pval
                 for pname, pval in list(params.items()):
                     params.update(_json_safe_series(pname, pval))
-            result._lineage = list(self._lineage) + [{"type": op_type, **params}]
+            result._lineage = deepcopy(self._lineage) + [
+                {"type": op_type, **deepcopy(params)}
+            ]
         return result
 
     wrapper._op_type = op_type  # noqa: SLF001 -- introspected by tests
@@ -146,18 +150,31 @@ def op(func):
 #: (``add_segment(path_values=...)`` labels from ``get_path_segments``). Keys that
 #: start with ``_`` are annotations: replay passes them on as attrs, not as kwargs.
 _PRE_EXPOSURE_KEY = "_{}_pre_exposure"
+_INDEX_KEYS = "_{}_keys"
 
 
 def _json_safe_series(name: str, value: Any) -> dict:
-    """A pandas Series argument recorded as ``{str(id): value}`` (JSON-serializable),
-    plus its ``attrs["pre_exposure"]`` flag when it carries one; ``{}`` otherwise."""
+    """Snapshot a Series/path mapping with native scalars and typed replay keys."""
     import pandas as pd
 
+    if name == "path_values" and isinstance(value, dict):
+        from retentioneering.data_processors.add_segment import _persistent_scalar
+
+        keys = [_persistent_scalar(k, key=True) for k in value]
+        out = {name: {k: _persistent_scalar(v) for k, v in zip(keys, value.values())}}
+        if any(not isinstance(k, str) for k in keys):
+            out[_INDEX_KEYS.format(name)] = {
+                k if isinstance(k, str) else json.dumps(k): k for k in keys
+            }
+        return out
     if not isinstance(value, pd.Series):
         return {}
     plain = value.astype(object)
     plain = plain.where(plain.notna(), None)
     out: dict = {name: {str(k): _native(v) for k, v in plain.items()}}
+    keys = [_native(k) for k in plain.index]
+    if any(not isinstance(k, str) for k in keys):
+        out[_INDEX_KEYS.format(name)] = {str(k): k for k in keys}
     flag = value.attrs.get("pre_exposure")
     if isinstance(flag, bool):
         out[_PRE_EXPOSURE_KEY.format(name)] = flag
@@ -195,9 +212,26 @@ def _adapt_params(op_type: str, params: dict) -> dict:
         params = {k: v for k, v in params.items() if not k.startswith("_")}
         for name, value in list(params.items()):
             key = _PRE_EXPOSURE_KEY.format(name)
-            if key in flags and isinstance(value, dict):
-                series = pd.Series(value, dtype=object)
-                series.attrs["pre_exposure"] = flags[key]
+            index_key = _INDEX_KEYS.format(name)
+            if (key in flags or index_key in flags) and isinstance(value, dict):
+                if index_key in flags:
+                    index_keys = flags[index_key]
+                    wire_keys = [
+                        k if isinstance(k, str) else json.dumps(k) for k in value
+                    ]
+                    if not isinstance(index_keys, dict) or set(index_keys) != set(
+                        wire_keys
+                    ):
+                        raise ValueError(f"Recipe {index_key} does not match {name}")
+                    series = pd.Series(
+                        list(value.values()),
+                        index=[index_keys[k] for k in wire_keys],
+                        dtype=object,
+                    )
+                else:
+                    series = pd.Series(value, dtype=object)
+                if key in flags:
+                    series.attrs["pre_exposure"] = flags[key]
                 params[name] = series
     if op_type == "filter_paths" and "condition" not in params:
         params = dict(params)

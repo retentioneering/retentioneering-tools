@@ -1,0 +1,32 @@
+{
+  "216": {
+    "head": "52615dd93476ef8532487792f26d023e944dfe77",
+    "base": "e597bfbdb63ad5a5fb517894f4f68eda9ca84e36",
+    "head_ref": "codex/experiment-reviewed",
+    "url": "https://github.com/retentioneering/retentioneering-tools/pull/216"
+  },
+  "217": {
+    "head": "7e61d997bcbd9bae9f1571ba3521a85fcb59f751",
+    "base": "e597bfbdb63ad5a5fb517894f4f68eda9ca84e36",
+    "head_ref": "feature/ab-testing-tools",
+    "url": "https://github.com/retentioneering/retentioneering-tools/pull/217"
+  },
+  "218": {
+    "head": "ac08a721b98ce017c44d818ec7a6f81a74f65421",
+    "base": "52615dd93476ef8532487792f26d023e944dfe77",
+    "head_ref": "codex/heavy-tail-inference-audit",
+    "url": "https://github.com/retentioneering/retentioneering-tools/pull/218"
+  },
+  "220": {
+    "head": "38cbe91d5b315584575b132a596890e69eb210aa",
+    "base": "e597bfbdb63ad5a5fb517894f4f68eda9ca84e36",
+    "head_ref": "codex/ab-integrated",
+    "url": "https://github.com/retentioneering/retentioneering-tools/pull/220"
+  },
+  "221": {
+    "head": "9d130f375b8a778a55e11de98b57d46ad082c55f",
+    "base": "7e61d997bcbd9bae9f1571ba3521a85fcb59f751",
+    "head_ref": "feature/ab-transitions",
+    "url": "https://github.com/retentioneering/retentioneering-tools/pull/221"
+  }
+}

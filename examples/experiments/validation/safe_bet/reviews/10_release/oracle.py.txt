@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""Independent pre-registered arithmetic. No project imports or copied formulas."""
+from fractions import Fraction as F
+import json
+import math
+
+ASSIGNMENTS = [(f"{arm}{i}", arm) for arm in ("c", "t") for i in range(1, 5)]
+EVENTS = [
+    ("c1", "purchase", 10), ("c2", "view", 0),
+    ("t1", "purchase", 20), ("t1", "purchase", 10),
+    ("t2", "purchase", 5), ("t3", "view", 0),
+]
+
+def sample_variance(values):
+    average = sum(values) / len(values)
+    return sum((value - average) ** 2 for value in values) / (len(values) - 1)
+
+def expected():
+    # Deliberately handwritten from the fixture, independent of grouping adapters.
+    c_y, t_y = [F(10), F(0), F(0), F(0)], [F(30), F(5), F(0), F(0)]
+    c_d, t_d = [F(1), F(0), F(0), F(0)], [F(2), F(1), F(0), F(0)]
+    c_r, t_r = F(10), F(35, 3)
+    c_var, t_var = sample_variance(c_y), sample_variance(t_y)
+    c_ratio_var = sample_variance([y-c_r*d for y,d in zip(c_y,c_d)]) / (4*F(1,4)**2)
+    t_ratio_var = sample_variance([y-t_r*d for y,d in zip(t_y,t_d)]) / (4*F(3,4)**2)
+    return {
+        "n_control": 4, "n_treatment": 4,
+        "binary": {"control": F(1,4), "treatment": F(1,2), "effect": F(1,4),
+                   "control_successes": 1, "treatment_successes": 2},
+        "mean": {"control": F(5,2), "treatment": F(35,4), "effect": F(25,4),
+                 "control_sample_variance": c_var, "treatment_sample_variance": t_var,
+                 "effect_variance": c_var/4+t_var/4},
+        "ratio": {"control": c_r, "treatment": t_r, "effect": F(5,3),
+                  "control_numerator_sum": 10, "treatment_numerator_sum": 35,
+                  "control_denominator_sum": 1, "treatment_denominator_sum": 3,
+                  "effect_delta_variance": c_ratio_var+t_ratio_var},
+        "silent_users": ["c3", "c4", "t4"],
+    }
+
+def serialize(value):
+    if isinstance(value,F):
+        return {"exact": str(value), "float": float(value)}
+    if isinstance(value,dict):
+        return {k:serialize(v) for k,v in value.items()}
+    if isinstance(value,list):
+        return [serialize(v) for v in value]
+    return value
+
+if __name__ == "__main__":
+    result = expected()
+    assert result["binary"]["effect"] == F(1,4)
+    assert result["mean"]["effect"] == F(25,4)
+    assert result["ratio"]["effect"] == F(5,3)
+    print(json.dumps(serialize(result), indent=2, sort_keys=True))

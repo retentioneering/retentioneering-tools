@@ -2,8 +2,12 @@
 
 Unexpected arm sizes can signal an allocation, logging or filtering problem.
 A small p-value is an investigation alarm, not proof of a broken experiment.
-``get_sample_ratio`` compares the number of paths per arm against expected shares with a chi-square
-goodness-of-fit test and also flags paths that carry more than one arm value.
+``get_sample_ratio`` compares the number of paths per arm against expected shares.
+Two arms use an exact two-sided binomial test; multiarm checks use Pearson's
+chi-square approximation only when every expected count is at least five.
+Both require independent allocation with the stated probabilities. Fixed-total
+or blocked allocation needs a design-specific diagnostic instead. Paths carrying
+more than one arm value are also flagged.
 
 The check is a *design* check: run it on the assignment table (``assignment=``) or on the
 full stream before any post-exposure filter. On a subsample defined by behaviour (for
@@ -25,6 +29,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 from retentioneering.exceptions import InvalidParameterError
 from retentioneering.tools import _stats
@@ -46,7 +51,7 @@ from retentioneering.tools.ab_test import (
 if TYPE_CHECKING:
     from retentioneering.eventstream import Eventstream
 
-__all__ = ["SampleRatio", "ALL", "sample_ratio_reading"]
+__all__ = ["ALL", "SampleRatio", "sample_ratio_reading"]
 
 #: ``stratum`` / ``period`` label of the overall rows in ``levels``.
 ALL = "<ALL>"
@@ -90,7 +95,18 @@ def sample_ratio_reading(result: dict[str, Any]) -> str:
     alpha = result["alpha"]
     problems = []
     if not np.isfinite(p):
-        problems_text = f"{split}: no path counted, the check cannot run"
+        if result.get("inference_status") == "insufficient_expected_counts":
+            problems_text = (
+                f"{split}: check unavailable; an expected arm count is below 5 "
+                "for the Pearson approximation"
+            )
+        else:
+            problems_text = f"{split}: check unavailable; no path counted"
+        if multi:
+            problems_text += (
+                f"; mismatch: {multi} path(s) carry more than one arm or disagree "
+                f"with the assignment table — {INVALID}"
+            )
     else:
         if p < alpha:
             problems.append(f"{split}, p {_p_text(p)} (alpha {alpha:g})")
@@ -116,7 +132,8 @@ def sample_ratio_reading(result: dict[str, Any]) -> str:
         groups = result.get(table_key)
         if groups is None:
             continue
-        bad = groups[groups["mismatch"].astype(bool)]
+        unavailable = int(groups["p_value"].isna().sum())
+        bad = groups[groups["mismatch"].fillna(False).astype(bool)]
         if len(bad):
             shown = ", ".join(
                 f"{label} (adjusted p {_p_text(p)})"
@@ -126,8 +143,14 @@ def sample_ratio_reading(result: dict[str, Any]) -> str:
             parts.append(f"by {name}: mismatch in {shown}{more} — {INVALID} there")
         elif np.isfinite(p) and p < alpha:
             parts.append(f"by {name}: no single {name} mismatches on its own")
+        elif unavailable == len(groups):
+            parts.append(f"by {name}: no available group checks")
+        elif unavailable:
+            parts.append(f"by {name}: no mismatch among available groups")
         else:
             parts.append(f"by {name}: no group mismatches")
+        if unavailable:
+            parts.append(f"{unavailable} {name} check(s) unavailable")
     return "; ".join(parts)
 
 
@@ -168,11 +191,47 @@ def _counts_table(arms: pd.Series, levels: list, shares: np.ndarray) -> pd.DataF
     )
 
 
+def _allocation_test(counts, shares) -> dict[str, Any]:
+    """Inference under caller-assumed independent allocation probabilities.
+
+    The Pearson statistic is kept as a descriptive discrepancy for both routes.
+    An expected-count guard limits the multiarm approximation; it is not an
+    exact calibration guarantee. A supplied roster cannot establish this model.
+    """
+    counts = np.asarray(counts, dtype=int)
+    total = int(counts.sum())
+    two_arm = len(counts) == 2
+    chi2, p_value, dof = _stats.srm_chi2(counts, shares)
+    expected_min = float(np.min(total * shares))
+    status, warning = "ok", ""
+    if total == 0:
+        status, warning = "no_data", "no_assigned_paths"
+    elif two_arm:
+        p_value = float(stats.binomtest(int(counts[0]), total, float(shares[0])).pvalue)
+    elif expected_min < 5:
+        p_value = float("nan")
+        status = warning = "insufficient_expected_counts"
+    return {
+        "chi2": chi2,
+        "dof": dof,
+        "p_value": p_value,
+        "sampling_assumption": (
+            "independent_bernoulli" if two_arm else "independent_multinomial"
+        ),
+        "p_value_method": (
+            "exact_binomial_two_sided" if two_arm else "pearson_chi_square_asymptotic"
+        ),
+        "inference_status": status,
+        "support_warning": warning,
+        "expected_count_min": expected_min,
+    }
+
+
 @dataclass
 class SampleRatio:
     """Headless SRM computation (used by ``Eventstream.get_sample_ratio`` and the MCP tool)."""
 
-    stream: "Eventstream"
+    stream: Eventstream
 
     def fit(
         self,
@@ -194,7 +253,9 @@ class SampleRatio:
             the table alone); a segment column of the stream must then agree with the
             table path by path.
         expected_shares : dict, optional
-            ``{level: share}``; finite positive shares must sum to 1 within 1e-9. Default: equal split over
+            ``{level: share}``; finite positive shares must sum to 1 within 1e-9.
+            Explicit keys define the planned arms, including arms with zero observed
+            paths. Default: equal split over
             the column's levels (or over the assignment table's arms). Levels of the
             column that are not named here are not arms: their paths are reported in
             ``unassigned_paths``.
@@ -219,6 +280,14 @@ class SampleRatio:
         -------
         dict
             See :meth:`Eventstream.get_sample_ratio`.
+
+        Notes
+        -----
+        The caller must establish independent allocation with the specified shares.
+        Two arms use an exact binomial test; multiarm Pearson inference requires
+        every expected count to be at least five. Fixed-total or blocked designs
+        are not covered. Split checks form their own Holm family, separately from
+        the overall check and from repeated calls.
         """
         stream = self.stream
         schema = stream.schema
@@ -314,20 +383,21 @@ class SampleRatio:
         unassigned = int(len(arms) - len(counted)) + n_missing + outside
 
         overall = _counts_table(counted, levels, shares)
-        chi2, p_value, dof = _stats.srm_chi2(overall["paths"].to_numpy(), shares)
+        inference = _allocation_test(overall["paths"].to_numpy(), shares)
+        p_value = inference["p_value"]
         result: dict[str, Any] = {
             "levels": overall,
-            "chi2": chi2,
-            "dof": dof,
-            "p_value": p_value,
+            **inference,
             "alpha": float(alpha),
-            "mismatch": bool((np.isfinite(p_value) and p_value < alpha) or multi > 0),
+            "mismatch": (
+                True
+                if multi > 0
+                else (bool(p_value < alpha) if np.isfinite(p_value) else None)
+            ),
             "multi_valued_paths": multi,
             "silent_paths": silent,
             "unassigned_paths": unassigned,
             "basis": basis,
-            "sampling_assumption": "independent_multinomial",
-            "p_value_method": "pearson_chi_square_asymptotic",
         }
         if strata_col is not None:
             groups = self._strata(strata_col, path_col, counted.index, assignment)
@@ -370,9 +440,9 @@ class SampleRatio:
         levels, shares = [], []
         for key, share in expected_shares.items():
             level = coerce_level(key, available)
-            if level not in available:
+            if level in levels:
                 raise InvalidParameterError(
-                    "expected_shares", key, sorted(map(str, available))
+                    "expected_shares", key, ["distinct planned arm labels"]
                 )
             levels.append(level)
             shares.append(float(share))
@@ -437,18 +507,33 @@ class SampleRatio:
             part = counted[(groups == label).to_numpy()]
             table = _counts_table(part, levels, shares)
             frames.append(table.assign(**{key: label}))
-            chi2, p, dof = _stats.srm_chi2(table["paths"].to_numpy(), shares)
+            inference = _allocation_test(table["paths"].to_numpy(), shares)
             rows.append(
                 {
                     key: label,
-                    "paths": int(len(part)),
-                    "chi2": chi2,
-                    "dof": dof,
-                    "p_value": p,
+                    "paths": len(part),
+                    **inference,
                 }
             )
-        split = pd.DataFrame(rows, columns=[key, "paths", "chi2", "dof", "p_value"])
+        split = pd.DataFrame(
+            rows,
+            columns=[
+                key,
+                "paths",
+                "chi2",
+                "dof",
+                "p_value",
+                "sampling_assumption",
+                "p_value_method",
+                "inference_status",
+                "support_warning",
+                "expected_count_min",
+            ],
+        )
         split["p_value_adjusted"] = _stats.holm(split["p_value"].to_numpy())
-        split["mismatch"] = split["p_value_adjusted"] < alpha
+        split["mismatch"] = [
+            bool(p < alpha) if np.isfinite(p) else None
+            for p in split["p_value_adjusted"]
+        ]
         levels_df = pd.concat(frames, ignore_index=True)[[key] + LEVEL_COLUMNS]
         return {"levels": levels_df, name: split}

@@ -1,0 +1,291 @@
+#!/usr/bin/env python3
+"""Source-selectable public API audit. Run after oracle.py has been preregistered."""
+import argparse, copy, hashlib, importlib, importlib.metadata, json, math, os
+from pathlib import Path
+import resource, sys, time, traceback, warnings
+
+p = argparse.ArgumentParser()
+p.add_argument('--source', required=True, type=Path)
+p.add_argument('--output', required=True, type=Path)
+args = p.parse_args()
+source = args.source.resolve()
+sys.path.insert(0, str(source / 'src'))
+import numpy as np
+import pandas as pd
+from retentioneering import Eventstream
+import retentioneering
+from retentioneering.tools import ab_test
+from retentioneering.metrics.metric_builder import VALID_METRICS
+from oracle import ROWS, MIXED_ID_ROWS, expected, typed_key
+
+SCHEMA = {'path_cols':['id'], 'event_col':'event', 'timestamp_col':'time', 'segment_cols':['group'], 'custom_cols':['value','den']}
+METRICS = [{'name':r, 'metric':r, 'metric_args':{'column':'value'}} for r in ['column_sum','column_mean','column_last']]
+RATIO = {'name':'ratio', 'metric':'column_sum', 'metric_args':{'column':'value'}, 'denominator':{'metric':'column_sum','metric_args':{'column':'den'}}}
+DIFF = ('group','test','control')
+results=[]
+
+def safe(v):
+    if isinstance(v, pd.DataFrame):
+        return {'index':[{'type':type(i).__name__,'repr':repr(i)} for i in v.index], 'columns':list(v.columns), 'records':safe(v.to_dict('records')), 'attrs':safe(v.attrs)}
+    if isinstance(v, pd.Series):
+        return {'index':[{'type':type(i).__name__,'repr':repr(i)} for i in v.index], 'values':[safe(i) for i in v.tolist()], 'name':v.name, 'attrs':safe(v.attrs)}
+    if isinstance(v, dict): return {str(k):safe(x) for k,x in v.items()}
+    if isinstance(v, (list, tuple)): return [safe(x) for x in v]
+    if v is pd.NA or v is pd.NaT: return None
+    if isinstance(v, (pd.Timestamp, pd.Timedelta)): return str(v)
+    if isinstance(v, np.generic): return safe(v.item())
+    if isinstance(v, float) and not math.isfinite(v): return str(v)
+    if isinstance(v, (str, int, float, bool)) or v is None: return v
+    return repr(v)
+
+def run(name, fn, category='contract'):
+    t=time.perf_counter()
+    row={'name':name,'category':category}
+    with warnings.catch_warnings(record=True) as ws:
+        warnings.simplefilter('always')
+        try:
+            row.update(status='pass', actual=safe(fn()))
+        except Exception as e:
+            row.update(status='fail', error_type=type(e).__name__, error=str(e), traceback=traceback.format_exc())
+        row['warnings']=[str(w.message) for w in ws]
+    row['seconds']=time.perf_counter()-t
+    results.append(row)
+    print(name, row['status'], row.get('error','')[:220], flush=True)
+
+def rejected(fn):
+    try: value=fn()
+    except Exception as e:
+        return {'rejection':type(e).__name__,'message':str(e)}
+    raise AssertionError('Accepted invalid input; result=' + repr(safe(value))[:1000])
+
+def stream(rows=ROWS, schema=SCHEMA):
+    return Eventstream(pd.DataFrame(copy.deepcopy(rows)), schema=copy.deepcopy(schema))
+
+s=stream()
+def compare_oracle():
+    a=s.get_metrics(METRICS)
+    b=s.get_ab_paths(DIFF, METRICS)
+    for idx in a.index:
+        for r in METRICS:
+            key=r['name']; want=expected()['paths'][typed_key(idx)][key]
+            assert a.loc[idx,key] == want, (idx,key,a.loc[idx,key],want)
+            assert b.loc[idx,key] == want, (idx,key,b.loc[idx,key],want)
+    c=s.get_ab_test(DIFF,METRICS, min_support=1)
+    for _,row in c.iterrows():
+        want=expected()['mean_effects'][row.metric]
+        for key,wkey in [('group1_value','test'),('group2_value','control'),('delta','absolute'),('rel_delta','relative')]:
+            assert np.isclose(row[key],want[wkey]), (row.metric,key,row[key],want[wkey])
+    return {'metrics':a,'paths':b,'scorecard':c}
+run('oracle_reducers_and_scorecard',compare_oracle)
+
+def ratio():
+    out=s.get_ab_test(DIFF,[RATIO],n_bootstrap=100,random_state=17,min_support=1)
+    row=out.iloc[0]
+    for key,wkey in [('group1_value','test'),('group2_value','control'),('delta','absolute')]:
+        assert np.isclose(row[key],expected()['ratio_effects'][wkey]), (key,row[key])
+    return {'scorecard':out, 'paths':s.get_ab_paths(DIFF,[RATIO])}
+run('oracle_ratio_of_sums',ratio)
+
+def immutability():
+    df=pd.DataFrame(copy.deepcopy(ROWS)); before=df.copy(deep=True)
+    st=Eventstream(df,copy.deepcopy(SCHEMA)); snapshot=st.df.copy(deep=True)
+    specs=copy.deepcopy(METRICS); specs_before=copy.deepcopy(specs)
+    st.get_metrics(specs); st.get_ab_paths(DIFF,specs); st.get_ab_test(DIFF,specs)
+    labels=pd.Series({'c1':'a','c2':'b','t1':'a','t2':'b'}); labels_before=labels.copy(deep=True)
+    derived=st.add_segment('stratum',path_values=labels,pre_exposure=True)
+    pd.testing.assert_frame_equal(df,before); pd.testing.assert_frame_equal(st.df,snapshot)
+    pd.testing.assert_series_equal(labels,labels_before); assert specs==specs_before
+    exported=st.to_dataframe(); exported.loc[:,'value']=999
+    pd.testing.assert_frame_equal(st.df,snapshot)
+    return {'input_unchanged':True,'parent_unchanged':True,'copy_independent':True,'derived_labels':derived.get_path_segments('stratum')}
+run('immutable_inputs_and_dataframe_copy',immutability)
+
+def repeated():
+    a=s.get_ab_test(DIFF,[RATIO],n_bootstrap=100,random_state=17,min_support=1)
+    b=s.get_ab_test(DIFF,[RATIO],n_bootstrap=100,random_state=17,min_support=1)
+    pd.testing.assert_frame_equal(a,b)
+    pd.testing.assert_frame_equal(s.get_ab_paths(DIFF,METRICS),s.get_ab_paths(DIFF,METRICS))
+    return {'identical':True}
+run('repeat_calls_same_seed',repeated)
+
+def registry():
+    configs=[{'metric':'length'},{'metric':'duration'},{'metric':'event_count','metric_args':{'event':'pay'}},{'metric':'event_value_sum','metric_args':{'event':'pay','value_col':'value'}},{'metric':'has_event','metric_args':{'event':'pay'}},{'metric':'has_any_event','metric_args':{'events':['pay','leave']}},{'metric':'has_all_events','metric_args':{'events':['pay','view']}},{'metric':'time_between','metric_args':{'start_event':'view','end_event':'pay'}},{'metric':'active_days','metric_args':{'active_events':'view'}},{'metric':'matches_pattern','metric_args':{'pattern':'view->pay'}},{'metric':'in_segment','metric_args':{'segment_name':'group','segment_level':'test'}}]+copy.deepcopy(METRICS)
+    answers={}
+    for i,c in enumerate(configs):
+        c['name']='m'+str(i)
+        direct=s.get_metrics([c]); paths=s.get_ab_paths(DIFF,[c]);
+        pd.testing.assert_series_equal(direct[c['name']].sort_index().astype(float),paths[c['name']].sort_index(), check_names=False)
+        answers[c['metric']]='match'
+    return {'registry':sorted(VALID_METRICS),'checked':answers, 'excluded':['*_bulk','first_event_time']}
+run('registry_paths_consistency',registry)
+
+def nullable():
+    rows=copy.deepcopy(ROWS)
+    for row in rows:
+        if row['id']=='c1' or (row['id']=='t1' and row['event']=='pay'): row['value']=None
+    st=stream(rows); out=st.get_ab_paths(DIFF,METRICS)
+    assert out.loc['c1','column_sum']==0
+    assert pd.isna(out.loc['c1','column_mean']) and pd.isna(out.loc['c1','column_last'])
+    assert out.loc['t1','column_last']==-4
+    return out
+run('documented_null_reducers',nullable)
+
+def silent():
+    assignment=pd.Series({'c1':'control','c2':'control','t1':'test','t2':'test','c0':'control','t0':'test'})
+    a=s.get_ab_paths(('arm','test','control'),METRICS,assignment=assignment)
+    assert a.loc['c0','column_sum']==0 and pd.isna(a.loc['c0','column_mean']) and pd.isna(a.loc['c0','column_last'])
+    assert a.loc['c0','silent'] and a.loc['c0','mature']
+    return a
+run('documented_silent_paths',silent)
+
+for param, values in {
+    'ci_level':[True,float('nan'),float('inf'),0.49,1],
+    'power':[True,float('nan'),float('inf'),0,1],
+    'n_bootstrap':[True,float('nan'),float('inf'),99,100.5],
+    'min_support':[True,float('nan'),float('inf'),0,1.5],
+    'random_state':[True,float('nan'),float('inf'),1.5],
+    'period':[True,1,1.5,'1'],
+}.items():
+    for val in values:
+        run('reject_'+param+'_'+repr(val),lambda p=param,v=val:rejected(lambda:s.get_ab_test(DIFF,METRICS,**{p:v})))
+for param,val in [('ci_level',np.float64(.95)),('min_support',np.int64(1)),('n_bootstrap',np.int64(100)),('random_state',np.int64(42))]:
+    run('accept_numpy_'+param,lambda p=param,v=val:s.get_ab_test(DIFF,[METRICS[0]],**{p:v}))
+for name, kwargs in [('unknown_kw',{'typo':1}),('unknown_test',{'test':'oops'}),('unknown_correction',{'correction':'oops'}),('unknown_path',{'path_col':'oops'}),('strata_bool',{'strata_col':'group','strata_pre_exposure':1})]:
+    run('reject_'+name,lambda kw=kwargs:rejected(lambda:s.get_ab_test(DIFF,METRICS,**kw)))
+for name, spec in [
+    ('unknown_metric',{'metric':'oops'}),('unknown_top_key',{'metric':'length','typo':1}),
+    ('unknown_column',{'metric':'column_sum','metric_args':{'column':'oops'}}),
+    ('unknown_column_arg',{'metric':'column_sum','metric_args':{'column':'value','typo':1}}),
+    ('unknown_event_arg',{'metric':'has_event','metric_args':{'event':'pay','typo':1}}),
+    ('unknown_denominator_key',dict(RATIO,denominator={'metric':'length','typo':1})),
+    ('timestamp_metric',{'metric':'first_event_time'}),('bulk_metric',{'metric':'has_event_bulk'}),
+    ('invalid_args_bool',{'metric':'length','metric_args':False}),
+    ('invalid_args_list',{'metric':'length','metric_args':[]}),
+]:
+    run('reject_'+name,lambda sp=spec:rejected(lambda:s.get_ab_test(DIFF,[sp])),category='validation')
+for name in ['arm','silent','mature']:
+    run('reject_path_reserved_'+name,lambda n=name:rejected(lambda:s.get_ab_paths(DIFF,[dict(METRICS[0],name=n)])))
+run('reject_expanded_name_collision',lambda:rejected(lambda:s.get_ab_paths(DIFF,[RATIO,dict(METRICS[0],name='ratio_numerator')])))
+run('reject_duplicate_name',lambda:rejected(lambda:s.get_ab_test(DIFF,[METRICS[0],METRICS[0]])))
+run('reject_negative_denominator',lambda:rejected(lambda:s.get_ab_test(DIFF,[dict(RATIO,denominator={'metric':'column_sum','metric_args':{'column':'value'}})])))
+
+def signed():
+    rows=copy.deepcopy(ROWS)
+    for row in rows: row['value']=-1 if row['group']=='control' else 2
+    out=stream(rows).get_ab_test(DIFF,[METRICS[0]],min_support=1)
+    assert out.iloc[0].delta==6 and pd.isna(out.iloc[0].rel_delta)
+    return {'output':out,'contract':'guide states relative delta is NaN for nonpositive control'}
+run('signed_absolute_documented_relative_suppression',signed)
+
+def nonfinite(v):
+    rows=copy.deepcopy(ROWS); rows[0]['value']=v
+    return stream(rows).get_ab_test(DIFF,[METRICS[0]])
+run('reject_infinite_metric',lambda:rejected(lambda:nonfinite(float('inf'))))
+run('accept_nan_sum_as_missing',lambda:nonfinite(float('nan')))
+
+def mixed_ids():
+    st=stream(MIXED_ID_ROWS)
+    a=st.get_metrics(METRICS)
+    assert len(a)==3, a
+    for idx in a.index:
+        assert a.loc[idx,'column_sum']==expected()['mixed_paths'][typed_key(idx)]['column_sum'],a
+    return a
+run('mixed_id_metric_preservation',mixed_ids,category='adversarial')
+
+def mixed_labels(assignment=False):
+    rows=copy.deepcopy(ROWS)
+    for row in rows: row['group']=1 if row['group']=='test' else '1'
+    st=stream(rows)
+    kw={'assignment':pd.Series({'c1':'1','c2':'1','t1':1,'t2':1})} if assignment else {}
+    paths=st.get_ab_paths(('group',1,'1'),METRICS,**kw)
+    assert len(paths.groupby('arm'))==2, paths
+    return paths
+run('mixed_arm_labels_without_assignment',mixed_labels,category='adversarial')
+run('mixed_arm_labels_with_assignment',lambda:mixed_labels(True),category='adversarial')
+
+def segments():
+    vals=pd.Series({'c1':'low','c2':None,'t1':'high','t2':'low'})
+    derived=s.add_segment('stratum',path_values=vals,pre_exposure=True)
+    out=derived.get_path_segments('stratum')
+    assert out.to_dict()=={'c1':'low','c2':'<MISSING>','t1':'high','t2':'low'}
+    assert out.attrs['pre_exposure'] is True
+    return out
+run('segment_labels_missing_and_provenance',segments)
+run('reject_duplicate_mapping_ids',lambda:rejected(lambda:s.add_segment('stratum',path_values=pd.Series(['a','b'],index=['c1','c1']))))
+run('reject_no_matching_mapping_ids',lambda:rejected(lambda:s.add_segment('stratum',path_values={'oops':'a'})))
+run('reject_unknown_segment',lambda:rejected(lambda:s.get_path_segments('oops')))
+run('reject_unknown_segment_path',lambda:rejected(lambda:s.get_path_segments('group',path_col='oops')))
+run('reject_segment_name_collision',lambda:rejected(lambda:s.add_segment('id',path_values={'c1':'a'})))
+
+def ordinary_recipe():
+    derived=s.add_segment('stratum',path_values=s.get_path_segments('group'),pre_exposure=True)
+    recipe=json.loads(json.dumps(derived.recipe(),allow_nan=False))
+    rebuilt=Eventstream.from_recipe(pd.DataFrame(ROWS),recipe,copy.deepcopy(SCHEMA))
+    assert derived.fingerprint==rebuilt.fingerprint
+    pd.testing.assert_series_equal(derived.get_path_segments('stratum'),rebuilt.get_path_segments('stratum'))
+    return recipe
+run('ordinary_recipe_json_roundtrip',ordinary_recipe)
+
+def mixed_recipe():
+    rows=copy.deepcopy(MIXED_ID_ROWS)
+    for row in rows: row['time']='2026-01-01T00:00:00+00:00'
+    st=stream(rows)
+    derived=st.add_segment('label',path_values=pd.Series(['integer','string','leading'],index=[1,'1','01']))
+    recipe=json.loads(json.dumps(derived.recipe(),allow_nan=False))
+    rebuilt=Eventstream.from_recipe(pd.DataFrame(rows),recipe,copy.deepcopy(SCHEMA))
+    before=derived.get_path_segments('label'); after=rebuilt.get_path_segments('label')
+    assert before.equals(after), {'before':safe(before),'after':safe(after),'recipe':recipe}
+    return recipe
+run('mixed_id_recipe_json_roundtrip',mixed_recipe,category='adversarial')
+
+def recipe_isolation():
+    values={'c1':'a','c2':'b','t1':'a','t2':'b'}
+    derived=s.add_segment('stratum',path_values=values)
+    before=copy.deepcopy(derived.recipe())
+    exported=derived.recipe(); exported[0]['path_values']['c1']='CHANGED'
+    assert derived.recipe()==before, {'before':before,'after':derived.recipe()}
+    return {'isolated':True}
+run('recipe_nested_copy_isolation',recipe_isolation,category='adversarial')
+
+def input_recipe_isolation():
+    values={'c1':'a','c2':'b','t1':'a','t2':'b'}
+    derived=s.add_segment('stratum',path_values=values)
+    before=copy.deepcopy(derived.recipe()); values['c1']='CHANGED'
+    assert derived.recipe()==before,{'before':before,'after':derived.recipe()}
+    return {'isolated':True}
+run('recipe_input_dict_isolation',input_recipe_isolation,category='adversarial')
+
+def timezone():
+    rows=copy.deepcopy(ROWS)
+    for row in rows: row['time']=pd.Timestamp(row['time']).tz_convert('Europe/Nicosia')
+    st=stream(rows)
+    assigned=pd.DataFrame({'arm':['control','control','test','test'],'assigned_at':['2026-01-01 02:00:00']*4},index=['c1','c2','t1','t2'])
+    a=st.get_ab_paths(('arm','test','control'),METRICS,assignment=assigned,horizon='1h',observation_end='2026-01-01 03:00:00')
+    assert a['assigned_at'].dt.tz is not None
+    assert a['mature'].all()
+    for idx in a.index: assert a.loc[idx,'column_sum']==expected()['paths'][typed_key(idx)]['column_sum']
+    return a
+run('timezone_naive_assignment_localized',timezone)
+for val in [True,1,1.5,float('nan'),float('inf')]:
+    run('observation_end_'+repr(val),lambda v=val:rejected(lambda:s.get_ab_paths(DIFF,METRICS,observation_end=v)),category='timestamp_validation')
+
+def bounded_resource():
+    rows=[]
+    for i in range(500):
+        for row in ROWS:
+            r=dict(row); r['id']=str(i)+'-'+r['id']; rows.append(r)
+    st=stream(rows); start=time.perf_counter()
+    out=st.get_ab_test(DIFF,[RATIO],n_bootstrap=100,random_state=17,min_support=1)
+    assert len(out)==1 and out.iloc[0].group1_paths==1000
+    return {'events':len(rows),'paths':2000,'replicates':100,'seconds':time.perf_counter()-start,'process_peak_rss':resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,'rss_units':'bytes on macOS','scorecard':out}
+run('bounded_resource_4000_events',bounded_resource,category='bounded_resource')
+
+modules={}
+for name,mod in sorted(sys.modules.items()):
+    path=getattr(mod,'__file__',None)
+    if name.startswith('retentioneering') and path and Path(path).is_file():
+        path=Path(path).resolve(); modules[name]={'path':str(path),'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
+metadata={'source':str(source),'python':sys.version,'executable':sys.executable,'package_version_metadata':retentioneering.__version__, 'versions':{n:importlib.metadata.version(n) for n in ['pandas','numpy','scipy','duckdb']},'modules':modules,'oracle_sha256':hashlib.sha256(Path(__file__).with_name('oracle.py').read_bytes()).hexdigest(),'audit_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),'argv':sys.argv,'counts':{k:sum(r['status']==k for r in results) for k in ['pass','fail']}}
+args.output.mkdir(parents=True,exist_ok=True)
+(args.output/'results.json').write_text(json.dumps({'metadata':metadata,'results':results},indent=2,allow_nan=False))
+print(json.dumps(metadata['counts']))

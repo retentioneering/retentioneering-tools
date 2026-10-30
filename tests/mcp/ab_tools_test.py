@@ -40,7 +40,10 @@ class TestGetSampleRatio:
             "control": 40,
             "treatment": 60,
         }
-        assert result["p_value"] == round(result["p_value"], 8)
+        assert (
+            result["p_value"]
+            == session.active_stream.get_sample_ratio("arm")["p_value"]
+        )
         assert session.pending_tabs == []
 
     def test__expected_shares_and_period(self) -> None:
@@ -110,10 +113,12 @@ class TestGetAbTest:
         assert conv["delta"] == pytest.approx(0.1)
         assert conv["delta_ci_low"] < conv["delta"] < conv["delta_ci_high"]
         assert conv["verdict"] == "inconclusive"
-        assert conv["p_value_adjusted"] > 0.05 > conv["p_value"]
-        assert conv["test"] == "z_test"
-        assert conv["ci_basis"] == "wilson"
-        assert conv["p_basis"] == "pooled_z"
+        assert conv["p_value_adjusted"] >= conv["p_value"] > 0.05
+        assert conv["test"] == "fisher_exact"
+        assert conv["ci_basis"] == "clopper_pearson_bonferroni"
+        assert conv["p_basis"] == "fisher_exact_two_sided"
+        assert result["metrics"][1]["test"] == "descriptive"
+        assert result["metrics"][1]["p_value"] is None
         assert "valid_replicates" in conv
         assert result["bootstrap_algorithm"] == "whole_unit_counts_v1_baseline_first"
         assert conv["correction_family"] == "all_metrics"
@@ -259,7 +264,8 @@ class TestReading:
         assert conv["reading"].startswith(
             "over the whole observation period: per-comparison interval ["
         )
-        assert "excludes 0, but p " in conv["reading"]
+        assert "includes 0 (p " in conv["reading"]
+        assert "Fisher exact test" in conv["reading"]
         assert conv["reading"].endswith("corrected across all 2 metrics")
         assert all("exploratory:" in s["reading"] for s in conv["strata"])
         assert conv["periods"][0]["reading"].startswith("calendar week 2024-01-01: ")

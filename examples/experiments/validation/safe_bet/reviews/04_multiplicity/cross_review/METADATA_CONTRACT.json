@@ -1,0 +1,32 @@
+{
+  "two_arm": {
+    "p_value_method": "exact_binomial_two_sided",
+    "sampling_assumption": "independent_bernoulli"
+  },
+  "multiarm": {
+    "p_value_method": "pearson_chi_square_asymptotic",
+    "sampling_assumption": "independent_multinomial",
+    "minimum_expected_count": 5
+  },
+  "inference_status": [
+    "ok",
+    "no_data",
+    "insufficient_expected_counts"
+  ],
+  "support_warning": [
+    "",
+    "no_assigned_paths",
+    "insufficient_expected_counts"
+  ],
+  "mismatch": "boolean or null; null for unavailable inference unless assignment conflict independently alarms",
+  "scope": "overall and each split row; split Holm retains unavailable planned groups",
+  "descriptive_only_fields": [
+    "chi2",
+    "dof"
+  ],
+  "new_fields": [
+    "inference_status",
+    "support_warning",
+    "expected_count_min"
+  ]
+}

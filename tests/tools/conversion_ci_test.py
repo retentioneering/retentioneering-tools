@@ -61,7 +61,7 @@ def test_ci_columns(stream) -> None:
     pd.testing.assert_frame_equal(result[plain.columns], plain)
     row = result.iloc[0]
     ref = stats.binomtest(int(row.converted), int(row.paths_with_start)).proportion_ci(
-        0.9, method="wilson"
+        0.9, method="exact"
     )
     assert row.conversion_rate_ci_low == pytest.approx(ref.low)
     assert row.conversion_rate_ci_high == pytest.approx(ref.high)
@@ -104,7 +104,7 @@ def test_diff_matches_hand_counts(stream) -> None:
     assert np.isnan(row.p_value)  # selected after exposure: descriptive only
     assert row.delta_ci_low < row.delta < row.delta_ci_high
     assert "unassigned_paths" not in row.index  # overlapping groups raise instead
-    ref = stats.binomtest(int(k1), int(n1)).proportion_ci(0.95, method="wilson")
+    ref = stats.binomtest(int(k1), int(n1)).proportion_ci(0.95, method="exact")
     assert row.group1_conversion_rate_ci_low == pytest.approx(ref.low)
 
 

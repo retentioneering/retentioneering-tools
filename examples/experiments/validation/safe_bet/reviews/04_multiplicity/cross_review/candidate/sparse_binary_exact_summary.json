@@ -1,0 +1,9 @@
+{
+  "n_small": 2,
+  "n_large": 100,
+  "null_probability": 0.085,
+  "welch_rejection": 0.8232391255251323,
+  "holm_or_bonferroni_ten_identical_outcomes_rejection": 0.5288866793458029,
+  "fisher_rejection": 0.007446803245101052,
+  "unavailable_welch_mass": 0.00011713410045373385
+}

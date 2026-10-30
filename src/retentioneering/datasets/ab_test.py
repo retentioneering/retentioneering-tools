@@ -102,7 +102,8 @@ The planted stories of Northwind Home:
    users. Why is a hypothesis the data cannot settle: novelty, or users buying early
    what they would have bought later.
 6. ``order_value`` is lognormal and does not depend on the arm (planted AOV shift 0):
-   AOV is inconclusive.
+   AOV is descriptive by default; an explicitly requested approximate
+   ``test="bootstrap"`` sensitivity is inconclusive at the default seed.
 7. The sign of the effect flips by the length of the window before the first add
    (wider than the exposure point, the first ``product_view``; generated identically
    in both arms, so balanced by construction here): users with fewer than 10 events

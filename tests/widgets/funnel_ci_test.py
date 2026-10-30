@@ -47,12 +47,15 @@ def _overlapping_stream() -> Eventstream:
 
 class TestFunnelWidgetCi:
     def test__result_is_strict_json_with_null_for_nan(self) -> None:
-        w = FunnelWidget(_stream(), steps=["home", "cart"], diff=DIFF, ci_level=0.9)
+        w = FunnelWidget(
+            _stream(), steps=["home", "cart", "home", "cart"], diff=DIFF, ci_level=0.9
+        )
         assert w.error == ""
         result = _strict(w.result)
         assert result["ci_level"] == 0.9
-        # everyone reaches `home`: the z-test is undefined -> NaN -> null
-        assert result["steps"][0]["delta_conversion_rate_p_value"] is None
+        # Everyone reaches home: equal constant arms have exact Fisher p=1.
+        assert result["steps"][0]["delta_conversion_rate_p_value"] == 1.0
+        assert result["steps"][3]["funnel1_step_conversion_rate_ci_low"] is None
         assert result["group1_total"] == result["funnel1_total_paths"] == 60
 
     def test__level_and_correction_are_exported(self) -> None:

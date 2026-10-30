@@ -1,0 +1,219 @@
+"""Run with PYTHONPATH pointing at frozen source/src. Writes beside this script."""
+from pathlib import Path
+import argparse
+import csv, hashlib, importlib.util, json, math, platform, sys, warnings
+parser=argparse.ArgumentParser()
+parser.add_argument('--source',type=Path,help='Explicit source checkout root (containing src) or src directory')
+parser.add_argument('--output',type=Path,help='Separate result directory; defaults to script directory')
+ARGS=parser.parse_args()
+if ARGS.source:
+    source=ARGS.source.resolve()
+    sys.path.insert(0,str(source/'src' if (source/'src').is_dir() else source))
+import numpy as np
+import pandas as pd
+import scipy
+from scipy import stats
+import oracle as o
+from retentioneering import Eventstream
+from retentioneering.stats import primitives as p
+from retentioneering.tools.experiment import experiment_data
+
+OUT=ARGS.output.resolve() if ARGS.output else Path(__file__).resolve().parent
+OUT.mkdir(parents=True,exist_ok=True)
+records=[]
+
+def clean(x):
+    if isinstance(x,dict): return {str(k):clean(v) for k,v in x.items()}
+    if isinstance(x,(list,tuple,np.ndarray)): return [clean(v) for v in x]
+    if isinstance(x,(np.integer,)): return int(x)
+    if isinstance(x,(float,np.floating)): return float(x) if math.isfinite(x) else str(x)
+    if x is pd.NA: return None
+    return x
+
+def dump(name,value):
+    (OUT/name).write_text(json.dumps(clean(value),indent=2,default=str)+"\n")
+
+def check(name,actual,expected,context,tol=1e-12):
+    aa,ee=np.asarray(actual,float),np.asarray(expected,float)
+    ok=bool(np.allclose(aa,ee,rtol=tol,atol=tol,equal_nan=True))
+    records.append({"check":name,"ok":ok,"context":context,
+                    "error":float(np.nanmax(np.abs(aa-ee))) if np.isfinite(aa-ee).any() else 0.,
+                    **({} if ok else {"actual":clean(actual),"expected":clean(expected)})})
+
+def fixture(ka,na,kb,nb):
+    rows=[]; assigned=[]
+    for arm,k,n in [('control',ka,na),('treatment',kb,nb)]:
+        for i in range(n):
+            u=f'{arm}_{i}'
+            assigned.append((u,arm,pd.Timestamp('2026-01-01')))
+            rows.append((u,'open',pd.Timestamp('2026-01-03'),arm))
+            if i<k: rows.append((u,'buy',pd.Timestamp('2026-01-04'),arm))
+    df=pd.DataFrame(rows,columns=['user_id','event','timestamp','arm'])
+    s=Eventstream(df,schema={'path_cols':['user_id'],'segment_cols':['arm']})
+    a=pd.DataFrame(assigned,columns=['user_id','arm','assigned_at'])
+    return s,a
+
+def public_experiment(ka,na,kb,nb,level=.95,method='fisher_exact'):
+    s,a=fixture(ka,na,kb,nb)
+    return experiment_data(s,assignments=a,
+        metrics=[{'name':'conversion','agg':'mean','metric':'has_event','metric_args':{'event':'buy'}}],
+        observation={'start':'2026-01-02','end':'2026-01-06','assignment_time_col':'assigned_at','complete':True},
+        variant_col='arm',binary_intervals={'method':'newcombe','confidence_level':level},
+        event_catalog={'event':['open','buy']},tests={'methods':{'conversion':method},'adjustment':'holm'}).summary.iloc[0].to_dict()
+
+def public_ab(ka,na,kb,nb,level=.95,reverse=False,method='auto'):
+    s,a=fixture(ka,na,kb,nb)
+    diff=('arm','control','treatment') if reverse else ('arm','treatment','control')
+    return s.ab_test_data(diff,[{'name':'conversion','metric':'has_event','metric_args':{'event':'buy'}}],
+                          assignment=a.set_index('user_id'),ci_level=level,test=method).iloc[0].to_dict()
+
+def main():
+    meta={'python':platform.python_version(),'numpy':np.__version__,'scipy':scipy.__version__,
+          'pandas':pd.__version__,'primitive_path':str(Path(p.__file__).resolve()),
+          'oracle_sha256':hashlib.sha256(Path(o.__file__).read_bytes()).hexdigest(),
+          'primitive_sha256':hashlib.sha256(Path(p.__file__).read_bytes()).hexdigest(),
+          'coverage':'exact finite enumeration; no Monte Carlo; no random seed',
+          'source_inspection':'after oracle frozen; source and existing API fixture signatures inspected; no other role findings read'}
+    dump('versions.json',meta)
+    sizes=[1,2,3,5,10,20,50]
+    for n in sizes:
+        for k in range(n+1):
+            for alpha in [.5,.05,.001]:
+                check('wilson',p.wilson_ci(k,n,1-alpha),o.wilson(k,n,alpha),[k,n,alpha])
+    for na in sizes:
+        for nb in sizes:
+            for ka in range(na+1):
+                for kb in range(nb+1):
+                    key=[ka,na,kb,nb]
+                    nc=p.newcombe_ci(kb,nb,ka,na)
+                    check('newcombe',nc,o.newcombe(*key),key)
+                    check('newcombe_swap',nc,tuple(-x for x in reversed(p.newcombe_ci(ka,na,kb,nb))),key)
+                    check('newcombe_complement',nc,tuple(-x for x in reversed(p.newcombe_ci(nb-kb,nb,na-ka,na))),key)
+                    z,pv,se=p.two_proportion_z(kb,nb,ka,na)
+                    if 0<ka+kb<na+nb: check('pooled_z',[z,pv],o.pooled_z(*key),key)
+                    else: check('pooled_z_documented_unavailable',[z,pv],[np.nan,np.nan],key)
+                    check('fisher_scipy',stats.fisher_exact([[kb,nb-kb],[ka,na-ka]]).pvalue,o.fisher(*key),key)
+                    if min(na,nb)>=2:
+                        a=np.r_[np.ones(ka),np.zeros(na-ka)]
+                        b=np.r_[np.ones(kb),np.zeros(nb-kb)]
+                        actual=p.welch_samples(b,a)
+                        expected=o.welch_binary(*key)
+                        if expected['se']==0:
+                            check('welch_documented_unavailable',actual[:4],[np.nan]*4,key)
+                        else:
+                            check('welch_binary',actual[:4],[expected[x] for x in ['t','df','p','se']],key)
+                            check('welch_scale_sign',p.welch_samples(-b*1e100+2e100,-a*1e100+2e100)[:3],[-expected['t'],expected['df'],expected['p']],key,tol=1e-10)
+    dump('comparisons.json',records)
+    summary={name:{'count':sum(r['check']==name for r in records),
+                   'failed':sum(r['check']==name and not r['ok'] for r in records),
+                   'max_abs_error':max(r['error'] for r in records if r['check']==name)}
+             for name in sorted(set(r['check'] for r in records))}
+    dump('comparison_summary.json',summary)
+    print('comparison_summary',json.dumps(summary),flush=True)
+    boundary=[]
+    for level in [1e-12,.5,.95,1-1e-12,float(np.nextafter(1.,0.))]:
+        with warnings.catch_warnings(record=True) as caught:
+            actual=p.wilson_ci(5,10,level)
+            expected=o.wilson(5,10,1-level)
+        boundary.append({'case':'wilson_level','level':level,'actual':actual,'oracle':expected,'warnings':[str(w.message) for w in caught]})
+    for n in [10**6,10**12,10**16,10**100,10**200]:
+        with warnings.catch_warnings(record=True) as caught:
+            actual=p.wilson_ci(1,n)
+        try: expected=o.wilson(1,n)
+        except OverflowError as exc: expected='oracle range limitation: '+str(exc)
+        boundary.append({'case':'wilson_large_n','n':str(n),'actual':actual,'oracle':expected,
+                         'warnings':[str(w.message) for w in caught]})
+    for k,n in [(-1,10),(11,10),(.5,10),(1,np.nan),(1,np.inf),(0,0)]:
+        with warnings.catch_warnings(record=True):
+            try: actual=p.wilson_ci(k,n)
+            except Exception as e: actual=repr(e)
+        boundary.append({'case':'invalid_counts','k':k,'n':n,'actual':actual})
+    dump('boundaries.json',boundary)
+    public=[]
+    for key in [(0,1,1,1),(0,5,0,5),(5,5,5,5),(0,5,5,5),(1,5,2,7),(8,20,12,20),(190,1000,1,1),(190,1000,0,1)]:
+        for method in ['fisher_exact','welch']:
+            row=public_experiment(*key,method=method)
+            check('experiment_newcombe',[row['absolute_effect_ci_low'],row['absolute_effect_ci_high']],o.newcombe(*key),key)
+            if method=='fisher_exact': check('experiment_fisher',row['p_value'],o.fisher(*key),key)
+            public.append({'api':'experiment_data','case':key,'method':method,'row':row})
+        # Has-event validation can require the event to exist; skip all-zero AB fixture.
+        if key[0]+key[2]>0:
+            row=public_ab(*key)
+            public.append({'api':'ab_test_data','case':key,'row':row})
+            swapped=public_ab(*key,reverse=True)
+            check('ab_swap_delta',[row['delta'],row['delta_ci_low'],row['delta_ci_high']],
+                  [-swapped['delta'],-swapped['delta_ci_high'],-swapped['delta_ci_low']],key)
+            check('ab_swap_p',row['p_value'],swapped['p_value'],key)
+    key=(5,10,6,10)
+    for api in ['experiment_data','ab_test_data']:
+        with warnings.catch_warnings(record=True) as caught:
+            try:
+                row=public_experiment(*key,level=float(np.nextafter(1.,0.))) if api=='experiment_data' else public_ab(*key,level=float(np.nextafter(1.,0.)))
+            except Exception as exc:
+                row={'error':repr(exc)}
+        public.append({'api':api,'case':key,'level':float(np.nextafter(1.,0.)),'row':row,'warnings':[str(w.message) for w in caught]})
+    dump('public_results.json',public)
+    dump('comparisons.json',records)
+    print('public complete',flush=True)
+    # Exact pointwise coverage on a finite grid, from independent intervals.
+    probabilities=np.unique(np.r_[0.,np.arange(.001,1,.001),1.])
+    single=[]
+    for n in range(1,101):
+        ints=[o.wilson(k,n) for k in range(n+1)]
+        for prob in probabilities: single.append({'n':n,'p':float(prob),'coverage':o.coverage_single(ints,n,float(prob))})
+    pd.DataFrame(single).to_csv(OUT/'wilson_coverage.csv',index=False)
+    pg=np.array([0,.001,.005,.01,.02,.03,.05,.1,.15,.2,.25,.3,.4,.5,.6,.7,.75,.8,.85,.9,.95,.97,.98,.99,.995,.999,1.])
+    pairs=[(1,1),(2,2),(3,3),(5,5),(10,10),(20,20),(50,50),(1,1000),(2,100),(5,100),(10,100),(35,15)]
+    covers=[]; nulls=[]; dual=[]
+    for na,nb in pairs:
+        ints=np.array([[o.newcombe(ka,na,kb,nb) for kb in range(nb+1)] for ka in range(na+1)])
+        zz=np.array([[o.pooled_z(ka,na,kb,nb)[1] for kb in range(nb+1)] for ka in range(na+1)])
+        ff=np.array([[o.fisher(ka,na,kb,nb) for kb in range(nb+1)] for ka in range(na+1)])
+        ww=np.full_like(zz,np.nan)
+        if min(na,nb)>=2:
+            for ka in range(na+1):
+                for kb in range(nb+1):
+                    val=o.welch_binary(ka,na,kb,nb)
+                    if val['se']>0: ww[ka,kb]=val['p']
+        for pa in pg:
+            a=np.array(o.binomial_probs(na,float(pa)))
+            for pb in pg:
+                weights=a[:,None]*np.array(o.binomial_probs(nb,float(pb)))[None,:]
+                includes=(ints[:,:,0]-1e-14<=pb-pa)&(pb-pa<=ints[:,:,1]+1e-14)
+                covers.append({'na':na,'nb':nb,'pa':pa,'pb':pb,'coverage':float(weights[includes].sum())})
+        kk=np.arange(na+1)[:,None]+np.arange(nb+1)[None,:]
+        support=(kk>=10)&(na+nb-kk>=10)
+        pooled=kk/(na+nb)
+        expected5=(pooled*min(na,nb)>=5)&((1-pooled)*min(na,nb)>=5)
+        observed5=(np.minimum(np.arange(na+1),na-np.arange(na+1))[:,None]>=5)&(np.minimum(np.arange(nb+1),nb-np.arange(nb+1))[None,:]>=5)
+        for prob in probabilities:
+            weights=np.outer(o.binomial_probs(na,float(prob)),o.binomial_probs(nb,float(prob)))
+            nulls.append({'na':na,'nb':nb,'p':float(prob),
+                'fisher_reject':float(weights[ff<.05].sum()),
+                'z_reject':float(weights[zz<.05].sum()),
+                'ab_default_guard_z_reject':float(weights[(zz<.05)&support].sum()),
+                'expected5_guard_z_reject':float(weights[(zz<.05)&expected5].sum()),
+                'observed5_guard_z_reject':float(weights[(zz<.05)&observed5].sum()),
+                'expected5_else_fisher_reject':float(weights[((zz<.05)&expected5)|((ff<.05)&~expected5)].sum()),
+                'welch_available_reject':float(weights[ww<.05].sum()),
+                'welch_unavailable_mass':float(weights[~np.isfinite(ww)].sum())})
+        exclude=(ints[:,:,0]>0)|(ints[:,:,1]<0)
+        for ka,kb in np.argwhere(exclude != (zz<.05))[:10]:
+            dual.append({'ka':int(ka),'na':na,'kb':int(kb),'nb':nb,'ci':ints[ka,kb],
+                         'z_p':zz[ka,kb],'fisher_p':ff[ka,kb],'ci_excludes_zero':bool(exclude[ka,kb])})
+        print('enumerated',na,nb,flush=True)
+    pd.DataFrame(covers).to_csv(OUT/'newcombe_coverage.csv',index=False)
+    pd.DataFrame(nulls).to_csv(OUT/'null_rejection.csv',index=False)
+    dump('nonduality_examples.json',dual)
+    cov_summary={'wilson_min':min(single,key=lambda x:x['coverage']),
+                 'newcombe_min':min(covers,key=lambda x:x['coverage']),
+                 'null_max':{key:max(nulls,key=lambda x:x[key]) for key in ['fisher_reject','z_reject','ab_default_guard_z_reject','welch_available_reject']},
+                 'single_grid_points':len(single),'difference_grid_points':len(covers),'null_grid_points':len(nulls),
+                 'newcombe_worst_by_n':pd.DataFrame(covers).sort_values('coverage').groupby(['na','nb']).head(1).to_dict('records')}
+    dump('enumeration_summary.json',cov_summary)
+    dump('comparison_summary.json',{name:{'count':sum(r['check']==name for r in records),
+          'failed':sum(r['check']==name and not r['ok'] for r in records),
+          'max_abs_error':max(r['error'] for r in records if r['check']==name)} for name in sorted(set(r['check'] for r in records))})
+    print(json.dumps(clean(cov_summary),indent=2),flush=True)
+
+if __name__=='__main__': main()

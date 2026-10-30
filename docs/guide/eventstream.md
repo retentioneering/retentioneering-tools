@@ -244,22 +244,27 @@ stream.get_conversion_rate(
 
 **The unit is the path, not the occurrence.** A path where the start event happened three times counts once in the denominator, so "of 23,000 visits to this page, how many were entrances" is a different question this method does not answer — the per-visit figure can differ from the per-path one by several points. `path_col="session_id"` is usually the right lever: at session grain "added to cart" and "purchased" describe the same visit rather than the same person, and the lift stops being washed out by everything a user ever did.
 
-**Intervals and two-group comparisons.** `ci_level` adds a Wilson interval of the rate, and `diff` compares two groups of paths in one row:
+**Intervals and two-group comparisons.** `ci_level` adds a Clopper–Pearson
+rate interval at the coarsest declared independent grain:
 
 ```python
-stream.get_conversion_rate("add_to_cart", "purchase", ci_level=0.95)
-# ... conversion_rate 0.569, conversion_rate_ci_low 0.526, conversion_rate_ci_high 0.611 ...
-
-stream.get_conversion_rate(
-    "add_to_cart", "purchase", path_col="session_id", diff=("platform", "mobile", "desktop")
-)
+rates = stream.get_conversion_rate("path_start", "payment", ci_level=0.95)
+rates.attrs  # method, confidence level, observed-path population and independence
 ```
 
-| group1_conversion_rate | group2_conversion_rate | delta | delta_ci_low | delta_ci_high | p_value |
-|---|---|---|---|---|---|
-| 0.240 | 0.330 | -0.090 | -0.144 | -0.034 | 0.0018 |
+A valid `diff` compares disjoint groups constant at that grain. The result includes
+a conservative CP-based difference and a two-sided Fisher exact p-value for
+unconditional comparisons. The difference is not a Fisher-test inversion.
+Conditional starts such as `add_to_cart` select who reached that event and carry
+no confirmatory p-value. Their intervals remain descriptive. Method and population
+metadata live in `DataFrame.attrs`; a serializer exporting only rows must preserve
+those attrs separately.
 
-Every per-path column comes once per group (`group1_paths_with_start`, `group1_converted`, `group1_conversion_rate` with its interval, `group1_base_rate`, `group1_lift`, and the same for `group2_`), followed by `delta` (group 1 minus group 2) with a Newcombe interval and a pooled two-proportion `p_value` (`NaN` when it is undefined). The groups are whole paths: on `load_ecom()` 180 users switch platform between sessions, so the same call at user grain raises `DiffConfigError` instead of counting those users in both groups — compare sessions, or carry a per-path label with `add_segment(path_values=...)`. The interval treats every path as an independent unit, which is right only when `path_col` is the unit that was assigned: sessions of a user-level experiment give intervals that are too narrow. Two more things limit what this example says. `platform` is not randomised, so the delta compares two groups of sessions, it does not measure an effect of the platform. And the start anchor `add_to_cart` makes the rate conditional — the denominator is whoever reached it — so the result carries `conditional=True` (False only when the start anchor is the path start); in an experiment, a treatment that changes who reaches the anchor makes the delta and its `p_value` descriptive, and the effect on the whole arm is a job for `get_ab_test` with a `has_event` or `matches_pattern` metric and `assignment=`.
+On `load_ecom()`, users can switch platform across sessions, so a platform diff
+at user grain can reject. Session point estimates remain descriptive; changing
+the grain does not justify independent-session intervals. For an ITT outcome
+including silent assignments, use the [roster scorecard](/docs/ab-testing) or
+[strict fixed-window report](/docs/experiments).
 
 ### Path-level labels
 
@@ -275,102 +280,108 @@ It is the inverse of [`add_segment(name, path_values=...)`](/docs/data-processor
 
 ### Sample ratio mismatch
 
-Before reading any metric of an experiment, check that the arms have the sizes the design promised. `get_sample_ratio()` counts paths per arm and tests them against the expected shares (chi-square goodness of fit):
+`get_sample_ratio` counts assignment units against the declared allocation.
+Two-arm p-values are exact binomial checks under independent Bernoulli allocation.
+Multiarm Pearson inference is approximate and unavailable when any expected count
+is below five. Explicit expected-share keys include planned but absent arms.
 
 ```python
-check = stream.get_sample_ratio("exp_group")                 # equal split expected
-check["mismatch"], check["p_value"], check["levels"]
-
-stream.get_sample_ratio(
-    "exp_group",
-    expected_shares={"control": 0.8, "treatment": 0.2},
-    assignment=groups,         # index user_id; columns arm and, optionally, assigned_at
-    period="D",                # per assignment day, Holm-adjusted
-)
+check = stream.get_sample_ratio(assignment=groups)  # authoritative indexed roster
+check["inference_status"], check["p_value_method"], check["mismatch"]
 ```
 
-`levels` has one row per arm (`level`, `paths`, `share`, `expected_share`, `expected_paths`). `mismatch` is raised when `p_value < alpha` (default `0.001` — an SRM alarm gates every other result, so it is set strict) **or** when any path carries more than one arm (`multi_valued_paths`), which is an assignment bug whatever the shares say. With `assignment=` the counts come from the table, including users who never produced an event (`silent_paths`), and `segment_col` is optional; without it they come from the stream. Paths left out of the test — stream paths the table does not list, paths with no arm — are counted in `unassigned_paths`. `period=` repeats the check per calendar unit of assignment (`"D"`, `"W"`, `"M"`, as in `get_ab_test`; result in `periods`) and `strata_col=` per segment fixed at assignment (`strata`), with Holm-adjusted p-values.
-
-Run it on the assignment or on the full stream. On a subset defined by behaviour — users who reached the cart — the shares differ whenever the treatment works, and that difference is an effect, not a bug: the chi-square there is the conversion test in disguise.
+Require `inference_status="ok"` before interpreting the p-value. `mismatch` is
+`True`, `False`, or `None`; unavailable inference is not a pass. Conflicting
+assignments independently alarm. The retained `chi2` and `dof` are descriptive
+Pearson fields, not the source of a two-arm exact p-value. Fixed-total and blocked
+allocation require a compatible diagnostic. `period` and `strata_col` provide
+split checks with their own full planned Holm family. See
+[allocation assumptions and statuses](/docs/ab-testing#sample-ratio-mismatch).
 
 ### A/B test scorecard
 
-`get_ab_test()` compares two arms of an experiment on a handful of path metrics and returns one row per metric: the value in each arm, the difference with a confidence interval, a p-value, the smallest effect the test could have detected (`mde`) and a verdict. The metrics are ordinary [path metrics](/docs/path-metrics) configs, one number per path, with an optional `name` and an optional `denominator` that turns a metric into a ratio of sums:
+`ab_test_data` / `get_ab_test` compares declared independent paths. Known binary
+outcomes default to Fisher exact tests with Clopper–Pearson arm intervals and a
+conservative difference; nonbinary means, counts and ratios default to descriptive
+estimates. Explicit nonbinary Welch/bootstrap remain approximate advanced options.
+Known-binary Welch and scorecard bootstrap reject. Explicit binary z inference
+is approximate and requires at least five pooled-null expected successes and
+failures per arm.
 
 ```python
 from retentioneering.datasets import load_ab_test, load_ab_test_assignment
 
 stream = load_ab_test()
-assignment = load_ab_test_assignment()        # index user_id; columns arm, assigned_at
-orders = {"metric": "event_count", "metric_args": {"event": "order_success"}}
-
+assignment = load_ab_test_assignment()
+metrics = [
+    {"name": "conversion", "metric": "has_event",
+     "metric_args": {"event": "order_success"}},
+    {"name": "orders_per_user", "metric": "event_count",
+     "metric_args": {"event": "order_success"}},
+]
 scorecard = stream.get_ab_test(
-    ("exp_group", "treatment", "control"),
-    metrics=[
-        {"name": "conversion", "metric": "has_event", "metric_args": {"event": "order_success"}},
-        {"name": "orders_per_user", **orders},
-        {"name": "revenue_per_user", "metric": "column_sum", "metric_args": {"column": "order_value"}},
-        {"name": "aov", "metric": "column_sum", "metric_args": {"column": "order_value"},
-         "denominator": orders},
-    ],
-    assignment=assignment,
-)
+    ("exp_group", "treatment", "control"), metrics,
+    assignment=assignment, observation_end="2026-04-27")
+scorecard[["metric", "delta", "test", "ci_basis", "verdict"]]
 ```
 
-| metric | group1_value | group2_value | delta | delta_ci_low | delta_ci_high | p_value | mde | verdict | test |
-|---|---|---|---|---|---|---|---|---|---|
-| conversion | 0.2433 | 0.2373 | 0.0060 | -0.0107 | 0.0228 | 0.479 | 0.0239 | inconclusive | z_test |
-| orders_per_user | 0.3034 | 0.2889 | 0.0145 | -0.0086 | 0.0377 | 0.219 | 0.0331 | inconclusive | welch_t_test |
-| revenue_per_user | 20.14 | 18.64 | 1.50 | -0.28 | 3.28 | 0.099 | 2.55 | inconclusive | welch_t_test |
-| aov | 66.39 | 64.53 | 1.86 | -1.30 | 5.03 | 0.262 | 4.64 | inconclusive | bootstrap |
+`delta` is group1 minus group2. The roster includes silent users as zero for
+supported binary outcomes/totals and excludes pre-assignment events. A ratio of
+sums is not an average of individual ratios. Undefined values remain missing.
+The conservative difference interval is not a Fisher-test inversion; exact-path
+relative intervals are withheld. Available MDE is a normal planning approximation,
+not actual Fisher power or a bound on the true effect.
 
-`delta` is group 1 minus group 2. The test follows the metric: a 0/1 metric gets a pooled two-proportion z-test with Wilson and Newcombe intervals, a per-path total or value gets Welch's t-test, a ratio of sums (average order value = revenue / orders) gets a joint path bootstrap — paths are resampled within each arm and every metric is recomputed on the same resample, so the ratio's interval respects that revenue and orders come from the same users. `test=` (or a per-metric `"test"`) overrides the choice where it fits the metric.
+The default Holm family includes all declared rows and unavailable tests.
+Separate calls are separate families; BH requires independence or PRDS.
+`strata_pre_exposure=True` or local `pre_exposure=True` explicitly declares
+pre-treatment membership. Truncation, transferred metadata and legacy inferred
+recipes cannot prove it. Fisher/descriptive strata suppress asymptotic secondary
+p-values; explicitly requested supported approximations label guarded diagnostics
+`strata_diagnostics_basis="asymptotic_exploratory"` outside the primary family.
 
-**Read an inconclusive row with its interval and `mde`.** Above, conversion moved by +0.60 pp with an interval from -1.07 to +2.28 pp: an effect larger than about +2.3 pp or below about -1.1 pp is unlikely, and a smaller one, in either direction, is possible. The `mde` (about 2.4 pp) is the effect the test detects with 80 % power at alpha 0.05 (`mde_alpha`) — a design quantity, not a bound on the true effect: an inconclusive result does not say the effect is smaller than the `mde`, the interval says how large it can be. The verdict is `increase` / `decrease` only when the multiplicity-adjusted p-value is below `1 - ci_level`; `insufficient_data` marks rows whose support, pooled across both arms, is below `min_support` (default 10; for totals, paths with a non-zero total), with `support_warning="no_data"` when no path of either arm has the behaviour; a behaviour present in one arm only still gets a p-value, flagged `support_warning="one_arm_only"`.
-
-**The population.** `assignment=` makes the assignment table the population (intention to treat): users who were assigned but never produced an event count as zeros (`group1_silent_paths`), events before `assigned_at` are dropped, and stream paths missing from the table are counted in `unassigned_paths`. Without it the population is the paths of the stream; the `population` column of every row says which (`"assignment"` or `"stream"`). Either way the unit is the path: with a user-level assignment table, or an arm segment constant within the users, a session `path_col` raises, because per-session intervals of a per-user experiment are too narrow.
-
-**Strata.** `strata_col=` repeats every metric per level of a segment that is constant per path, with each stratum's share in both arms, a share-balance p-value, Cochran's heterogeneity test and a stratum-versus-rest test. The p-values are corrected within each metric (`correction="holm"` by default; `"bonferroni"` also adds simultaneous intervals, `"bh"` controls the false discovery rate; `correction_scope="all"` corrects every row of the call together instead, for a scorecard read without one decision metric), and `correction_family` says what was corrected together. A stratum must be fixed before exposure: find it on a stream truncated before the first exposure and carry it over with [`add_segment(path_values=..., pre_exposure=True)`](/docs/data-processors/add-segment), which records your declaration with the segment. A source column fixed at assignment, such as a signup platform, is declared with `strata_pre_exposure=True`. A stratum that is neither declared nor read from a truncation in the stream's recipe — clusters or `metric_bins` on the full stream — raises a warning and is flagged `strata_pre_exposure=False` — the treatment can move users between such strata, so their rows compare selected groups, not randomised ones. `strata_pre_exposure_source` says which case applies (`"declared"`, `"recipe"`, `"not_pre_exposure"`), and rows are `exploratory=True` unless the stratum counts as pre-exposure.
-
-**Periods and windows.** `period="W"` gives one row per calendar week, each on every user assigned by the end of that week (ITT per period). `period_population="active"` restricts each week to users active in it; such rows compare survivors and are marked `descriptive`, with no p-value. `period_basis="since_assignment"` bins events by time since each user's assignment (`"0-13"`, `"14-27"` days for `period="14D"`), and keeps a user in a bin only when the bin's window closed by the stream's last event (`immature_paths` counts the others). `horizon="28D"` gives every user the same 28-day window from assignment. Different horizons answer different questions — choose the one that matches the decision before reading any.
+Calendar ITT periods include assignments before each bin end. Exposure-age bins
+and fixed horizons require an explicit exclusive `observation_end`; the last
+recorded event never determines maturity. Active-population periods are
+descriptive. Read the full [A/B contract](/docs/ab-testing#supported-inference).
 
 ### Joint bootstrap replicates
 
-`get_ab_bootstrap()` returns the replicates behind the bootstrap: one row per replicate, metric, stratum and period, with both arms' values and the delta, all computed on the same resampled users. Combine them freely — an effect that changes with exposure age is the difference between an early and a late window, with an interval that accounts for the same users being in both. `contrast=` compares the same paths in every contrasted bin — the library keeps only the paths whose windows closed in all of them — so the horizon below is a choice of window that makes the population explicit, not a requirement:
+`get_ab_bootstrap` draws whole independent units jointly across metrics and
+periods. It is an explicit approximate diagnostic. The fraction of positive
+draws is not a posterior probability or a p-value. Contrasts require both a
+common population and common measurement eligibility across periods; changing
+missingness rejects.
 
 ```python
 reps = stream.get_ab_bootstrap(
-    ("exp_group", "treatment", "control"),
-    metrics=[{"name": "conversion", "metric": "has_event",
-              "metric_args": {"event": "order_success"}}],
-    assignment=assignment,
-    period="14D",
-    period_basis="since_assignment",
-    horizon="42D",
-    contrast={"novelty": (["0-13"], ["28-41"])},
-)
-novelty = reps.loc[reps["contrast"] == "novelty", "delta"]
-novelty.quantile([0.025, 0.975]).tolist()
-# [0.0284, 0.0675]
+    ("exp_group", "treatment", "control"), metrics[:1], assignment=assignment,
+    period="14D", period_basis="since_assignment", horizon="42D",
+    observation_end="2026-04-27",
+    contrast={"early_minus_late": (["0-13"], ["28-41"])})
+contrast = reps.loc[reps["contrast"] == "early_minus_late", "delta"]
 ```
 
-The interval comes from the replicates; the estimate is the same difference on the observed data, +4.86 pp: the effect is larger in days 0-13 than in days 28-41 (`get_ab_test(..., period="14D", period_basis="since_assignment", horizon="42D")` gives +3.38 pp and −1.48 pp for the two bins, and MCP's `get_ab_bootstrap` reports this `delta`).
+Requests are capped at 1,000,000 draws and 10,000,000
+replicate-by-contribution entries. Undefined/degenerate draws and insufficient
+adjusted-tail resolution retain unavailable statuses. Numeric overflow raises;
+more draws cannot repair heavy tails or dependence.
 
 ### Per-path table behind the scorecard
 
-`get_ab_paths()` takes the `diff`, `metrics`, `assignment`, `horizon` and `path_col` of `get_ab_test()` and returns the table its rows are computed from: one row per path of both arms, with the arm, `assigned_at` when the table has it, `silent`, `mature` (False for a path whose `horizon` window had not closed) and every metric's per-path value (a ratio metric as its numerator and denominator columns). Its per-arm means reproduce the scorecard's `group1_value` and `group2_value`. Use it for an analysis the scorecard does not run, such as a covariate adjustment (CUPED) fitted by hand:
+`get_ab_paths` exports one row per compared assignment with its arm, assignment
+time, silent/mature flags and metric contributions. Ratios export separate
+numerator and denominator columns. Aggregating those contributions over the
+appropriate population reproduces scorecard point estimates.
 
 ```python
 paths = stream.get_ab_paths(
-    ("exp_group", "treatment", "control"),
-    metrics=[{"name": "conversion", "metric": "has_event",
-              "metric_args": {"event": "order_success"}}],
-    assignment=assignment,
-)
-paths.groupby("arm")["conversion"].mean()     # the scorecard's group values
+    ("exp_group", "treatment", "control"), metrics, assignment=assignment)
+paths.groupby("arm")["conversion"].mean()
 ```
 
-See [A/B Per-Path Table](/docs/tools/get-ab-paths) for every column.
+Use this table for independent audits and explicitly designed analyses outside
+the scorecard. See [every exported column](/docs/tools/get-ab-paths).
 
 ### Reproducing an eventstream
 
@@ -386,3 +397,24 @@ prepared.recipe()
 ```
 
 `Eventstream.from_recipe(df, recipe)` replays that list onto a base DataFrame, rebuilding an identical eventstream — useful for moving a prepared pipeline between notebooks, storing it next to a report, or handing it to the [MCP server](/docs/mcp-server), whose preprocessor steps use exactly this format. `stream.fingerprint` (a property) is a content hash for checking two eventstreams really are the same, and `stream.equals(other)` compares them directly.
+
+## Identity and persistent recipes
+
+Nonmissing values in each path-ID column must use a homogeneous scalar family.
+Derived nested session IDs may remain missing; that does not authorize mixing
+nonmissing ID types. Mixed integer/string or
+boolean/integer IDs reject before SQL can merge them. Integer object columns are
+normalized exactly to signed64 or uint64; arbitrary-precision integers outside
+those ranges, or a column mixing negative integers with values above signed64
+maximum, reject. IDs rounded before construction cannot be recovered.
+
+`add_segment(path_values=...)` accepts persistent labels that are strings,
+booleans, finite numbers or missing. NumPy scalars normalize to native values;
+timestamps/custom objects/infinite labels require explicit conversion. Mapping
+keys with colliding serialized forms reject. Numeric/boolean keys retain typed
+replay metadata. Recorded arguments and exported recipes are deep copies, so
+mutating a caller's mapping or a returned recipe does not rewrite stream lineage.
+
+A recipe's truncation or inherited pre-exposure flag cannot certify treatment
+timing. Reassert the declaration when transferring labels; see
+[A/B exposure provenance](/docs/ab-testing#segments-and-exposure-provenance).

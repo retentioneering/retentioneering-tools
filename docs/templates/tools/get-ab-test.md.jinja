@@ -24,18 +24,21 @@ independence between nested paths. For genuinely independent session-level desig
 sessions as the primary schema grain; changing schema order alone cannot repair dependence.
 Ordinary metrics and point-only funnels remain available at finer grains.
 
-The test follows the metric: a pooled z-test with Wilson and Newcombe intervals
-for 0/1 metrics, Welch's t-test for per-path totals and values, and a joint
-path bootstrap for ratio metrics (an entry with a `denominator`). The
-`verdict` reads only the adjusted p-value; the interval is per comparison
-(only `correction="bonferroni"` adds a simultaneous one). The correction runs across every declared row of the call by default
-(`correction_scope="all"`), including rows with unavailable p-values.
-`correction_scope="metric"` explicitly declares separate metric families; it is
-appropriate only when the decision design treats them separately. Separate calls
-and repeated looks are not corrected automatically. Guardrails need predeclared
-harm margins and a decision rule; a nonsignificant two-sided test does not establish
-non-inferiority. The [A/B Testing guide](/docs/ab-testing) is a walk-through on
-the bundled synthetic experiment, `load_ab_test()`.
+Known binary outcomes default to Fisher exact inference, with Clopper–Pearson
+arm intervals and a conservative difference formed by splitting alpha across the
+arms. That difference is not a Fisher-test inversion. Nonbinary outcomes default
+to descriptive estimates, without p-values, intervals or MDE. Approximate Welch
+and whole-unit bootstrap require explicit nonbinary requests; known-binary Welch
+and scorecard bootstrap reject. Explicit binary z inference requires at least
+five pooled-null expected successes and failures per arm and remains approximate.
+Relative intervals are withheld on the exact Fisher path.
+
+The verdict reads the adjusted p-value; intervals are per comparison unless an
+available Bonferroni interval is requested. Holm includes all declared rows,
+including unavailable hypotheses. BH requires independence or PRDS. Separate
+calls and repeated looks are not automatically corrected. MDE, when available,
+is labeled `normal_approximation`, not actual Fisher-test power. See the
+[supported inference boundary](/docs/ab-testing#supported-inference).
 
 ### Assignment ids and time
 
@@ -106,8 +109,8 @@ Any replicate without a value in an arm (a ratio's denominator at
 quantiles, since that would condition the interval on the statistic being defined.
 Degenerate bootstrap distributions also cannot provide an inferential verdict.
 
-An absent estimate is NaN, never 0. `p_value` is NaN when both arms are
-constant, when an arm has fewer than two paths with a value (totals and values),
+An absent estimate is NaN, never 0. `p_value` is unavailable for degenerate approximate inference (equal
+constant nonempty binary arms instead have Fisher p=1), when an arm has fewer than two paths with a value (totals and values),
 and on `insufficient_data`, `descriptive` and `invalid_replicates` rows (a
 `low_support` row keeps it); `delta_se` and `mde` are NaN when the metric has no
 spread; `rel_delta*` are NaN when `group2_value <= 0`; an arm with no path has
@@ -115,69 +118,31 @@ NaN estimates; `heterogeneity_*` are NaN with fewer than two strata that pass
 the support guard (>= 5 events and >= 5 non-events per arm for 0/1 metrics, >= 10
 supporting paths per arm otherwise).
 
-Strata not established before exposure are descriptive: they retain estimates and
+Strata without an explicit pre-treatment declaration are descriptive: they retain estimates and
 intervals, but no p-values, MDE, balance or heterogeneity test. An exploratory flag
 is not permission to interpret post-treatment selection causally.
 
 ### Reading a row
 
-The last column, `reading`, says in one sentence what the row's own numbers
-support, so a scorecard can be read row by row without re-deriving the rules.
-It reads the row's numbers only: it does not check the sample ratio, the unit or
-whether strata are pre-exposure, so gate on `get_sample_ratio()` first. 0/1
-metrics are read in percentage points (pp), other metrics in their unit;
-negative numbers use a plain `-`, so the text can be parsed back. The examples
-below are printed by `get_ab_test` on `load_ab_test()` with
-`diff=("exp_group", "treatment", "control")`, `assignment=load_ab_test_assignment()`
-and the conversion metric (`has_event` of `order_success`) unless said otherwise.
+`reading` reports the window, population, effect, method, availability and
+correction from that row. It does not verify randomization, complete logging or
+the analyst's causal declarations. Inspect SRM status and design independently.
+An inconclusive test does not prove no effect; a confidence interval is not a
+posterior probability statement. `mde_basis="normal_approximation"` identifies a
+planning approximation, not actual power for Fisher's test.
 
-Every sentence starts with the window the row covers: `over the whole
-observation period`, `within 28 days of assignment` (with `horizon`),
-`calendar week 2026-03-09` or `days 14-27 since assignment` (period rows). A
-period row describes its window, not the experiment: quote the window with the
-number.
+Default Fisher/descriptive strata have `strata_diagnostics_basis="not_requested"`
+and no balance, heterogeneity or stratum-versus-rest p-values. Explicit supported
+approximate methods expose guarded `"asymptotic_exploratory"` diagnostics outside
+the primary corrected family. Truncation or transferred metadata never certifies
+pre-treatment labels; reassert the analyst declaration explicitly.
 
-- **inconclusive** — `"over the whole observation period: interval [-1.07,
-  +2.28] pp includes 0 (p 0.48); effects outside it are unlikely; the design
-  detects 2.39 pp at alpha 0.05 — to detect 1 pp, about 5.7× the paths are
-  needed in a new test sized before it starts"`. The interval bounds the effect;
-  the `mde` describes the design. The multiplier comes from the design variance:
-  the `mde` shrinks with the square root of the paths, so a round effect (1, 2 or
-  5 times a power of ten) at or below half the `mde` needs `(mde / effect)²` times
-  the paths at the same split — in a new test, sized before it starts; extending
-  this one, or re-reading it at another horizon, is peeking. The clause is left
-  out when there is no `mde`. With a correction over several rows the p-value is
-  the adjusted one and says so (`p 0.58 after holm`), while the interval stays
-  per comparison and is called that: `"calendar week 2026-03-02: per-comparison
-  interval [-0.44, +3.38] pp includes 0 (p 0.58 after holm); …"` (`period="W"`).
-  A row whose interval excludes 0 only before the correction says so:
-  `"calendar week 2026-03-16: per-comparison interval [+0.33, +2.22] pp excludes
-  0, but p 0.057 after holm is not below alpha 0.05; …"`.
-- **increase / decrease** — `"within 14 days of assignment: interval [+1.34,
-  +4.08] pp excludes 0 (p 0.00011); relative +21 %"` (`horizon="14D", observation_end="2026-04-27"`).
-- **insufficient_data** — `"calendar day 2026-03-02: pooled support 31 <
-  min_support 50; estimate shown descriptively"` (`period="D"`,
-  `min_support=50`); a row where no path of either arm has the behaviour reads
-  `"no data in either arm"` (`support_warning="no_data"`), and a value or ratio
-  metric with no value in one arm reads `no value in group1: ...`.
-- **descriptive** — `"calendar week 2026-03-02: active population: not
-  randomised, describes who was active in the period"`
-  (`period_population="active"`).
-
-Then the row's flags, when set: `exploratory: strata not pre-exposure (declare
-strata_pre_exposure=True if they are)`, `window not complete` for a period whose
-window the data does not cover, `conditional: a value for 1207 of 4960 and 1196
-of 5040 paths; compares those paths, not the whole arms` (the scorecard's order
-value, revenue over orders), and the `support_warning` (`low support: coverage
-below nominal (under 30 supporting paths in an arm)` on bootstrap rows, whose
-verdict stays). A row with one of these flags, or with `invalid_replicates`,
-does not say "effects outside it are unlikely": its interval is weaker than
-nominal or answers another question. With several metrics and no strata or
-periods, each row names the all-metrics correction by default. An explicit
-`correction_scope="metric"` reads `corrected within this metric only; name one
-decision metric`. With `correction="bonferroni"` the sentence quotes the
-simultaneous interval. Since-assignment bins whose window closes after the end
-of data for every path have no population in either arm and are left out.
+Bootstrap requests stop at 1,000,000 replicates and 10,000,000
+replicate-by-contribution entries. For Bonferroni intervals, fewer than ten expected
+replicates per adjusted tail (`B * (alpha / m) / 2 < 10`) produces
+`delta_ci_adjusted_status="insufficient_tail_resamples"`; no normal-SE interval replaces
+it. Numeric overflow raises with a request to rescale. These computational guards
+do not certify coverage for heavy-tailed or dependent data.
 
 {% endblock %}
 

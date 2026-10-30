@@ -17,9 +17,11 @@ Design (plan v2, lead decisions D3, D5, D6, D12, D13)
 * The default multiplicity family is all declared rows in the call; an explicit
   ``correction_scope="metric"`` retains separate metric families. The ``verdict`` uses
   ``p_value_adjusted`` only; the confidence interval is per comparison and labelled so.
-* Statistical dispatch: 0/1 metric -> pooled z-test with Wilson/Newcombe intervals;
-  per-path count or value metric -> Welch t; ratio-of-sums metric -> joint path bootstrap
-  (percentile CI, p from the bootstrap SE).
+* Statistical dispatch: known 0/1 metrics use Fisher exact tests and conservative
+  exact binary intervals. Other metrics are descriptive by default. Welch and
+  whole-unit bootstrap require explicit selection and remain approximate.
+* Secondary stratum diagnostics are approximate exploratory tests, available only
+  with explicitly selected approximate methods and adequate support on both sides.
 * Every row ends with ``reading`` (:func:`row_reading`): one sentence built from the
   row's own numbers, templated per verdict, with the row's flags appended.
 
@@ -55,6 +57,12 @@ from retentioneering.exceptions import (
     EmptyEventstreamError,
     InvalidMetricConfigError,
     InvalidParameterError,
+)
+from retentioneering.stats.resampling import (
+    check_bootstrap_size,
+    checked_difference,
+    checked_ratio,
+    checked_sum,
 )
 from retentioneering.tools import _bootstrap as bs
 from retentioneering.tools import _stats
@@ -92,7 +100,7 @@ __all__ = [
     "ab_paths",
 ]
 
-TESTS = ("auto", "z_test", "welch_t_test", "bootstrap")
+TESTS = ("auto", "fisher_exact", "z_test", "welch_t_test", "bootstrap", "descriptive")
 CORRECTIONS = ("holm", "bonferroni", "bh", "none")
 CORRECTION_SCOPES = ("metric", "all")
 VERDICTS = ("increase", "decrease", "inconclusive", "descriptive", "insufficient_data")
@@ -145,6 +153,8 @@ COLUMNS: tuple[str, ...] = (
     "delta_ci_high",
     "delta_ci_low_adj",
     "delta_ci_high_adj",
+    "delta_ci_adjusted_basis",
+    "delta_ci_adjusted_status",
     "rel_delta",
     "rel_delta_ci_low",
     "rel_delta_ci_high",
@@ -152,6 +162,7 @@ COLUMNS: tuple[str, ...] = (
     "p_value_adjusted",
     "correction_family",
     "mde_alpha",
+    "mde_basis",
     "mde",
     "rel_mde",
     "verdict",
@@ -162,6 +173,7 @@ COLUMNS: tuple[str, ...] = (
     "support_warning",
     "group1_share",
     "group2_share",
+    "strata_diagnostics_basis",
     "balance_p_value",
     "heterogeneity_p_value",
     "heterogeneity_dof",
@@ -186,16 +198,27 @@ BOOTSTRAP_COLUMNS: tuple[str, ...] = (
 )
 
 _TEST_OF_KIND = {
-    "binary": "z_test",
-    "count": "welch_t_test",
-    "value": "welch_t_test",
-    "ratio": "bootstrap",
+    "binary": "fisher_exact",
+    "count": "descriptive",
+    "value": "descriptive",
+    "ratio": "descriptive",
 }
-_CI_BASIS = {"z_test": "wilson", "welch_t_test": "welch", "bootstrap": "path_bootstrap"}
-_P_BASIS = {"z_test": "pooled_z", "welch_t_test": "welch", "bootstrap": "bootstrap_se"}
+_CI_BASIS = {
+    "fisher_exact": "clopper_pearson_bonferroni",
+    "z_test": "newcombe_approximate",
+    "welch_t_test": "welch_approximate",
+    "bootstrap": "path_bootstrap_approximate",
+    "descriptive": "not_requested",
+}
+_P_BASIS = {
+    "fisher_exact": "fisher_exact_two_sided",
+    "z_test": "pooled_z_asymptotic",
+    "welch_t_test": "welch_asymptotic",
+    "bootstrap": "bootstrap_se_asymptotic",
+    "descriptive": "not_requested",
+}
 
-#: Ops that compute a segment from the path's own behaviour (post-exposure unless the
-#: stream was truncated before the op).
+#: Ops that compute behavioral segments; pretreatment use requires a declaration.
 _BEHAVIOUR_SEGMENT_MODES = ("metric_bins", "funnel_events")
 
 _BOOTSTRAP_CHUNK = 128
@@ -310,7 +333,10 @@ class ABMetricSpec:
     denominator : dict or None
         Registry config whose per-path value divides the numerator (ratio-of-sums metric).
     test : str
-        Resolved test: ``"z_test"``, ``"welch_t_test"`` or ``"bootstrap"``.
+        ``"auto"`` resolves to ``"fisher_exact"`` for known binary outcomes and
+        ``"descriptive"`` otherwise. Explicit approximate methods are guarded
+        ``"z_test"`` for binary outcomes, ``"welch_t_test"`` for means, and
+        ``"bootstrap"`` for nonbinary means or ratios.
     kind : str
         ``"binary"`` (0/1 per path), ``"count"`` (a per-path total; 0 for a path with
         no events), ``"value"`` (float per path, NaN when undefined), ``"ratio"`` (has a
@@ -336,8 +362,9 @@ class ABMetricSpec:
         InvalidMetricConfigError
             Not a dict; unknown key; unknown metric; a ``*_bulk`` metric or one that
             expands into several columns; ``first_event_time``; ``denominator`` on a 0/1
-            metric; unknown ``test``; a test that does not fit the kind (``z_test`` on a
-            non-0/1 metric, anything but ``bootstrap`` on a ratio metric).
+            metric; unknown ``test``; a test that does not fit the outcome kind.
+            Binary Welch/bootstrap and nonbinary Fisher/z are refused. Ratios
+            support descriptive estimates or explicit approximate bootstrap.
         """
         if not isinstance(entry, dict):
             raise InvalidMetricConfigError(
@@ -382,12 +409,18 @@ class ABMetricSpec:
             )
         if test == "auto":
             test = _TEST_OF_KIND[kind]
-        if test == "z_test" and kind != "binary":
+        if test in {"z_test", "fisher_exact"} and kind != "binary":
             raise InvalidMetricConfigError(
-                f"{label}: 'z_test' is for 0/1 metrics; this one is a {kind} metric "
+                f"{label}: {test!r} is for 0/1 metrics; this one is a {kind} metric "
                 "(use 'welch_t_test' or 'bootstrap')."
             )
-        if kind == "ratio" and test != "bootstrap":
+        if kind == "binary" and test in {"welch_t_test", "bootstrap"}:
+            raise InvalidMetricConfigError(
+                f"{label}: known binary outcomes require 'fisher_exact', guarded "
+                "'z_test', or 'descriptive'; raw bootstrap draws remain available "
+                "through get_ab_bootstrap."
+            )
+        if kind == "ratio" and test not in {"bootstrap", "descriptive"}:
             raise InvalidMetricConfigError(
                 f"{label}: a ratio of sums has no closed-form test here; use "
                 "test='bootstrap' (or 'auto')."
@@ -792,43 +825,18 @@ def prepare_assignment(
     return aligned
 
 
-def _cuts_at_an_event(op: dict) -> bool:
-    """Whether a ``truncate_paths`` op ends paths at an event (a no-op truncation to
-    ``path_end`` does not)."""
-    end = op.get("end_anchor", "path_end")
-    anchors = end if isinstance(end, list) else [end]
-    for anchor in anchors:
-        pattern = anchor.get("pattern") if isinstance(anchor, dict) else anchor
-        if pattern != "path_end":
-            return True
-    return False
-
-
 def _strata_provenance(stream, strata_col: str) -> bool | None:
     """Whether ``strata_col`` was fixed before exposure (see :func:`_provenance`)."""
     return _provenance(stream, strata_col)[0]
 
 
 def _provenance(stream, strata_col: str) -> tuple[bool | None, str | None]:
-    """``(flag, how)``: whether ``strata_col`` was fixed before exposure, read from
-    the stream's recipe, and ``"declared"`` (``add_segment(..., pre_exposure=)``) or
-    ``"recipe"`` (inferred from the ops) for how it is known.
+    """Read an explicit pretreatment declaration, never infer it from a cut.
 
-    An explicit ``add_segment(name, ..., pre_exposure=True|False)`` is the analyst's
-    declaration and wins.
-
-    Returns True when the op that produced the column ran after a ``truncate_paths``
-    that ends each path at an event (the cut-off the analyst chose as the exposure
-    marker), or when the column came through ``add_segment(path_values=)`` from such
-    a stream (see ``Eventstream.get_path_segments``); False when it was computed from
-    the paths' behaviour (``add_clusters``, ``add_segment(metric_bins=|funnel_events=)``)
-    without such a truncation before it; None when the recipe cannot tell (a source
-    column, rules, a function, SQL).
-
-    The recipe proves that a cut happened, not that it fell before exposure: the
-    library does not know which event exposes a path to the treatment. A truncation
-    that ends after exposure still reads as pre-exposure; that is the analyst's
-    claim, as is an explicit ``strata_pre_exposure=True``.
+    A path truncation records an event boundary, not treatment timing. Behavioral
+    labels are therefore descriptive unless the analyst explicitly declares them
+    pre-exposure. Transferred labels require a fresh explicit declaration because
+    older metadata cannot distinguish a declaration from inferred provenance.
     """
     lineage = stream.recipe()
     for position in range(len(lineage) - 1, -1, -1):
@@ -841,19 +849,17 @@ def _provenance(stream, strata_col: str) -> tuple[bool | None, str | None]:
         declared = op.get("pre_exposure")
         if isinstance(declared, bool):
             return declared, "declared"
-        truncated = any(
-            o.get("type") == "truncate_paths" and _cuts_at_an_event(o)
-            for o in lineage[:position]
-        )
         if op["type"] == "add_segment" and op.get("path_values") is not None:
             flag = op.get("_path_values_pre_exposure")
             if flag is None:
                 flag = getattr(op["path_values"], "attrs", {}).get("pre_exposure")
-            return (flag, "recipe") if isinstance(flag, bool) else (None, None)
+            # Older recipes inferred True from an arbitrary truncation. A bare
+            # transferred flag cannot distinguish that from a declaration.
+            return (False, "recipe") if flag is False else (None, None)
         if op["type"] == "add_clusters" or any(
             op.get(mode) is not None for mode in _BEHAVIOUR_SEGMENT_MODES
         ):
-            return (True if truncated else False), "recipe"
+            return False, "recipe"
         return None, None
     return None, None
 
@@ -878,7 +884,7 @@ def _strata_flag(
     if recipe is False:
         warn_user(
             f"strata_col '{strata_col}' was computed from the paths' behaviour "
-            "on a stream that was not truncated before exposure: the stratum "
+            "without an explicit pre-exposure declaration: the stratum "
             "may be post-exposure, so its rows compare selected subgroups, not "
             "randomised ones (strata_pre_exposure=False)."
         )
@@ -957,6 +963,7 @@ class MetricMatrix:
     strata_pre_exposure_source: str | None = None
     with_assignment: bool = False
     unassigned_paths: int = 0
+    outcome_eligibility: dict[str, np.ndarray] = field(default_factory=dict)
 
     # ------------------------------------------------------------------ build
     @classmethod
@@ -1103,8 +1110,14 @@ class MetricMatrix:
         has_events = active.any(axis=1)
 
         values: dict[str, tuple[np.ndarray, np.ndarray | None]] = {}
+        outcome_eligibility = {}
         for spec in specs:
             num = raw[:, :, keys.index(_config_key(spec.config))]
+            eligible = (
+                np.isfinite(num)
+                if _kind_of(spec.config["metric"]) == "value"
+                else np.ones(num.shape, dtype=bool)
+            )
             if np.isinf(num).any():
                 raise InvalidMetricConfigError(
                     f"metric {spec.name!r}: nonfinite numerator"
@@ -1118,6 +1131,8 @@ class MetricMatrix:
             den = None
             if spec.denominator is not None:
                 den = raw[:, :, keys.index(_config_key(spec.denominator))]
+                if _kind_of(spec.denominator["metric"]) == "value":
+                    eligible &= np.isfinite(den)
                 if np.isinf(den).any() or (den[np.isfinite(den)] < 0).any():
                     raise InvalidMetricConfigError(
                         f"metric {spec.name!r}: ratio denominators must be finite and nonnegative"
@@ -1128,6 +1143,7 @@ class MetricMatrix:
                 num = np.where(missing, 0.0, num)
                 den = np.where(missing, 0.0, den)
             values[spec.name] = (num, den)
+            outcome_eligibility[spec.name] = eligible
 
         # ---- period populations
         if periods is not None and since:
@@ -1183,6 +1199,10 @@ class MetricMatrix:
                 values = {
                     name: (num[:, filled], None if den is None else den[:, filled])
                     for name, (num, den) in values.items()
+                }
+                outcome_eligibility = {
+                    name: eligible[:, filled]
+                    for name, eligible in outcome_eligibility.items()
                 }
                 n_periods = int(filled.sum())
         if horizon is not None:
@@ -1266,6 +1286,7 @@ class MetricMatrix:
             strata_pre_exposure_source=source,
             with_assignment=assignment is not None,
             unassigned_paths=int(groups.unassigned_paths),
+            outcome_eligibility=outcome_eligibility,
         )
 
     # ------------------------------------------------------------------ access
@@ -1545,7 +1566,7 @@ class ABTest:
                 raise InvalidParameterError(name, value, list(allowed))
         for name, value, low, allowed in (
             ("ci_level", ci_level, 0.5, "a float in [0.5, 1), e.g. 0.95"),
-            ("power", power, 0.0, "a float in (0, 1)"),
+            ("power", power, 0.5, "a float in [0.5, 1)"),
         ):
             if (
                 isinstance(value, bool)
@@ -1731,19 +1752,23 @@ class ABTest:
     # ------------------------------------------------------------------ public
     @property
     def alpha(self) -> float:
-        # rounded so that ci_level=0.95 gives 0.05, not 0.050000000000000044
-        return round(1.0 - self.ci_level, 12)
+        # Preserve small positive tail probabilities; round only for display.
+        return 1.0 - self.ci_level
 
     def resolved_n_bootstrap(self) -> int:
         """``n_bootstrap``, with ``"auto"`` = ``max(1000, ceil(20 * m / alpha))``."""
         if self.n_bootstrap != "auto":
-            return int(self.n_bootstrap)
+            result = int(self.n_bootstrap)
+            check_bootstrap_size(result)
+            return result
         rows = self.matrix.cells[self.matrix.cells["role"] == "row"]
         if self.correction_scope == "all":
             m = len(rows)
         else:
             m = int(rows.groupby("metric").size().max())
-        return max(1000, math.ceil(20 * m / self.alpha))
+        requested = 20 * m / self.alpha
+        check_bootstrap_size(requested)
+        return max(1000, math.ceil(requested))
 
     def fit(self) -> pd.DataFrame:
         """Return the scorecard (columns in ``COLUMNS`` order, optional ones dropped)."""
@@ -1751,8 +1776,7 @@ class ABTest:
         boot_cells = [
             i
             for i, row in cells.iterrows()
-            if self.specs[row["spec_pos"]].test == "bootstrap"
-            or self.specs[row["spec_pos"]].kind != "binary"
+            if self.specs[row["spec_pos"]].test in {"bootstrap", "welch_t_test"}
         ]
         reps = self._replicates(boot_cells)
         records, extras, rest = [], [], {}
@@ -1763,7 +1787,13 @@ class ABTest:
                 extras.append(extra)
             else:
                 key = (row["metric"], row["stratum"], row["period"])
-                rest[key] = (record["delta"], record["delta_se"])
+                rest[key] = (
+                    record["delta"],
+                    record["delta_se"],
+                    extra["q_support"]
+                    and extra["support"]
+                    and not extra["descriptive"],
+                )
         table = pd.DataFrame(records)
         table = self._adjust(table, extras)
         if self.matrix.strata is not None:
@@ -1800,7 +1830,9 @@ class ABTest:
                 frame["period"] = row["period"]
             frame["group1_value"] = result.group1[:, j]
             frame["group2_value"] = result.group2[:, j]
-            frame["delta"] = result.group1[:, j] - result.group2[:, j]
+            frame["delta"] = checked_difference(
+                result.group1[:, j], result.group2[:, j]
+            )
             frames.append(frame)
         out = pd.concat(frames, ignore_index=True)
         if contrast:
@@ -1834,9 +1866,12 @@ class ABTest:
             )
         num, den, sides = self._contrast_columns(contrast)
         arm = self.matrix.arm
-        with np.errstate(invalid="ignore", divide="ignore"):
-            v1 = num[arm == 0].sum(axis=0) / den[arm == 0].sum(axis=0)
-            v2 = num[arm == 1].sum(axis=0) / den[arm == 1].sum(axis=0)
+        v1 = checked_ratio(
+            checked_sum(num[arm == 0], axis=0), checked_sum(den[arm == 0], axis=0)
+        )
+        v2 = checked_ratio(
+            checked_sum(num[arm == 1], axis=0), checked_sum(den[arm == 1], axis=0)
+        )
         keys = ["metric"] + (["stratum"] if "stratum" in sides.columns else [])
         reps = self.bootstrap(contrast)
         reps = reps[reps["contrast"].notna()]
@@ -1989,6 +2024,7 @@ class ABTest:
     # ------------------------------------------------------------------ bootstrap
     def _run_bootstrap(self, num, den, n_boot) -> BootstrapResult:
         """Bootstrap in column chunks; replicates of a column do not depend on the chunk."""
+        check_bootstrap_size(n_boot, 2 * num.shape[1])
         g1, g2, valid = [], [], []
         for start in range(0, num.shape[1], _BOOTSTRAP_CHUNK):
             stop = start + _BOOTSTRAP_CHUNK
@@ -2065,9 +2101,27 @@ class ABTest:
             for key, group in both.groupby(
                 ["metric", "stratum"], sort=False, dropna=False
             ):
-                common[_cell_key(key)] = np.logical_and.reduce(
+                keep = np.logical_and.reduce(
                     [matrix.masks[:, seg] for seg in group["segment"]]
                 )
+                # A fixed roster does not establish paired measurements. Track
+                # missing value components separately from observed zero ratio
+                # denominators, which remain legitimate contributions.
+                eligible = matrix.outcome_eligibility.get(key[0])
+                if eligible is not None:
+                    positions = matrix.segments.loc[
+                        group["segment"], "period_pos"
+                    ].to_numpy()
+                    observed = eligible[keep][:, positions]
+                    if observed.shape[1] and np.any(observed != observed[:, :1]):
+                        raise InvalidParameterError(
+                            "contrast",
+                            name,
+                            [
+                                "common outcome eligibility across all contrasted periods; missing measurements cannot change the paired population"
+                            ],
+                        )
+                common[_cell_key(key)] = keep
             for label, periods in zip(("a", "b"), sides):
                 part = cells[cells["period"].isin(periods)]
                 for key, group in part.groupby(
@@ -2075,8 +2129,8 @@ class ABTest:
                 ):
                     n, d = matrix.columns(list(group.index))
                     keep = common[_cell_key(key)][:, None]
-                    nums.append((n * keep).sum(axis=1))
-                    dens.append((d * keep).sum(axis=1))
+                    nums.append(checked_sum(n * keep, axis=1))
+                    dens.append(checked_sum(d * keep, axis=1))
                     rows.append(
                         {
                             "metric": key[0],
@@ -2174,20 +2228,33 @@ class ABTest:
         valid = pd.NA
         invalid_replicates = False
         constant = False
-        if test == "z_test":
+        if test in {"z_test", "fisher_exact"}:
             k1, n1 = float(num[in1].sum()), float(in1.sum())
             k2, n2 = float(num[in2].sum()), float(in2.sum())
             with np.errstate(invalid="ignore", divide="ignore"):
                 p1 = k1 / n1 if n1 else nan
                 p2 = k2 / n2 if n2 else nan
-            l1, h1 = _stats.wilson_ci(k1, n1, level)
-            l2, h2 = _stats.wilson_ci(k2, n2, level)
-            dl, dh = _stats.newcombe_ci(k1, n1, k2, n2, level)
-            _, p, se = _stats.two_proportion_z(k1, n1, k2, n2)
-            rl, rh = _stats.delta_log_ratio_ci(k1, n1, k2, n2, level)
+            exact = test == "fisher_exact"
+            arm_ci = _stats.exact_binomial_ci if exact else _stats.wilson_ci
+            difference_ci = _stats.exact_difference_ci if exact else _stats.newcombe_ci
+            l1, h1 = arm_ci(k1, n1, level)
+            l2, h2 = arm_ci(k2, n2, level)
+            dl, dh = difference_ci(k1, n1, k2, n2, level)
+            _, z_p, se = _stats.two_proportion_z(k1, n1, k2, n2)
+            p = _stats.fisher_exact_p(k1, n1, k2, n2) if exact else z_p
+            rl, rh = (
+                (nan, nan)
+                if exact
+                else _stats.delta_log_ratio_ci(k1, n1, k2, n2, level)
+            )
             pooled = (k1 + k2) / (n1 + n2) if n1 + n2 else nan
-            constant = pooled in (0.0, 1.0)
-            extra["ci_at"] = lambda lv: _stats.newcombe_ci(k1, n1, k2, n2, lv)
+            constant = not exact and pooled in (0.0, 1.0)
+            if not exact and not (
+                min(n1, n2) * pooled >= 5 and min(n1, n2) * (1 - pooled) >= 5
+            ):
+                extra["support"] = False
+                support_warning = "insufficient_expected_cells"
+            extra["ci_at"] = lambda lv: difference_ci(k1, n1, k2, n2, lv)
             extra["mde_at"] = lambda a: _stats.mde_proportion(
                 pooled, n1, n2, a, self.power
             )
@@ -2206,7 +2273,7 @@ class ABTest:
             def ci_at(lv, d=g1 - g2, se_f=se_f, df_f=df_f):
                 if not (math.isfinite(se_f) and math.isfinite(df_f)):
                     return nan, nan
-                q = stats.t.ppf(0.5 + lv / 2, df_f)
+                q = stats.t.isf((1.0 - lv) / 2, df_f)
                 return d - q * se_f, d + q * se_f
 
             dl, dh = ci_at(level)
@@ -2215,15 +2282,21 @@ class ABTest:
             extra["mde_at"] = lambda a, se_f=se_f: _stats.mde_from_se(
                 se_f, a, self.power
             )
+        elif test == "descriptive":
+            sn1, sd1 = checked_sum(num[in1]), checked_sum(den[in1])
+            sn2, sd2 = checked_sum(num[in2]), checked_sum(den[in2])
+            g1, g2 = float(checked_ratio(sn1, sd1)), float(checked_ratio(sn2, sd2))
+            l1 = h1 = l2 = h2 = dl = dh = rl = rh = p = se = nan
+            extra["ci_at"] = lambda lv: (nan, nan)
+            extra["mde_at"] = lambda a: nan
         else:
-            sn1, sd1 = float(num[in1].sum()), float(den[in1].sum())
-            sn2, sd2 = float(num[in2].sum()), float(den[in2].sum())
-            g1 = sn1 / sd1 if sd1 > 0 else nan
-            g2 = sn2 / sd2 if sd2 > 0 else nan
+            sn1, sd1 = checked_sum(num[in1]), checked_sum(den[in1])
+            sn2, sd2 = checked_sum(num[in2]), checked_sum(den[in2])
+            g1, g2 = float(checked_ratio(sn1, sd1)), float(checked_ratio(sn2, sd2))
             r1, r2, valid = reps
             n_boot = len(r1)
             invalid_replicates = (n_boot - valid) > MAX_INVALID_REPLICATES * n_boot
-            d_reps = (r1 - r2)[:, None]
+            d_reps = checked_difference(r1, r2)[:, None]
             l1, h1 = (x[0] for x in bs.percentile_ci(r1, level))
             l2, h2 = (x[0] for x in bs.percentile_ci(r2, level))
             dl, dh = (x[0] for x in bs.percentile_ci(d_reps, level))
@@ -2271,14 +2344,16 @@ class ABTest:
             if not (_finite(g1) and _finite(g2)):
                 support_warning = "no_data"
                 extra["support"] = False
-        delta = g1 - g2
+        delta = float(checked_difference(g1, g2))
         if not (isinstance(g2, float) and g2 > 0):
             rel = rl = rh = nan
         else:
-            rel = g1 / g2 - 1
+            rel = float(checked_ratio(g1, g2)) - 1
         p = float(p)
-        descriptive = self.period_population == "active" or (
-            matrix.strata is not None and matrix.strata_pre_exposure is not True
+        descriptive = (
+            test == "descriptive"
+            or self.period_population == "active"
+            or (matrix.strata is not None and matrix.strata_pre_exposure is not True)
         )
         if descriptive or not extra["support"]:
             p = nan
@@ -2315,8 +2390,7 @@ class ABTest:
         if reps is None or not (isinstance(g2, float) and g2 > 0):
             return float("nan"), float("nan")
         r1, r2, _ = reps
-        with np.errstate(invalid="ignore", divide="ignore"):
-            ratio = np.where(r2 > 0, r1 / r2 - 1, np.nan)
+        ratio = checked_ratio(r1, r2) - 1
         low, high = bs.percentile_ci(ratio[:, None], self.ci_level)
         return float(low[0]), float(high[0])
 
@@ -2354,27 +2428,59 @@ class ABTest:
             rows.loc[index, "p_value_adjusted"] = adjust(p)
             m = len(p)
             if self.correction != "none" and m > 1:
-                rows.loc[index, "mde_alpha"] = round(self.alpha / m, 12)
+                rows.loc[index, "mde_alpha"] = self.alpha / m
             rows.loc[index, "correction_family"] = [
                 self._family_label(name) for name in rows.loc[index, "metric"]
             ]
-        mde, low_adj, high_adj = [], [], []
+        mde, low_adj, high_adj, adjusted_basis, adjusted_status = [], [], [], [], []
         for pos, extra in enumerate(extras):
             a = float(rows["mde_alpha"].iloc[pos])
             mde.append(
                 float("nan") if extra["descriptive"] else float(extra["mde_at"](a))
             )
             if self.correction == "bonferroni":
-                lo, hi = extra["ci_at"](1 - a)
+                if 1.0 - a >= 1.0:
+                    raise InvalidParameterError(
+                        "ci_level",
+                        self.ci_level,
+                        ["a lower confidence level or a smaller declared family"],
+                        reason="The Bonferroni confidence level exceeds floating-point precision.",
+                    )
+                bootstrap = rows["test"].iloc[pos] == "bootstrap"
+                insufficient_tail = (
+                    bootstrap and self.resolved_n_bootstrap() * a / 2 < 10 * (1 - 1e-12)
+                )
+                lo, hi = (
+                    (np.nan, np.nan) if insufficient_tail else extra["ci_at"](1 - a)
+                )
                 low_adj.append(float(lo))
                 high_adj.append(float(hi))
+                adjusted_basis.append(
+                    "path_bootstrap_percentile_approximate"
+                    if bootstrap
+                    else rows["ci_basis"].iloc[pos]
+                )
+                adjusted_status.append(
+                    "insufficient_tail_resamples"
+                    if insufficient_tail
+                    else "ok"
+                    if np.isfinite([lo, hi]).all()
+                    else "unavailable"
+                )
         rows["mde"] = mde
+        # Planning approximation only; this is not exact Fisher power or a
+        # distribution-free guarantee for the selected outcome/test.
+        rows["mde_basis"] = np.where(
+            np.isfinite(rows["mde"]), "normal_approximation", "unavailable"
+        )
         g2 = rows["group2_value"].to_numpy(dtype=float)
         with np.errstate(invalid="ignore", divide="ignore"):
             rows["rel_mde"] = np.where(g2 > 0, rows["mde"] / g2, np.nan)
         if self.correction == "bonferroni":
             rows["delta_ci_low_adj"] = low_adj
             rows["delta_ci_high_adj"] = high_adj
+            rows["delta_ci_adjusted_basis"] = adjusted_basis
+            rows["delta_ci_adjusted_status"] = adjusted_status
         significant = rows["p_value_adjusted"] < self.alpha
         verdict = np.where(
             significant,
@@ -2414,7 +2520,19 @@ class ABTest:
             )
             with np.errstate(invalid="ignore", divide="ignore"):
                 shares = counts / counts.sum(axis=0)
+            # Pearson balance is a separate asymptotic diagnostic. Sparse
+            # expected cells do not justify its chi-square reference law.
+            total = counts.sum()
+            expected = (
+                counts.sum(axis=1, keepdims=True)
+                * counts.sum(axis=0, keepdims=True)
+                / total
+                if total > 0
+                else np.zeros_like(counts)
+            )
             _, p_bal, _ = _stats.chi2_balance(counts)
+            if not np.all(expected >= 5):
+                p_bal = np.nan
             for stratum, sh in zip(group["stratum"], shares):
                 share1[(stratum, p_pos)] = sh[0]
                 share2[(stratum, p_pos)] = sh[1]
@@ -2429,10 +2547,24 @@ class ABTest:
         keys = list(zip(rows["stratum"], period_pos))
         rows["group1_share"] = [share1[k] for k in keys]
         rows["group2_share"] = [share2[k] for k in keys]
-        rows["balance_p_value"] = [balance[k[1]] for k in keys]
+        requested = ~rows["test"].isin(["fisher_exact", "descriptive"]).to_numpy()
+        rows["strata_diagnostics_basis"] = np.where(
+            requested, "asymptotic_exploratory", "not_requested"
+        )
+        rows["balance_p_value"] = [
+            balance[k[1]] if requested[i] and not extras[i]["descriptive"] else np.nan
+            for i, k in enumerate(keys)
+        ]
 
         q_support = np.array(
-            [e["q_support"] and not e["descriptive"] for e in extras], dtype=bool
+            [
+                requested[i]
+                and e["q_support"]
+                and e["support"]
+                and not e["descriptive"]
+                for i, e in enumerate(extras)
+            ],
+            dtype=bool,
         )
         het_p = np.full(len(rows), np.nan)
         het_df = np.zeros(len(rows), dtype=int)
@@ -2456,7 +2588,9 @@ class ABTest:
         for i, (metric, stratum, period) in enumerate(
             zip(rows["metric"], rows["stratum"], period_col)
         ):
-            d_r, se_r = rest.get((metric, stratum, period), (np.nan, np.nan))
+            d_r, se_r, rest_supported = rest.get(
+                (metric, stratum, period), (np.nan, np.nan, False)
+            )
             d_s, se_s = rows["delta"].iloc[i], rows["delta_se"].iloc[i]
             with np.errstate(invalid="ignore"):
                 se = (
@@ -2466,8 +2600,8 @@ class ABTest:
                 )
             if (
                 not (np.isfinite(se) and se > 0 and np.isfinite(d_s - d_r))
-                or extras[i]["descriptive"]
-                or not extras[i]["support"]
+                or not q_support[i]
+                or not rest_supported
             ):
                 vs_rest.append(np.nan)
             else:
@@ -2589,6 +2723,10 @@ _SUPPORT_WARNING_TEXT = {
     "low_support": (
         "low support: coverage below nominal (under "
         f"{LOW_SUPPORT_PATHS} supporting paths in an arm)"
+    ),
+    "insufficient_expected_cells": (
+        "z-test unavailable: each arm needs at least five expected successes "
+        "and failures under the pooled null; use fisher_exact"
     ),
 }
 
@@ -2767,7 +2905,9 @@ def row_reading(
             )
     elif verdict == "descriptive":
         parts.append(
-            "active population: not randomised, describes who was active in the period"
+            "descriptive estimate: no inferential method requested"
+            if row.get("test") == "descriptive"
+            else "active population: not randomised, describes who was active in the period"
             if row.get("population") == "active"
             else "descriptive strata: pre-exposure membership has not been established"
         )
@@ -2781,7 +2921,9 @@ def row_reading(
             "no p-value: the metric is constant in both arms; estimate shown descriptively"
         )
     elif verdict == "insufficient_data":
-        if support_count < min_support:
+        if row.get("support_warning") == "insufficient_expected_cells":
+            parts.append("the normal approximation is unsupported for these arm sizes")
+        elif support_count < min_support:
             parts.append(f"pooled support {support_count} < min_support {min_support}")
         elif non_support_count is not None and non_support_count < min_support:
             parts.append(
@@ -2797,7 +2939,7 @@ def row_reading(
         elif covers_zero:
             parts.append(
                 f"{p_part} is below alpha {alpha:.4g}, though the {interval} "
-                "includes 0 (borderline: test and interval disagree at the threshold)"
+                "includes 0 (the test and interval use different constructions)"
             )
         else:
             parts.append(f"{interval} excludes 0 ({p_part})")
@@ -2829,7 +2971,7 @@ def row_reading(
                 parts.append(f"{interval} includes 0 ({p_part})")
             else:
                 parts.append(
-                    f"{interval} includes 0 ({p_part}); effects outside it are unlikely"
+                    f"{interval} includes 0 ({p_part}); the interval does not exclude zero"
                 )
         elif after:
             parts.append(
@@ -2845,7 +2987,7 @@ def row_reading(
             mde_s = mde * scale
             dec = 2 if kind == "binary" else _decimals(mde_s)
             design = (
-                f"the design detects {abs(mde_s):.{dec}f}{unit} at alpha "
+                f"normal-approximation MDE {abs(mde_s):.{dec}f}{unit} at alpha "
                 f"{row['mde_alpha']:.4g}"
             )
             needed = _paths_needed(mde_s)
@@ -2853,7 +2995,7 @@ def row_reading(
                 target, factor = needed
                 design += (
                     f" — to detect {target:g}{unit}, about {factor:.1f}× the paths "
-                    "are needed in a new test sized before it starts"
+                    "is a planning approximation; verify power for the chosen test before it starts"
                 )
             parts.append(design)
 
@@ -2873,6 +3015,14 @@ def row_reading(
     warning = row.get("support_warning") or ""
     if warning in _SUPPORT_WARNING_TEXT:
         parts.append(_SUPPORT_WARNING_TEXT[warning])
+    if row.get("test") in {"z_test", "welch_t_test", "bootstrap"}:
+        parts.append(
+            "approximate inference; nominal error rates are not a finite-sample guarantee"
+        )
+    elif row.get("test") == "fisher_exact":
+        parts.append(
+            "Fisher exact test; conservative binomial interval, not an inversion of the test"
+        )
     if several_metrics:
         if correction == "none":
             parts.append("not corrected across metrics; name one decision metric")

@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""Run with --source PATH. All implementation imports come from PATH/src."""
+import argparse, sys, json, random, hashlib, platform, math, traceback
+from pathlib import Path
+from collections import defaultdict
+P=argparse.ArgumentParser(); P.add_argument('--source',required=True); P.add_argument('--output',required=True); P.add_argument('--random-logs',type=int,default=100)
+args=P.parse_args(); root=Path(args.source).resolve(); sys.path.insert(0,str(root/'src'))
+from oracle import derive, reaches, pattern_outcome, ordered_events
+import pandas as pd, numpy as np, scipy, duckdb
+from retentioneering import Eventstream
+import retentioneering
+BASE=pd.Timestamp('2026-01-01'); checks=[]; cases=[]
+def clean(x):
+    if isinstance(x,dict): return {str(k):clean(v) for k,v in x.items()}
+    if isinstance(x,(tuple,list)): return [clean(v) for v in x]
+    if isinstance(x,np.generic): return clean(x.item())
+    if isinstance(x,float) and not math.isfinite(x): return None
+    if isinstance(x,(pd.Timestamp,Path)): return str(x)
+    return x
+
+def check(name, expected, actual, detail=None):
+    ok = clean(expected)==clean(actual)
+    if isinstance(expected,(int,float)) and isinstance(actual,(int,float)):
+        ok=math.isclose(expected,actual,rel_tol=1e-10,abs_tol=1e-10)
+    checks.append(dict(name=name,passed=ok,expected=clean(expected),actual=clean(actual),detail=detail))
+
+def guarded(name,fn):
+    try: return fn()
+    except Exception as e:
+        checks.append(dict(name=name,passed=False,error=type(e).__name__+': '+str(e),traceback=traceback.format_exc()))
+
+def expect_error(name,fn,kind=None):
+    try: result=fn(); check(name,'error',clean(result))
+    except Exception as e:
+        check(name,True,kind is None or isinstance(e,kind),type(e).__name__+': '+str(e))
+
+def stream(events,nested=False):
+    frame=pd.DataFrame([{'user_id':e['user'],'event':e['label'],'timestamp':BASE+pd.Timedelta(seconds=e['time']),'session_id':e.get('session',e['user']+'_s')} for e in events])
+    return Eventstream(frame,schema={'path_cols':['user_id','session_id'] if nested else ['user_id']})
+
+def roster(users):
+    return pd.DataFrame({'user_id':users,'exp_group':['control' if i%2==0 else 'treatment' for i in range(len(users))],'assigned_at':BASE-pd.Timedelta(days=1)})
+
+def make(paths):
+    return [dict(user=u,label=label,time=t,session=u+'_s'+str(s)) for u, seq in paths.items() for t,label,s in seq]
+
+def expected_conversion(events,start,end,within=None,occurrence='first'):
+    groups=defaultdict(list)
+    for e in ordered_events(events): groups[e['user']].append(e)
+    n=k=base=0
+    for seq in groups.values():
+        ss=[i for i,e in enumerate(seq) if e['label']==start]; ee=[i for i,e in enumerate(seq) if e['label']==end]
+        base+=bool(ee)
+        if not ss: continue
+        n+=1; selected=ss[:1] if occurrence=='first' else ss[-1:] if occurrence=='last' else ss
+        k+=any(j>i and (within is None or (j-i<=within if isinstance(within,int) else seq[j]['time']-seq[i]['time']<=float(within[:-1]))) for i in selected for j in ee)
+    return {'paths_with_start':n,'converted':k,'conversion_rate':k/n if n else None,'base_rate':base/len(groups)}
+
+METRICS=[{'name':'ordered','agg':'mean','metric':'matches_pattern','metric_args':{'pattern':'A->.*->B'}},{'name':'contiguous','agg':'mean','metric':'matches_pattern','metric_args':{'pattern':'A->B'}}]
+OBS={'start':str(BASE),'end':str(BASE+pd.Timedelta(seconds=8)),'assignment_time_col':'assigned_at','complete':True}
+
+def exercise(name, events, users, steps, extensive=False):
+    es=stream(events,nested=True); rec={'case':name,'events':events,'assignments':users,'steps':steps}; cases.append(rec)
+    for unit,col in [('user','user_id'),('session','session_id')]:
+        expected=derive(events,steps,unit=unit); got=es.funnel_data(steps,path_col=col); rec['funnel_'+unit]=got
+        check(name+'/'+unit+'/counts',expected['counts'],[r['unique_paths'] for r in got['steps']])
+        check(name+'/'+unit+'/total',expected['unit_count'],got['total_paths'])
+        for j,row in enumerate(got['steps']):
+            check(name+'/'+unit+'/rate'+str(j),expected['assignment_rates'][j],row['conversion_rate'])
+            v=expected['assignment_rates'][0] if j==0 else expected['conditional'][j]
+            check(name+'/'+unit+'/conditional'+str(j),0.0 if v is None else v,row['step_conversion_rate'])
+    conversion=[]
+    for occurrence in ['first','all','last']:
+        for within in [None,2,'2s']:
+            start={'pattern':'A','occurrence':occurrence}
+            got=es.get_conversion_rate(start,'B',within=within).to_dict('records')[0]
+            expected=expected_conversion(events,'A','B',within,occurrence)
+            for key,value in expected.items(): check(name+f'/convert/{occurrence}/{within}/{key}',value,got[key])
+            conversion.append(dict(occurrence=occurrence,within=within,result=got,expected=expected))
+    rec['conversion']=conversion
+    labels=defaultdict(list)
+    for e in ordered_events(events):labels[e['user']].append(e['label'])
+    for pattern,contiguous in [('A->.*->B',False),('A->B',True),('A->.*->A',False)]:
+        got=es.get_metrics([{'metric':'matches_pattern','metric_args':{'pattern':pattern}}]).iloc[:,0].to_dict()
+        letters=['A','A'] if pattern.endswith('->A') else ['A','B']
+        expected={u:pattern_outcome(l,letters,contiguous) for u,l in labels.items()}
+        check(name+'/pattern/'+pattern,expected,got)
+    if not hasattr(es,'experiment_data'):rec['experiment']='unavailable';return
+    a=roster(users)
+    kw=dict(assignments=a,metrics=METRICS,observation=OBS,funnel_steps=steps,event_catalog={'event':['A','B','C','X']})
+    if extensive:
+        kw.update(binary_intervals={'method':'newcombe','confidence_level':.95},tests={'methods':{'ordered':'fisher_exact','funnel_cumulative_2':'fisher_exact'},'adjustment':'holm'})
+    got=es.experiment_data(**kw);rec['experiment']=got
+    window=[e for e in events if 0<=e['time']<8]
+    by_metric={r['metric']:r for r in got['summary']}
+    for i,arm in enumerate(['control','treatment']):
+        ids=users[i::2];ev=[e for e in window if e['user'] in ids];ex=derive(ev,steps,assignments=ids)
+        ls=defaultdict(list)
+        for e in ordered_events(ev):ls[e['user']].append(e['label'])
+        for j,n in enumerate(ex['counts'],1):
+            for fam in ['cumulative','conditional']:
+                row=by_metric[f'funnel_{fam}_{j}'];den=len(ids) if fam=='cumulative' or j==1 else ex['counts'][j-2]
+                check(name+f'/experiment/{arm}/{fam}{j}/numerator',n,row[arm+'_numerator'])
+                check(name+f'/experiment/{arm}/{fam}{j}/denominator',den,row[arm+'_denominator'])
+                check(name+f'/experiment/{arm}/{fam}{j}/rate',n/den if den else None,row[arm])
+        for m,contig in [('ordered',False),('contiguous',True)]:
+            n=sum(pattern_outcome(ls[u],['A','B'],contig) for u in ids)
+            check(name+f'/experiment/{arm}/{m}/numerator',n,by_metric[m][arm+'_numerator'])
+            check(name+f'/experiment/{arm}/{m}/denominator',len(ids),by_metric[m][arm+'_denominator'])
+    for r in got['summary']:
+        if r['family']=='funnel_conditional':check(name+'/conditional_no_test/'+r['metric'],None,r['p_value'])
+        if extensive and r['outcome_kind']=='binary':
+            check(name+'/wilson_label/'+r['metric'],'wilson',r['control_ci_method']);check(name+'/newcombe_label/'+r['metric'],'newcombe',r['absolute_effect_ci_method'])
+    if extensive:
+        check(name+'/fisher_label','fisher_exact_two_sided',by_metric['ordered']['test_method'])
+        expect_error(name+'/reject_conditional_test',lambda:es.experiment_data(**{**kw,'tests':{'methods':{'funnel_conditional_2':'fisher_exact'},'adjustment':'holm'}}))
+        expect_error(name+'/reject_session_experiment',lambda:es.experiment_data(**kw,unit_col='session_id'))
+        expect_error(name+'/reject_incomplete',lambda:es.experiment_data(**{**kw,'observation':{**OBS,'complete':False}}))
+        expect_error(name+'/reject_unrostered',lambda:es.experiment_data(**{**kw,'assignments':a.iloc[1:]}))
+        eligible=users[:max(2,len(users)-2)]
+        es_eligible=stream([e for e in events if e['user'] in eligible]);kw_e={**kw,'assignments':a[a.user_id.isin(eligible)]};kw_e.pop('tests',None)
+        eligible_result=es_eligible.experiment_data(**kw_e);rec['eligible_subset']=eligible_result
+        check(name+'/eligible_roster_n',len(eligible),sum(r['n_assigned'] for r in eligible_result['diagnostics']))
+        expect_error(name+'/nested_funnel_ci',lambda:es.funnel_data(steps,path_col='session_id',ci_level=.95))
+        expect_error(name+'/nested_conversion_ci',lambda:es.get_conversion_rate('A','B',path_col='session_id',ci_level=.95))
+
+fixed=make({'u0':[(0,'A',0),(1,'X',0),(2,'A',0),(3,'B',1),(4,'C',1),(8,'B',1)],'u1':[(0,'B',0),(1,'A',0),(2,'B',0),(2,'C',0)],'u2':[(0,'B',0),(1,'C',0)],'u3':[(0,'A',0),(1,'X',0),(5,'A',1),(6,'B',1)],'u4':[(0,'A',0),(0,'B',0),(0,'C',0)],'u5':[(0,'X',0),(8,'A',0),(9,'B',0)],'u6':[(-1,'A',0),(0,'B',0),(3,'A',0)],'u7':[(0,'A',0),(1,'A',0),(2,'B',0),(3,'A',0)]})
+guarded('fixed_ABC',lambda:exercise('fixed_ABC',fixed,['u'+str(i) for i in range(10)],['A','B','C'],True))
+guarded('fixed_AAB',lambda:exercise('fixed_AAB',fixed,['u'+str(i) for i in range(10)],['A','A','B']))
+rng=random.Random(6026030)
+for k in range(args.random_logs):
+    users=['u'+str(i) for i in range(12)];ev=[]
+    for u in users:
+        for j in range(rng.randrange(0,12)):
+            ev.append(dict(user=u,label=rng.choice('ABCX'),time=j//2 if k%5==0 else j,session=u+'_s'+str(j//4)))
+    steps=rng.choice([['A','B','C'],['A','A','B'],['B','A','B'],['C','B']])
+    guarded('random_'+str(k),lambda k=k,ev=ev,steps=steps:exercise('random_'+str(k),ev,users,steps))
+
+# Additional public-only population/conditioning and empty-prefix cases.
+def special():
+    es=stream(fixed,nested=True); ids0=['u0','u2','u4','u6'];ids1=['u1','u3','u5','u7'];diff=(ids1,ids0)
+    f=es.funnel_data(['A','B','C'],diff=diff,ci_level=.95,correction='holm');c=es.get_conversion_rate('A','B',diff=diff)
+    cases.append({'case':'conditioning','funnel':f,'conversion':c.to_dict('records')})
+    for j,r in enumerate(f['steps']):
+        check('funnel_conditioning_flag_'+str(j),j>0,r.get('step_conditional'))
+        check('no_conditional_p_'+str(j),False,'delta_step_conversion_rate_p_value' in r)
+    check('conversion_conditioning',True,bool(c.iloc[0]['conditional']));check('conversion_conditional_p',None,c.iloc[0]['p_value'])
+    expect_error('reject_reused_session_ids',lambda:stream(make({'x':[(0,'A',0)],'y':[(0,'B',0)]})[:1]+[dict(user='y',label='B',time=0,session='x_s0')],nested=True))
+    if hasattr(es,'experiment_data'):
+        from retentioneering.tools.experiment import session_funnel_data
+        sf=es.df.copy();sf['exp_group']=sf.user_id.map({u:('control' if u in ids0 else 'treatment') for u in ids0+ids1})
+        se=Eventstream(sf,schema={'path_cols':['user_id','session_id'],'segment_cols':['exp_group']},preprocess=False)
+        sr=session_funnel_data(se,steps=['A','B'],bootstrap={'n_resamples':199,'random_state':6606}).to_dict();cases.append({'case':'session_funnel','result':sr})
+        check('session_sampling_label','pooled_union_clusters',sr['metadata']['sampling_design'])
+        for arm,ids in [('control',ids0),('treatment',ids1)]:
+            ex=derive([e for e in fixed if e['user'] in ids],['A','B'],unit='session')
+            for r in sr['summary']:
+                j=r['step_index']-1;den=ex['unit_count'] if r['family']=='funnel_cumulative' or j==0 else ex['counts'][j-1]
+                check('session_'+arm+'/'+r['metric']+'/n',ex['counts'][j],r[arm+'_numerator'])
+                check('session_'+arm+'/'+r['metric']+'/d',den,r[arm+'_denominator'])
+        expect_error('session_binary_intervals_rejected',lambda:session_funnel_data(se,steps=['A','B'],binary_intervals={'method':'newcombe'}))
+guarded('special',special)
+files=['eventstream/eventstream.py','paths/ordered_reach.py','paths/anchors.py','tools/funnel.py','tools/conversion.py','tools/experiment.py','tools/_diff.py','metrics/metric_builder.py','stats/experiments.py']
+hashes={f:hashlib.sha256((root/'src/retentioneering'/f).read_bytes()).hexdigest() for f in files if (root/'src/retentioneering'/f).exists()}
+result={'source':str(root),'import':retentioneering.__file__,'versions':{'python':platform.python_version(),'pandas':pd.__version__,'numpy':np.__version__,'scipy':scipy.__version__,'duckdb':duckdb.__version__},'source_sha256':hashes,'seed':6026030,'random_logs':args.random_logs,'check_count':len(checks),'failed_count':sum(not x['passed'] for x in checks),'checks':checks,'cases':cases}
+Path(args.output).write_text(json.dumps(clean(result),indent=2,allow_nan=False)+'\n')
+print(json.dumps({k:result[k] for k in ['source','check_count','failed_count','versions']},indent=2))
+print(json.dumps([x for x in checks if not x['passed']][:30],indent=2))

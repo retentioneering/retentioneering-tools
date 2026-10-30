@@ -1,0 +1,73 @@
+{
+  "binary": {
+    "control": {
+      "exact": "1/4",
+      "float": 0.25
+    },
+    "control_successes": 1,
+    "effect": {
+      "exact": "1/4",
+      "float": 0.25
+    },
+    "treatment": {
+      "exact": "1/2",
+      "float": 0.5
+    },
+    "treatment_successes": 2
+  },
+  "mean": {
+    "control": {
+      "exact": "5/2",
+      "float": 2.5
+    },
+    "control_sample_variance": {
+      "exact": "25",
+      "float": 25.0
+    },
+    "effect": {
+      "exact": "25/4",
+      "float": 6.25
+    },
+    "effect_variance": {
+      "exact": "925/16",
+      "float": 57.8125
+    },
+    "treatment": {
+      "exact": "35/4",
+      "float": 8.75
+    },
+    "treatment_sample_variance": {
+      "exact": "825/4",
+      "float": 206.25
+    }
+  },
+  "n_control": 4,
+  "n_treatment": 4,
+  "ratio": {
+    "control": {
+      "exact": "10",
+      "float": 10.0
+    },
+    "control_denominator_sum": 1,
+    "control_numerator_sum": 10,
+    "effect": {
+      "exact": "5/3",
+      "float": 1.6666666666666667
+    },
+    "effect_delta_variance": {
+      "exact": "3200/243",
+      "float": 13.168724279835391
+    },
+    "treatment": {
+      "exact": "35/3",
+      "float": 11.666666666666666
+    },
+    "treatment_denominator_sum": 3,
+    "treatment_numerator_sum": 35
+  },
+  "silent_users": [
+    "c3",
+    "c4",
+    "t4"
+  ]
+}

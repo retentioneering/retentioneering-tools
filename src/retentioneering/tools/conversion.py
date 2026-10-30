@@ -145,7 +145,7 @@ class ConversionRate:
             )
         result = self._fit_single(start_anchor, end_anchor, within, path_col)
         if ci_level is not None:
-            low, high = _stats.wilson_ci(
+            low, high = _stats.exact_binomial_ci(
                 result["converted"].to_numpy(),
                 result["paths_with_start"].to_numpy(),
                 ci_level,
@@ -153,7 +153,22 @@ class ConversionRate:
             position = COLUMNS.index("conversion_rate") + 1
             result.insert(position, "conversion_rate_ci_low", low)
             result.insert(position + 1, "conversion_rate_ci_high", high)
+        self._metadata(result, ci_level)
         return result
+
+    @staticmethod
+    def _metadata(result, ci_level, *, diff=False):
+        """Keep method and population claims separate from the row schema."""
+        result.attrs["population_basis"] = "observed_paths"
+        if ci_level is not None:
+            result.attrs["ci_level"] = ci_level
+            result.attrs["independence_assumption"] = "independent_observed_paths"
+            result.attrs["ci_basis"] = {"rate": "clopper_pearson"}
+            if diff:
+                result.attrs["ci_basis"].update(
+                    delta="clopper_pearson_bonferroni",
+                    p_value="fisher_exact_two_sided",
+                )
 
     def _fit_diff(self, start_anchor, end_anchor, within, path_col, ci_level, diff):
         """Path-level comparison of two groups: per-group rates and the delta."""
@@ -183,7 +198,7 @@ class ConversionRate:
             frame = ConversionRate(sub)._fit_single(
                 start_anchor, end_anchor, within, path_col, available=available
             )
-            low, high = _stats.wilson_ci(
+            low, high = _stats.exact_binomial_ci(
                 frame["converted"].to_numpy(),
                 frame["paths_with_start"].to_numpy(),
                 ci_level,
@@ -199,10 +214,10 @@ class ConversionRate:
         k1, n1 = g1["converted"].to_numpy(), g1["paths_with_start"].to_numpy()
         k2, n2 = g2["converted"].to_numpy(), g2["paths_with_start"].to_numpy()
         out["delta"] = out["group1_conversion_rate"] - out["group2_conversion_rate"]
-        low, high = _stats.newcombe_ci(k1, n1, k2, n2, ci_level)
+        low, high = _stats.exact_difference_ci(k1, n1, k2, n2, ci_level)
         out["delta_ci_low"] = low
         out["delta_ci_high"] = high
-        out["p_value"] = _stats.two_proportion_z(k1, n1, k2, n2)[1]
+        out["p_value"] = _stats.fisher_exact_p(k1, n1, k2, n2)
         # A nontrivial start anchor selects a population after exposure. Keep
         # descriptive intervals, but do not attach an unconditional A/B test to
         # that selected contrast (the same rule as conditional funnel steps).
@@ -212,7 +227,9 @@ class ConversionRate:
             not _is_path_start(spec) for spec in starts for _ in range(n_ends)
         ]
         out.loc[out["conditional"], "p_value"] = float("nan")
-        return out[DIFF_COLUMNS].reset_index(drop=True)
+        result = out[DIFF_COLUMNS].reset_index(drop=True)
+        self._metadata(result, ci_level, diff=True)
+        return result
 
     def _fit_single(
         self, start_anchor, end_anchor, within, path_col, available=None
@@ -326,6 +343,28 @@ class ConversionRate:
         window: tuple[str, float] | None,
         path_col: str,
     ) -> int:
+        # The resolver selects the requested end occurrence per path. With
+        # several starts, keep each window separate until after that selection:
+        # otherwise an early end can hide a later success, or a pattern whose
+        # lead-in precedes a later start can be paired with that later window.
+        # Batch by occurrence rank so one resolver call handles many paths.
+        if window is not None and start_pos[path_col].duplicated().any():
+            ranks = start_pos.groupby(path_col, sort=False).cumcount()
+            converted = set()
+            for _, starts in start_pos.groupby(ranks, sort=False):
+                starts = starts.loc[~starts[path_col].isin(converted)]
+                if starts.empty:
+                    continue
+                bounds = starts[[path_col, "step"]].rename(
+                    columns={"step": "bound_step"}
+                )
+                converted.update(
+                    self._converted_paths(starts, bounds, end_spec, window, path_col)
+                )
+            return len(converted)
+        return len(self._converted_paths(start_pos, floor, end_spec, window, path_col))
+
+    def _converted_paths(self, start_pos, floor, end_spec, window, path_col) -> set:
         """Paths whose end anchor lands after the start one and inside `within`.
 
         `not_before_part=0` puts the *whole* end pattern after the start anchor,
@@ -343,9 +382,9 @@ class ConversionRate:
             not_before_part=0,
         )
         if end_pos.empty:
-            return 0
+            return set()
         if window is None:
-            return int(end_pos[path_col].nunique())
+            return set(end_pos[path_col])
 
         schema = self.eventstream.schema
         path_q = engine.quote_ident(path_col)
@@ -379,11 +418,11 @@ class ConversionRate:
                 SELECT x.{path_q} AS p, x.step AS step, b.ts AS ts
                 FROM ends x JOIN base b ON b.p = x.{path_q} AND b.idx = x.bound
             )
-            SELECT COUNT(DISTINCT s.p) AS converted
+            SELECT DISTINCT s.p AS converted
             FROM s JOIN e ON e.p = s.p
             WHERE e.step > s.step AND {condition}
         """
         result = engine.run(
             query, df=self.eventstream.df, starts=start_pos, ends=end_pos
         )
-        return int(result.iloc[0]["converted"])
+        return set(result["converted"])

@@ -1,0 +1,307 @@
+#!/usr/bin/env python
+"""Configurable public-API audit. Oracle was hashed before this adapter was written.
+Run with --source SOURCE --output DIR; imports are asserted and SHA256-recorded.
+"""
+from __future__ import annotations
+import argparse, hashlib, importlib, json, math, os, platform, sys, warnings
+from pathlib import Path
+
+parser=argparse.ArgumentParser()
+parser.add_argument('--source',required=True)
+parser.add_argument('--output',required=True)
+parser.add_argument('--simulation-reps',type=int,default=100000)
+args=parser.parse_args()
+source=Path(args.source).resolve(); out=Path(args.output).resolve(); out.mkdir(parents=True,exist_ok=True)
+sys.path.insert(0,str(source/'src'))
+import numpy as np
+import pandas as pd
+import scipy
+from scipy import stats
+import oracle
+from retentioneering.eventstream.eventstream import Eventstream
+from retentioneering.tools import _stats as candidate
+from retentioneering.tools.ab_test import ABTest
+
+warnings.simplefilter('ignore',FutureWarning)
+checks=[]; data={}; caught=[]
+def clean(v):
+    if isinstance(v,pd.DataFrame):return clean(v.to_dict('records'))
+    if isinstance(v,pd.Series):return clean(v.to_list())
+    if isinstance(v,np.ndarray):return clean(v.tolist())
+    if isinstance(v,dict):return {str(k):clean(x) for k,x in v.items()}
+    if isinstance(v,(list,tuple)):return [clean(x) for x in v]
+    if isinstance(v,(pd.Timestamp,pd.Timedelta,Path)):return str(v)
+    if isinstance(v,(np.integer,)):return int(v)
+    if isinstance(v,(np.bool_,)):return bool(v)
+    if isinstance(v,float) and not math.isfinite(v):return None
+    if v is pd.NA:return None
+    return v
+
+def save(name,value):
+    data[name]=value
+    (out/(name+'.json')).write_text(json.dumps(clean(value),indent=2,allow_nan=False)+'\n')
+    if isinstance(value,pd.DataFrame):value.to_csv(out/(name+'.csv'),index=False)
+
+def check(name,actual,expected,atol=1e-12,rtol=1e-10):
+    try: ok=bool(np.allclose(actual,expected,equal_nan=True,atol=atol,rtol=rtol))
+    except Exception:ok=actual==expected
+    checks.append({'check':name,'pass':ok,'actual':clean(actual),'expected':clean(expected)})
+    return ok
+
+def guarded(name,fn):
+    try:
+        result=fn();save(name,result);return result
+    except Exception as e:
+        caught.append({'case':name,'exception':type(e).__name__,'message':str(e)})
+        return None
+
+# Corrections. Finite arithmetic, ties, order, endpoints and missing-family policy.
+vectors={'hand':[.01,.04,.03,.002],'ties':[.02,.02,.02,.9],'endpoints':[0.,1.,.5],
+         'empty':[],'singleton':[.03],'missing':[.03,np.nan],'all_missing':[np.nan,np.nan],
+         'missing_middle':[.04,np.nan,.001,.7]}
+rng=np.random.default_rng(4072026)
+for j in range(100):
+    values=rng.random(int(rng.integers(1,35)));values[rng.random(len(values))<.15]=np.nan
+    vectors[f'random_{j:03d}']=values
+correction_records=[]
+for method,func in [('holm',candidate.holm),('bonferroni',candidate.bonferroni),('bh',candidate.benjamini_hochberg)]:
+    for name,values in vectors.items():
+        actual=func(values); expected=oracle.adjust(values,method,planned=True)
+        check(f'{method}/{name}/planned',actual,expected)
+        correction_records.append({'method':method,'case':name,'input':clean(values),'actual':clean(actual),
+          'planned_expected':clean(expected),'available_expected':clean(oracle.adjust(values,method,planned=False))})
+    for values in [[-.01,.1],[1.1,.1],[np.inf,.1],[-np.inf,.1]]:
+        try:actual=func(values); accepted=True
+        except (ValueError,TypeError):actual='rejected';accepted=False
+        checks.append({'check':f'{method}/reject_invalid/{values}','pass':not accepted,'actual':clean(actual),'expected':'rejected'})
+save('corrections',correction_records)
+
+# MDE first-principles arithmetic at conventional powers and allocation ratios.
+mde_records=[]
+for alpha in [.05,.025,.005]:
+    for power in [.8,.9,.95,.01,.03]:
+        for se in [.01,1.,10.]:
+            actual=float(candidate.mde_from_se(se,alpha,power))
+            approx=oracle.approximate_mde(se,alpha,power)
+            exact=oracle.exact_normal_mde(se,alpha,power)
+            check(f'mde_formula/{alpha}/{power}/{se}',actual,approx)
+            mde_records.append({'alpha':alpha,'power':power,'se':se,'actual':actual,'normal_approx':approx,
+                 'fixed_se_normal_minimum':exact,'normal_power_at_abs_actual':oracle.normal_power(abs(actual),se,alpha)})
+for n1,n2 in [(50,50),(25,75),(10,200)]:
+    for p in [.02,.2,.5,.9]:
+        expected=oracle.approximate_mde(math.sqrt(p*(1-p)*(1/n1+1/n2)))
+        check(f'mde_binary/{p}/{n1}/{n2}',candidate.mde_proportion(p,n1,n2),expected)
+    check(f'mde_mean/{n1}/{n2}',candidate.mde_mean(3,n1,n2),oracle.approximate_mde(3*math.sqrt(1/n1+1/n2)))
+save('mde_primitives',mde_records)
+check('mde_nonnegative_at_accepted_power',float(candidate.mde_from_se(1,.05,.01))>=0,True)
+
+# Exact all-null dependence example: both p-value marginals are super-uniform.
+# Three disjoint states each have probability .024; both marginal CDFs are
+# .024 at p=.024 and .048 at p=.048. BH rejects all three at alpha=.05.
+dependence=[]
+for mass,ps in [(.024,[.024,1.]),(.024,[1.,.024]),(.024,[.048,.048]),(.928,[1.,1.])]:
+    item={'mass':mass,'pvalues':ps}
+    for name,fun in [('holm',candidate.holm),('bonferroni',candidate.bonferroni),('bh',candidate.benjamini_hochberg)]:
+        adjusted=fun(ps);item[name+'_adjusted']=adjusted;item[name+'_reject_any']=bool((adjusted<.05).any())
+    dependence.append(item)
+save('bh_dependence_exact',{'states':dependence,'false_discovery_rate':{
+  name:sum(x['mass'] for x in dependence if x[name+'_reject_any']) for name in ['holm','bonferroni','bh']}})
+
+# Cochran Q, allocation and numerical scaling.
+q_records=[]
+for effects,variances in [([0,1,2],[1,1,1]),([-.1,.2,.3],[.01,.04,.16]),([10,10,10],[1,2,3])]:
+    expected=oracle.cochran_q(effects,variances)
+    actual=candidate.cochran_q(effects,np.sqrt(variances),[True]*len(effects))
+    check(f'q/{effects}',actual,[expected['q'],stats.chi2.sf(expected['q'],expected['df']),expected['df'],len(effects)])
+    q_records.append({'effects':effects,'variances':variances,'actual':actual,'expected':expected})
+for scale in [1e-150,1e150]:
+    actual=candidate.cochran_q(np.array([0.,1.,2.])*scale,np.ones(3)*scale,[True]*3)
+    check(f'q_scale/{scale}',actual,[2.,math.exp(-1),2,3],atol=1e-10)
+    q_records.append({'scale':scale,'actual':actual,'expected':[2.,math.exp(-1),2,3]})
+save('cochran_q',q_records)
+srm_records=[]
+for counts,probs in [([25,75],[.25,.75]),([25,75],[.5,.5]),([1,9],[.1,.9]),([68,32,0],[.5,.5,0.])]:
+    actual=candidate.srm_chi2(counts,probs)
+    positive=[(c,p) for c,p in zip(counts,probs) if p>0]
+    expected=oracle.pearson_allocation([c for c,p in positive],[p for c,p in positive])
+    srm_records.append({'counts':counts,'probabilities':probs,'actual':actual,'expected_on_positive_support':expected,
+                        'expected_p':float(stats.chi2.sf(expected['statistic'],expected['df']))})
+save('srm_primitives',srm_records)
+
+# Public data construction: every assignment has an anchor, conversion events follow.
+def binary_stream(strata_counts,second_metric=False,dates=None):
+    rows=[];assign=[]
+    for st,arms in strata_counts.items():
+        for arm,(n,k) in arms.items():
+            for i in range(n):
+                uid=f'{st}_{arm}_{i}';assign.append((uid,arm,pd.Timestamp('2026-01-01'),st))
+                ds=dates or ['2026-01-02']
+                for dayno,day in enumerate(ds):
+                    rows.append((uid,'anchor',pd.Timestamp(day),arm,st,1.))
+                    kk=k if dayno==0 else max(1,k-5)
+                    if i<kk:rows.append((uid,'conversion',pd.Timestamp(day)+pd.Timedelta(hours=1),arm,st,1.))
+                    if second_metric and i>=n-kk:rows.append((uid,'secondary',pd.Timestamp(day)+pd.Timedelta(hours=2),arm,st,1.))
+    events=pd.DataFrame(rows,columns=['user_id','event','timestamp','arm','stratum','amount'])
+    roster=pd.DataFrame(assign,columns=['user_id','arm','assigned_at','stratum']).set_index('user_id')
+    stream=Eventstream(events,{'path_cols':['user_id'],'segment_cols':['arm','stratum']})
+    return stream,roster,events
+CONV={'name':'conversion','metric':'has_event','metric_args':{'event':'conversion'}}
+ANCHOR={'name':'always','metric':'has_event','metric_args':{'event':'anchor'}}
+DUP={'name':'conversion_duplicate','metric':'has_event','metric_args':{'event':'conversion'}}
+SECOND={'name':'secondary','metric':'has_event','metric_args':{'event':'secondary'}}
+DIFF=('arm','treatment','control')
+def score(stream,metrics,**kw):
+    kw.setdefault('min_support',1)
+    return stream.get_ab_test(DIFF,metrics=metrics,**kw)
+
+stream,roster,events=binary_stream({'all':{'treatment':(100,30),'control':(100,17)}})
+events.to_csv(out/'fixture_missing_events.csv',index=False);roster.to_csv(out/'fixture_missing_assignments.csv')
+for correction in ['holm','bonferroni','bh','none']:
+    for scope in ['all','metric']:
+        rows=guarded(f'public_missing_{correction}_{scope}',lambda:score(stream,[CONV,ANCHOR],correction=correction,correction_scope=scope))
+        if rows is not None:
+            exp=oracle.adjust(rows.p_value,correction,planned=True) if scope=='all' else rows.p_value
+            check(f'public_missing/{correction}/{scope}',rows.p_value_adjusted,exp)
+            check(f'missing_mde_alpha/{correction}/{scope}',rows.mde_alpha,[.025 if correction!='none' and scope=='all' else .05]*2)
+rows=guarded('public_default_multimetric',lambda:score(stream,[CONV,DUP]))
+if rows is not None:check('default_global_family',rows.p_value_adjusted,oracle.adjust(rows.p_value,'holm'))
+guarded('public_low_power',lambda:score(stream,[CONV],power=.01))
+
+# Small-sample Welch MDE has a normal approximation, exposed by the public reading.
+mean_rows=[]
+for arm in ['control','treatment']:
+    for i,value in enumerate(10+np.arange(-2,3)/math.sqrt(2.5)):
+        mean_rows.append((arm+str(i),'amount',pd.Timestamp('2026-01-02'),arm,float(value)))
+mean_events=pd.DataFrame(mean_rows,columns=['user_id','event','timestamp','arm','amount'])
+mean_events.to_csv(out/'fixture_small_welch_events.csv',index=False)
+mean_stream=Eventstream(mean_events,{'path_cols':['user_id'],'segment_cols':['arm']})
+guarded('public_small_welch',lambda:score(mean_stream,[{'name':'value','metric':'column_sum','metric_args':{'column':'amount'}}],min_support=10))
+
+# Metrics x strata x period scope, full raw table retained.
+stream2,roster2,events2=binary_stream({
+ 'a':{'treatment':(60,28),'control':(60,17)},
+ 'b':{'treatment':(60,20),'control':(60,20)},
+ 'c':{'treatment':(60,14),'control':(60,24)}},second_metric=True,dates=['2026-01-02','2026-01-03'])
+events2.to_csv(out/'fixture_scope_events.csv',index=False);roster2.to_csv(out/'fixture_scope_assignments.csv')
+for scope in ['all','metric']:
+    rows=guarded(f'public_scope_{scope}',lambda:score(stream2,[CONV,SECOND],assignment=roster2,strata_col='stratum',strata_pre_exposure=True,period='D',correction_scope=scope))
+    if rows is not None:
+        if scope=='all':check('scope_all_12',rows.p_value_adjusted,oracle.adjust(rows.p_value,'holm'))
+        else:
+            for metric,part in rows.groupby('metric'):check('scope_metric/'+metric,part.p_value_adjusted,oracle.adjust(part.p_value,'holm'))
+# Independent heterogeneity oracle derived from binomial counts (three disjoint strata).
+stream3,roster3,events3=binary_stream({
+ 'a':{'treatment':(80,39),'control':(80,25)},
+ 'b':{'treatment':(80,25),'control':(80,25)},
+ 'c':{'treatment':(80,15),'control':(80,25)}})
+counts={'a':(39,25),'b':(25,25),'c':(15,25)}
+rows=guarded('public_heterogeneity',lambda:score(stream3,[CONV],strata_col='stratum',strata_pre_exposure=True,assignment=roster3))
+het_expect=[];deltas=[];variances=[]
+for st,(kt,kc) in counts.items():
+    pt,pc=kt/80,kc/80;deltas.append(pt-pc);variances.append(pt*(1-pt)/80+pc*(1-pc)/80)
+for i,(st,(kt,kc)) in enumerate(counts.items()):
+    other=[v for s,v in counts.items() if s!=st]
+    prt=sum(v[0] for v in other)/160;prc=sum(v[1] for v in other)/160
+    rest_var=prt*(1-prt)/160+prc*(1-prc)/160
+    p=math.erfc(abs(deltas[i]-(prt-prc))/math.sqrt(2*(variances[i]+rest_var)))
+    het_expect.append({'stratum':st,'delta':deltas[i],'variance':variances[i],'rest_delta':prt-prc,'rest_variance':rest_var,'raw_stratum_rest_p':p})
+expected_q=oracle.cochran_q(deltas,variances)
+save('heterogeneity_expected',{'rows':het_expect,'q':expected_q,'q_p':stats.chi2.sf(expected_q['q'],2),'holm_for_rest_tests':oracle.adjust([x['raw_stratum_rest_p'] for x in het_expect])})
+if rows is not None:
+    check('public_heterogeneity_q',rows.heterogeneity_p_value,[stats.chi2.sf(expected_q['q'],2)]*3)
+    for e in het_expect:
+        r=rows[rows.stratum==e['stratum']].iloc[0]
+        check('public_rest/'+e['stratum'],r.stratum_vs_rest_p_value,e['raw_stratum_rest_p'])
+
+# Enumerate public-compatible binary CI/test disagreement, then reproduce first case.
+ci_mismatches=[]
+for n in [10,15,20,25,30,40,50,75,100]:
+    for k1 in range(1,n):
+        for k2 in range(1,k1):
+            if min(k1+k2,2*n-k1-k2)<10:continue
+            p=float(candidate.two_proportion_z(k1,n,k2,n)[1])
+            lo,hi=candidate.newcombe_ci(k1,n,k2,n,.975)
+            if (p*2<.05)!=(float(lo)>0 or float(hi)<0):
+                ci_mismatches.append({'n':n,'k1':k1,'k2':k2,'adjusted_p':min(1.,2*p),'ci_low':float(lo),'ci_high':float(hi)})
+                if len(ci_mismatches)>=8:break
+        if len(ci_mismatches)>=8:break
+    if len(ci_mismatches)>=8:break
+save('binary_ci_test_disagreements',ci_mismatches)
+if ci_mismatches:
+    c=ci_mismatches[0];s,_,_=binary_stream({'all':{'treatment':(c['n'],c['k1']),'control':(c['n'],c['k2'])}})
+    guarded('public_bonferroni_ci_disagreement',lambda:score(s,[CONV,DUP],correction='bonferroni',correction_scope='all',min_support=10))
+
+# Fixed-calendar explicit planned family and exact allocation API (baseline only).
+if hasattr(stream,'experiment_data'):
+    fixed_metrics=[dict(CONV,agg='mean'),dict(ANCHOR,agg='mean')]
+    assignments=roster.reset_index()
+    def fixed_call():
+        return stream.experiment_data(assignments=assignments,variant_col='arm',metrics=fixed_metrics,
+          observation={'start':'2026-01-02','end':'2026-01-03','assignment_time_col':'assigned_at','complete':True},
+          tests={'methods':{'conversion':'fisher_exact','always':'welch'},'adjustment':'holm'},expected_allocation=.5)
+    fixed=guarded('public_experiment',fixed_call)
+    if fixed is not None:
+        vals=[r['p_value'] for r in fixed['summary']]
+        check('experiment_declared_family',[np.nan if r['p_value_adjusted'] is None else r['p_value_adjusted'] for r in fixed['summary']],oracle.adjust(vals,'holm'))
+# SRM expected allocation + split correction.
+srm_stream,srm_roster,_=binary_stream({'all':{'treatment':(75,30),'control':(25,10)}})
+guarded('public_srm_unequal',lambda:srm_stream.get_sample_ratio(assignment=srm_roster,expected_shares={'treatment':.75,'control':.25}))
+guarded('public_srm_wrong_equal',lambda:srm_stream.get_sample_ratio(assignment=srm_roster))
+guarded('public_srm_zero_share',lambda:srm_stream.get_sample_ratio(assignment=srm_roster,expected_shares={'treatment':.75,'control':.25,'unused':0.}))
+guarded('public_srm_split',lambda:stream3.get_sample_ratio(assignment=roster3,strata_col='stratum',expected_shares={'treatment':.5,'control':.5}))
+sparse_stream,sparse_roster,_=binary_stream({'all':{'treatment':(2,1),'control':(8,2)}})
+sparse=guarded('public_srm_sparse',lambda:sparse_stream.get_sample_ratio(assignment=sparse_roster,expected_shares={'treatment':.01,'control':.99}))
+save('srm_sparse_exact',{'n':10,'expected_treatment':.01,'observed_treatment':2,
+ 'two_sided_exact_p':float(stats.binomtest(2,10,.01).pvalue),
+ 'null_rejection_probability_at_alpha_001':sum(float(stats.binom.pmf(k,10,.01)) for k in range(11) if candidate.srm_chi2([k,10-k],[.01,.99])[1]<.001)})
+absent_stream,absent_roster,_=binary_stream({'all':{'control':(100,25)}})
+guarded('public_srm_absent_arm',lambda:absent_stream.get_sample_ratio(assignment=absent_roster,expected_shares={'treatment':.5,'control':.5}))
+save('srm_absent_arm_expected',{'counts':[0,100],'expected_shares':[.5,.5],'statistic':100.,'df':1,'asymptotic_p':float(stats.chi2.sf(100,1))})
+
+# Oracle-only all-null simulation: per-family, union of families, selected availability.
+R=args.simulation_reps;sim_rng=np.random.default_rng(4072026)
+pvals=sim_rng.random((R,10))
+scenarios={
+ 'unadjusted_ten_separate_singleton_families':(pvals<.05).any(axis=1),
+ 'bonferroni_global_ten':(pvals<.05/10).any(axis=1),
+ 'holm_global_ten':pvals.min(axis=1)<.05/10,
+ 'bh_global_ten':(np.sort(pvals,axis=1)<=.05*np.arange(1,11)/10).any(axis=1),
+ 'select_min_p_only_then_available_family':pvals.min(axis=1)<.05,
+ 'select_min_p_only_then_planned_family':pvals.min(axis=1)<.05/10,
+}
+sim_records=[]
+for name,rejected in scenarios.items():
+    k=int(rejected.sum());rate=k/R;se=math.sqrt(rate*(1-rate)/R)
+    sim_records.append({'scenario':name,'seed':4072026,'replications':R,'family_size':10,'false_positive_families':k,
+           'rate':rate,'mc_se':se,'normal_mc_ci_low':max(0.,rate-1.96*se),'normal_mc_ci_high':min(1.,rate+1.96*se),
+           'expected_independent_rate':1-.95**10 if 'singleton' in name or 'available_family' in name else (.05 if 'bh_' in name else 1-(1-.005)**10)})
+save('null_simulation',pd.DataFrame(sim_records))
+# Actual small-n Welch power under the advertised normal-approximation MDE.
+power_records=[]
+power_rng=np.random.default_rng(4072027)
+for n in [3,5,10,30,100]:
+    delta=oracle.approximate_mde(math.sqrt(2/n),.05,.8)
+    # independent normal arms with known unit variance, Welch test estimates it.
+    a=power_rng.normal(0,1,(R,n));b=power_rng.normal(delta,1,(R,n))
+    se2=a.var(axis=1,ddof=1)/n+b.var(axis=1,ddof=1)/n
+    denom=(a.var(axis=1,ddof=1)/n)**2/(n-1)+(b.var(axis=1,ddof=1)/n)**2/(n-1)
+    dof=se2**2/denom;t=(b.mean(axis=1)-a.mean(axis=1))/np.sqrt(se2)
+    rej=2*stats.t.sf(abs(t),dof)<.05;k=int(rej.sum());rate=k/R;se=math.sqrt(rate*(1-rate)/R)
+    power_records.append({'seed':4072027,'n_per_arm':n,'replications':R,'delta':delta,'nominal_power':.8,
+        'rejections':k,'power':rate,'mc_se':se,'normal_mc_ci_low':rate-1.96*se,'normal_mc_ci_high':rate+1.96*se})
+save('welch_mde_power_simulation',pd.DataFrame(power_records))
+save('checks',checks);save('exceptions',caught)
+modules={}
+for name,module in sorted(sys.modules.items()):
+    if name.startswith('retentioneering') and getattr(module,'__file__',None):
+        file=Path(module.__file__).resolve()
+        if file.suffix=='.py':
+            assert file.is_relative_to(source/'src'),(name,str(file),str(source))
+            modules[name]={'file':str(file),'sha256':hashlib.sha256(file.read_bytes()).hexdigest()}
+provenance={'source':str(source),'argv':sys.argv,'python':sys.version,'platform':platform.platform(),
+ 'versions':{'numpy':np.__version__,'pandas':pd.__version__,'scipy':scipy.__version__},
+ 'oracle_sha256':hashlib.sha256(Path(oracle.__file__).read_bytes()).hexdigest(),
+ 'runner_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),'imported_modules':modules,
+ 'checks_total':len(checks),'checks_pass':sum(x['pass'] for x in checks),'exceptions':caught}
+save('provenance',provenance)
+print(json.dumps({'source':str(source),'checks_total':len(checks),'checks_pass':sum(x['pass'] for x in checks),'exceptions':caught},indent=2))

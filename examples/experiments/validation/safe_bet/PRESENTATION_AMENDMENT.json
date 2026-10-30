@@ -1,0 +1,21 @@
+{
+  "recorded_utc": "2026-10-30T19:48:26.741676+00:00",
+  "reason": "Coordinator index renderer regenerated derived HTML from unchanged Markdown after role03 evidence freeze. Numerical data, oracle, preregistration, Markdown and code are unchanged. Original manifest preserved. Renderer now preserves existing role HTML. This is a presentation-only provenance amendment, not an unchanged-hash claim.",
+  "changed_files": [
+    {
+      "file": "roles/03_resampling/EXTENSION.html",
+      "original_sha256": "f8ecdd044ef68ae82b67c6fe793887063e401ef89e86883cef6ada24f4eff802",
+      "current_sha256": "bb9014b727209a5951b21a6c73ed7a224a970388a8e3f4f0ae9aed4cfa8f394b"
+    },
+    {
+      "file": "roles/03_resampling/REPORT.html",
+      "original_sha256": "da02f876f7696142d8876915e8f506d26f3024fc7ea85c41759846b744bb7d45",
+      "current_sha256": "85241db5d4bdec40ca56c85b6961b7f344e38363cc5f401c025e7b3999dc93d4"
+    },
+    {
+      "file": "roles/02_population/REPORT.html",
+      "original_sha256": "b6431a12daaf12e6ad23fca158a0a80ae4e5cc6f1548af95469248ed1b665d64",
+      "current_sha256": "eba4b6a889870c1178b924fc7c772e5afd4fe823498f8ebf0ca3d8779bbe9d5c"
+    }
+  ]
+}

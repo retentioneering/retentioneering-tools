@@ -308,8 +308,8 @@ def test_newcombe_reference_and_wilson_boundaries(cs, nc, ts, nt, expected):
         [row.control_ci_low, row.control_ci_high], marginal, atol=2e-14
     )
     assert (
-        row.absolute_effect_ci_method == "newcombe"
-        and row.control_ci_method == "wilson"
+        row.absolute_effect_ci_method == "newcombe_approximate"
+        and row.control_ci_method == "wilson_approximate"
     )
     assert (
         row.absolute_effect_ci_confidence_level == 0.95
@@ -341,7 +341,10 @@ def test_selected_binary_method_does_not_change_conditional_or_relative_method()
         binary_intervals={"method": "newcombe", "confidence_level": 0.9},
     )
     rows = result.summary.set_index("metric")
-    assert rows.loc["funnel_cumulative_2", "absolute_effect_ci_method"] == "newcombe"
+    assert (
+        rows.loc["funnel_cumulative_2", "absolute_effect_ci_method"]
+        == "newcombe_approximate"
+    )
     assert (
         rows.loc["funnel_conditional_2", "absolute_effect_ci_method"]
         == "bootstrap_percentile"

@@ -125,7 +125,7 @@ class DiffGroups:
         Path ids of group 1 and group 2 (sorted, unique). Disjoint whenever
         ``require_constant=True``; with ``require_constant=False`` a path that matched
         both groups is kept in both.
-    label1, label2 : str
+    label1, label2 : scalar
         Human labels (segment values, ``"group1"``/``"group2"`` for id lists, or arm
         names from an assignment table; ``<REST>`` for the complement).
     unassigned_paths : int
@@ -138,8 +138,8 @@ class DiffGroups:
 
     ids1: pd.Index
     ids2: pd.Index
-    label1: str
-    label2: str
+    label1: Any
+    label2: Any
     unassigned_paths: int
     basis: str
 
@@ -427,7 +427,7 @@ def _segment_groups(stream, segment_col, v1, v2, path_col, require_constant=True
     n_values = pairs.groupby("path", sort=False).size()
     non_constant = int((n_values.reindex(union) > 1).sum())
     overlap = len(set(paths1) & set(paths2))
-    return paths1, paths2, str(v1), str(v2), non_constant, overlap
+    return paths1, paths2, v1, v2, non_constant, overlap
 
 
 def _assignment_groups(stream, diff, path_col, assignment):
@@ -510,7 +510,7 @@ def _assignment_groups(stream, diff, path_col, assignment):
                 f"{len(disagree)} path(s), e.g. {list(disagree[:5])}: the arm a path "
                 "was assigned to must be the arm its events carry."
             )
-    return paths1, paths2, str(v1), str(v2)
+    return paths1, paths2, v1, v2
 
 
 def resolve_diff(

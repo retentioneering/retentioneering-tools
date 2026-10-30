@@ -1,0 +1,50 @@
+[
+  {
+    "scenario": "balanced",
+    "api": "get_ab_steps",
+    "runs": 200,
+    "any_discovery": 3,
+    "rate": 0.015,
+    "wilson95": [
+      0.00511423779325831,
+      0.04316572879269026
+    ],
+    "total_discoveries": 3
+  },
+  {
+    "scenario": "balanced",
+    "api": "get_ab_transitions",
+    "runs": 200,
+    "any_discovery": 3,
+    "rate": 0.015,
+    "wilson95": [
+      0.00511423779325831,
+      0.04316572879269026
+    ],
+    "total_discoveries": 6
+  },
+  {
+    "scenario": "imbalanced",
+    "api": "get_ab_steps",
+    "runs": 200,
+    "any_discovery": 200,
+    "rate": 1.0,
+    "wilson95": [
+      0.9811546736227335,
+      1.0
+    ],
+    "total_discoveries": 396
+  },
+  {
+    "scenario": "imbalanced",
+    "api": "get_ab_transitions",
+    "runs": 200,
+    "any_discovery": 200,
+    "rate": 1.0,
+    "wilson95": [
+      0.9811546736227335,
+      1.0
+    ],
+    "total_discoveries": 792
+  }
+]

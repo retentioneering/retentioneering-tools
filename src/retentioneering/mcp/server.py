@@ -646,8 +646,10 @@ def _build_server(
 
         Check allocation before interpreting outcomes. Mismatch is a diagnostic
         alarm requiring investigation, not proof of faulty randomization. The
-        chi-square check assumes independent multinomial assignments; fixed
-        allocation needs a compatible audit. Numbers only; quote in backticks.
+        two-arm check is exact binomial under independent Bernoulli assignment;
+        multiarm Pearson inference is approximate under independent multinomial
+        assignment and unavailable for sparse expected counts. Fixed allocation
+        needs a compatible audit. Null mismatch is not evidence of balance. Numbers only; quote in backticks.
         With the session's assignment table (describe()['assignment']) the counts
         are the table's rows, silent users included, and segment_col is optional.
 
@@ -675,7 +677,8 @@ def _build_server(
         -------
         JSON with mismatch, p_value, chi2, dof, multi_valued_paths (assignment
         inconsistency when > 0), silent_paths, unassigned_paths, basis,
-        sampling_assumption, warnings, reading (one sentence: expected vs
+        sampling_assumption, p_value_method, inference_status, support_warning,
+        expected_count_min (overall and split rows), warnings, reading (one sentence: expected vs
         observed split, p and the conclusion; quote it), levels (paths, share,
         expected_share per arm) and, with strata_col, strata (per stratum: paths,
         p_value, p_value_adjusted by Holm across strata, mismatch), with period,
@@ -757,7 +760,9 @@ def _build_server(
             that long are left out (needs the assignment table's assigned_at).
             Different horizons answer different questions: choose before reading.
         test:
-            "auto" (default), "z_test", "welch_t_test" or "bootstrap".
+            "auto" (binary Fisher exact, nonbinary descriptive), "fisher_exact",
+            "descriptive", "z_test", "welch_t_test" or "bootstrap". Explicit
+            z is guarded/approximate; Welch and bootstrap are nonbinary/approximate.
         correction:
             "holm" (default), "bonferroni", "bh" or "none".
         correction_scope:
@@ -779,10 +784,12 @@ def _build_server(
         diff) and metrics: per metric population, group sizes, group1_support /
         group2_support and conditional (a metric defined only for some paths
         compares those paths), values, delta with delta_ci_low / delta_ci_high,
-        rel_delta, p_value (raw), p_value_adjusted, mde (effect detected with 80%
-        power at mde_alpha), verdict (increase, decrease, inconclusive,
+        rel_delta, p_value (raw), p_value_adjusted, mde (normal planning approximation, not exact test power;
+        labelled by mde_basis at mde_alpha), verdict (increase, decrease, inconclusive,
         descriptive, insufficient_data), test, correction_family, mde_alpha,
-        support_warning, reading (one sentence per row, from its numbers, naming
+        support_warning, ci_basis, p_basis, mde_basis, relative_ci_status,
+        numeric_unit/display_scale, optional delta_ci_adjusted_basis/status and
+        delta_ci_low_adj/high_adj (null for insufficient_tail_resamples), reading (one sentence per row, from its numbers, naming
         the window it covers; also on strata and periods rows), unit ("pp" or
         "value": the unit reading quotes) and scope (what the row is corrected
         against; strata/period intervals are unadjusted; on every row); warnings;

@@ -32,14 +32,17 @@ the rate answers the question you meant.
 
 ### Confidence intervals and A/B tests
 
+Conservative difference intervals are not inversions of the Fisher test.
+Method metadata distinguish the interval and test procedures.
+
 `ci_level=0.95` (or the **Confidence interval** selector in the sidebar: Off /
 90% / 95% / 99%) puts sampling uncertainty on every number:
 
 | Number | Interval | Test |
 |---|---|---|
-| a group's `conversion_rate` and `step_conversion_rate` | Wilson score | — |
-| `delta_conversion_rate` (overall, per step) | Newcombe hybrid score | pooled two-proportion z-test, `delta_conversion_rate_p_value` |
-| `delta_step_conversion_rate` (step to step) | Newcombe hybrid score | none — see below |
+| a group's `conversion_rate` and `step_conversion_rate` | Clopper–Pearson | — |
+| `delta_conversion_rate` (overall, per step) | conservative CP-based difference | two-sided Fisher exact test, `delta_conversion_rate_p_value` |
+| `delta_step_conversion_rate` (step to step) | conservative CP-based difference | none — see below |
 
 Only the **overall** deltas get a p-value. A step-to-step rate is conditional on
 reaching the previous step, and in an experiment the treatment itself changes
@@ -51,7 +54,8 @@ The first step has no previous step, so its two deltas coincide.
 The table colours a delta only when its interval excludes 0; everything else
 stays grey, whatever its size. A funnel tests one comparison per step, so with
 many steps some p-values fall under 0.05 by chance: `correction="holm"` (or
-`"bonferroni"`, or `"bh"` for the false discovery rate) adjusts the overall-delta
+`"bonferroni"`, or `"bh"` for the false discovery rate under independence or
+suitable positive dependence) adjusts the overall-delta
 p-values across the steps into `delta_conversion_rate_p_value_adjusted`. The
 intervals remain per comparison. With a correction, colouring additionally requires
 the adjusted p-value to be below `1 - ci_level`; a per-comparison interval excluding

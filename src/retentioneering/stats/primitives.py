@@ -30,6 +30,8 @@ __all__ = [
     "constant_statistic",
     "delta_log_ratio_ci",
     "exact_binomial_ci",
+    "exact_difference_ci",
+    "fisher_exact_p",
     "holm",
     "mde_from_se",
     "mde_mean",
@@ -59,7 +61,7 @@ def _check_level(name: str, value: float) -> float:
 
 def _z(ci_level: float) -> float:
     """Two-sided standard normal quantile for ``ci_level``."""
-    return float(stats.norm.ppf(0.5 + _check_level("ci_level", ci_level) / 2))
+    return float(stats.norm.isf((1.0 - _check_level("ci_level", ci_level)) / 2))
 
 
 def _floats(*arrays):
@@ -147,7 +149,7 @@ def newcombe_ci(
 
 
 def two_proportion_z(k1, n1, k2, n2) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Pooled two-proportion z-test.
+    """Asymptotic pooled two-proportion z-test, not an exact small-sample test.
 
     Parameters
     ----------
@@ -173,6 +175,44 @@ def two_proportion_z(k1, n1, k2, n2) -> tuple[np.ndarray, np.ndarray, np.ndarray
         se = np.where((n1 > 0) & (n2 > 0), se, np.nan)
     p = 2 * stats.norm.sf(np.abs(z))
     return _out(z), _out(p), _out(se)
+
+
+def _binomial_counts(k, n):
+    k, n = np.broadcast_arrays(*_floats(k, n))
+    if not (
+        np.isfinite(k).all()
+        and np.isfinite(n).all()
+        and ((0 <= k) & (k <= n)).all()
+        and (k == np.floor(k)).all()
+        and (n == np.floor(n)).all()
+    ):
+        raise ValueError("Binomial counts require finite integers 0 <= k <= n")
+    return k, n
+
+
+def fisher_exact_p(k1, n1, k2, n2):
+    """Two-sided conditional Fisher p-value for independent binary groups.
+
+    Sum fixed-margin table probabilities no larger than the observed table's
+    probability. Returns NaN for an empty arm and 1 for equal constant arms.
+    Inputs broadcast; counts must be finite nonnegative integers with k <= n.
+    Independence, fixed observation rules and a prespecified test family remain
+    design requirements. This test is not dual to a difference interval.
+    """
+    k1, n1 = _binomial_counts(k1, n1)
+    k2, n2 = _binomial_counts(k2, n2)
+    k1, n1, k2, n2 = np.broadcast_arrays(k1, n1, k2, n2)
+    if np.any(n1 + n2 >= float(np.iinfo(np.int64).max)):
+        raise ValueError("Fisher table total exceeds the supported integer range")
+    result = np.full(k1.shape, np.nan)
+    for index in np.ndindex(k1.shape):
+        if n1[index] > 0 and n2[index] > 0:
+            table = [
+                [int(k1[index]), int(n1[index] - k1[index])],
+                [int(k2[index]), int(n2[index] - k2[index])],
+            ]
+            result[index] = stats.fisher_exact(table, alternative="two-sided").pvalue
+    return _out(result)
 
 
 def delta_log_ratio_ci(
@@ -254,7 +294,9 @@ def welch_t(
 def _mde_factor(alpha: float, power: float) -> float:
     alpha = _check_level("alpha", alpha)
     power = _check_level("power", power)
-    return float(stats.norm.ppf(1 - alpha / 2) + stats.norm.ppf(power))
+    if power < 0.5:
+        raise InvalidParameterError("power", power, ["a float in [0.5, 1)"])
+    return float(stats.norm.isf(alpha / 2) + stats.norm.ppf(power))
 
 
 def mde_proportion(p, n1, n2, alpha: float = 0.05, power: float = 0.8) -> np.ndarray:
@@ -469,9 +511,13 @@ def srm_chi2(counts, expected_shares=None) -> tuple[float, float, int]:
             raise InvalidParameterError(
                 "expected_shares", list(e), ["shares summing to 1"]
             )
-    dof = max(k - 1, 0)
+    positive = e > 0
+    dof = max(int(positive.sum()) - 1, 0)
     total = c.sum()
-    if total <= 0 or k < 2:
+    if total > 0 and np.any(c[~positive] > 0):
+        return float("inf"), 0.0, dof
+    c, e = c[positive], e[positive]
+    if total <= 0 or len(c) < 2:
         return float("nan"), float("nan"), dof
     expected = total * e
     with np.errstate(invalid="ignore", divide="ignore"):
@@ -481,20 +527,37 @@ def srm_chi2(counts, expected_shares=None) -> tuple[float, float, int]:
     return chi2, float(stats.chi2.sf(chi2, dof)), dof
 
 
+def _clopper_pearson_tails(k, n, tail):
+    """Clopper-Pearson endpoints using the tail probability directly."""
+    k, n = _binomial_counts(k, n)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        low = np.where(k > 0, stats.beta.ppf(tail, k, n - k + 1), 0.0)
+        high = np.where(k < n, stats.beta.isf(tail, k + 1, n - k), 1.0)
+    return _out(np.where(n > 0, low, np.nan)), _out(np.where(n > 0, high, np.nan))
+
+
 def exact_binomial_ci(k, n, ci_level: float = 0.95) -> tuple[np.ndarray, np.ndarray]:
-    """Clopper-Pearson interval; used only in tests as a reference.
+    """Conservative exact Clopper-Pearson interval for a binomial proportion.
 
     ``low = Beta(alpha/2; k, n - k + 1)``, ``high = Beta(1 - alpha/2; k + 1, n - k)``,
     with ``low = 0`` at ``k = 0`` and ``high = 1`` at ``k = n``; NaN when ``n == 0``.
     """
-    k, n = _floats(k, n)
     alpha = 1 - _check_level("ci_level", ci_level)
-    with np.errstate(invalid="ignore", divide="ignore"):
-        low = np.where(k > 0, stats.beta.ppf(alpha / 2, k, n - k + 1), 0.0)
-        high = np.where(k < n, stats.beta.ppf(1 - alpha / 2, k + 1, n - k), 1.0)
-    low = np.where(n > 0, low, np.nan)
-    high = np.where(n > 0, high, np.nan)
-    return _out(low), _out(high)
+    return _clopper_pearson_tails(k, n, alpha / 2)
+
+
+def exact_difference_ci(k1, n1, k2, n2, ci_level: float = 0.95):
+    """Conservative exact interval for p1-p2 from Bonferroni CP arm bounds.
+
+    Each arm interval has error probability at most alpha/2; the union bound
+    gives difference coverage at least 1-alpha under binomial sampling. This is
+    usually wider than Newcombe and is not obtained by inverting Fisher's test.
+    Tail probabilities alpha/4 avoid rounding a derived confidence level to 1.
+    """
+    tail = (1 - _check_level("ci_level", ci_level)) / 4
+    l1, u1 = _clopper_pearson_tails(k1, n1, tail)
+    l2, u2 = _clopper_pearson_tails(k2, n2, tail)
+    return _out(np.maximum(-1, l1 - u2)), _out(np.minimum(1, u1 - l2))
 
 
 def constant_statistic(values):
@@ -613,7 +676,7 @@ def sample_mean_ci(values, ci_level=0.95):
     if status != "ok":
         return mean, np.nan, np.nan
     with np.errstate(over="ignore", invalid="ignore"):
-        half = stats.t.ppf(0.5 + level / 2, n - 1) * (sd / np.sqrt(n))
+        half = stats.t.isf((1.0 - level) / 2, n - 1) * (sd / np.sqrt(n))
         low, high = mean - half, mean + half
     if not np.isfinite(low) or not np.isfinite(high):
         return mean, np.nan, np.nan

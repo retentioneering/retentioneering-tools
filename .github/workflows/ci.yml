@@ -60,6 +60,19 @@ jobs:
       - name: Run tests
         run: uv run pytest tests/ -v
 
+      - name: Build and verify the installed wheel
+        run: |
+          uv build --wheel
+          uv run python scripts/verify_wheel.py dist/*.whl
+
+      - name: Upload installed-wheel provenance and exports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-verification-${{ matrix.python-version }}-${{ github.sha }}
+          path: artifacts/wheel/
+          if-no-files-found: warn
+
       - name: Install Chromium for widget rendering tests
         if: matrix.python-version == '3.12'
         run: uv run --with playwright python -m playwright install --with-deps chromium

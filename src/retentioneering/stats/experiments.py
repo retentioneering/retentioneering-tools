@@ -4,10 +4,15 @@ import secrets
 
 import numpy as np
 import pandas as pd
-from scipy import stats
 
 from retentioneering.stats import primitives as _core
-from retentioneering.stats.resampling import draw_sums, percentile_interval
+from retentioneering.stats.resampling import (
+    checked_difference,
+    checked_ratio,
+    checked_sum,
+    draw_sums,
+    percentile_interval,
+)
 
 
 def _integer(value, name, lower):
@@ -59,7 +64,7 @@ def _bootstrap_config(config):
 
 def _ratio(values):
     a, b = values[..., 0::2], values[..., 1::2]
-    return np.divide(a, b, out=np.full(a.shape, np.nan), where=b > 0)
+    return checked_ratio(a, b)
 
 
 def _draw_sums(values, config, rng):
@@ -89,13 +94,14 @@ def _interval(draws, point, n_units, config, *, relative=False, degenerate=False
 
 
 def _summary(specs, c, t, dc, dt, nc, nt, config):
-    cp, tp = _ratio(c.sum(axis=0)), _ratio(t.sum(axis=0))
-    effects = tp - cp
-    relative = np.divide(tp, cp, out=np.full(tp.shape, np.nan), where=cp > 0) - 1
+    csum, tsum = checked_sum(c, axis=0), checked_sum(t, axis=0)
+    cp, tp = _ratio(csum), _ratio(tsum)
+    effects = checked_difference(tp, cp)
+    relative = checked_ratio(tp, cp) - 1
     if config:
         cd, td = _ratio(dc), _ratio(dt)
-        dd = td - cd
-        rd = np.divide(td, cd, out=np.full(td.shape, np.nan), where=cd > 0) - 1
+        dd = checked_difference(td, cd)
+        rd = checked_ratio(td, cd) - 1
     else:
         cd = td = dd = rd = np.empty((0, len(specs)))
     rows = []
@@ -104,10 +110,10 @@ def _summary(specs, c, t, dc, dt, nc, nt, config):
         constant_t = _constant_statistic(t[:, 2 * j : 2 * j + 2])
         row = dict(spec)
         row.update(
-            control_numerator=float(c[:, 2 * j].sum()),
-            control_denominator=float(c[:, 2 * j + 1].sum()),
-            treatment_numerator=float(t[:, 2 * j].sum()),
-            treatment_denominator=float(t[:, 2 * j + 1].sum()),
+            control_numerator=float(csum[2 * j]),
+            control_denominator=float(csum[2 * j + 1]),
+            treatment_numerator=float(tsum[2 * j]),
+            treatment_denominator=float(tsum[2 * j + 1]),
             control_units=nc,
             treatment_units=nt,
         )
@@ -180,8 +186,10 @@ def _binary_interval_config(config):
         return None
     if not isinstance(config, dict) or set(config) - {"method", "confidence_level"}:
         raise ValueError("binary_intervals accepts method and confidence_level")
-    if config.get("method") != "newcombe":
-        raise ValueError("binary_intervals requires the explicit method='newcombe'")
+    if config.get("method") not in {"exact", "newcombe"}:
+        raise ValueError(
+            "binary_intervals requires method='exact' or method='newcombe'"
+        )
     level = config.get("confidence_level", 0.95)
     if (
         isinstance(level, bool)
@@ -189,7 +197,7 @@ def _binary_interval_config(config):
         or not 0 < level < 1
     ):
         raise ValueError("binary_intervals confidence_level must be in (0,1)")
-    return {"method": "newcombe", "confidence_level": float(level)}
+    return {"method": config["method"], "confidence_level": float(level)}
 
 
 def _wilson(successes, n, confidence_level):
@@ -211,19 +219,28 @@ def _binary_intervals(summary, specs, c, t, config):
                 raise ValueError(
                     "Binary intervals require one Bernoulli outcome per independent assigned unit"
                 )
-        cl, cu = _wilson(c[:, 2 * j].sum(), len(c), level)
-        tl, tu = _wilson(t[:, 2 * j].sum(), len(t), level)
-        lower, upper = _core.newcombe_ci(
+        exact = config["method"] == "exact"
+        arm_ci = _core.exact_binomial_ci if exact else _wilson
+        difference_ci = _core.exact_difference_ci if exact else _core.newcombe_ci
+        arm_method = "clopper_pearson" if exact else "wilson_approximate"
+        difference_method = (
+            "clopper_pearson_bonferroni" if exact else "newcombe_approximate"
+        )
+        cl, cu = arm_ci(c[:, 2 * j].sum(), len(c), level)
+        tl, tu = arm_ci(t[:, 2 * j].sum(), len(t), level)
+        lower, upper = difference_ci(
             t[:, 2 * j].sum(), len(t), c[:, 2 * j].sum(), len(c), level
         )
         for label, lo, hi, method in (
-            ("control", cl, cu, "wilson"),
-            ("treatment", tl, tu, "wilson"),
-            ("absolute_effect", lower, upper, "newcombe"),
+            ("control", cl, cu, arm_method),
+            ("treatment", tl, tu, arm_method),
+            ("absolute_effect", lower, upper, difference_method),
         ):
             summary.loc[j, f"{label}_ci_low"] = float(lo)
             summary.loc[j, f"{label}_ci_high"] = float(hi)
-            summary.loc[j, f"{label}_status"] = "ok"
+            summary.loc[j, f"{label}_status"] = (
+                "ok" if np.isfinite(lo) and np.isfinite(hi) else "numerical_failure"
+            )
             summary.loc[j, f"{label}_ci_method"] = method
             summary.loc[j, f"{label}_ci_confidence_level"] = level
             # There are no Monte Carlo draws in this selected procedure.
@@ -263,6 +280,10 @@ def _tests(summary, specs, c, t, config):
         if name not in lookup:
             raise ValueError(f"Unknown test metric: {name}")
         j = lookup[name]
+        if method == "welch" and specs[j].get("outcome_kind") == "binary":
+            raise ValueError(
+                "Known binary outcomes require Fisher inference; use fisher_exact"
+            )
         if (
             specs[j]["aggregation"] != "mean"
             and specs[j].get("outcome_kind") != "binary"
@@ -276,9 +297,8 @@ def _tests(summary, specs, c, t, config):
             if specs[j].get("outcome_kind") != "binary":
                 raise ValueError("Fisher requires an explicitly binary outcome")
             cs, ts = int(c[:, 2 * j].sum()), int(t[:, 2 * j].sum())
-            table = [[ts, len(t) - ts], [cs, len(c) - cs]]
             summary.loc[j, "p_value"] = float(
-                stats.fisher_exact(table, alternative="two-sided").pvalue
+                _core.fisher_exact_p(ts, len(t), cs, len(c))
             )
             summary.loc[j, "test_status"] = "ok"
         elif min(len(c), len(t)) < 2:

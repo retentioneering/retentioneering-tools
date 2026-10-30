@@ -1,0 +1,109 @@
+"""Independent preregistered oracle. Never imports candidate implementations."""
+from __future__ import annotations
+import math
+from statistics import NormalDist
+
+NORMAL = NormalDist()
+
+def adjust(pvalues, method='holm', planned=True):
+    """Missing tests retained as p=1 in the planned family; outputs stay NaN."""
+    pvalues = list(pvalues)
+    finite = [(i, float(p)) for i, p in enumerate(pvalues) if p is not None and math.isfinite(p)]
+    if any(p < 0 or p > 1 for _, p in finite):
+        raise ValueError('p-values must be in [0,1]')
+    family = [(i, 1.0 if p is None or not math.isfinite(p) else float(p)) for i,p in enumerate(pvalues)] if planned else finite
+    ordered = sorted(family, key=lambda x:x[1])
+    m = len(ordered)
+    corrected = {}
+    if method == 'bonferroni':
+        corrected = {i:min(1.,m*p) for i,p in ordered}
+    elif method == 'holm':
+        previous = 0.
+        for rank,(i,p) in enumerate(ordered, 1):
+            previous = max(previous,(m-rank+1)*p)
+            corrected[i] = min(1.,previous)
+    elif method in ('bh','fdr_bh'):
+        previous = 1.
+        for rank in range(m,0,-1):
+            i,p = ordered[rank-1]
+            previous = min(previous,m*p/rank)
+            corrected[i] = min(1.,previous)
+    elif method in ('none',None):
+        corrected = dict(finite)
+    else:
+        raise ValueError(method)
+    valid = {i for i,_ in finite}
+    return [corrected[i] if i in valid else math.nan for i in range(len(pvalues))]
+
+def normal_power(delta, se, alpha=.05):
+    if not 0 < alpha < 1 or se <= 0:
+        raise ValueError('invalid alpha or SE')
+    critical = NORMAL.inv_cdf(1-alpha/2)
+    noncentrality = abs(delta)/se
+    return NORMAL.cdf(-critical-noncentrality)+1-NORMAL.cdf(critical-noncentrality)
+
+def approximate_mde(se, alpha=.05, power=.8):
+    if not 0 < alpha < 1 or not 0 < power < 1 or se < 0:
+        raise ValueError('invalid planning input')
+    return (NORMAL.inv_cdf(1-alpha/2)+NORMAL.inv_cdf(power))*se
+
+def exact_normal_mde(se, alpha=.05, power=.8):
+    if power <= alpha:
+        return 0.
+    lo,hi = 0.,max(se,approximate_mde(se,alpha,power))*2
+    while normal_power(hi,se,alpha)<power:
+        hi*=2
+    for _ in range(100):
+        mid=(lo+hi)/2
+        if normal_power(mid,se,alpha)<power: lo=mid
+        else: hi=mid
+    return (lo+hi)/2
+
+def mean_summary(values):
+    values=list(values)
+    n=len(values)
+    avg=sum(values)/n
+    variance=sum((x-avg)**2 for x in values)/(n-1) if n>1 else math.nan
+    return {'n':n,'mean':avg,'variance':variance,'variance_mean':variance/n}
+
+def contrast(values_control, values_variant):
+    a,b=mean_summary(values_control),mean_summary(values_variant)
+    effect=b['mean']-a['mean']
+    variance=a['variance_mean']+b['variance_mean']
+    se=math.sqrt(variance)
+    p=math.erfc(abs(effect/se)/math.sqrt(2)) if se else (1. if effect==0 else 0.)
+    return {'effect':effect,'variance':variance,'se':se,'p_normal':p,'mde_normal':approximate_mde(se)}
+
+def cochran_q(effects,variances):
+    if len(effects)!=len(variances) or len(effects)<2 or any(v<=0 or not math.isfinite(v) for v in variances):
+        raise ValueError('independent positive-variance estimates required')
+    weights=[1/v for v in variances]
+    avg=sum(w*e for w,e in zip(weights,effects))/sum(weights)
+    return {'estimate':avg,'q':sum(w*(e-avg)**2 for w,e in zip(weights,effects)),'df':len(effects)-1}
+
+def independent_stratum_rest(effects,variances,index,rest_weights=None):
+    other=[i for i in range(len(effects)) if i!=index]
+    weights=[1/len(other)]*len(other) if rest_weights is None else rest_weights
+    if len(weights)!=len(other) or abs(sum(weights)-1)>1e-10:
+        raise ValueError('normalized weights required')
+    rest=sum(w*effects[i] for w,i in zip(weights,other))
+    variance=variances[index]+sum(w*w*variances[i] for w,i in zip(weights,other))
+    delta=effects[index]-rest
+    return {'effect':delta,'variance':variance,'p_normal':math.erfc(abs(delta)/math.sqrt(2*variance))}
+
+def pearson_allocation(counts,probabilities):
+    if len(counts)!=len(probabilities) or abs(sum(probabilities)-1)>1e-10 or any(p<=0 for p in probabilities):
+        raise ValueError('invalid allocation')
+    total=sum(counts)
+    expected=[total*p for p in probabilities]
+    return {'statistic':sum((n-e)**2/e for n,e in zip(counts,expected)),'df':len(counts)-1,'expected':expected}
+
+if __name__=='__main__':
+    import json
+    p=[.01,.04,.03,.002]
+    output={'adjust':{method:adjust(p,method) for method in ('bonferroni','holm','bh')},
+      'planned_missing':{method:adjust([.03,math.nan],method) for method in ('bonferroni','holm','bh')},
+      'q':cochran_q([0,1,2],[1,1,1]),'stratum_rest':independent_stratum_rest([0,1,2],[1,1,1],0),
+      'allocation':pearson_allocation([25,75],[.25,.75]),'allocation_equal':pearson_allocation([25,75],[.5,.5]),
+      'normal_mde':{'approx':approximate_mde(1),'exact':exact_normal_mde(1),'actual_power_at_approx':normal_power(approximate_mde(1),1)}}
+    print(json.dumps(output,indent=2,allow_nan=True))

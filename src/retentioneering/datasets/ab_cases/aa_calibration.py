@@ -47,9 +47,11 @@ Solutions (spoilers)
    one arm cap Welch's t near the square root of k, so three could never look
    significant on their own.
 3. Isolated or explicitly separate-metric comparisons (``correction_scope="metric"``)
+   with explicitly requested approximate Welch/bootstrap methods
    can report an increase for revenue per user (``column_sum`` of ``order_value``),
-   average order value, and revenue under ``test="bootstrap"``. The default
-   all-metric Holm family makes this scorecard inconclusive. Both outcomes still
+   average order value, and revenue under ``test="bootstrap"``. Nonbinary auto inference is descriptive. With those advanced
+   methods explicitly requested, the default all-metric Holm family makes
+   this illustrative scorecard inconclusive. Both outcomes still
    share the same design defect: the bootstrap resamples the same dependent
    reseller accounts. Multiplicity correction does not repair their dependence.
    A capped custom-column revenue metric illustrates sensitivity to the tail;

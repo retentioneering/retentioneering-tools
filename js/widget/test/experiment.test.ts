@@ -105,3 +105,9 @@ test("percentage-valued ratios distinguish absolute pp from relative percent", (
   }));
   assert.ok(explicit.includes("Difference: percentage points"));
 });
+
+test("strict experiment headers distinguish numeric and string arm labels", () => {
+  const html = renderToStaticMarkup(React.createElement(ExperimentTable, { rows: [row], control: 1, treatment: "1" }));
+  assert.ok(html.includes("Control · 1 (number)"));
+  assert.ok(html.includes("Treatment · &quot;1&quot; (string)"));
+});

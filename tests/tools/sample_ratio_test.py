@@ -23,8 +23,7 @@ def _stream(arms: dict, extra=None, platform=None) -> Eventstream:
             if platform is not None:
                 row["platform"] = platform[user]
             rows.append(row)
-    for row in extra or []:
-        rows.append(row)
+    rows.extend(extra or [])
     df = pd.DataFrame(rows)
     segs = ["arm"] + (["platform"] if platform is not None else [])
     return Eventstream(df, {"segment_cols": segs})
@@ -40,7 +39,7 @@ def test_equal_split() -> None:
     result = _stream(_arms(510, 490)).get_sample_ratio("arm")
     ref = stats.chisquare([490, 510])
     assert result["chi2"] == pytest.approx(ref.statistic)
-    assert result["p_value"] == pytest.approx(ref.pvalue)
+    assert result["p_value"] == pytest.approx(stats.binomtest(490, 1000, 0.5).pvalue)
     assert result["dof"] == 1
     assert result["mismatch"] is False
     levels = result["levels"]
@@ -89,8 +88,12 @@ def test_shares_validated() -> None:
         stream.get_sample_ratio(
             "arm", expected_shares={"control": 0.6, "treatment": 0.6}
         )
-    with pytest.raises(InvalidParameterError):
-        stream.get_sample_ratio("arm", expected_shares={"control": 0.5, "nope": 0.5})
+    # Explicit design keys include planned arms with no observed assignments.
+    absent = stream.get_sample_ratio(
+        "arm", expected_shares={"control": 0.5, "new": 0.5}
+    )
+    assert absent["levels"].set_index("level").loc["new", "paths"] == 0
+    assert absent["unassigned_paths"] == 5
     with pytest.raises(InvalidParameterError):
         stream.get_sample_ratio("arm", alpha=0)
     with pytest.raises(InvalidParameterError):
@@ -236,6 +239,11 @@ def test_strata_and_periods() -> None:
         "chi2",
         "dof",
         "p_value",
+        "sampling_assumption",
+        "p_value_method",
+        "inference_status",
+        "support_warning",
+        "expected_count_min",
         "p_value_adjusted",
         "mismatch",
     ]
@@ -401,6 +409,8 @@ def test_unit_guard_with_integer_ids() -> None:
             for s in range(1, 121)
         }
     )
-    with pytest.warns(UserWarning, match="only 40 of 120"):
-        with pytest.warns(UserWarning, match="are session_id ids"):
-            stream.get_sample_ratio("arm", assignment=sessions)
+    with (
+        pytest.warns(UserWarning, match="only 40 of 120"),
+        pytest.warns(UserWarning, match="are session_id ids"),
+    ):
+        stream.get_sample_ratio("arm", assignment=sessions)

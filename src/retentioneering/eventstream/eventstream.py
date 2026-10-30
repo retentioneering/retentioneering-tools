@@ -1,8 +1,10 @@
 import inspect
 import json
+from copy import deepcopy
 from dataclasses import asdict
 from functools import cached_property
 
+import numpy as np
 import pandas as pd
 
 from retentioneering import engine
@@ -17,6 +19,46 @@ from retentioneering.utils.sequences import find_delimiter_collisions
 #: `diff`/`get_segment_levels` sentinel standing in for a missing (None/NaN)
 #: segment level, since it can't be a real dict/query value the way `<REST>` can.
 SEGMENT_MISSING = "<MISSING>"
+
+
+def _validate_path_id_types(df: pd.DataFrame, path_cols: list[str]) -> pd.DataFrame:
+    """Validate identities and normalize object integers without floating casts."""
+    copied = False
+    for column in path_cols:
+        kinds = {
+            type(value.item() if isinstance(value, np.generic) else value)
+            for value in df[column].dropna()
+        }
+        if len(kinds) > 1:
+            raise SchemaConfigError(
+                f"Path column '{column}' must contain homogeneous scalar types; "
+                f"got {sorted(kind.__name__ for kind in kinds)}. Normalize IDs "
+                "explicitly before constructing the Eventstream, preserving "
+                "distinct identities (for example, integer 1 and string '1')."
+            )
+        if kinds == {int}:
+            smallest, largest = int(df[column].min()), int(df[column].max())
+            if (
+                smallest < -(2**63)
+                or largest > 2**64 - 1
+                or (smallest < 0 and largest > 2**63 - 1)
+            ):
+                raise SchemaConfigError(
+                    f"Path column '{column}' must fit one signed or unsigned "
+                    "64-bit integer dtype. Convert larger IDs explicitly to "
+                    "distinct strings before constructing the Eventstream."
+                )
+            # DuckDB may scan object integers as doubles, losing identity even
+            # inside uint64. A native integer column preserves every bit.
+            if not pd.api.types.is_integer_dtype(df[column]):
+                if not copied:
+                    df = df.copy()
+                    copied = True
+                dtype = "uint64" if largest > 2**63 - 1 else "int64"
+                if df[column].isna().any():
+                    dtype = "UInt64" if largest > 2**63 - 1 else "Int64"
+                df[column] = df[column].astype(dtype)
+    return df
 
 
 def _to_datetime_auto(series: pd.Series) -> pd.Series:
@@ -122,6 +164,14 @@ except Exception:
 
 
 class Eventstream:
+    """An event log whose path columns use homogeneous scalar ID types.
+
+    Normalize heterogeneous IDs explicitly before construction. Distinct IDs such
+    as integer 1 and string '1' must not be merged by an implicit SQL conversion.
+    Integer IDs must fit a single signed or unsigned 64-bit dtype per column;
+    object integer columns are normalized losslessly to that dtype.
+    """
+
     def __init__(
         self,
         df: "pd.DataFrame | str",
@@ -156,6 +206,7 @@ class Eventstream:
         if self.preprocess:
             self._preprocess()
         else:
+            self._df = _validate_path_id_types(self._df, self.schema.path_cols)
             for col in [self.schema.event_col] + self.schema.segment_cols:
                 self._df[col] = self._df[col].astype("category")
 
@@ -205,6 +256,8 @@ class Eventstream:
                     f"Every event must belong to a path; drop or fill the missing "
                     f"values in '{col}' before creating the Eventstream."
                 )
+
+        df = _validate_path_id_types(df, schema.path_cols)
 
         if len(schema.path_cols) > 1:
             _validate_path_cols_nesting(df, schema.path_cols)
@@ -264,13 +317,16 @@ class Eventstream:
 
         Round-trips with `Eventstream.from_recipe`:
         `Eventstream.from_recipe(df, s.recipe()).fingerprint == s.fingerprint`.
+        Nested parameters are independent snapshots. Path-label mappings retain
+        typed numeric keys through JSON; timestamps and custom-object labels must
+        be converted explicitly to supported scalars before `add_segment`.
 
         Examples
         --------
             stream.filter_paths(...).add_segment(...).recipe()
             # [{"type": "filter_paths", "condition": {...}}, {"type": "add_segment", ...}]
         """
-        return [dict(o) for o in self._lineage]
+        return deepcopy(self._lineage)
 
     @classmethod
     def from_recipe(
@@ -426,10 +482,10 @@ class Eventstream:
             within the path (a missing value on some events counts as a second
             value), `"<MISSING>"` when it is null throughout. When this stream's
             recipe shows how the column was made, `attrs["pre_exposure"]` records it:
-            True for a column computed from behaviour (`add_clusters`,
-            `add_segment(metric_bins=...)`) after a `truncate_paths`, False for one
-            computed without a truncation. `add_segment(path_values=...)` carries the
-            flag to another stream, where `get_ab_test(strata_col=...)` reads it.
+            True only for an explicit `add_segment(pre_exposure=True)` declaration;
+            undeclared behavioral labels are False. When transferring labels to
+            another stream, explicitly reassert `pre_exposure=True` if justified:
+            an inherited boolean can come from an older inferred recipe.
 
         Raises
         ------
@@ -480,11 +536,12 @@ class Eventstream:
         """
         Check an experiment's arm sizes against the expected split (sample ratio mismatch).
 
-        Counts paths per arm and runs a chi-square goodness-of-fit test against the
-        expected shares. A mismatch means the assignment, the logging or a filter
-        lost paths from one arm, and no metric of the test can be trusted until it is
-        explained. Paths whose arm changes within the path are an assignment bug and
-        also raise the alarm.
+        Counts paths per arm against the expected shares. Two arms use an exact
+        binomial check under independent Bernoulli allocation; multiple arms use
+        guarded approximate Pearson inference under independent multinomial
+        allocation. An alarm calls for investigation of assignment, logging and
+        exclusions; it is not proof of a particular defect. Paths whose arm changes
+        within the path independently raise the alarm.
 
         Run it on the assignment table (`assignment=`) or on the full stream before
         any filter that depends on behaviour. On a post-exposure subset (users who
@@ -541,7 +598,7 @@ class Eventstream:
             - `chi2` (float), `dof` (int), `p_value` (float): the overall test; NaN
               when no path is counted.
             - `alpha` (float): the threshold used.
-            - `mismatch` (bool): `p_value < alpha` or `multi_valued_paths > 0`.
+            - `mismatch` (bool or None): `p_value < alpha` or `multi_valued_paths > 0`.
             - `multi_valued_paths` (int): paths with more than one arm value (on the
               stream, or disagreeing with the assignment table).
             - `silent_paths` (int): assignment rows with no events in the stream (0
@@ -553,25 +610,37 @@ class Eventstream:
             - `basis` (str): what was counted.
             - `reading` (str): the check in one sentence, built from the numbers
               above: `"expected 50/50, observed 5040/4960 (control/treatment),
-              p 0.42: no mismatch"`, or `"mismatch: ... — the test is invalid until
-              the assignment is fixed"` when the split is off or paths carry two
+              p 0.43: no mismatch"`, or `"mismatch: ... — investigate allocation
+              and logging before interpreting outcomes"` when the split is off or paths carry two
               arms; paths not counted and the strata or periods that mismatch
               (`"by platform: ..."`, `"by day: ..."`) are added.
             - `strata_col` (str) and `strata` (DataFrame), with `strata_col` only:
-              one row per stratum — `stratum`, `paths`, `chi2`, `dof`, `p_value`,
+              one row per stratum — `stratum`, `paths`, `chi2`, `dof` (descriptive Pearson discrepancy), `p_value`,
               `p_value_adjusted` (Holm over the strata) and `mismatch`
               (`p_value_adjusted < alpha`).
             - `period` (str) and `periods` (DataFrame), with `period` only: the same
               per period, with a `period` column (`"2024-03-01"` for days,
               `"2024-03-04/2024-03-10"` for weeks, `"2024-03"` for months).
+            - `p_value_method`: `"exact_binomial_two_sided"` for two arms
+              (`sampling_assumption="independent_bernoulli"`); guarded
+              `"pearson_chi_square_asymptotic"` for multiple arms
+              (`"independent_multinomial"`). Every multiarm expected count
+              must be at least five. `chi2`/`dof` do not set the two-arm p-value.
+            - `inference_status`: `"ok"`, `"no_data"`, or
+              `"insufficient_expected_counts"`; `support_warning` and
+              `expected_count_min` explain availability, overall and per split.
+              Unavailable `mismatch` is None unless conflicting assignments
+              independently alarm. Require status `"ok"` before interpreting p.
             The overall `mismatch` does not include the strata or periods.
+            Explicit expected-share keys include planned but absent arms.
+            Fixed-total/blocked allocation needs a design-specific check.
 
         Raises
         ------
         InvalidParameterError
             `segment_col` missing or not a segment column (without `assignment`),
             or neither `None`, `"arm"` nor a segment column (with it); fewer than
-            two arms; `expected_shares` not summing to 1 or naming an unknown level;
+            two planned arms; `expected_shares` not summing to 1;
             `alpha` outside (0, 1); `strata_col` not a per-path segment or table
             column; `period` not one calendar unit, or given with `strata_col`;
             `path_col` finer than the assignment table's unit; `assignment`
@@ -674,11 +743,14 @@ class Eventstream:
         strata_col : str, optional
             A segment constant per path, or an `assignment` column (used first, so
             silent paths keep their stratum). Adds per-stratum rows with balance,
-            heterogeneity and stratum-vs-rest tests.
+            descriptive secondary columns. Fisher/descriptive defaults suppress
+            balance, heterogeneity and stratum-versus-rest p-values. Explicit
+            approximate methods enable guarded exploratory diagnostics separately
+            from the primary correction family.
         strata_pre_exposure : bool, optional
             Whether the strata were fixed before exposure. `None` reads an
-            `add_segment(..., pre_exposure=...)` declaration, else the recipe (a
-            `truncate_paths` ending paths at an event), else False with a warning;
+            `add_segment(..., pre_exposure=...)` declaration, else False with a
+            warning. A truncation alone never establishes exposure timing;
             `True` / `False` declare it. Needs `strata_col`.
         period : str or pandas offset, optional
             Rows per period: a calendar unit (`"D"`, `"W"`, `"M"`, `"Q"`, `"Y"`;
@@ -706,14 +778,23 @@ class Eventstream:
         horizon : str or pandas.Timedelta, optional
             Window per path from `assigned_at`, e.g. `"28D"`; paths whose window is not
             closed by `observation_end` are `immature_paths`. Needs `assigned_at`.
-        test : {"auto", "z_test", "welch_t_test", "bootstrap"}, default "auto"
+        test : {"auto", "fisher_exact", "descriptive", "z_test", "welch_t_test", "bootstrap"}, default "auto"
             The test of every metric without its own `test`.
 
-            - `"auto"` — `"z_test"` for 0/1 metrics, `"welch_t_test"` for totals and
-              values, `"bootstrap"` for ratios.
-            - `"z_test"` — pooled z-test, Wilson and Newcombe intervals (0/1 only).
-            - `"welch_t_test"` — Welch's t-test (not for ratios).
-            - `"bootstrap"` — joint path bootstrap, percentile intervals.
+            - `"auto"` — `"fisher_exact"` for known binary outcomes;
+              `"descriptive"` for nonbinary outcomes.
+            - `"fisher_exact"` — two-sided exact Fisher test, Clopper–Pearson
+              arm intervals and a conservative CP-based difference (binary only).
+              The difference is not a Fisher-test inversion; relative intervals
+              are withheld.
+            - `"descriptive"` — point estimates without tests, intervals or MDE.
+            - `"z_test"` — explicit approximate pooled z/Wilson/Newcombe
+              (binary only); at least five pooled-null expected successes and
+              failures per arm, else unavailable.
+            - `"welch_t_test"` — explicit approximate Welch for nonbinary means.
+            - `"bootstrap"` — explicit approximate whole-path percentile inference
+              for nonbinary metrics. Known-binary Welch/scorecard bootstrap reject.
+              Heavy tails and dependent units are not repaired by more resamples.
         correction : {"holm", "bonferroni", "bh", "none"}, default "holm"
             Correction of the p-values within each family; intervals stay per
             comparison.
@@ -721,7 +802,7 @@ class Eventstream:
             - `"holm"` — Holm step-down (family-wise error).
             - `"bonferroni"` — Bonferroni; adds simultaneous `delta_ci_low_adj` /
               `delta_ci_high_adj`.
-            - `"bh"` — Benjamini-Hochberg (false discovery rate).
+            - `"bh"` — Benjamini-Hochberg (FDR under independence or PRDS).
             - `"none"` — no correction.
         correction_scope : {"all", "metric"}, default "all"
             What one correction family holds.
@@ -735,10 +816,15 @@ class Eventstream:
             Level of every interval, in `[0.5, 1)`; `1 - ci_level` is the verdict's
             alpha.
         power : float, default 0.8
-            Power used for `mde`.
+            Requested power in `[0.5, 1)` for the normal-approximation `mde`;
+            not actual Fisher-test power or a bound on the true effect.
         n_bootstrap : int or "auto", default 1000
             Bootstrap replicates, at least 100; `"auto"` = `max(1000, ceil(20 * m /
-            alpha))`, `m` the largest family.
+            alpha))`, `m` the largest family. At most 1,000,000 replicates
+            and 10,000,000 replicate-by-contribution entries. Bonferroni bootstrap
+            intervals need at least ten expected draws per adjusted tail; otherwise
+            `delta_ci_adjusted_status="insufficient_tail_resamples"`, without a
+            normal-SE replacement. Numeric overflow raises; rescale measurements.
         bootstrap_weights : {"multinomial", "poisson"}, default "multinomial"
             Resampling scheme of the bootstrap.
 
@@ -775,23 +861,33 @@ class Eventstream:
               `group2_ci_low`, `group2_ci_high`.
             - `delta`, `delta_se`, `delta_ci_low`, `delta_ci_high` (per comparison);
               `delta_ci_low_adj`*, `delta_ci_high_adj`* (Bonferroni, simultaneous);
+              `delta_ci_adjusted_basis`*, `delta_ci_adjusted_status`*
+              (`"ok"`, `"unavailable"`, or `"insufficient_tail_resamples"`);
               `rel_delta`, `rel_delta_ci_low`, `rel_delta_ci_high`.
             - `p_value`, `p_value_adjusted`, `correction_family`.
             - `mde`, `rel_mde` at `mde_alpha` (`alpha / m` under a correction of `m`
-              p-values; not the verdict's threshold).
+              p-values; not the verdict's threshold); `mde_basis` is
+              `"normal_approximation"` or `"unavailable"`.
             - `verdict`: `"increase"` / `"decrease"` when `p_value_adjusted < 1 -
               ci_level`, else `"inconclusive"`; `"descriptive"`;
               `"insufficient_data"`.
-            - `test`, `ci_basis` (`"wilson"`, `"welch"`, `"path_bootstrap"`),
-              `p_basis` (`"pooled_z"`, `"welch"`, `"bootstrap_se"`),
+            - `test`, `ci_basis` (`"clopper_pearson_bonferroni"`,
+              `"newcombe_approximate"`, `"welch_approximate"`,
+              `"path_bootstrap_approximate"`, or `"not_requested"`),
+              `p_basis` (`"fisher_exact_two_sided"`, `"pooled_z_asymptotic"`,
+              `"welch_asymptotic"`, `"bootstrap_se_asymptotic"`, or `"not_requested"`),
               `valid_replicates`.
             - `support_warning`: `"no_data"` (nothing to compare), `"invalid_replicates"`
               (no interval), `"one_arm_only"` (tested), `"low_support"` (bootstrap
-              coverage below nominal) or `""`.
+              coverage may be below nominal), `"insufficient_expected_cells"`
+              (explicit z guard), or `""`.
             - `group1_share`*, `group2_share`*, `balance_p_value`*,
               `heterogeneity_p_value`*, `heterogeneity_dof`*,
               `heterogeneity_strata_used`*, `stratum_vs_rest_p_value`*,
-              `strata_pre_exposure`*, `strata_pre_exposure_source`*, `exploratory`*.
+              `strata_pre_exposure`*, `strata_pre_exposure_source`*, `exploratory`*;
+              `strata_diagnostics_basis`*: `"not_requested"` for default exact/
+              descriptive rows, `"asymptotic_exploratory"` for explicit guarded
+              approximate secondary diagnostics outside the primary family.
             - `reading`: the row in one sentence from its own numbers; it does not
               check the sample ratio or the unit (see the
               [tool page](/docs/tools/get-ab-test#reading-a-row)).
@@ -899,7 +995,8 @@ class Eventstream:
 
         All metrics, strata and periods are evaluated on the same resampled paths, so
         the replicates can be combined freely: ratios of metrics, differences between
-        periods, custom summaries such as the probability that one arm is better. The
+        periods, custom empirical summaries such as the fraction of draws above zero.
+        That fraction is neither a posterior probability nor a p-value. The
         replicates are the ones `get_ab_test` uses for its bootstrap rows (same seed,
         same engine). `contrast` adds rows for named period contrasts, the way to
         measure a novelty effect with a joint interval.
@@ -921,7 +1018,9 @@ class Eventstream:
             since-assignment bins, the paths whose windows of all contrasted bins
             close by `observation_end`), so the contrast is a change within the
             same paths, not a change of cohort mix between early and late bins; a
-            `horizon` is a choice of window, not a requirement. Needs `period`.
+            `horizon` is a choice of window, not a requirement. Measurement
+            eligibility must also be common across contrasted periods; changing
+            missingness rejects. Needs `period`.
             Example: `{"novelty": (["0-13"], ["28-41"])}` with `period="14D",
             period_basis="since_assignment"`.
         correction_scope : {"all", "metric"}, default "all"
@@ -929,7 +1028,9 @@ class Eventstream:
             `n_bootstrap="auto"`, so the replicates match the scorecard's.
         n_bootstrap : int or "auto", default 1000
             Number of replicates, at least 100; `"auto"` as in `get_ab_test` (the
-            replicates `get_ab_test` would draw at `ci_level=0.95`).
+            replicates `get_ab_test` would draw at `ci_level=0.95`). Limited to
+            1,000,000 draws and 10,000,000 replicate-by-contribution entries.
+            More draws do not establish nominal coverage or fix heavy tails.
 
         Returns
         -------
@@ -1039,8 +1140,9 @@ class Eventstream:
         pandas.DataFrame
             Index: path id (named after `path_col`), sorted; both arms. Columns:
 
-            - `arm` (str): the arm label, `diff[1]` or `diff[2]` (`"group1"` /
-              `"group2"` for id lists).
+            - `arm` (scalar): the original typed arm label, `diff[1]` or
+              `diff[2]` (`"group1"` / `"group2"` for id lists). Integer `1`
+              and string `"1"` remain distinct.
             - `assigned_at` (Timestamp): with an `assignment` DataFrame that has
               it, in the stream's timezone.
             - `silent` (boolean): no event in the analysed window (`<NA>` for an
@@ -1715,7 +1817,11 @@ class Eventstream:
             a file, or labels computed on another stream (clusters found on a
             truncated stream, carried back onto the full one with
             `truncated.get_path_segments("cluster")`). Broadcast to every event of
-            the path, so the segment is constant per path. Paths the mapping does
+            the path, so the segment is constant per path. Keys and labels must
+            be finite string, boolean or numeric scalars (NumPy scalars work);
+            labels may also be missing. Convert timestamps and custom objects
+            explicitly. Keys whose string/JSON forms collide raise instead of
+            losing an entry in a recipe. Paths the mapping does
             not hold get no value, which `diff` and `get_path_segments` show as
             `<MISSING>`; ids in the mapping that are not in the eventstream are
             ignored, with a `UserWarning` when fewer than half of them match a path
@@ -1734,10 +1840,10 @@ class Eventstream:
             later `get_ab_test(strata_col=name)` (and the widget, and MCP) reads
             it as `strata_pre_exposure_source="declared"` without a warning; it
             also lands in `get_path_segments(name).attrs["pre_exposure"]`. `None`
-            (default) leaves it to the recipe: labels from `get_path_segments` on
-            a stream truncated at an event carry `attrs["pre_exposure"]=True`
-            through `path_values`, labels rebuilt in pandas lose it. The library
-            cannot check the claim: it does not know which event exposes a path.
+            (default) leaves behavioral or unknown labels descriptive. Truncation
+            and inherited metadata do not establish pretreatment timing. Reassert
+            this declaration when transferring labels through `path_values`.
+            The library cannot verify the actual exposure mechanism.
 
         Examples
         --------
@@ -2947,13 +3053,17 @@ class Eventstream:
         tests : dict, optional
             Explicit methods mapping outcome names to fisher_exact or welch,
             with adjustment='holm'. Tests and intervals are separate procedures.
+            Known-binary Welch rejects; nonbinary Welch is explicitly approximate.
         event_catalog : dict, optional
             Declared event names per column, supplementing observed values, for
             known outcomes that have zero occurrences in the complete source.
         binary_intervals : dict, optional
-            Explicit method='newcombe' and confidence_level for independent
-            binary outcomes. Wilson marginal intervals and Newcombe differences;
-            no implicit substitution for a requested percentile bootstrap.
+            Explicit method='exact' for Clopper–Pearson arm intervals and a
+            conservative CP-based difference, or method='newcombe' for approximate
+            Wilson/Newcombe intervals; confidence_level is explicit. The exact
+            difference is not a Fisher-test inversion and has no relative interval.
+            None requests no binary interval; bootstrap=None and tests=None also
+            preserve the no-inference contract.
 
         Returns
         -------
@@ -3142,9 +3252,9 @@ class Eventstream:
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         ci_level : float, optional
-            Two-sided confidence level in [0.5, 1), e.g. `0.95`. Adds a Wilson score
-            interval to every rate and, with `diff`, a Newcombe hybrid score
-            interval to every delta and a pooled two-proportion z-test p-value to
+            Two-sided confidence level in [0.5, 1), e.g. `0.95`. Adds a Clopper-Pearson exact
+            interval to every rate and, with `diff`, a conservative Bonferroni Clopper-Pearson difference
+            interval to every delta and a two-sided Fisher exact test p-value to
             every **overall** delta (see Returns). In diff mode the groups are then
             resolved per path: a path that falls in both groups (a segment that
             changes within the path, overlapping id lists) raises
@@ -3162,8 +3272,8 @@ class Eventstream:
             `ci_level` raises `InvalidParameterError`. `"none"` copies the raw p-values;
             `"holm"` (Holm step-down) and `"bonferroni"` control the family-wise
             error rate; `"bh"` (Benjamini–Hochberg) controls the false discovery
-            rate. Steps whose p-value is undefined (`NaN`) are left out of the
-            family.
+            rate. Steps whose p-value is undefined (`NaN`) retain an unavailable
+            result and remain in the declared correction family.
 
         Returns
         -------
@@ -3191,9 +3301,9 @@ class Eventstream:
 
         With `ci_level`, per step (no `diff`):
 
-        - `conversion_rate_ci_low`, `conversion_rate_ci_high` — Wilson interval
+        - `conversion_rate_ci_low`, `conversion_rate_ci_high` — Clopper-Pearson interval
           of `conversion_rate`.
-        - `step_conversion_rate_ci_low`, `step_conversion_rate_ci_high` — Wilson
+        - `step_conversion_rate_ci_low`, `step_conversion_rate_ci_high` — Clopper-Pearson
           interval of `step_conversion_rate`; `NaN` when the previous step has
           no paths (the rate itself stays 0.0 for compatibility).
 
@@ -3202,16 +3312,15 @@ class Eventstream:
         - `funnel1_conversion_rate_ci_low`, `funnel1_conversion_rate_ci_high`,
           `funnel1_step_conversion_rate_ci_low`,
           `funnel1_step_conversion_rate_ci_high` and the same `funnel2_*` keys —
-          Wilson intervals of each group's rates.
+          Clopper-Pearson intervals of each group's rates.
         - `delta_conversion_rate_ci_low`, `delta_conversion_rate_ci_high` —
-          Newcombe interval of `delta_conversion_rate`.
-        - `delta_conversion_rate_p_value` — pooled two-proportion z-test of equal
-          overall rates; `NaN` when undefined (both rates 0 or 1, e.g. a first
-          step that every path reaches).
+          conservative Bonferroni Clopper-Pearson difference interval of `delta_conversion_rate`.
+        - `delta_conversion_rate_p_value` — two-sided Fisher exact test of equal
+          overall rates; 1 for equal constant nonempty arms; `NaN` for an empty arm.
         - `delta_conversion_rate_p_value_adjusted` — the same p-value after
           `correction` across the steps; `NaN` where the raw p-value is `NaN`.
         - `delta_step_conversion_rate_ci_low`,
-          `delta_step_conversion_rate_ci_high` — Newcombe interval of
+          `delta_step_conversion_rate_ci_high` — conservative Bonferroni Clopper-Pearson difference interval of
           `delta_step_conversion_rate`. **No p-value**: see `step_conditional`.
         - `step_conditional` — `False` for the first step, `True` after it. A
           step-to-step rate conditions on reaching the previous step, and the
@@ -3222,13 +3331,14 @@ class Eventstream:
         With `ci_level`, top level:
 
         - `ci_level` — the level used.
-        - `ci_basis` — how each number is computed: `{"rate": "wilson"}`
-          without `diff`; `{"rate": "wilson", "delta": "newcombe", "p_value":
-          "pooled_z"}` with it.
+        - `ci_basis` — how each number is computed: `{"rate": "clopper_pearson"}`
+          without `diff`; with it, `rate="clopper_pearson"`,
+          `delta="clopper_pearson_bonferroni"`, and
+          `p_value="fisher_exact_two_sided"`.
         - with `diff` only: `correction`; `correction_family` — the p-values
           corrected together, spelled as in `get_ab_test`:
-          `"metric=delta_conversion_rate/steps"` (the overall-step p-values with
-          a finite value), `"none"` without correction.
+          `"metric=delta_conversion_rate/steps"` (all declared overall steps),
+          `"none"` without correction.
 
         `NaN` marks an absent estimate (never 0); widgets send it as `null`.
 
@@ -3245,7 +3355,9 @@ class Eventstream:
         treat every path as an independent unit, so they assume `path_col` is
         the unit that was assigned to a group: session paths of a user-level
         experiment give intervals that are too narrow. p-values are per
-        comparison unless `correction` is set; intervals are never adjusted.
+        comparison unless `correction` is set; intervals are pointwise across
+        steps. The difference interval combines Bonferroni-adjusted exact arm
+        bounds; it is conservative and is not the inversion of the Fisher test.
 
         Reading an interval that includes 0: the data are compatible with no
         difference *and* with every difference inside the interval, so the step
@@ -3292,6 +3404,13 @@ class Eventstream:
         """
         Given that `start_anchor` happened, how often does `end_anchor` follow?
 
+        Inference uses exact Clopper-Pearson arm intervals, conservative
+        Bonferroni Clopper-Pearson difference intervals and two-sided Fisher
+        tests. The interval and test are separate procedures, not duals.
+        DataFrame ``attrs`` records ``ci_basis``, ``ci_level``,
+        ``population_basis`` and ``independence_assumption`` when inference is
+        requested. Serializers must preserve this metadata explicitly.
+
         One row per (`start_anchor`, `end_anchor`) pair, counted over **paths**:
         a path where the start anchor occurred contributes one to the
         denominator no matter how many times it occurred, and converts if the
@@ -3313,7 +3432,9 @@ class Eventstream:
             without `within` it gives the same result as `"first"`.
         end_anchor : str or dict or list
             The target(s) looked for after it. The whole pattern has to fall
-            after the start anchor, lead-in included.
+            after the start anchor, lead-in included. With multiple starts and
+            a finite window, end occurrence selection is evaluated separately
+            after each start before successful paths are counted.
         within : int or str or pd.Timedelta, optional
             Window size, measured from the start anchor and inclusive of its far
             edge: an int counts events (`10` — "within 10 events"), a duration
@@ -3322,7 +3443,7 @@ class Eventstream:
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         ci_level : float, optional
-            Two-sided confidence level in [0.5, 1), e.g. `0.95`. Adds Wilson score
+            Two-sided confidence level in [0.5, 1), e.g. `0.95`. Adds Clopper-Pearson exact
             intervals of the conversion rate (`conversion_rate_ci_low` /
             `conversion_rate_ci_high`). `None` (default) means no interval without
             `diff`, and `0.95` with `diff`: diff mode always reports the intervals
@@ -3356,27 +3477,29 @@ class Eventstream:
             - `base_rate` — share of *all* paths containing the end anchor
               anywhere, the baseline the rate has to beat.
             - `lift` — `conversion_rate / base_rate`; `NaN` if `base_rate` is 0.
-              Below 1 means the start event makes the outcome *less* likely.
+              Below 1 means the start-selected rate is below the overall
+              observed-path baseline; this is not a causal effect.
             - `conversion_rate_ci_low`, `conversion_rate_ci_high` — with
-              `ci_level` only, right after `conversion_rate`: the Wilson interval;
+              `ci_level` only, right after `conversion_rate`: the Clopper-Pearson interval;
               `NaN` when `paths_with_start` is 0.
 
             With `diff`, one row per pair with `start_anchor`, `end_anchor` and:
 
             - `group1_paths_with_start`, `group1_converted`,
               `group1_conversion_rate`, `group1_conversion_rate_ci_low`,
-              `group1_conversion_rate_ci_high` (Wilson), `group1_base_rate`,
+              `group1_conversion_rate_ci_high` (Clopper-Pearson), `group1_base_rate`,
               `group1_lift` — the columns above computed within group 1's paths
               (the base rate over group 1's paths); the same `group2_*` columns.
             - `delta` — `group1_conversion_rate - group2_conversion_rate`.
-            - `delta_ci_low`, `delta_ci_high` — Newcombe hybrid score interval of the
+            - `delta_ci_low`, `delta_ci_high` — conservative Bonferroni Clopper-Pearson difference interval of the
               delta.
-            - `p_value` — pooled two-proportion z-test of equal rates; `NaN` when it
-              is undefined (a group without start paths, or both rates 0 or 1).
+            - `p_value` — two-sided Fisher exact test of equal rates; `NaN` when
+              a group has no start paths or the row is conditional; 1 for
+              equal constant nonempty arms.
             - `conditional` — True unless the start anchor is `"path_start"` (with
               no offset): the denominator is then the paths that reached the start
-              anchor, and the p-value describes that selected population (see
-              Notes).
+              anchor, and no p-value is reported for that selected comparison
+              (see Notes).
 
         Notes
         -----

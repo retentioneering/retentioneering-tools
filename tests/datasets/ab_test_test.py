@@ -378,6 +378,7 @@ class TestStories:
     def test_story6_aov_inconclusive(self, stream, assignment) -> None:
         aov = {
             "name": "aov",
+            "test": "bootstrap",  # explicit approximate teaching sensitivity
             "metric": "column_sum",
             "metric_args": {"column": "order_value"},
             "denominator": {
@@ -405,7 +406,9 @@ class TestStories:
         )
         labels = binned.get_path_segments("length_bin")
         rows = _by_stratum(
-            stream.add_segment("length_bin", path_values=labels).get_ab_test(
+            stream.add_segment(
+                "length_bin", path_values=labels, pre_exposure=True
+            ).get_ab_test(
                 DIFF, [CONVERSION], assignment=assignment, strata_col="length_bin"
             )
         )
@@ -425,7 +428,9 @@ class TestStories:
             },
         ).get_path_segments("length_bin")
         rows = _by_stratum(
-            stream.add_segment("length_bin", path_values=labels).get_ab_test(
+            stream.add_segment(
+                "length_bin", path_values=labels, pre_exposure=True
+            ).get_ab_test(
                 DIFF, [CONVERSION], assignment=assignment, strata_col="length_bin"
             )
         )

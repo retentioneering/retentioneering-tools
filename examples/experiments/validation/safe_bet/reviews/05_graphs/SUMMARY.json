@@ -1,0 +1,36 @@
+{
+  "role": 5,
+  "recommendation": "defer PR221 new inferential graph and step APIs and overlay from safe release",
+  "findings": [
+    {
+      "id": "R05-F1",
+      "severity": "P1",
+      "class": "inferential validity",
+      "title": "Pooled support admits invalid small-arm binary z tests",
+      "simulation": "200/200 complete-null imbalanced runs produce discoveries in each API"
+    },
+    {
+      "id": "R05-F2",
+      "severity": "P1",
+      "class": "numerical defect",
+      "title": "Invariant ratio bootstrap produces p=0 from floating roundoff",
+      "actual_se": 2.77694638204588e-17
+    },
+    {
+      "id": "R05-F3",
+      "severity": "P2",
+      "class": "validation gap",
+      "title": "Overlay accepts changed stream with opposite effect",
+      "test_limit": "Python public constructor with stub JS resource; no browser rendering"
+    }
+  ],
+  "counts": {
+    "initial_checks": 1398,
+    "initial_passed": 1396,
+    "initial_failed_expectations_later_classified_as_guard_threshold": 2,
+    "supplemental_checks": 11,
+    "supplemental_passed": 10,
+    "repository_tests_passed": 39,
+    "repository_slow_tests_deselected": 3
+  }
+}

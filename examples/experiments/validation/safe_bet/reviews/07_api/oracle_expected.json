@@ -1,0 +1,118 @@
+{
+  "paths": {
+    "str:'c1'": {
+      "column_sum": 8.0,
+      "column_mean": 4.0,
+      "column_last": 6.0,
+      "group": "str:'control'"
+    },
+    "str:'t1'": {
+      "column_sum": 4.0,
+      "column_mean": 2.0,
+      "column_last": 8.0,
+      "group": "str:'test'"
+    },
+    "str:'c2'": {
+      "column_sum": -2.0,
+      "column_mean": -1.0,
+      "column_last": 1.0,
+      "group": "str:'control'"
+    },
+    "str:'t2'": {
+      "column_sum": 10.0,
+      "column_mean": 5.0,
+      "column_last": 10.0,
+      "group": "str:'test'"
+    }
+  },
+  "mixed_paths": {
+    "int:1": {
+      "column_sum": 2.0,
+      "column_mean": 2.0,
+      "column_last": 2.0,
+      "group": "int:1"
+    },
+    "str:'1'": {
+      "column_sum": 4.0,
+      "column_mean": 4.0,
+      "column_last": 4.0,
+      "group": "str:'1'"
+    },
+    "str:'01'": {
+      "column_sum": -1.0,
+      "column_mean": -1.0,
+      "column_last": -1.0,
+      "group": "str:'test'"
+    }
+  },
+  "groups": {
+    "column_sum": {
+      "str:'control'": {
+        "str:'c1'": 8.0,
+        "str:'c2'": -2.0
+      },
+      "str:'test'": {
+        "str:'t1'": 4.0,
+        "str:'t2'": 10.0
+      }
+    },
+    "column_mean": {
+      "str:'control'": {
+        "str:'c1'": 4.0,
+        "str:'c2'": -1.0
+      },
+      "str:'test'": {
+        "str:'t1'": 2.0,
+        "str:'t2'": 5.0
+      }
+    },
+    "column_last": {
+      "str:'control'": {
+        "str:'c1'": 6.0,
+        "str:'c2'": 1.0
+      },
+      "str:'test'": {
+        "str:'t1'": 8.0,
+        "str:'t2'": 10.0
+      }
+    }
+  },
+  "mean_effects": {
+    "column_sum": {
+      "control": 3.0,
+      "test": 7.0,
+      "absolute": 4.0,
+      "relative": 1.3333333333333333
+    },
+    "column_mean": {
+      "control": 1.5,
+      "test": 3.5,
+      "absolute": 2.0,
+      "relative": 1.3333333333333333
+    },
+    "column_last": {
+      "control": 3.5,
+      "test": 9.0,
+      "absolute": 5.5,
+      "relative": 1.5714285714285714
+    }
+  },
+  "ratio_effects": {
+    "control": 2.0,
+    "test": 2.0,
+    "absolute": 0.0,
+    "relative": 0.0
+  },
+  "signed_effect": {
+    "control": -2.0,
+    "test": 4.0,
+    "absolute": 6.0,
+    "relative": -3.0
+  },
+  "zero_control_effect": {
+    "control": 0.0,
+    "test": 4.0,
+    "absolute": 4.0,
+    "relative": null
+  }
+}

@@ -13,8 +13,10 @@ binary outcome over all assignments. Conditional transitions use the previous
 reached-step population, which can itself be changed by treatment.
 
 Intervals carry their method and availability status. Percentile bootstrap draws
-whole independent units inside their assigned arm. Explicit Newcombe binary
-intervals use Wilson arm intervals; there is no hidden method substitution.
+whole independent units inside their assigned arm. Explicit `method="exact"` binary intervals use Clopper–Pearson arm intervals
+and a conservative difference; explicit Newcombe remains approximate. The strict
+adapter adds no inference without a request. Exact difference intervals are not
+Fisher-test inversions, and exact-path relative intervals are withheld.
 All intervals in this version are pointwise.
 
 See [Experiments](/docs/experiments) for population, observation, metric and

@@ -192,7 +192,7 @@ is a native fixed-result view with the same data parameters. Supported scalar
 metrics include has_event, event_count, matches_pattern and event_value_sum.
 The latter requires event/value_col (and optional event_col) in metric_args;
 matching nonfinite values raise rather than being silently filled.
-Use explicit bootstrap and/or binary_intervals={'method':'newcombe',
+Use explicit bootstrap and/or binary_intervals={'method':'exact',
 'confidence_level':.95}; methods and unavailable statuses survive export.
 Percentile intervals are pointwise; tests are separately declared Fisher/Welch
 with Holm. Constant arms and sparse ratios need visible diagnostics.
@@ -202,3 +202,22 @@ roster restore. Its Python report surface is separate from the comparative
 scorecard MCP binding (`serve(stream, assignment=table)`); horizons and
 since-assignment periods require an explicit `observation_end`. Read /docs/experiments
 and installed docstrings before writing code for a released version.
+
+### Conservative A/B contract
+
+Known binary scorecard auto inference is Fisher with Clopper–Pearson conservative
+differences; nonbinary auto is descriptive. Explicit nonbinary Welch/bootstrap
+remain approximate, and binary Welch/scorecard bootstrap reject. Exact differences
+are not Fisher inversions; relative intervals are withheld. MDE is a normal
+approximation, not actual Fisher power. BH requires independence or PRDS.
+
+Strata require an explicit pre-treatment declaration; truncation, transferred
+metadata and legacy inferred recipes cannot certify it. Default exact/descriptive
+strata suppress asymptotic secondary diagnostics. Two-arm SRM assumes Bernoulli
+allocation and uses exact binomial inference; multiarm sparse checks can be
+unavailable (`mismatch=None`). Inspect `inference_status`, not just a false alarm.
+
+Use homogeneous path-ID scalar families and signed64/uint64 integer ranges.
+Persistent segment labels must be supported JSON scalars; recipe snapshots are
+deep copies. Consult the public guides for bootstrap size/tail-resolution limits
+and common-eligibility requirements for period contrasts.

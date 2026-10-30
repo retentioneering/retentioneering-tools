@@ -23,7 +23,7 @@ result = stream.experiment_data(
     observation={"start": "2026-05-11", "end": "2026-05-25",
                  "assignment_time_col": "assigned_at", "complete": True},
     bootstrap={"n_resamples": 9999, "random_state": 42},
-    binary_intervals={"method": "newcombe", "confidence_level": .95},
+    binary_intervals={"method": "exact", "confidence_level": .95},
     tests={"methods": {"converted": "fisher_exact", "revenue": "welch"},
            "adjustment": "holm"},
 )
@@ -73,15 +73,23 @@ effect interval is not a subtraction of marginal interval endpoints.
 
 Sparse denominators, nonfinite estimates, insufficient units and degenerate
 components retain explicit unavailable statuses. A constant observed control
-does not establish that its population probability is known exactly. Explicit
-Newcombe intervals provide an alternative for independent binary outcomes;
-their method and confidence level remain visible. Relative effects require a
+does not establish that its population probability is known exactly. Explicit `binary_intervals={"method": "exact"}` selects Clopper–Pearson
+arm intervals and a conservative difference formed by splitting alpha between
+the arms. This difference is not an inversion of the Fisher test. Relative
+intervals are withheld on this exact path. `method="newcombe"` remains an
+explicit approximate Wilson/Newcombe option; method and level remain visible.
+`binary_intervals=None` requests no binary interval; with `bootstrap=None` and
+`tests=None`, the strict adapter adds no inference. Relative effects require a
 positive control baseline. Intervals are pointwise, not simultaneous bands.
 
-Fisher's two-sided exact test is available for declared binary outcomes. Welch's
+Fisher's two-sided exact test is available for declared binary outcomes.
+Known-binary Welch is rejected; Welch is an advanced approximate option for
+nonbinary means. Welch's
 two-sided test concerns unit-level means, with an approximation that needs care
 for sparse or heavy-tailed outcomes. Tests are requested by name before reading
-the results, and Holm uses the declared family. Bootstrap tails are not p-values.
+the results, and Holm uses the declared family. Bootstrap tails are not p-values. Requests are capped at 1,000,000 replicates
+and 10,000,000 replicate-by-contribution entries. Numeric overflow raises with
+a rescaling message. More resamples cannot establish missing tail information.
 No automatic winner, observed power or unrequested test selection is reported.
 
 ### Nominal confidence is not a coverage guarantee
@@ -94,7 +102,7 @@ in the quantiles; they do not recover tail information absent from the sample.
 Do not interpret exclusion of zero by a bootstrap interval as the separately
 declared Fisher/Welch test result.
 
-Wilson/Newcombe intervals also have discrete, parameter-dependent coverage;
+Explicit approximate Wilson/Newcombe intervals have discrete, parameter-dependent coverage;
 they are not exact 95% guarantees at every probability and sample size. For
 rare conversions, percentile intervals may be unavailable and relative effects
 may be undefined. Report availability alongside conditional coverage in method
@@ -145,7 +153,7 @@ or exposure-age periods, and MCP, use [`ab_test_data` and `ab_test`](/docs/ab-te
 adapters share numerical primitives and whole-unit bootstrap weights, but their
 population/window/default-inference contracts differ. Converting an invocation
 requires selecting the intended estimand; it is not a method-name substitution.
-See [ADR-0018](https://github.com/retentioneering/retentioneering-tools/blob/master/docs/adr/0018-ab-integration.md)
+See the [supported-inference boundary](/docs/ab-testing#supported-inference) and [ADR-0018](https://github.com/retentioneering/retentioneering-tools/blob/master/docs/adr/0018-ab-integration.md)
 for the migration and architecture decisions.
 
 An explicit `unit_col` names the coarsest declared independent assignment/resampling

@@ -264,7 +264,7 @@ def test_welch_two_sided_matches_scipy_and_holm(case):
     r = run(
         case,
         tests={
-            "methods": {"conversion": "welch", "revenue": "welch"},
+            "methods": {"conversion": "fisher_exact", "revenue": "welch"},
             "adjustment": "holm",
         },
     )

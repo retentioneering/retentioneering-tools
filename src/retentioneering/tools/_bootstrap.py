@@ -41,6 +41,9 @@ from retentioneering.exceptions import InvalidParameterError
 from retentioneering.stats.primitives import stable_sample_summary
 from retentioneering.stats.resampling import (
     BOOTSTRAP_ALGORITHM,
+    check_bootstrap_size,
+    checked_difference,
+    checked_ratio,
     draw_sums,
     draw_weights,
     percentile_interval,
@@ -92,7 +95,7 @@ class BootstrapResult:
     @property
     def delta(self) -> np.ndarray:
         """Replicate deltas ``group1 - group2`` of shape (n_bootstrap, n_cells)."""
-        return self.group1 - self.group2
+        return checked_difference(self.group1, self.group2)
 
 
 def _draw(rng: np.random.Generator, weights: str, b: int, n: int) -> np.ndarray:
@@ -168,6 +171,7 @@ def bootstrap_paths(
         den = np.where(missing, 0.0, den)
 
     n_cells = num.shape[1]
+    check_bootstrap_size(n_bootstrap, 2 * n_cells)
     # Baseline/group 2 gets child 0, comparison/group 1 child 1, matching the
     # strict experiment adapter's control-first sampling contract.
     children = np.random.SeedSequence(random_state).spawn(2)[::-1]
@@ -181,8 +185,7 @@ def bootstrap_paths(
         if n > 0:
             sums = draw_sums(stacked, n_bootstrap, int(batch), rng, weights)
             top, bottom = sums[:, :n_cells], sums[:, n_cells:]
-            with np.errstate(invalid="ignore", divide="ignore"):
-                values = np.where(bottom > 0, top / bottom, np.nan)
+            values = checked_ratio(top, bottom)
         out.append(values)
     valid = (np.isfinite(out[0]) & np.isfinite(out[1])).sum(axis=0)
     return BootstrapResult(out[0], out[1], valid, int(n_bootstrap), weights)
@@ -279,15 +282,15 @@ def contrast_rows(
             if len(a) != 1 or len(b) != 1:
                 continue
             ia, ib = cells.index.get_loc(a[0]), cells.index.get_loc(b[0])
-            g1 = result.group1[:, ia] - result.group1[:, ib]
-            g2 = result.group2[:, ia] - result.group2[:, ib]
+            g1 = checked_difference(result.group1[:, ia], result.group1[:, ib])
+            g2 = checked_difference(result.group2[:, ia], result.group2[:, ib])
             frame = pd.DataFrame({"replicate": replicate})
             for col, value in zip(keys, key):
                 frame[col] = value
             frame["contrast"] = name
             frame["group1_value"] = g1
             frame["group2_value"] = g2
-            frame["delta"] = g1 - g2
+            frame["delta"] = checked_difference(g1, g2)
             frames.append(frame)
     columns = (
         ["replicate"] + keys + ["contrast", "group1_value", "group2_value", "delta"]

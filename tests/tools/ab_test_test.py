@@ -18,7 +18,14 @@ from retentioneering.tools.ab_test import ABMetricSpec, ABTest, parse_metrics
 
 DIFF = ("arm", "treatment", "control")
 CONV = {"name": "conv", "metric": "has_event", "metric_args": {"event": "order"}}
-ORDERS = {"name": "orders", "metric": "event_count", "metric_args": {"event": "order"}}
+# These fixtures exercise explicitly selected advanced methods. Auto dispatch is
+# tested separately below and in ab_safe_binary_test.py.
+ORDERS = {
+    "name": "orders",
+    "metric": "event_count",
+    "metric_args": {"event": "order"},
+    "test": "welch_t_test",
+}
 
 # ---------------------------------------------------------------- tiny exact fixture
 #   user  arm        assigned_at        events
@@ -149,18 +156,21 @@ class TestSpecs:
         ]
         assert [s.kind for s in specs] == ["binary", "count", "value", "ratio"]
         assert [s.test for s in specs] == [
-            "z_test",
-            "welch_t_test",
-            "welch_t_test",
-            "bootstrap",
+            "fisher_exact",
+            "descriptive",
+            "descriptive",
+            "descriptive",
         ]
         assert specs[3].family_key() == "aov"
 
     def test_global_and_per_metric_test(self) -> None:
-        specs = parse_metrics([CONV, dict(ORDERS, test="bootstrap")], "bootstrap")
-        assert [s.test for s in specs] == ["bootstrap", "bootstrap"]
-        spec = ABMetricSpec.from_user(dict(CONV, test="welch_t_test"))
-        assert spec.test == "welch_t_test"
+        specs = parse_metrics(
+            [dict(CONV, test="fisher_exact"), dict(ORDERS, test="bootstrap")],
+            "bootstrap",
+        )
+        assert [s.test for s in specs] == ["fisher_exact", "bootstrap"]
+        with pytest.raises(InvalidMetricConfigError, match="binary"):
+            ABMetricSpec.from_user(dict(CONV, test="welch_t_test"))
 
     @pytest.mark.parametrize(
         "entry",
@@ -451,12 +461,14 @@ _THREE = {
 }
 AOV = {
     "name": "aov",
+    "test": "bootstrap",
     "metric": "column_sum",
     "metric_args": {"column": "value"},
     "denominator": {"metric": "event_count", "metric_args": {"event": "order"}},
 }
 REVENUE = {
     "name": "revenue",
+    "test": "welch_t_test",
     "metric": "column_sum",
     "metric_args": {"column": "value"},
 }
@@ -494,6 +506,7 @@ class TestScorecard:
             "p_value_adjusted",
             "correction_family",
             "mde_alpha",
+            "mde_basis",
             "mde",
             "rel_mde",
             "verdict",
@@ -509,7 +522,7 @@ class TestScorecard:
         from retentioneering.tools import _stats as st
 
         stream = _random(effect=0.1)
-        row = ABTest.from_stream(stream, DIFF, [CONV]).fit().iloc[0]
+        row = ABTest.from_stream(stream, DIFF, [CONV], test="z_test").fit().iloc[0]
         flags = stream.get_metrics(
             [{"metric": "has_event", "metric_args": {"event": "order"}}]
         )
@@ -529,7 +542,11 @@ class TestScorecard:
             st.mde_proportion((k1 + k2) / (n1 + n2), n1, n2)
         )
         assert row.verdict == "increase"
-        assert (row.test, row.ci_basis, row.p_basis) == ("z_test", "wilson", "pooled_z")
+        assert (row.test, row.ci_basis, row.p_basis) == (
+            "z_test",
+            "newcombe_approximate",
+            "pooled_z_asymptotic",
+        )
 
     def test_welch_matches_scipy(self) -> None:
         from scipy import stats
@@ -547,8 +564,8 @@ class TestScorecard:
         assert (row.delta_ci_low, row.delta_ci_high) == pytest.approx((ci.low, ci.high))
         assert (row.test, row.ci_basis, row.p_basis) == (
             "welch_t_test",
-            "welch",
-            "welch",
+            "welch_approximate",
+            "welch_asymptotic",
         )
         assert np.isfinite(
             row.rel_delta_ci_low
@@ -559,8 +576,8 @@ class TestScorecard:
         aov = out.set_index("metric").loc["aov"]
         assert (aov.test, aov.ci_basis, aov.p_basis) == (
             "bootstrap",
-            "path_bootstrap",
-            "bootstrap_se",
+            "path_bootstrap_approximate",
+            "bootstrap_se_asymptotic",
         )
         assert aov.valid_replicates == 400
         assert aov.support_warning != "invalid_replicates"
@@ -586,8 +603,8 @@ class TestScorecard:
         assert a_plain.p_value < 0.05 and a_plain.verdict == "increase"
         assert a_holm.p_value == pytest.approx(a_plain.p_value)
         assert a_holm.p_value_adjusted > 0.05 and a_holm.verdict == "inconclusive"
-        # the per-comparison interval still excludes 0: it is not what the verdict reads
-        assert a_holm.delta_ci_low > 0
+        # The conservative exact difference interval need not invert Fisher's test.
+        assert a_holm.delta_ci_low < a_holm.delta_ci_high
         assert list(holm["correction_family"].unique()) == ["all_metrics/strata"]
         assert list(plain["correction_family"].unique()) == ["none"]
 
@@ -609,13 +626,13 @@ class TestScorecard:
         )
         assert row.rel_mde == pytest.approx(row.mde / row.group2_value)
 
-    def test_mde_alpha_is_rounded(self) -> None:
-        """m13: 1 - 0.95 is 0.050000000000000044 in floating point."""
+    def test_mde_alpha_preserves_tail_probability(self) -> None:
+        """Round only the presentation; retain a small positive numerical alpha."""
         stream = _counts_stream(_THREE)
-        assert _fit(stream).iloc[0].mde_alpha == 0.05
+        assert _fit(stream).iloc[0].mde_alpha == 1 - 0.95
         with _exploratory():
             out = ABTest.from_stream(stream, DIFF, [CONV], strata_col="group").fit()
-        assert out.iloc[0].mde_alpha == round(0.05 / 3, 12)
+        assert out.iloc[0].mde_alpha == (1 - 0.95) / 3
 
     def test_bonferroni_adds_simultaneous_intervals(self) -> None:
         from retentioneering.tools import _stats as st
@@ -631,7 +648,7 @@ class TestScorecard:
             ).fit()
         row = out.iloc[0]
         assert (row.delta_ci_low_adj, row.delta_ci_high_adj) == pytest.approx(
-            st.newcombe_ci(60, 200, 40, 200, 1 - 0.05 / 3)
+            st.exact_difference_ci(60, 200, 40, 200, 1 - 0.05 / 3)
         )
         assert row.delta_ci_low_adj < row.delta_ci_low
         assert row.p_value_adjusted == pytest.approx(min(1.0, 3 * row.p_value))
@@ -704,6 +721,7 @@ class TestScorecard:
                 _counts_stream(cells),
                 DIFF,
                 [CONV],
+                test="z_test",
                 strata_col="group",
                 strata_pre_exposure=True,
                 min_support=1,
@@ -726,6 +744,7 @@ class TestScorecard:
                 _counts_stream(cells),
                 DIFF,
                 [CONV],
+                test="z_test",
                 strata_col="group",
                 strata_pre_exposure=True,
             ).fit()
@@ -750,7 +769,9 @@ class TestScorecard:
         assert (out["strata_pre_exposure"] == False).all()  # noqa: E712
         assert out["exploratory"].all()
 
-    def test_pre_exposure_strata_carried_by_path_values(self, recwarn) -> None:
+    def test_pre_exposure_strata_require_explicit_transfer_declaration(
+        self, recwarn
+    ) -> None:
         stream = _random()
         pre = stream.truncate_paths(
             "path_start", [{"pattern": "order", "offset": -1}, "path_end"]
@@ -759,8 +780,8 @@ class TestScorecard:
             "length_bin", metric_bins={"metric": {"metric": "length"}, "edges": [2]}
         )
         labels = pre.get_path_segments("length_bin")
-        assert labels.attrs["pre_exposure"] is True
-        full = stream.add_segment("length_bin", path_values=labels)
+        assert labels.attrs["pre_exposure"] is False
+        full = stream.add_segment("length_bin", path_values=labels, pre_exposure=True)
         out = ABTest.from_stream(full, DIFF, [CONV], strata_col="length_bin").fit()
         assert out["strata_pre_exposure"].all()
         assert not out["exploratory"].any()
@@ -794,7 +815,7 @@ class TestScorecard:
             test = ABTest.from_stream(
                 _counts_stream(_THREE),
                 DIFF,
-                [CONV],
+                [dict(ORDERS, test="bootstrap")],
                 strata_col="group",
                 n_bootstrap="auto",
                 bootstrap_weights="poisson",
@@ -1228,14 +1249,15 @@ class TestStrataDeclaration:
         assert not out["strata_pre_exposure"].any()
         assert set(out["strata_pre_exposure_source"]) == {"not_pre_exposure"}
 
-    def test_a_cut_at_an_event_reads_as_pre_exposure(self, recwarn) -> None:
+    def test_a_cut_at_an_event_does_not_prove_pre_exposure(self, recwarn) -> None:
         cut = _random().truncate_paths(
             "path_start", [{"pattern": "order", "offset": -1}, "path_end"]
         )
         out = _fit(self._length_bins(cut), strata_col="length_bin")
-        assert out["strata_pre_exposure"].all()
-        assert set(out["strata_pre_exposure_source"]) == {"recipe"}
-        assert not [w for w in recwarn if "strata_col" in str(w.message)]
+        assert not out["strata_pre_exposure"].any()
+        assert set(out["strata_pre_exposure_source"]) == {"not_pre_exposure"}
+        assert out["exploratory"].all()
+        assert out["p_value"].isna().all()
 
     def test_declared_strata(self, recwarn) -> None:
         out = _fit(_random(), strata_col="platform", strata_pre_exposure=True)
@@ -1294,9 +1316,9 @@ class TestStrataDeclaration:
         recipe = carried.recipe()
         json.dumps(recipe)
         assert recipe[-1]["path_values"]["u00000"] == labels["u00000"]
-        assert recipe[-1]["_path_values_pre_exposure"] is True
+        assert recipe[-1]["_path_values_pre_exposure"] is False
         out = _fit(carried, strata_col="length_bin")
-        assert set(out["strata_pre_exposure_source"]) == {"recipe"}
+        assert set(out["strata_pre_exposure_source"]) == {"not_pre_exposure"}
 
 
 class TestIntegerIds:
@@ -1590,6 +1612,7 @@ def test_call_level_keys_in_a_metric_entry_are_named_as_such() -> None:
 
 # ---------------------------------------------------------------- wave 5 usability
 MEAN_VALUE = {
+    "test": "welch_t_test",
     "name": "mean_value",
     "metric": "column_mean",
     "metric_args": {"column": "value"},
@@ -1670,6 +1693,7 @@ class TestEmptyArmAndConstantRows:
         stream = _random()
         ratio = {
             "name": "views_per_view",
+            "test": "bootstrap",
             "metric": "event_count",
             "metric_args": {"event": "view"},
             "denominator": {"metric": "event_count", "metric_args": {"event": "view"}},

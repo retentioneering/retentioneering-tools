@@ -1,0 +1,99 @@
+"""Independent pre-source oracle, Python stdlib only.
+Inputs are dictionaries with user, label, time and optional session keys.
+No implementation package imports or copied formulas.
+"""
+from collections import defaultdict
+from itertools import combinations
+from typing import Iterable
+
+
+def ordered_events(events):
+    return [e for _, e in sorted(enumerate(events), key=lambda p: (p[1]['time'], p[0]))]
+
+
+def ordered_subsequence_indices(labels, pattern):
+    """Enumerate distinct event-index witnesses; useful for repeated-step checks."""
+    return [tuple(ix) for ix in combinations(range(len(labels)), len(pattern))
+            if [labels[i] for i in ix] == list(pattern)]
+
+
+def reaches(labels, steps):
+    """Greedy scan is equivalent to existence of each prefix subsequence."""
+    stage = 0
+    for label in labels:
+        if stage < len(steps) and label == steps[stage]:
+            stage += 1
+    return [int(i < stage) for i in range(len(steps))]
+
+
+def pattern_outcome(labels, pattern, contiguous=False):
+    if not pattern:
+        raise ValueError('pattern must be nonempty')
+    if contiguous:
+        return int(any(labels[i:i+len(pattern)] == list(pattern)
+                       for i in range(len(labels)-len(pattern)+1)))
+    return int(bool(ordered_subsequence_indices(labels, pattern)))
+
+
+def derive(events, steps, assignments=None, unit='user', eligible=None,
+           cutoff=None, first_session_only=False, strict_after=None):
+    """Outcomes for all supplied assignees; unit key is user or (user,session).
+
+    Eligibility is a set of assigned user ids. cutoff is inclusive.
+    strict_after optionally excludes events at/before an exposure timestamp.
+    """
+    if not steps:
+        raise ValueError('steps must be nonempty')
+    if unit not in ('user', 'session'):
+        raise ValueError(unit)
+    groups = defaultdict(list)
+    ordered = ordered_events(events)
+    first_session = {}
+    for e in ordered:
+        user = e['user']
+        if eligible is not None and user not in eligible:
+            continue
+        if cutoff is not None and e['time'] > cutoff:
+            continue
+        if strict_after is not None and e['time'] <= strict_after:
+            continue
+        if first_session_only:
+            first_session.setdefault(user, e.get('session'))
+            if e.get('session') != first_session[user]:
+                continue
+        key = user if unit == 'user' else (user, e.get('session'))
+        groups[key].append(e['label'])
+    if assignments is not None and unit == 'user':
+        for user in assignments:
+            if eligible is None or user in eligible:
+                groups.setdefault(user, [])
+    rows = {u: reaches(labels, steps) for u, labels in groups.items()}
+    counts = [sum(row[i] for row in rows.values()) for i in range(len(steps))]
+    entered = counts[0]
+    cumulative = [n / entered if entered else None for n in counts]
+    conditional = [n / (counts[i-1] if i else entered)
+                   if (counts[i-1] if i else entered) else None
+                   for i, n in enumerate(counts)]
+    assignment_rates = [n / len(rows) if rows else None for n in counts]
+    return dict(rows=rows, counts=counts, cumulative=cumulative,
+                conditional=conditional, assignment_rates=assignment_rates,
+                unit_count=len(rows))
+
+
+def self_test():
+    assert reaches(['A','X','A','B','B','C'], ['A','B','C']) == [1,1,1]
+    assert reaches(['A','B'], ['A','A','B']) == [1,0,0]
+    assert reaches(['B','C'], ['A','B','C']) == [0,0,0]
+    assert ordered_subsequence_indices(['A','A','B'], ['A','B']) == [(0,2),(1,2)]
+    assert pattern_outcome(['A','X','B'], ['A','B']) == 1
+    assert pattern_outcome(['A','X','B'], ['A','B'], True) == 0
+    ev = [dict(user='u', label='A', time=1, session=1),
+          dict(user='u', label='B', time=2, session=2)]
+    assert derive(ev, ['A','B'], ['u','silent'])['assignment_rates'] == [.5,.5]
+    assert derive(ev, ['A','B'], unit='session')['counts'] == [1,0]
+    assert derive(ev, ['A','B'], cutoff=1)['counts'] == [1,0]
+    assert derive(ev, ['A','B'], ['u','silent'], eligible={'silent'})['counts'] == [0,0]
+    print('oracle self-test passed')
+
+if __name__ == '__main__':
+    self_test()

@@ -11,9 +11,9 @@ from retentioneering.exceptions import DiffConfigError, InvalidParameterError
 from retentioneering.tools._stats import (
     benjamini_hochberg,
     holm,
-    newcombe_ci,
-    two_proportion_z,
-    wilson_ci,
+    exact_difference_ci,
+    fisher_exact_p,
+    exact_binomial_ci,
 )
 
 STEPS = ["home", "cart", "buy"]
@@ -81,17 +81,17 @@ class TestWithoutCi:
 
 
 class TestSingleCi:
-    def test__wilson_on_both_denominators(self) -> None:
+    def test__exact_on_both_denominators(self) -> None:
         r = _stream().funnel_data(steps=STEPS, ci_level=0.9)
         n = r["total_paths"]
         assert r["ci_level"] == 0.9
-        assert r["ci_basis"] == {"rate": "wilson"}
+        assert r["ci_basis"] == {"rate": "clopper_pearson"}
         prev = n
         for s in r["steps"]:
-            lo, hi = wilson_ci(s["unique_paths"], n, 0.9)
+            lo, hi = exact_binomial_ci(s["unique_paths"], n, 0.9)
             assert s["conversion_rate_ci_low"] == pytest.approx(float(lo))
             assert s["conversion_rate_ci_high"] == pytest.approx(float(hi))
-            lo, hi = wilson_ci(s["unique_paths"], prev, 0.9)
+            lo, hi = exact_binomial_ci(s["unique_paths"], prev, 0.9)
             assert s["step_conversion_rate_ci_low"] == pytest.approx(float(lo))
             assert s["step_conversion_rate_ci_high"] == pytest.approx(float(hi))
             prev = s["unique_paths"]
@@ -123,29 +123,29 @@ class TestDiffCi:
         r = _stream().funnel_data(steps=STEPS, diff=DIFF, ci_level=0.95)
         n1, n2 = r["funnel1_total_paths"], r["funnel2_total_paths"]
         assert r["ci_basis"] == {
-            "rate": "wilson",
-            "delta": "newcombe",
-            "p_value": "pooled_z",
+            "rate": "clopper_pearson",
+            "delta": "clopper_pearson_bonferroni",
+            "p_value": "fisher_exact_two_sided",
         }
         assert r["correction"] == "none" and r["correction_family"] == "none"
         assert "unassigned_paths" not in r  # overlapping groups raise instead
         s = r["steps"][1]
         k1, k2 = s["funnel1_unique_paths"], s["funnel2_unique_paths"]
-        lo, hi = wilson_ci(k1, n1, 0.95)
+        lo, hi = exact_binomial_ci(k1, n1, 0.95)
         assert s["funnel1_conversion_rate_ci_low"] == pytest.approx(float(lo))
         assert s["funnel1_conversion_rate_ci_high"] == pytest.approx(float(hi))
-        lo, hi = newcombe_ci(k1, n1, k2, n2, 0.95)
+        lo, hi = exact_difference_ci(k1, n1, k2, n2, 0.95)
         assert s["delta_conversion_rate_ci_low"] == pytest.approx(float(lo))
         assert s["delta_conversion_rate_ci_high"] == pytest.approx(float(hi))
         assert s["delta_conversion_rate_ci_low"] < s["delta_conversion_rate"]
         assert s["delta_conversion_rate"] < s["delta_conversion_rate_ci_high"]
-        p = float(two_proportion_z(k1, n1, k2, n2)[1])
+        p = float(fisher_exact_p(k1, n1, k2, n2))
         assert s["delta_conversion_rate_p_value"] == pytest.approx(p)
         # "none" copies the raw p-value
         assert s["delta_conversion_rate_p_value_adjusted"] == pytest.approx(p)
         # the step delta's interval uses the previous step as denominator
         prev = r["steps"][0]
-        lo, hi = newcombe_ci(
+        lo, hi = exact_difference_ci(
             s["funnel1_unique_paths"],
             prev["funnel1_unique_paths"],
             s["funnel2_unique_paths"],
@@ -164,13 +164,13 @@ class TestDiffCi:
             assert not [k for k in s if k.startswith("delta_step") and "p_value" in k]
             assert "delta_step_conversion_rate_ci_low" in s
 
-    def test__first_step_reached_by_everyone_has_an_undefined_p(self) -> None:
+    def test__first_step_reached_by_everyone_has_p_one(self) -> None:
         r = _stream().funnel_data(
             steps=STEPS, diff=DIFF, ci_level=0.95, correction="holm"
         )
         first = r["steps"][0]
-        assert np.isnan(first["delta_conversion_rate_p_value"])
-        assert np.isnan(first["delta_conversion_rate_p_value_adjusted"])
+        assert first["delta_conversion_rate_p_value"] == 1.0
+        assert first["delta_conversion_rate_p_value_adjusted"] == 1.0
 
     @pytest.mark.parametrize(
         "correction, adjust",

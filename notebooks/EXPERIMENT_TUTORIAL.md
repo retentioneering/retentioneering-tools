@@ -35,7 +35,7 @@ targets are distinct from realized sample estimates. A/A and repeated simulation
 are validation scenarios, not promises that each realized test is significant.
 
 The tutorial demonstrates native graph/step matrix exploration, a shared pattern
-outcome, binary Wilson/Newcombe intervals, user-bootstrap mean/ratio estimates,
+outcome, explicit Clopper–Pearson/conservative difference intervals, explicit approximate user-bootstrap mean/ratio estimates,
 ordered cumulative/conditional funnels, an exact small ratio counterexample,
 and invariance when each person's sessions are duplicated uniformly.
 
@@ -67,3 +67,7 @@ This first API supports two independent arms, a fixed common complete outcome
 window, supported scalar outcomes and explicit interval/test methods. It does
 not supply sequential, paired, cluster-randomized or individual-horizon inference.
 See [the experiment guide](../docs/guide/experiments.md) for the complete contract.
+
+The conservative exact difference is not a Fisher-test inversion. Strict
+`binary_intervals=None`, `bootstrap=None`, `tests=None` add no inference.
+Approximate monetary inference remains sensitive to rare and heavy-tailed outcomes.

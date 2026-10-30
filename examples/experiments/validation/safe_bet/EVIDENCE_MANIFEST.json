@@ -1,0 +1,667 @@
+[
+  {
+    "source_relative": "PROTOCOL.md",
+    "packaged_relative": "PROTOCOL.md",
+    "source_sha256": "3d51f7f6be749daff0d225284ecc7576ca00f248b67e56d9248836c5773c081b",
+    "packaged_sha256": "3d51f7f6be749daff0d225284ecc7576ca00f248b67e56d9248836c5773c081b",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "provenance.json",
+    "packaged_relative": "provenance.json",
+    "source_sha256": "fe77cce591e9ca406ca6347e7559711a72faaaa72ffba7737a5c46a5d2677c80",
+    "packaged_sha256": "fe77cce591e9ca406ca6347e7559711a72faaaa72ffba7737a5c46a5d2677c80",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "PR_METADATA_REFRESH.json",
+    "packaged_relative": "PR_METADATA_REFRESH.json",
+    "source_sha256": "00b1b8242663b9267c36cf19efc45e0541778682f1ead2a1cdd95993a32dab80",
+    "packaged_sha256": "00b1b8242663b9267c36cf19efc45e0541778682f1ead2a1cdd95993a32dab80",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "PRESENTATION_AMENDMENT.json",
+    "packaged_relative": "PRESENTATION_AMENDMENT.json",
+    "source_sha256": "699ed900243199811482f6445cccc1fd8c061e5ff86e3912ea85b2b8d802da7d",
+    "packaged_sha256": "699ed900243199811482f6445cccc1fd8c061e5ff86e3912ea85b2b8d802da7d",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "FUNCTION_MATRIX.md",
+    "packaged_relative": "FUNCTION_MATRIX.md",
+    "source_sha256": "29952903b0c19994d1696df70871edc66811f153c61d6025f404c7f96e3eb029",
+    "packaged_sha256": "29952903b0c19994d1696df70871edc66811f153c61d6025f404c7f96e3eb029",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "FUNCTION_MATRIX.json",
+    "packaged_relative": "FUNCTION_MATRIX.json",
+    "source_sha256": "0c1dcdba2d82dafcb6ca9e467dcb02ecd5511a19a523a75278430d0f87ac68e5",
+    "packaged_sha256": "0c1dcdba2d82dafcb6ca9e467dcb02ecd5511a19a523a75278430d0f87ac68e5",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "FINAL_REVIEW.md",
+    "packaged_relative": "FINAL_REVIEW.md",
+    "source_sha256": "c181605f49b22f2af7537b15fdff46b9c6c373889537ba20bc8e63e0ceaedc46",
+    "packaged_sha256": "c181605f49b22f2af7537b15fdff46b9c6c373889537ba20bc8e63e0ceaedc46",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/01_binary/comparison_summary.json",
+    "packaged_relative": "reviews/01_binary/comparison_summary.json",
+    "source_sha256": "784d7ec34648a2691c14a315380e5db21b1b989c17e6350e3d8a65e0074dc221",
+    "packaged_sha256": "784d7ec34648a2691c14a315380e5db21b1b989c17e6350e3d8a65e0074dc221",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/01_binary/PRE-REGISTRATION.md",
+    "packaged_relative": "reviews/01_binary/PRE-REGISTRATION.md",
+    "source_sha256": "5702132a169500ff2de54099393e0f23a8853061f17a956fc4ef9badc3fdea86",
+    "packaged_sha256": "5702132a169500ff2de54099393e0f23a8853061f17a956fc4ef9badc3fdea86",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/01_binary/REPORT.md",
+    "packaged_relative": "reviews/01_binary/REPORT.md",
+    "source_sha256": "55f188fbe6433c54d4d93887e1f7eef13b8ac319f34a7586d39c23ad40f288ac",
+    "packaged_sha256": "55f188fbe6433c54d4d93887e1f7eef13b8ac319f34a7586d39c23ad40f288ac",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/01_binary/enumeration_summary.json",
+    "packaged_relative": "reviews/01_binary/enumeration_summary.json",
+    "source_sha256": "27825b0ecb3c4d4977a1abdc71c2834009ee2901dfdabdb86396c69953e99d1d",
+    "packaged_sha256": "27825b0ecb3c4d4977a1abdc71c2834009ee2901dfdabdb86396c69953e99d1d",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/01_binary/supplemental_exact_reference.py",
+    "packaged_relative": "reviews/01_binary/supplemental_exact_reference.py.txt",
+    "source_sha256": "db82027c6588119e8d29a15e90f8615d07931579acc5e1a91b515ea6e40882b6",
+    "packaged_sha256": "db82027c6588119e8d29a15e90f8615d07931579acc5e1a91b515ea6e40882b6",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/01_binary/CROSS_REVIEW.md",
+    "packaged_relative": "reviews/01_binary/CROSS_REVIEW.md",
+    "source_sha256": "b4d4d4a2a2c09c5a054d53719025bd249c626feca138114dc1677368613be0f1",
+    "packaged_sha256": "b4d4d4a2a2c09c5a054d53719025bd249c626feca138114dc1677368613be0f1",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/01_binary/oracle.py",
+    "packaged_relative": "reviews/01_binary/oracle.py.txt",
+    "source_sha256": "b87ea41de0a571dd70d59cb31b61c92f2ffaf2f6a0c63a5ba78c6b90241db227",
+    "packaged_sha256": "b87ea41de0a571dd70d59cb31b61c92f2ffaf2f6a0c63a5ba78c6b90241db227",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/01_binary/run_audit.py",
+    "packaged_relative": "reviews/01_binary/run_audit.py.txt",
+    "source_sha256": "9ef55539c2b5959b92558d554322b427f52f44aefd6e2fb2b556bffba5d3b81c",
+    "packaged_sha256": "9ef55539c2b5959b92558d554322b427f52f44aefd6e2fb2b556bffba5d3b81c",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/01_binary/FIX_REPORT.md",
+    "packaged_relative": "reviews/01_binary/FIX_REPORT.md",
+    "source_sha256": "52ed76bb2f672dc615fb52a1e91d9f53e29cba896c3d672a3fe07f0ef0d09acc",
+    "packaged_sha256": "52ed76bb2f672dc615fb52a1e91d9f53e29cba896c3d672a3fe07f0ef0d09acc",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/01_binary/AMENDMENTS.md",
+    "packaged_relative": "reviews/01_binary/AMENDMENTS.md",
+    "source_sha256": "59f710768d7e5d6dc0fa44f057bdd571f82de8646fdcb06ba2fae7b9b4149ade",
+    "packaged_sha256": "59f710768d7e5d6dc0fa44f057bdd571f82de8646fdcb06ba2fae7b9b4149ade",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/01_binary/fixed_exact/summary.json",
+    "packaged_relative": "reviews/01_binary/fixed_exact/summary.json",
+    "source_sha256": "13b602a01f4dabf3e0956e76b512a7604783c44daa5101fc1bcce3004a3a31ea",
+    "packaged_sha256": "13b602a01f4dabf3e0956e76b512a7604783c44daa5101fc1bcce3004a3a31ea",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/02_population/audit.py",
+    "packaged_relative": "reviews/02_population/audit.py.txt",
+    "source_sha256": "9b06d7a91bf831d01fed7ad744418e25e91f197c79d32727544a75a7bae5bb7b",
+    "packaged_sha256": "9cac5b72c9b3ee7bac7de96b585b8a2fc3113a27a8f2e5ee02b2c0e1a253def5",
+    "presentation_transform": "trailing whitespace/newline normalization"
+  },
+  {
+    "source_relative": "roles/02_population/PRE-REGISTRATION.md",
+    "packaged_relative": "reviews/02_population/PRE-REGISTRATION.md",
+    "source_sha256": "19740f2364235990a906e5e09f659592ca9b11ca6fdb9ac99f3d833605e05330",
+    "packaged_sha256": "19740f2364235990a906e5e09f659592ca9b11ca6fdb9ac99f3d833605e05330",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/02_population/REPORT.md",
+    "packaged_relative": "reviews/02_population/REPORT.md",
+    "source_sha256": "f620a9bd3622c80dfa3a59880df8991dfe77dac704f024a6c13ff2e955803200",
+    "packaged_sha256": "f620a9bd3622c80dfa3a59880df8991dfe77dac704f024a6c13ff2e955803200",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/02_population/oracle.py",
+    "packaged_relative": "reviews/02_population/oracle.py.txt",
+    "source_sha256": "37e80e38bb274d0329d4edb62825721fe4ce2082d20ca239b5eac0e06f5ca872",
+    "packaged_sha256": "37e80e38bb274d0329d4edb62825721fe4ce2082d20ca239b5eac0e06f5ca872",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/03_resampling/EXTENSION.md",
+    "packaged_relative": "reviews/03_resampling/EXTENSION.md",
+    "source_sha256": "792a5783d7da6bac580fe3e8dd54629cff136eb0afb9ee008ee2b94c7cfca0e5",
+    "packaged_sha256": "792a5783d7da6bac580fe3e8dd54629cff136eb0afb9ee008ee2b94c7cfca0e5",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/03_resampling/PRE-REGISTRATION.md",
+    "packaged_relative": "reviews/03_resampling/PRE-REGISTRATION.md",
+    "source_sha256": "fd469de1ef7b42db64d2f732fc9e1a27dc524b8756d4f4fc9ca3c72f4f987b73",
+    "packaged_sha256": "fd469de1ef7b42db64d2f732fc9e1a27dc524b8756d4f4fc9ca3c72f4f987b73",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/03_resampling/REPORT.md",
+    "packaged_relative": "reviews/03_resampling/REPORT.md",
+    "source_sha256": "f89dc9722a123c183f1c8a319bdfa970f543ca46f754a49da876eadb2466e496",
+    "packaged_sha256": "f89dc9722a123c183f1c8a319bdfa970f543ca46f754a49da876eadb2466e496",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/03_resampling/run_review.py",
+    "packaged_relative": "reviews/03_resampling/run_review.py.txt",
+    "source_sha256": "12c631c7fab460f5080774e34ea6664606d1b850aab6a3b99b2fc1d3e4b41eb3",
+    "packaged_sha256": "12c631c7fab460f5080774e34ea6664606d1b850aab6a3b99b2fc1d3e4b41eb3",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/03_resampling/baseline220_simulation_summary.json",
+    "packaged_relative": "reviews/03_resampling/baseline220_simulation_summary.json",
+    "source_sha256": "cd746dabb5d68c65c3d876aa53f29b5fca448ae1481701a472cc2760d32e323d",
+    "packaged_sha256": "cd746dabb5d68c65c3d876aa53f29b5fca448ae1481701a472cc2760d32e323d",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/03_resampling/CROSS_REVIEW.md",
+    "packaged_relative": "reviews/03_resampling/CROSS_REVIEW.md",
+    "source_sha256": "613a641ac77b790219f8cd0e06170bd61e2887d734ee9f40accd534d1a8e2c88",
+    "packaged_sha256": "613a641ac77b790219f8cd0e06170bd61e2887d734ee9f40accd534d1a8e2c88",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/03_resampling/oracle.py",
+    "packaged_relative": "reviews/03_resampling/oracle.py.txt",
+    "source_sha256": "9c8d514b45e2ced9b5276c3cda4465c9b1e866a01f6901dd5d200fdefd0c9ac9",
+    "packaged_sha256": "9c8d514b45e2ced9b5276c3cda4465c9b1e866a01f6901dd5d200fdefd0c9ac9",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/03_resampling/baseline220_extension_summary.json",
+    "packaged_relative": "reviews/03_resampling/baseline220_extension_summary.json",
+    "source_sha256": "5c6173ddd40f6d1d78aae823685f86706e6f8655a347f4036d03ca3e5e3dfe3d",
+    "packaged_sha256": "5c6173ddd40f6d1d78aae823685f86706e6f8655a347f4036d03ca3e5e3dfe3d",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/03_resampling/FIX_REPORT.md",
+    "packaged_relative": "reviews/03_resampling/FIX_REPORT.md",
+    "source_sha256": "8cf7a292769f5bf10fa8f1340262375cffcc3052d3251f7e226c3535c9f4d596",
+    "packaged_sha256": "8cf7a292769f5bf10fa8f1340262375cffcc3052d3251f7e226c3535c9f4d596",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/03_resampling/pr217_simulation_summary.json",
+    "packaged_relative": "reviews/03_resampling/pr217_simulation_summary.json",
+    "source_sha256": "2fed6d48c720575cf174c52af72482def15e62f6af8567d918030039308eda1f",
+    "packaged_sha256": "2fed6d48c720575cf174c52af72482def15e62f6af8567d918030039308eda1f",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/03_resampling/cross_review_before/cross_review.json",
+    "packaged_relative": "reviews/03_resampling/cross_review_before/cross_review.json",
+    "source_sha256": "7f1d80f28dcc0fd97edf7163127eb612fc2e722da8686af35aac67c86685eac7",
+    "packaged_sha256": "7f1d80f28dcc0fd97edf7163127eb612fc2e722da8686af35aac67c86685eac7",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/03_resampling/cross_review_before_v2/cross_review.json",
+    "packaged_relative": "reviews/03_resampling/cross_review_before_v2/cross_review.json",
+    "source_sha256": "7d39ed15f8bbf63ebe966add82081feff4a9b1f8342617c4a4b9204545bac281",
+    "packaged_sha256": "7d39ed15f8bbf63ebe966add82081feff4a9b1f8342617c4a4b9204545bac281",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/03_resampling/candidate_cross_review_v2/cross_review.json",
+    "packaged_relative": "reviews/03_resampling/candidate_cross_review_v2/cross_review.json",
+    "source_sha256": "9a9c1e2093e633e7a58a6ca2bd66d62a65de817f87d18f0adf818be3ff5cb6ff",
+    "packaged_sha256": "9a9c1e2093e633e7a58a6ca2bd66d62a65de817f87d18f0adf818be3ff5cb6ff",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/03_resampling/candidate_cross_review/cross_review.json",
+    "packaged_relative": "reviews/03_resampling/candidate_cross_review/cross_review.json",
+    "source_sha256": "833f9ff55c10d0731d58869f114aa2d35241c45667b4c4160c4bd48f98e4bf3a",
+    "packaged_sha256": "833f9ff55c10d0731d58869f114aa2d35241c45667b4c4160c4bd48f98e4bf3a",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/04_multiplicity/PRE-REGISTRATION.md",
+    "packaged_relative": "reviews/04_multiplicity/PRE-REGISTRATION.md",
+    "source_sha256": "962c4105915e600f42743a13bebc699f1246a298d1537863c467252ac9dbf055",
+    "packaged_sha256": "962c4105915e600f42743a13bebc699f1246a298d1537863c467252ac9dbf055",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/04_multiplicity/REPORT.md",
+    "packaged_relative": "reviews/04_multiplicity/REPORT.md",
+    "source_sha256": "e6880c9b3684371f76633a8088dde33090f1705faccbd095696cc141b7451671",
+    "packaged_sha256": "e6880c9b3684371f76633a8088dde33090f1705faccbd095696cc141b7451671",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/04_multiplicity/oracle.py",
+    "packaged_relative": "reviews/04_multiplicity/oracle.py.txt",
+    "source_sha256": "68bcad39632fe9ff1581477379617b5630453ec9dc9c3e1dba91886de51d4c37",
+    "packaged_sha256": "68bcad39632fe9ff1581477379617b5630453ec9dc9c3e1dba91886de51d4c37",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/04_multiplicity/run_audit.py",
+    "packaged_relative": "reviews/04_multiplicity/run_audit.py.txt",
+    "source_sha256": "c4ed399dce1d29fe678325a6acdb29f661879f8753bd083946d1524548d0ebd1",
+    "packaged_sha256": "c4ed399dce1d29fe678325a6acdb29f661879f8753bd083946d1524548d0ebd1",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/04_multiplicity/cross_review/CROSS_REVIEW.md",
+    "packaged_relative": "reviews/04_multiplicity/cross_review/CROSS_REVIEW.md",
+    "source_sha256": "49414fc3b8de7bad77629566ecc3687620f9e342d4d724594abdefeaa9f0cb05",
+    "packaged_sha256": "49414fc3b8de7bad77629566ecc3687620f9e342d4d724594abdefeaa9f0cb05",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/04_multiplicity/cross_review/METADATA_CONTRACT.json",
+    "packaged_relative": "reviews/04_multiplicity/cross_review/METADATA_CONTRACT.json",
+    "source_sha256": "22c8b154666f2a7fa307d078e93368b520aa1d88588e72f7adaf0556b764cf6a",
+    "packaged_sha256": "22c8b154666f2a7fa307d078e93368b520aa1d88588e72f7adaf0556b764cf6a",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/04_multiplicity/cross_review/FIX_REPORT.md",
+    "packaged_relative": "reviews/04_multiplicity/cross_review/FIX_REPORT.md",
+    "source_sha256": "29623ea0af147bb0ebb5a1978010d77808b6c82dd479276c4a584411a278e72a",
+    "packaged_sha256": "29623ea0af147bb0ebb5a1978010d77808b6c82dd479276c4a584411a278e72a",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/04_multiplicity/cross_review/candidate/sparse_binary_exact_summary.json",
+    "packaged_relative": "reviews/04_multiplicity/cross_review/candidate/sparse_binary_exact_summary.json",
+    "source_sha256": "48177059b1c0f2f993823ed372f2d14f828b0a9a0944dae6a692c2ccd41d7268",
+    "packaged_sha256": "48177059b1c0f2f993823ed372f2d14f828b0a9a0944dae6a692c2ccd41d7268",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/04_multiplicity/cross_review/candidate/simulation_summary.json",
+    "packaged_relative": "reviews/04_multiplicity/cross_review/candidate/simulation_summary.json",
+    "source_sha256": "524b129bd1a62981fcad7c56b30e995b1aa095d9b3584ace1be98d061117a298",
+    "packaged_sha256": "524b129bd1a62981fcad7c56b30e995b1aa095d9b3584ace1be98d061117a298",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/04_multiplicity/cross_review/baseline/sparse_binary_exact_summary.json",
+    "packaged_relative": "reviews/04_multiplicity/cross_review/baseline/sparse_binary_exact_summary.json",
+    "source_sha256": "48177059b1c0f2f993823ed372f2d14f828b0a9a0944dae6a692c2ccd41d7268",
+    "packaged_sha256": "48177059b1c0f2f993823ed372f2d14f828b0a9a0944dae6a692c2ccd41d7268",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/04_multiplicity/cross_review/baseline/simulation_summary.json",
+    "packaged_relative": "reviews/04_multiplicity/cross_review/baseline/simulation_summary.json",
+    "source_sha256": "524b129bd1a62981fcad7c56b30e995b1aa095d9b3584ace1be98d061117a298",
+    "packaged_sha256": "524b129bd1a62981fcad7c56b30e995b1aa095d9b3584ace1be98d061117a298",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/05_graphs/SUMMARY.json",
+    "packaged_relative": "reviews/05_graphs/SUMMARY.json",
+    "source_sha256": "d380fc08039db9fe4becebb22cda65e19e92cd6a716f7ead168009352a583701",
+    "packaged_sha256": "477b21a9b27ee9f91baa0a7db1935230ba98b2b48c42cf40df1bbd5d54bbb0f2",
+    "presentation_transform": "trailing whitespace/newline normalization"
+  },
+  {
+    "source_relative": "roles/05_graphs/PRE-REGISTRATION.md",
+    "packaged_relative": "reviews/05_graphs/PRE-REGISTRATION.md",
+    "source_sha256": "388cda923ff8521b7a83b389bcaf0ef3a5befdc5522e2edf844d5004091a4f47",
+    "packaged_sha256": "388cda923ff8521b7a83b389bcaf0ef3a5befdc5522e2edf844d5004091a4f47",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/05_graphs/REPORT.md",
+    "packaged_relative": "reviews/05_graphs/REPORT.md",
+    "source_sha256": "23b5dcdfbdd66618f8f2d48cac3a8c34206ab3d694f0a434b7d6d174423b847f",
+    "packaged_sha256": "23b5dcdfbdd66618f8f2d48cac3a8c34206ab3d694f0a434b7d6d174423b847f",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/05_graphs/REFRESH_REPORT.md",
+    "packaged_relative": "reviews/05_graphs/REFRESH_REPORT.md",
+    "source_sha256": "f2a34eb71b1dfc9303f3243ffc8316949b6311478b9be25f014100910c38c41d",
+    "packaged_sha256": "f2a34eb71b1dfc9303f3243ffc8316949b6311478b9be25f014100910c38c41d",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/05_graphs/oracle.py",
+    "packaged_relative": "reviews/05_graphs/oracle.py.txt",
+    "source_sha256": "5f15b60e0aa35941aacee103303e04ac27f752dada100522d41fc0e8a378d219",
+    "packaged_sha256": "5f15b60e0aa35941aacee103303e04ac27f752dada100522d41fc0e8a378d219",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/05_graphs/run_audit.py",
+    "packaged_relative": "reviews/05_graphs/run_audit.py.txt",
+    "source_sha256": "a7254d616af428b364f80d16ddf91a778073499c8319722cfdf2814308dcf0e1",
+    "packaged_sha256": "a7254d616af428b364f80d16ddf91a778073499c8319722cfdf2814308dcf0e1",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/05_graphs/AMENDMENTS.md",
+    "packaged_relative": "reviews/05_graphs/AMENDMENTS.md",
+    "source_sha256": "fc7fe3a3af390e78e2b11b0b702c2ea991d5888634760db9c34969263c63ca59",
+    "packaged_sha256": "fc7fe3a3af390e78e2b11b0b702c2ea991d5888634760db9c34969263c63ca59",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/05_graphs/raw_extra/checks.json",
+    "packaged_relative": "reviews/05_graphs/raw_extra/checks.json",
+    "source_sha256": "d7f05ce127e6b012dca047d85a9afc9aa2e4d3809292eed03268cba603a5557e",
+    "packaged_sha256": "b32dd1a0b90c52b6d33ab65e6c71d68745dfdbb8a033497ca03de7106093cb7e",
+    "presentation_transform": "trailing whitespace/newline normalization"
+  },
+  {
+    "source_relative": "roles/05_graphs/raw/simulation_summary.json",
+    "packaged_relative": "reviews/05_graphs/raw/simulation_summary.json",
+    "source_sha256": "434ed5ba24d9b39daf71c894bdcefc24c68839f5e06dabdb5ce206df7c831ca2",
+    "packaged_sha256": "9547dc532a21e677d5dfc87abf2d16cc7207fb8fdddb02680790a4e500d9fe0e",
+    "presentation_transform": "trailing whitespace/newline normalization"
+  },
+  {
+    "source_relative": "roles/05_graphs/refresh/pr222/summary.json",
+    "packaged_relative": "reviews/05_graphs/refresh/pr222/summary.json",
+    "source_sha256": "2b797829398a2253564f7bd37e087ba6e1418879f184f40a4683b85be2d765d6",
+    "packaged_sha256": "1e979d63b80640e32081f5045d2566f75726052edb6ea3705b36603c11e16750",
+    "presentation_transform": "trailing whitespace/newline normalization"
+  },
+  {
+    "source_relative": "roles/05_graphs/refresh/pr221/summary.json",
+    "packaged_relative": "reviews/05_graphs/refresh/pr221/summary.json",
+    "source_sha256": "e3f5e90319b6346c9eaf01c0c25cb6be62c1fbb8efc9b915d61941e25b512902",
+    "packaged_sha256": "160f3f7984ed9806e37514ea06dbbcd1f5a02ccb2a614370418bf454fca60e97",
+    "presentation_transform": "trailing whitespace/newline normalization"
+  },
+  {
+    "source_relative": "roles/06_funnels/PRE-REGISTRATION.md",
+    "packaged_relative": "reviews/06_funnels/PRE-REGISTRATION.md",
+    "source_sha256": "3961e2e06f739a15a37931a3a4e6f5f97bfcdf46f8edace9e3c880e8f93ffdba",
+    "packaged_sha256": "3961e2e06f739a15a37931a3a4e6f5f97bfcdf46f8edace9e3c880e8f93ffdba",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/06_funnels/REPORT.md",
+    "packaged_relative": "reviews/06_funnels/REPORT.md",
+    "source_sha256": "a635a938155daf91ce0d18cf699f74714e726e3bd410597b2493d3412ff3636a",
+    "packaged_sha256": "a635a938155daf91ce0d18cf699f74714e726e3bd410597b2493d3412ff3636a",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/06_funnels/review.py",
+    "packaged_relative": "reviews/06_funnels/review.py.txt",
+    "source_sha256": "448690848e5cd930e547ba1c74ddba0503615d3deae0c786125e56e28b34c08e",
+    "packaged_sha256": "448690848e5cd930e547ba1c74ddba0503615d3deae0c786125e56e28b34c08e",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/06_funnels/CROSS_REVIEW.md",
+    "packaged_relative": "reviews/06_funnels/CROSS_REVIEW.md",
+    "source_sha256": "a2097514e71390969a1621db0990bf70a8af9020c8ab146d26a95af5670d238d",
+    "packaged_sha256": "a2097514e71390969a1621db0990bf70a8af9020c8ab146d26a95af5670d238d",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/06_funnels/oracle.py",
+    "packaged_relative": "reviews/06_funnels/oracle.py.txt",
+    "source_sha256": "623860aceda57c5d4eece19aca1dade637cf4d97cd96cccdbe1ff045e8b17cac",
+    "packaged_sha256": "623860aceda57c5d4eece19aca1dade637cf4d97cd96cccdbe1ff045e8b17cac",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/06_funnels/FIX_REPORT.md",
+    "packaged_relative": "reviews/06_funnels/FIX_REPORT.md",
+    "source_sha256": "709fbb89404a33d852e22b659de56293342306c860135bc521a205ddaca70d75",
+    "packaged_sha256": "709fbb89404a33d852e22b659de56293342306c860135bc521a205ddaca70d75",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/06_funnels/AMENDMENTS.md",
+    "packaged_relative": "reviews/06_funnels/AMENDMENTS.md",
+    "source_sha256": "3fb9e8265ba94a142f43c72d032d6f37fc5e97cb1b6fd74053e2b88ef926d43a",
+    "packaged_sha256": "3fb9e8265ba94a142f43c72d032d6f37fc5e97cb1b6fd74053e2b88ef926d43a",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/07_api/PRE-REGISTRATION.md",
+    "packaged_relative": "reviews/07_api/PRE-REGISTRATION.md",
+    "source_sha256": "a076f33d107ff4bc6ba3844b7db85ea32df99d8142d6fbc3350f25224dba545a",
+    "packaged_sha256": "a076f33d107ff4bc6ba3844b7db85ea32df99d8142d6fbc3350f25224dba545a",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/07_api/oracle_expected.json",
+    "packaged_relative": "reviews/07_api/oracle_expected.json",
+    "source_sha256": "d02e601dffae576473e65da6e48a894f5143db0ff81b0685951a5f08204b7c41",
+    "packaged_sha256": "d02e601dffae576473e65da6e48a894f5143db0ff81b0685951a5f08204b7c41",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/07_api/REPORT.md",
+    "packaged_relative": "reviews/07_api/REPORT.md",
+    "source_sha256": "5550829252873f2c617fd3d1aa97996ba4e5b7408c51f9409078f433a29c43d8",
+    "packaged_sha256": "5550829252873f2c617fd3d1aa97996ba4e5b7408c51f9409078f433a29c43d8",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/07_api/audit_api.py",
+    "packaged_relative": "reviews/07_api/audit_api.py.txt",
+    "source_sha256": "ce4e69c782bf2d2734a0f6e18fece16298d9271636791cb35990ad9506725502",
+    "packaged_sha256": "ce4e69c782bf2d2734a0f6e18fece16298d9271636791cb35990ad9506725502",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/07_api/CROSS_REVIEW.md",
+    "packaged_relative": "reviews/07_api/CROSS_REVIEW.md",
+    "source_sha256": "9ef87cccc172f8ed1a4c3dd758c157cc31bf25167af359d70c537478a62a3c6c",
+    "packaged_sha256": "9ef87cccc172f8ed1a4c3dd758c157cc31bf25167af359d70c537478a62a3c6c",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/07_api/oracle.py",
+    "packaged_relative": "reviews/07_api/oracle.py.txt",
+    "source_sha256": "78390fba3903d6aa829d65475869020f5661c62e242384c0e7ecaab1b03d2e2f",
+    "packaged_sha256": "78390fba3903d6aa829d65475869020f5661c62e242384c0e7ecaab1b03d2e2f",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/07_api/FIX_REPORT.md",
+    "packaged_relative": "reviews/07_api/FIX_REPORT.md",
+    "source_sha256": "71f3de1defdaee998543a7d5c5d44d095453cc67ca796e2f87ae51dbe5a787c7",
+    "packaged_sha256": "71f3de1defdaee998543a7d5c5d44d095453cc67ca796e2f87ae51dbe5a787c7",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/07_api/AMENDMENTS.md",
+    "packaged_relative": "reviews/07_api/AMENDMENTS.md",
+    "source_sha256": "cb175e0da7c3ab847cb3a11f5470b2adb77ea6360192156ff5c9a0e9e9026207",
+    "packaged_sha256": "cb175e0da7c3ab847cb3a11f5470b2adb77ea6360192156ff5c9a0e9e9026207",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/08_ui_mcp/PRE-REGISTRATION.md",
+    "packaged_relative": "reviews/08_ui_mcp/PRE-REGISTRATION.md",
+    "source_sha256": "4e43ad5ad13dc79a0d93b5eaaba28e4a7eed2bfb161537d86aba865c965cf466",
+    "packaged_sha256": "4e43ad5ad13dc79a0d93b5eaaba28e4a7eed2bfb161537d86aba865c965cf466",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/08_ui_mcp/oracle_expected.json",
+    "packaged_relative": "reviews/08_ui_mcp/oracle_expected.json",
+    "source_sha256": "09ed2223e7d060336c0caecd3b4223f5b89f57a3fd88afe8233bb0f242ca0a0c",
+    "packaged_sha256": "09ed2223e7d060336c0caecd3b4223f5b89f57a3fd88afe8233bb0f242ca0a0c",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/08_ui_mcp/REPORT.md",
+    "packaged_relative": "reviews/08_ui_mcp/REPORT.md",
+    "source_sha256": "13584e85a9c5891e082d64ceaa2b7a00c899b559cb6bdb91ecbc61843c66baff",
+    "packaged_sha256": "13584e85a9c5891e082d64ceaa2b7a00c899b559cb6bdb91ecbc61843c66baff",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/08_ui_mcp/run_review.py",
+    "packaged_relative": "reviews/08_ui_mcp/run_review.py.txt",
+    "source_sha256": "e63e56c6f84d82c496f061026b4fe932d5663adfc81c5a4da0437b722632d6d3",
+    "packaged_sha256": "e63e56c6f84d82c496f061026b4fe932d5663adfc81c5a4da0437b722632d6d3",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/08_ui_mcp/oracle.py",
+    "packaged_relative": "reviews/08_ui_mcp/oracle.py.txt",
+    "source_sha256": "5fa1fbe270631dabc54c6981a70bd90cbc4c63fdfd1fbe3b8d4f2280aae6591b",
+    "packaged_sha256": "5fa1fbe270631dabc54c6981a70bd90cbc4c63fdfd1fbe3b8d4f2280aae6591b",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/09_datasets/PRE-REGISTRATION.md",
+    "packaged_relative": "reviews/09_datasets/PRE-REGISTRATION.md",
+    "source_sha256": "a2c69393e2835da173410be2c8074ec6b74e1be7c1241757688037663c7cb9df",
+    "packaged_sha256": "a2c69393e2835da173410be2c8074ec6b74e1be7c1241757688037663c7cb9df",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/09_datasets/REPORT.md",
+    "packaged_relative": "reviews/09_datasets/REPORT.md",
+    "source_sha256": "3798ce2e391aa817d1bb4dd8182abb44b3035b3b7e4f926a95309d9e2f477d5e",
+    "packaged_sha256": "3798ce2e391aa817d1bb4dd8182abb44b3035b3b7e4f926a95309d9e2f477d5e",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/09_datasets/run_review.py",
+    "packaged_relative": "reviews/09_datasets/run_review.py.txt",
+    "source_sha256": "a5db85acd3d183229ed70cf21a69aad15980245b24f35885faadc4910a1503c4",
+    "packaged_sha256": "a5db85acd3d183229ed70cf21a69aad15980245b24f35885faadc4910a1503c4",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/09_datasets/oracle.py",
+    "packaged_relative": "reviews/09_datasets/oracle.py.txt",
+    "source_sha256": "ff98beffd87c78e162f2b39cbf5f9953a8756ee692aac09ef074a19bc0477100",
+    "packaged_sha256": "ff98beffd87c78e162f2b39cbf5f9953a8756ee692aac09ef074a19bc0477100",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/09_datasets/raw_final/summary.json",
+    "packaged_relative": "reviews/09_datasets/raw_final/summary.json",
+    "source_sha256": "c53c4f00538968207858f5f9245457ab8a2aaf88d79a73d1f7805f9aa17cb0d6",
+    "packaged_sha256": "c53c4f00538968207858f5f9245457ab8a2aaf88d79a73d1f7805f9aa17cb0d6",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/09_datasets/raw/summary.json",
+    "packaged_relative": "reviews/09_datasets/raw/summary.json",
+    "source_sha256": "7158e68859be46a0754c6896afefd24f10c8f80f82c3ff1187e9d54f6bc682aa",
+    "packaged_sha256": "7158e68859be46a0754c6896afefd24f10c8f80f82c3ff1187e9d54f6bc682aa",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/10_release/PRE-REGISTRATION.md",
+    "packaged_relative": "reviews/10_release/PRE-REGISTRATION.md",
+    "source_sha256": "9f99e35bc1bd6d621a518c30ef2e284974aef14862247386b7a8cb92ffab804d",
+    "packaged_sha256": "9f99e35bc1bd6d621a518c30ef2e284974aef14862247386b7a8cb92ffab804d",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/10_release/oracle_expected.json",
+    "packaged_relative": "reviews/10_release/oracle_expected.json",
+    "source_sha256": "b40d0ff87e8491111a9a9e8c042bfd4e2f4709e025063648725241183ae861b6",
+    "packaged_sha256": "b40d0ff87e8491111a9a9e8c042bfd4e2f4709e025063648725241183ae861b6",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/10_release/run_oracle.py",
+    "packaged_relative": "reviews/10_release/run_oracle.py.txt",
+    "source_sha256": "0d1c309e100079460fece84405578d19b77c3a956b62723576dc99a2fdc0d9a3",
+    "packaged_sha256": "0d1c309e100079460fece84405578d19b77c3a956b62723576dc99a2fdc0d9a3",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/10_release/report.md",
+    "packaged_relative": "reviews/10_release/report.md",
+    "source_sha256": "3fadcbf42b751b16ee8e3bb1f2dfbbf248672e3522b23e0cee862e902ed7a3ef",
+    "packaged_sha256": "3fadcbf42b751b16ee8e3bb1f2dfbbf248672e3522b23e0cee862e902ed7a3ef",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/10_release/candidate_cross_review.json",
+    "packaged_relative": "reviews/10_release/candidate_cross_review.json",
+    "source_sha256": "c846b51f9ac1a5594cb28428dc9fe86ccdb91a766670cecd211fd49b0e9d829f",
+    "packaged_sha256": "c846b51f9ac1a5594cb28428dc9fe86ccdb91a766670cecd211fd49b0e9d829f",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/10_release/CROSS_REVIEW.md",
+    "packaged_relative": "reviews/10_release/CROSS_REVIEW.md",
+    "source_sha256": "ed9718a1cbb8e9ddf4dc162de65d6f7e47b736b5ee69a2c1093a967ae486d577",
+    "packaged_sha256": "ed9718a1cbb8e9ddf4dc162de65d6f7e47b736b5ee69a2c1093a967ae486d577",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/10_release/oracle.py",
+    "packaged_relative": "reviews/10_release/oracle.py.txt",
+    "source_sha256": "5ab59d156e0ba971a76dbe8607de1df24ffc26bc526e1106e587321352530c2c",
+    "packaged_sha256": "5ab59d156e0ba971a76dbe8607de1df24ffc26bc526e1106e587321352530c2c",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/10_release/FIX_REPORT.md",
+    "packaged_relative": "reviews/10_release/FIX_REPORT.md",
+    "source_sha256": "f8a88132f975d20dacfa4cad7a115334650ad65b6e983fe0b7a13aa58c9fecf0",
+    "packaged_sha256": "f8a88132f975d20dacfa4cad7a115334650ad65b6e983fe0b7a13aa58c9fecf0",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "crosschecks/strata_default_root_before.json",
+    "packaged_relative": "coordinator/strata_default_root_before.json",
+    "source_sha256": "b918d3bae5cb5c6898bc1d2f749a0d5701efb55d19e15a79467a98a041418d0c",
+    "packaged_sha256": "b918d3bae5cb5c6898bc1d2f749a0d5701efb55d19e15a79467a98a041418d0c",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "crosschecks/pr221-latest_degeneracy.json",
+    "packaged_relative": "coordinator/pr221-latest_degeneracy.json",
+    "source_sha256": "f0d21e55fa4ecac239801a77b985e2bdb107af3176059c0267f25e8e0bab532a",
+    "packaged_sha256": "f0d21e55fa4ecac239801a77b985e2bdb107af3176059c0267f25e8e0bab532a",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "crosschecks/pr222-latest_degeneracy.json",
+    "packaged_relative": "coordinator/pr222-latest_degeneracy.json",
+    "source_sha256": "f0d21e55fa4ecac239801a77b985e2bdb107af3176059c0267f25e8e0bab532a",
+    "packaged_sha256": "f0d21e55fa4ecac239801a77b985e2bdb107af3176059c0267f25e8e0bab532a",
+    "presentation_transform": "none"
+  }
+]

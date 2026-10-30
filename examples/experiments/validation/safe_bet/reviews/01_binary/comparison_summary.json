@@ -1,0 +1,72 @@
+{
+  "ab_swap_delta": {
+    "count": 7,
+    "failed": 0,
+    "max_abs_error": 0.0
+  },
+  "ab_swap_p": {
+    "count": 7,
+    "failed": 0,
+    "max_abs_error": 0.0
+  },
+  "experiment_fisher": {
+    "count": 8,
+    "failed": 0,
+    "max_abs_error": 1.734723475976807e-18
+  },
+  "experiment_newcombe": {
+    "count": 16,
+    "failed": 0,
+    "max_abs_error": 2.220446049250313e-16
+  },
+  "fisher_scipy": {
+    "count": 9604,
+    "failed": 0,
+    "max_abs_error": 4.440892098500626e-16
+  },
+  "newcombe": {
+    "count": 9604,
+    "failed": 0,
+    "max_abs_error": 3.3306690738754696e-16
+  },
+  "newcombe_complement": {
+    "count": 9604,
+    "failed": 0,
+    "max_abs_error": 3.3306690738754696e-16
+  },
+  "newcombe_swap": {
+    "count": 9604,
+    "failed": 0,
+    "max_abs_error": 0.0
+  },
+  "pooled_z": {
+    "count": 9506,
+    "failed": 0,
+    "max_abs_error": 2.220446049250313e-16
+  },
+  "pooled_z_documented_unavailable": {
+    "count": 98,
+    "failed": 0,
+    "max_abs_error": 0.0
+  },
+  "welch_binary": {
+    "count": 9072,
+    "failed": 0,
+    "max_abs_error": 5.684341886080802e-14
+  },
+  "welch_documented_unavailable": {
+    "count": 144,
+    "failed": 0,
+    "max_abs_error": 0.0
+  },
+  "welch_scale_sign": {
+    "count": 9072,
+    "failed": 0,
+    "max_abs_error": 5.684341886080802e-14
+  },
+  "wilson": {
+    "count": 294,
+    "failed": 0,
+    "max_abs_error": 4.773959005888173e-15
+  }
+}

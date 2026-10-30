@@ -1,0 +1,131 @@
+"""Independent assignment-roster aggregates; frozen before package inspection."""
+from __future__ import annotations
+
+import math
+import pandas as pd
+
+
+def roster_frame(roster, user_col="user_id", group_col="group"):
+    result = roster[[user_col, group_col]].copy()
+    if result[user_col].isna().any() or result[group_col].isna().any():
+        raise ValueError("missing user or group in assignment roster")
+    if result[user_col].duplicated().any():
+        raise ValueError("assignment roster must contain one row per user")
+    return result
+
+
+def window_events(events, timestamp_col="timestamp", start=None, end=None):
+    result = events.copy()
+    timestamps = pd.to_datetime(result[timestamp_col], utc=True, errors="raise")
+    keep = timestamps.notna()
+    if start is not None:
+        keep &= timestamps >= pd.to_datetime(start, utc=True)
+    if end is not None:
+        keep &= timestamps < pd.to_datetime(end, utc=True)
+    return result.loc[keep].copy()
+
+
+def per_user(roster, events, user_col="user_id", group_col="group",
+             timestamp_col="timestamp", event_col="event", target=None,
+             value_col=None, start=None, end=None):
+    population = roster_frame(roster, user_col, group_col)
+    selected = window_events(events, timestamp_col, start, end)
+    if target is not None:
+        targets = [target] if isinstance(target, str) else list(target)
+        selected = selected[selected[event_col].isin(targets)]
+    selected = selected[selected[user_col].isin(population[user_col])]
+    counts = selected.groupby(user_col, sort=False).size()
+    out = population.set_index(user_col)
+    out["event_count"] = counts.reindex(out.index, fill_value=0).astype(int)
+    out["converted"] = (out["event_count"] > 0).astype(int)
+    if value_col is not None:
+        values = pd.to_numeric(selected[value_col], errors="raise")
+        if values.isna().any():
+            raise ValueError("missing numeric contribution")
+        sums = selected.assign(_value=values).groupby(user_col)["_value"].sum()
+        out["value_sum"] = sums.reindex(out.index, fill_value=0.0)
+    return out.reset_index()
+
+
+def arm_summary(user_table, group_col="group"):
+    rows = []
+    for group, frame in user_table.groupby(group_col, sort=False):
+        n = len(frame)
+        row = {"group": group, "n_users": n,
+               "event_count": int(frame["event_count"].sum()),
+               "converted_users": int(frame["converted"].sum()),
+               "conversion_rate": float(frame["converted"].mean()),
+               "mean_event_count": float(frame["event_count"].mean())}
+        if "value_sum" in frame:
+            row.update(value_total=float(frame["value_sum"].sum()),
+                       mean_value=float(frame["value_sum"].mean()))
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def ratio_of_totals(numerator_users, denominator_users,
+                    user_col="user_id", group_col="group",
+                    numerator_col="event_count", denominator_col="event_count"):
+    left = numerator_users[[user_col, group_col, numerator_col]].rename(
+        columns={numerator_col: "numerator"})
+    right = denominator_users[[user_col, group_col, denominator_col]].rename(
+        columns={denominator_col: "denominator"})
+    joined = left.merge(right, on=[user_col, group_col], validate="one_to_one", how="outer", indicator=True)
+    if not joined["_merge"].eq("both").all():
+        raise ValueError("numerator and denominator populations must match")
+    rows = []
+    for group, part in joined.groupby(group_col, sort=False):
+        numerator, denominator = float(part.numerator.sum()), float(part.denominator.sum())
+        rows.append({"group": group, "n_users": len(part),
+                     "numerator": numerator, "denominator": denominator,
+                     "ratio": numerator / denominator if denominator else None})
+    return pd.DataFrame(rows)
+
+
+def effect(control, treatment):
+    if control is None or treatment is None:
+        return {"absolute": None, "relative": None, "sign": None}
+    difference = float(treatment - control)
+    return {"absolute": difference,
+            "relative": difference / control if control else None,
+            "sign": (difference > 0) - (difference < 0)}
+
+
+def srm_two_arm(roster, control, treatment, expected_control=0.5,
+                user_col="user_id", group_col="group"):
+    population = roster_frame(roster, user_col, group_col)
+    counts = population[group_col].value_counts()
+    if not set(counts.index).issubset({control, treatment}):
+        raise ValueError("unexpected arm")
+    if not 0 < expected_control < 1:
+        raise ValueError("expected allocation must lie in (0,1)")
+    n = len(population)
+    if n == 0:
+        raise ValueError("empty assignment roster")
+    observed = [int(counts.get(control, 0)), int(counts.get(treatment, 0))]
+    expected = [n * expected_control, n * (1 - expected_control)]
+    statistic = sum((o - e) ** 2 / e for o, e in zip(observed, expected))
+    return {"n_users": n, "control_n": observed[0], "treatment_n": observed[1],
+            "chi_square": statistic, "p_value": math.erfc(math.sqrt(statistic / 2))}
+
+
+def self_check():
+    roster = pd.DataFrame({"user_id": [1, 2, 3, 4], "group": ["A", "A", "B", "B"]})
+    events = pd.DataFrame({"user_id": [1, 1, 2, 3, 3, 99],
+                           "event": ["buy", "buy", "view", "buy", "buy", "buy"],
+                           "timestamp": ["2026-01-01", "2026-01-02", "2026-01-01", "2026-01-01", "2026-01-03", "2026-01-01"],
+                           "value": [2, 4, 0, 8, 16, 1000]})
+    users = per_user(roster, events, target="buy", value_col="value", start="2026-01-01", end="2026-01-03")
+    actual = arm_summary(users).set_index("group")
+    assert actual.loc["A", "mean_value"] == 3
+    assert actual.loc["B", "mean_value"] == 4
+    assert actual.loc["A", "mean_event_count"] == 1
+    assert actual.loc["B", "mean_event_count"] == 0.5
+    assert actual.loc["B", "conversion_rate"] == 0.5
+    assert srm_two_arm(roster, "A", "B")["p_value"] == 1
+    assert effect(3, 4) == {"absolute": 1.0, "relative": 1 / 3, "sign": 1}
+    return True
+
+
+if __name__ == "__main__":
+    print({"self_check": self_check()})

@@ -5,14 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+## [5.4.0] - 2026-10-30
+
 ### Added
 
 - Assignment-aware A/B scorecards, joint unit bootstrap, sample-ratio diagnostics,
   pre-exposure strata, calendar periods and explicitly observed fixed horizons.
 - Native scorecard and strict experiment widgets with matching headless methods,
   offline export, support/status diagnostics, confidence intervals and tests.
-- A shared statistical kernel for both analysis contracts: Wilson/Newcombe,
-  stable Welch, multiplicity adjustment and unit-weight resampling.
+- A shared statistical kernel for both analysis contracts: exact Fisher and
+  Clopper–Pearson, conservative exact risk differences, explicit approximate
+  Wilson/Newcombe and Welch methods, multiplicity and unit-weight resampling.
 - Column and event-value metrics, named metrics, explicit ratios, pre-exposure
   path segments, six reproducible A/B datasets, MCP tools and English tutorials.
 - Independent statistical calibration records and a comparison/integration ADR
@@ -20,6 +23,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 
+- Binary scorecards default to two-sided Fisher tests and conservative exact
+  confidence intervals. Nonbinary metrics default to descriptive estimates;
+  Welch and bootstrap require an explicit choice and remain approximate.
+- Known-binary Welch and scorecard bootstrap are rejected. Explicit pooled z
+  requires at least five expected successes and failures per arm. Relative
+  intervals and asymptotic stratum diagnostics are not implicit in exact mode.
+- MDE is explicitly a normal planning approximation, not the power of the
+  chosen exact test; supported power is at least 0.5. Confidence intervals
+  need not agree with adjusted p-value decisions.
+- Two-arm SRM uses an exact binomial test under independent Bernoulli assignment.
+  Planned absent arms count as zero; sparse multiarm SRM is unavailable rather
+  than reporting balance. Fixed-allocation designs need a different audit.
+- Pretreatment segment membership requires an explicit declaration. Truncating
+  a behavioral stream or replaying an old inferred flag is insufficient.
+- Bootstrap allocation is bounded, numeric overflow fails explicitly, and
+  period contrasts reject changing measurement eligibility. Bonferroni
+  percentile endpoints require at least ten expected resamples per tail.
 - Fixed horizons and since-assignment periods require an explicit complete
   logging cutoff (`observation_end`); the last event does not establish maturity.
 - The scorecard defaults to Holm across all declared metric rows in each call.
@@ -34,6 +54,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Repeated-start conversion windows are evaluated independently, including
+  whole-pattern bounds, so a later valid conversion is no longer missed.
+- Heterogeneous path-ID scalar types and unrepresentable integer IDs fail
+  before SQL can merge identities. Numeric recipe keys retain their type,
+  typed arm labels remain distinct, and recorded recipes are deep snapshots.
 - Exact Wilson boundaries, decimal-constant inference, numerical scale stability,
   categorical silent-arm assignments and percentage-point effect labels.
 - Point-only funnels aggregate shared reach semantics in SQL. Notebook figures

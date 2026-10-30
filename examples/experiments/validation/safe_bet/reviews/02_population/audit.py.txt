@@ -1,0 +1,235 @@
+"""Public API population audit; run with PYTHONPATH selecting the frozen source.
+The frozen oracle.py is imported unchanged. No private package APIs are used.
+"""
+import argparse, copy, hashlib, inspect, json, math, platform, random, sys, warnings
+from pathlib import Path
+parser=argparse.ArgumentParser()
+parser.add_argument('--random-n',type=int,default=60)
+parser.add_argument('--source-root',type=Path)
+parser.add_argument('--output-dir',type=Path)
+ARGS=parser.parse_args() if __name__=='__main__' else parser.parse_args([])
+if ARGS.source_root: sys.path.insert(0,str(ARGS.source_root.resolve()/'src'))
+import numpy as np
+import pandas as pd
+from retentioneering import Eventstream
+import retentioneering
+from retentioneering.tools.experiment import session_funnel_data
+from oracle import analyze, event_bins, independent_clusters
+
+HERE = Path(__file__).resolve().parent
+OUT = ARGS.output_dir.resolve() if ARGS.output_dir else HERE/'baseline220'
+OUT.mkdir(parents=True,exist_ok=True)
+BASE = pd.Timestamp('2026-01-01')
+METRICS = [dict(name='converted',metric='has_event',metric_args={'event':'buy'}),
+           dict(name='count',metric='event_count',metric_args={'event':'buy'})]
+RESULTS = []
+FIXTURES = {}
+
+def stamp(h): return BASE + pd.Timedelta(hours=h)
+def clean(x):
+    if isinstance(x, dict): return {str(k):clean(v) for k,v in x.items()}
+    if isinstance(x, (list, tuple)): return [clean(v) for v in x]
+    if isinstance(x,np.generic): return clean(x.item())
+    if isinstance(x,float) and not math.isfinite(x): return None
+    if x is pd.NA or x is pd.NaT: return None
+    if isinstance(x,(pd.Timestamp,pd.Timedelta)): return str(x)
+    return x
+
+def eq(a,b):
+    if isinstance(a,dict) and isinstance(b,dict):
+        return set(a)==set(b) and all(eq(a[k],b[k]) for k in a)
+    if isinstance(a,list) and isinstance(b,list): return len(a)==len(b) and all(eq(x,y) for x,y in zip(a,b))
+    if isinstance(a,(float,int)) and isinstance(b,(float,int)): return abs(a-b)<1e-10
+    return a==b
+
+def record(name,expected,fn,category='contract',expect_error=False):
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        try:
+            value=fn(); actual=clean(value); error=None
+        except Exception as exc:
+            actual=None; error={'type':type(exc).__name__,'message':str(exc)}
+    passed=bool(error and error['type'] in ('ValueError','InvalidParameterError','DiffConfigError','EmptyEventstreamError')) if expect_error else error is None and eq(clean(expected),actual)
+    row={'name':name,'category':category,'passed':passed,'expected':clean(expected),
+         'actual':actual,'error':error,'warnings':[str(w.message) for w in caught]}
+    RESULTS.append(row)
+    if not passed: print('FAIL',name,error or str(actual)[:250],flush=True)
+    return actual
+
+def stream(events, nested=False, preprocess=False):
+    rows=[]
+    for j,e in enumerate(events):
+        d={'user_id':e['unit'],'timestamp':stamp(e['time']),'event':e['event']}
+        for key in ('arm','variant','stratum'):
+            if key in e: d[key]=e[key]
+        if nested: d['session_id']=e.get('session',f"{e['unit']}:{j}")
+        rows.append(d)
+    frame=pd.DataFrame(rows)
+    schema={'path_cols':['user_id','session_id'] if nested else ['user_id'],
+            'segment_cols':[x for x in ('arm','variant','stratum') if x in frame]}
+    return Eventstream(frame,schema=schema,preprocess=preprocess)
+
+def table(aa):
+    rows=[{**a,'user_id':a['unit'],'assigned_at':stamp(a['assigned'])} for a in aa]
+    return pd.DataFrame(rows).drop(columns=['unit','assigned']).set_index('user_id')
+
+def expected_stats(aa,ee,cutoff,horizon=None,start=None):
+    r=analyze(aa,ee,cutoff,horizon,start=start)
+    return {arm:{'n':z['n'],'converted':z['converted']/z['n'],'count':z['target_count']/z['n']} for arm,z in r['arms'].items()}
+
+def stats(out):
+    rr={}
+    for i,arm in ((1,'A'),(2,'B')):
+        rr[arm]={'n':int(out.iloc[0][f'group{i}_paths'])}
+        for metric in ('converted','count'):
+            rr[arm][metric]=float(out.loc[out.metric==metric,f'group{i}_value'].iloc[0])
+    return rr
+
+def score(s,aa,**opts):
+    return s.get_ab_test(('arm','A','B'),METRICS,assignment=table(aa),min_support=1,**opts)
+
+def strict(s,aa,start=0,end=30,**opts):
+    return s.experiment_data(assignments=table(aa).reset_index(),variant_col='arm',
+        control='A',treatment='B',metrics=[dict(m,agg='mean') for m in METRICS],
+        observation={'start':stamp(start),'end':stamp(end),'assignment_time_col':'assigned_at','complete':True},**opts)
+
+def strict_stats(out):
+    rr={}
+    for arm,col in [('A','control'),('B','treatment')]:
+        rr[arm]={'n':next(r['n_assigned'] for r in out['diagnostics'] if r['arm']==arm)}
+        for m in ('converted','count'): rr[arm][m]=next(r[col] for r in out['summary'] if r['metric']==m)
+    return rr
+
+def period_stats(out):
+    return [{'start':str(g.period_start.iloc[0]),'end':str(g.period_end.iloc[0]),'stats':stats(g)} for _,g in out.groupby('period',sort=False)]
+
+def expected_periods(aa,ee,cutoff,width,mode):
+    rr=[]
+    if mode=='calendar':
+        begins=range(0,cutoff,width)
+        for begin in begins:
+            end=begin+width
+            # Calendar ITT includes those assigned strictly before bin end.
+            ar=[a for a in aa if a['assigned']<min(end,cutoff)]
+            r=expected_stats(ar,[e for e in ee if e['unit'] in {a['unit'] for a in ar}],min(end,cutoff),start=begin)
+            for arm in ('A','B'): r.setdefault(arm,{'n':0,'converted':float('nan'),'count':float('nan')})
+            rr.append({'start':str(stamp(begin)),'end':str(stamp(end)),'stats':r})
+    else:
+        for begin in range(0,cutoff-min(a['assigned'] for a in aa),width):
+            end=begin+width
+            ar=[dict(a,assigned=a['assigned']+begin) for a in aa if a['assigned']+end<=cutoff]
+            if not ar: continue
+            ids={a['unit'] for a in ar}
+            r=expected_stats(ar,[e for e in ee if e['unit'] in ids],cutoff,horizon=width)
+            for arm in ('A','B'): r.setdefault(arm,{'n':0,'converted':float('nan'),'count':float('nan')})
+            rr.append({'start':str(pd.Timedelta(hours=begin)),'end':str(pd.Timedelta(hours=end)),'stats':r})
+    return rr
+
+def fixture(name,aa,ee): FIXTURES[name]={'assignments':aa,'events':ee}
+
+
+def main(random_n=60):
+    aa=[{'unit':f'{arm}{i}','arm':arm,'assigned':0} for arm in 'AB' for i in range(4)]
+    ee=[{'unit':'A0','time':-1,'event':'buy'}, {'unit':'A0','time':0,'event':'buy'},
+        {'unit':'A0','time':6,'event':'buy'}, {'unit':'A1','time':10,'event':'view'},
+        {'unit':'A2','time':30,'event':'buy'}, {'unit':'B0','time':1,'event':'view'},
+        {'unit':'B1','time':29,'event':'buy'}, {'unit':'B2','time':30,'event':'buy'}]
+    fixture('boundaries_silent_prehistory',aa,ee); s=stream(ee)
+    record('scorecard_silent_prehistory_cutoff',expected_stats(aa,ee,30),lambda:stats(score(s,aa,observation_end=stamp(30))))
+    record('strict_silent_prehistory_cutoff',expected_stats(aa,ee,30),lambda:strict_stats(strict(s,aa)))
+    record('strict_window_start_inclusive',expected_stats(aa,ee,30,start=6),lambda:strict_stats(strict(s,aa,start=6)))
+    record('horizon_upper_exclusive',expected_stats(aa,ee,30,horizon=6),lambda:stats(score(s,aa,horizon='6h',observation_end=stamp(30))))
+    record('calendar_boundaries_and_quiet_bins',expected_periods(aa,ee,30,6,'calendar'),lambda:period_stats(score(s,aa,period='6h',observation_end=stamp(30))))
+    record('relative_boundaries_and_quiet_bins',expected_periods(aa,ee,30,6,'since_assignment'),lambda:period_stats(score(s,aa,period='6h',period_basis='since_assignment',observation_end=stamp(30))))
+    record('horizon_requires_explicit_cutoff','error',lambda:score(s,aa,horizon='6h'),expect_error=True)
+    record('relative_bins_require_explicit_cutoff','error',lambda:score(s,aa,period='6h',period_basis='since_assignment'),expect_error=True)
+    for h in ('0h','-1h',0,float('nan')):
+        record('invalid_horizon_'+str(h),'error',lambda h=h:score(s,aa,horizon=h,observation_end=stamp(30)),expect_error=True)
+    for p in ('0h','-1h',0):
+        record('invalid_period_'+str(p),'error',lambda p=p:score(s,aa,period=p,observation_end=stamp(30)),expect_error=True)
+    quiet=[dict(e,time=-2) for e in ee]
+    record('all_assignments_silent_in_window',{'A':{'n':4,'converted':0.,'count':0.},'B':{'n':4,'converted':0.,'count':0.}},lambda:stats(score(stream(quiet),aa,observation_end=stamp(30))))
+    record('strict_all_assignments_silent_in_window',{'A':{'n':4,'converted':0.,'count':0.},'B':{'n':4,'converted':0.,'count':0.}},lambda:strict_stats(strict(stream(quiet),aa)))
+    stagger=[dict(a,assigned=(0 if int(a['unit'][1:])<2 else 25)) for a in aa]
+    fixture('maturity',stagger,ee)
+    record('staggered_horizon_maturity',expected_stats(stagger,ee,30,6),lambda:stats(score(s,stagger,horizon='6h',observation_end=stamp(30))))
+    record('staggered_calendar_population',expected_periods(stagger,ee,30,6,'calendar'),lambda:period_stats(score(s,stagger,period='6h',observation_end=stamp(30))))
+    record('staggered_relative_population',expected_periods(stagger,ee,30,6,'since_assignment'),lambda:period_stats(score(s,stagger,period='6h',period_basis='since_assignment',observation_end=stamp(30))))
+    record('strict_rejects_late_assignment','error',lambda:strict(s,stagger),expect_error=True)
+    record('duplicate_assignment_rejected','error',lambda:score(s,aa+[aa[0]],observation_end=stamp(30)),expect_error=True)
+    record('strict_duplicate_assignment_rejected','error',lambda:strict(s,aa+[aa[0]]),expect_error=True)
+    invalid=ee+[{'unit':'orphan','time':1,'event':'buy'}]
+    record('strict_missing_assignment_rejected','error',lambda:strict(stream(invalid),aa),expect_error=True)
+    record('scorecard_unassigned_audited',1,lambda:int(score(stream(invalid),aa,observation_end=stamp(30)).unassigned_paths.iloc[0]))
+    ae=[dict(e,arm=next(a['arm'] for a in aa if a['unit']==e['unit'])) for e in ee]
+    bad=copy.deepcopy(ae); bad[1]['arm']='B'
+    record('scorecard_arm_contradiction_rejected','error',lambda:score(stream(bad),aa,observation_end=stamp(30)),expect_error=True)
+    record('strict_arm_contradiction_rejected','error',lambda:strict(stream(bad),aa),expect_error=True)
+    pre=copy.deepcopy(ae); pre[0]['arm']='B'
+    record('scorecard_prehistory_arm_change_allowed',expected_stats(aa,ee,30),lambda:stats(score(stream(pre),aa,observation_end=stamp(30))))
+    record('strict_prehistory_arm_change_allowed',expected_stats(aa,ee,30),lambda:strict_stats(strict(stream(pre),aa)))
+    nullaa=copy.deepcopy(aa); nullaa[0]['unit']=None
+    record('scorecard_null_assignment_id_rejected','error',lambda:score(s,nullaa,observation_end=stamp(30)),expect_error=True)
+    record('strict_null_assignment_id_rejected','error',lambda:strict(s,nullaa),expect_error=True)
+    # Strata retain inactive assignments and default to exploratory when provenance is unknown.
+    strata=[dict(a,stratum='s0' if int(a['unit'][1:])%2==0 else 's1') for a in aa]
+    def strata_summary(declared=None):
+        out=score(s,strata,strata_col='stratum',strata_pre_exposure=declared,observation_end=stamp(30))
+        return {'nA':int(out[out.metric=='converted'].group1_paths.sum()),'nB':int(out[out.metric=='converted'].group2_paths.sum()),
+                'pre':out.strata_pre_exposure.unique().tolist(),'exploratory':out.exploratory.unique().tolist(),
+                'verdicts':sorted(out.verdict.unique().tolist())}
+    record('strata_unknown_no_confirmatory_claim',{'nA':4,'nB':4,'pre':[False],'exploratory':[True],'verdicts':['descriptive']},lambda:strata_summary())
+    record('strata_explicit_post_no_confirmatory_claim',{'nA':4,'nB':4,'pre':[False],'exploratory':[True],'verdicts':['descriptive']},lambda:strata_summary(False))
+    record('strata_explicit_pre_retains_silent',True,lambda:strata_summary(True)['pre']==[True] and strata_summary(True)['nA']==4)
+    nested=stream(ee,True)
+    record('scorecard_coarsest_grain_required','error',lambda:score(nested,aa,path_col='session_id',observation_end=stamp(30)),expect_error=True)
+    record('strict_coarsest_grain_required','error',lambda:strict(nested,aa,unit_col='session_id'),expect_error=True)
+    # Public descriptive session API must reject duplicate session keys across users.
+    sessions=[dict(e,session='same',arm=next(a['arm'] for a in aa if a['unit']==e['unit'])) for e in ee]
+    record('session_keys_nested_under_multiple_users_rejected','error',lambda:session_funnel_data(stream(sessions,True),steps=['buy'],unit_col='user_id',path_col='session_id',segment_col='arm',control='A',treatment='B'),expect_error=True)
+    # A real post-assignment cut can be mistaken for a pre-exposure cut by recipe inference.
+    sa=[];se=[]
+    for arm in 'AB':
+        for i in range(200):
+            u=f'{arm}{i}';sa.append({'unit':u,'arm':arm,'assigned':0})
+            se.extend([{'unit':u,'time':0,'event':'expose','arm':arm},
+                       {'unit':u,'time':10,'event':'cut_after_treatment','arm':arm}])
+            if i<100: se.append({'unit':u,'time':6,'event':'buy','arm':arm})
+            if (arm=='A' and i<150) or (arm=='B' and i>=50):
+                se.append({'unit':u,'time':5,'event':'engage_after_treatment','arm':arm})
+    fixture('post_exposure_recipe',sa,se)
+    ss=stream(se,preprocess=True).truncate_paths('path_start','cut_after_treatment').add_segment('after_treatment_buyer',metric_bins={'metric':{'metric':'event_count','metric_args':{'event':'engage_after_treatment'}},'edges':[0.5],'segment_levels':['no','yes']})
+    def provenance_result():
+        out=score(ss,sa,strata_col='after_treatment_buyer',observation_end=stamp(30))
+        (OUT/'post-exposure-strata-actual.json').write_text(json.dumps(clean(out.to_dict('records')),indent=2,allow_nan=False))
+        return {'pre':out.strata_pre_exposure.unique().tolist(),'source':out.strata_pre_exposure_source.unique().tolist(),'exploratory':out.exploratory.unique().tolist(),'verdicts':sorted(out.verdict.unique().tolist())}
+    record('post_exposure_cut_must_not_prove_pre_exposure',{'pre':[False],'source':['not_pre_exposure'],'exploratory':[True],'verdicts':['descriptive']},provenance_result,'causal_safety')
+    # Randomized aggregate audits: 60 independent seeded datasets, all original fixtures persisted.
+    rng=random.Random(2026103002)
+    for k in range(random_n):
+        aa=[];ee=[]
+        for arm in 'AB':
+            for i in range(rng.randrange(5,18)):
+                unit=f'{arm}{i}';at=0 if i<2 else rng.randrange(0,25)
+                aa.append({'unit':unit,'arm':arm,'assigned':at,'stratum':str(i%2)})
+                for j in range(rng.randrange(0,8)):
+                    ee.append({'unit':unit,'time':rng.randrange(-6,37),'event':rng.choice(['view','buy'])})
+        # Event vocabulary exists even when all actual target outcomes are zero.
+        ee.append({'unit':'A0','time':-5,'event':'buy'})
+        ss=stream(ee);fixture(f'random_{k:03}',aa,ee)
+        record(f'random_{k:03}_all',expected_stats(aa,ee,30),lambda:stats(score(ss,aa,observation_end=stamp(30))),'randomized')
+        record(f'random_{k:03}_horizon',expected_stats(aa,ee,30,6),lambda:stats(score(ss,aa,horizon='6h',observation_end=stamp(30))),'randomized')
+        record(f'random_{k:03}_calendar',expected_periods(aa,ee,30,6,'calendar'),lambda:period_stats(score(ss,aa,period='6h',observation_end=stamp(30))),'randomized')
+        record(f'random_{k:03}_relative',expected_periods(aa,ee,30,6,'since_assignment'),lambda:period_stats(score(ss,aa,period='6h',period_basis='since_assignment',observation_end=stamp(30))),'randomized')
+        fixed=[dict(a,assigned=0) for a in aa]
+        record(f'random_{k:03}_strict',expected_stats(fixed,ee,30),lambda:strict_stats(strict(ss,fixed)),'randomized')
+    source_root=Path(retentioneering.__file__).resolve().parent
+    source_hashes={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in [source_root/'tools'/'ab_test.py',source_root/'tools'/'experiment.py',source_root/'tools'/'_diff.py',source_root/'eventstream'/'eventstream.py']}
+    out={'source_hashes':source_hashes,'environment':{'python':sys.version,'platform':platform.platform(),'pandas':pd.__version__,'numpy':np.__version__,'retentioneering_source':retentioneering.__file__,'oracle_sha256':hashlib.sha256((HERE/'oracle.py').read_bytes()).hexdigest(),'seed':2026103002,'random_datasets':random_n},
+         'summary':{'checks':len(RESULTS),'passed':sum(r['passed'] for r in RESULTS),'failed':sum(not r['passed'] for r in RESULTS)},'checks':RESULTS}
+    (OUT/'raw-results.json').write_text(json.dumps(out,indent=2,allow_nan=False)+'\n')
+    (OUT/'fixtures.json').write_text(json.dumps(clean(FIXTURES),indent=2,allow_nan=False)+'\n')
+    print(json.dumps(out['summary']),flush=True)
+
+if __name__=='__main__':
+    main(ARGS.random_n)

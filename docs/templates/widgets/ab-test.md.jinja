@@ -66,12 +66,12 @@ simultaneous interval is needed (`delta_ci_low_adj` / `delta_ci_high_adj` in the
 headless result).
 
 **An inconclusive row is not "no effect".** Its interval says which effects the
-data still allow; the MDE says which effect this design would have detected
+data still allow; the normal-approximation MDE describes a planning approximation, not actual Fisher power
 with the requested power — a property of the design, not a bound on the true
 effect. The scorecard shows each row's `reading` in a **Reading** column (hover
-for the whole sentence, click to expand); it spells out what is inconclusive, on
-what basis, and how many paths a new test, sized before it starts, would need to
-detect a smaller effect. It reads the row's numbers only: it does not check the
+for the whole sentence, click to expand); it spells out the method and
+availability. Any sample-size multiplier is a normal planning approximation
+that requires verification with the chosen test. It reads the row's numbers only: it does not check the
 sample ratio or the unit.
 
 A **support** badge (hover for its meaning) flags a row's support:
@@ -89,8 +89,9 @@ A **support** badge (hover for its meaning) flags a row's support:
 
 One section per metric: a forest plot of the strata deltas and a table with the
 stratum's share in each arm, its delta, the adjusted p-value and the
-stratum-vs-rest p-value. The header carries two p-values that answer different
-questions:
+stratum-vs-rest p-value. Default Fisher/descriptive rows suppress secondary p-values. Explicit supported
+approximate methods expose guarded exploratory diagnostics, outside the primary
+corrected family, that answer different questions:
 
 - **heterogeneity p** (Cochran's Q over the strata with enough support): do the
   strata deltas differ from each other? A low value is the evidence for "it
@@ -102,10 +103,9 @@ questions:
   treatment.
 
 A stratum is a randomised comparison only if the treatment could not change who
-is in it. Rows whose strata are not declared (`strata_pre_exposure=True`, or
-"Declared pre-exposure" in the sidebar) or read from a truncation in the
-recipe are **descriptive and exploratory**: marked `*`, in italics, under a
-banner. Their p-values, balance tests, heterogeneity tests and confirmatory
+is in it. Rows without an explicit declaration (`strata_pre_exposure=True`, a local
+`add_segment(pre_exposure=True)`, or the sidebar declaration) are **descriptive and exploratory**: marked `*`, in italics, under a
+banner. Truncation and transferred/legacy flags never certify timing. Their p-values, balance tests, heterogeneity tests and confirmatory
 verdicts are suppressed; descriptive estimates and intervals remain visible.
 
 ### Periods
@@ -142,7 +142,7 @@ that changes with exposure age (novelty), bin by
   behaviour (users who reached checkout) before the test.
 - **The arms have the planned sizes.** Check with
   [`get_sample_ratio`](/docs/tools/get-sample-ratio) first; a sample ratio
-  mismatch invalidates every number here.
+  mismatch requires investigation before interpreting the comparison causally.
 
 The [A/B Testing guide](/docs/ab-testing) walks through all of this on the
 bundled experiment, `rete.datasets.load_ab_test()`, with the numbers read out.

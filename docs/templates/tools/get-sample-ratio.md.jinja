@@ -4,22 +4,43 @@
 ## How it works
 
 Run it before reading any metric. A mismatch between the arm sizes and the
-planned split means assignment, logging or a filter lost paths from one arm,
-and every comparison of the experiment is suspect until the cause is found.
+planned split is an investigation alarm for allocation, logging or filtering;
+it does not by itself identify a broken experiment.
 `period="D"` repeats the check per day of assignment (`"W"` and `"M"` per week
 and month, spelled as in `get_ab_test`), and `strata_col=` per segment fixed at
 assignment; a segment computed after exposure is not a valid stratum here.
 With `assignment=`, `segment_col` is optional: the table alone is counted.
 SRM requires the coarsest declared path grain. A session-indexed assignment table does not
 make repeated sessions of a user independent; finer-grain counts can be inspected
-descriptively, without a chi-square test. Declare a finer unit as primary only if the design
+descriptively, without an allocation test. Declare a finer unit as primary only if the design
 makes those units independent.
 
+The caller must establish independent allocation with the specified probabilities.
+Two-arm checks use `exact_binomial_two_sided` under `independent_bernoulli` allocation.
+Multiarm checks use `pearson_chi_square_asymptotic` under `independent_multinomial`
+allocation only when every expected arm count is at least five; this guard does not
+make the approximation exact. Fixed-total and blocked designs require their own
+diagnostic. An assignment roster alone does not establish the allocation model.
+
+Explicit `expected_shares` keys define the planned arms, including arms with no
+observed assignments. Unlisted observed arms remain in `unassigned_paths`.
+Overall and split rows expose `p_value_method`, `sampling_assumption`,
+`inference_status`, `support_warning`, and `expected_count_min`. `chi2` and `dof`
+are descriptive Pearson quantities even when the p-value comes from the exact
+binomial test. An unavailable check has `mismatch=None`, not a passing result;
+`inference_status` must be `ok` to interpret its p-value. A conflicting assignment
+still sets `mismatch=True` when the allocation test is unavailable.
+
+Split rows form one planned Holm family, retaining unavailable groups in its
+size. The overall check, separate calls and repeated looks are separate families.
+
 The result's `reading` puts the check in one sentence: `"expected 50/50,
-observed 5040/4960 (control/treatment), p 0.42: no mismatch"`, or
-`"mismatch: ... — the test is invalid until the assignment is fixed"` when the
+observed 5040/4960 (control/treatment), p 0.43: no mismatch"`, or
+`"mismatch: ... — investigate allocation and logging before interpreting outcomes"` when the
 split is off or paths carry two arms. With `strata_col=` or `period=` it also
 names the strata or periods that mismatch: a logging bug on one platform can hide inside a plausible overall
 split.
+Sparse multiarm checks say `check unavailable`; they cannot be interpreted as
+evidence that allocation passed.
 
 {% endblock %}

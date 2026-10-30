@@ -1,0 +1,79 @@
+"""Independent handwritten aggregate/serialization oracle; preregistered before inspection."""
+from fractions import Fraction
+from pathlib import Path
+import hashlib
+import json
+import math
+
+
+def rates(control_n, control_success, treatment_n, treatment_success):
+    c = Fraction(control_success, control_n) if control_n else None
+    t = Fraction(treatment_success, treatment_n) if treatment_n else None
+    delta = t - c if c is not None and t is not None else None
+    lift = delta / c if delta is not None and c else None
+    def value(x):
+        return float(x) if x is not None else None
+    return {
+        "control_n": control_n, "control_success": control_success,
+        "treatment_n": treatment_n, "treatment_success": treatment_success,
+        "control_rate": value(c), "treatment_rate": value(t),
+        "control_percent": value(100*c) if c is not None else None,
+        "treatment_percent": value(100*t) if t is not None else None,
+        "absolute_delta": value(delta),
+        "delta_percentage_points": value(100*delta) if delta is not None else None,
+        "relative_lift": value(lift),
+        "relative_lift_percent": value(100*lift) if lift is not None else None,
+        "comparison_available": c is not None and t is not None,
+    }
+
+
+def finite_json(value):
+    return json.dumps(value, allow_nan=False, sort_keys=True)
+
+
+def build():
+    cases = {
+        "A_positive": rates(4, 2, 5, 3),
+        "B_zero_control": rates(3, 0, 3, 1),
+        "C_empty_treatment": rates(3, 1, 0, 0),
+        "D_cutoff_binding": rates(3, 1, 2, 2),
+        "E_negative": rates(4, 3, 4, 1),
+    }
+    assignments = [
+        {"subject": "t3", "arm": "treatment", "assigned_at": "2026-01-04T00:00:00Z"},
+        {"subject": "c2", "arm": "control", "assigned_at": "2026-01-02T00:00:00Z"},
+        {"subject": "t1", "arm": "treatment", "assigned_at": "2026-01-01T00:00:00Z"},
+        {"subject": "c3", "arm": "control", "assigned_at": "2026-01-01T00:00:00Z"},
+        {"subject": "t2", "arm": "treatment", "assigned_at": "2026-01-02T00:00:00Z"},
+        {"subject": "c1", "arm": "control", "assigned_at": "2026-01-01T00:00:00Z"},
+    ]
+    success_events = [
+        {"subject": "t1", "time": "2026-01-02T00:00:00Z"},
+        {"subject": "c3", "time": "2026-01-04T00:00:00Z"},
+        {"subject": "c1", "time": "2026-01-02T00:00:00Z"},
+        {"subject": "t1", "time": "2026-01-02T00:00:00Z"},
+        {"subject": "c2", "time": "2026-01-01T00:00:00Z"},
+        {"subject": "t2", "time": "2026-01-03T00:00:00Z"},
+        {"subject": "u1", "time": "2026-01-02T00:00:00Z"},
+    ]
+    result = {"cases": cases, "cutoff_fixture": {
+        "cutoff": "2026-01-03T00:00:00Z", "assignments": assignments, "success_events": success_events,
+    }}
+    finite_json(result)
+    for value in [math.inf, -math.inf, math.nan]:
+        try:
+            finite_json({"value": value})
+        except ValueError:
+            continue
+        raise AssertionError("nonfinite JSON escaped")
+    assert cases["A_positive"]["delta_percentage_points"] == 10
+    assert cases["A_positive"]["relative_lift_percent"] == 20
+    assert cases["D_cutoff_binding"]["relative_lift_percent"] == 200
+    assert cases["B_zero_control"]["relative_lift"] is None
+    return result
+
+
+if __name__ == "__main__":
+    path = Path(__file__).with_name("oracle_expected.json")
+    path.write_text(json.dumps(build(), indent=2, allow_nan=False) + "\n")
+    print(path)

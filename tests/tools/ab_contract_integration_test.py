@@ -265,8 +265,8 @@ def test_undefined_ratio_numerator_excludes_its_denominator_together():
 def test_srm_reports_its_sampling_assumption_and_rejects_nan_shares():
     stream, assignment = cohort()
     result = stream.get_sample_ratio(assignment=assignment)
-    assert result["sampling_assumption"] == "independent_multinomial"
-    assert result["p_value_method"] == "pearson_chi_square_asymptotic"
+    assert result["sampling_assumption"] == "independent_bernoulli"
+    assert result["p_value_method"] == "exact_binomial_two_sided"
     with pytest.raises(InvalidParameterError, match="finite positive"):
         stream.get_sample_ratio(
             assignment=assignment,
@@ -303,6 +303,7 @@ def test_signed_ratio_numerators_are_supported():
     stream = Eventstream(frame, {"segment_cols": ["arm"], "custom_cols": ["value"]})
     ratio = {
         "name": "refund_per_event",
+        "test": "bootstrap",
         "metric": "column_sum",
         "metric_args": {"column": "value"},
         "denominator": {"metric": "length"},

@@ -1,0 +1,120 @@
+"""Independent oracle, frozen before implementation inspection; Python stdlib + numpy."""
+from __future__ import annotations
+import math
+from statistics import NormalDist
+import numpy as np
+
+def finite_joint(*arrays):
+    a = [np.asarray(x, dtype=float) for x in arrays]
+    if len({len(x) for x in a}) != 1:
+        raise ValueError('joint arrays need equal length')
+    keep = np.logical_and.reduce([np.isfinite(x) for x in a])
+    return tuple(x[keep] for x in a)
+
+def mean(values):
+    x = np.asarray(values, dtype=float)
+    if len(x) == 0 or not np.isfinite(x).all():
+        return math.nan
+    # Scale first: a representable mean need not have a representable sum.
+    scale = float(np.max(np.abs(x)))
+    if scale == 0:
+        return 0.0
+    return (math.fsum(float(v / scale) for v in x) / len(x)) * scale
+
+def ratio(numerator, denominator):
+    x, y = np.asarray(numerator, float), np.asarray(denominator, float)
+    if len(x) != len(y) or len(x) == 0 or not np.isfinite(x).all() or not np.isfinite(y).all():
+        return math.nan
+    # Separate scales permit ratios of huge representable totals.
+    sx, sy = float(np.max(np.abs(x))), float(np.max(np.abs(y)))
+    if sy == 0:
+        return math.nan
+    b = math.fsum(float(v / sy) for v in y)
+    if b == 0:
+        return math.nan
+    if sx == 0:
+        return 0.0
+    a = math.fsum(float(v / sx) for v in x)
+    return (a / b) * (sx / sy)
+
+def mean_of_ratios(numerator, denominator):
+    return mean(np.asarray(numerator, float) / np.asarray(denominator, float))
+
+def arm_stat(unit_matrix, kind='mean'):
+    x = np.asarray(unit_matrix, float)
+    if x.ndim == 1:
+        x = x[:, None]
+    if kind == 'mean':
+        return mean(x[:, 0])
+    if kind == 'ratio':
+        return ratio(x[:, 0], x[:, 1])
+    if kind == 'paired_mean':
+        return mean(x[:, 1] - x[:, 0])
+    if kind == 'paired_ratio':
+        return ratio(x[:, 2], x[:, 3]) - ratio(x[:, 0], x[:, 1])
+    raise ValueError(kind)
+
+def contrast(control, treatment, kind='mean'):
+    return arm_stat(treatment, kind) - arm_stat(control, kind)
+
+def draw_literal(data, rng):
+    """Literal whole-unit bootstrap, no aggregate/linearization shortcut."""
+    x = np.asarray(data, float)
+    return x[rng.integers(0, len(x), len(x))]
+
+def bootstrap(control, treatment, kind='mean', n_resamples=1999, seed=20261030):
+    rng = np.random.default_rng(seed)
+    draws = np.empty(n_resamples)
+    for b in range(n_resamples):
+        c, t = draw_literal(control, rng), draw_literal(treatment, rng)
+        draws[b] = contrast(c, t, kind)
+    return draws
+
+def poisson_bootstrap(control, treatment, kind='mean', n_resamples=1999, seed=20261030):
+    rng = np.random.default_rng(seed)
+    out = np.empty(n_resamples)
+    for b in range(n_resamples):
+        c = np.repeat(np.asarray(control), rng.poisson(1, len(control)), axis=0)
+        t = np.repeat(np.asarray(treatment), rng.poisson(1, len(treatment)), axis=0)
+        out[b] = contrast(c, t, kind)
+    return out
+
+def interval(draws, estimate, level=.95):
+    x = np.asarray(draws, float)
+    good = x[np.isfinite(x)]
+    if len(good) < 2:
+        return {'valid': len(good), 'invalid': len(x) - len(good)}
+    a = (1 - level) / 2
+    z = NormalDist().inv_cdf(1-a)
+    s = float(np.std(good, ddof=1))
+    p = 0.0 if s == 0 and estimate != 0 else (1.0 if s == 0 else math.erfc(abs(estimate/s)/math.sqrt(2)))
+    return {'valid': len(good), 'invalid': len(x)-len(good), 'sd': s,
+            'percentile': [float(np.quantile(good,a)), float(np.quantile(good,1-a))],
+            'normal': [float(estimate-z*s), float(estimate+z*s)], 'normal_p': p}
+
+def wilson(k, n, level=.95):
+    if n == 0:
+        return [math.nan, math.nan]
+    z = NormalDist().inv_cdf((1+level)/2)
+    p = k/n
+    center = (p+z*z/(2*n))/(1+z*z/n)
+    half = z*math.sqrt(p*(1-p)/n+z*z/(4*n*n))/(1+z*z/n)
+    return [center-half, center+half]
+
+def self_test():
+    assert mean([1, 2, 3]) == 2
+    assert ratio([1, 9], [1, 3]) == 2.5
+    assert mean_of_ratios([1, 9], [1, 3]) == 2
+    assert math.isnan(ratio([0,0],[0,0]))
+    assert ratio([1, 0], [1, 0]) == 1
+    assert np.allclose(finite_joint([1,np.nan,3],[2,4,np.nan])[0], [1])
+    assert arm_stat([[1,3],[100,102]], 'paired_mean') == 2
+    assert mean([1e308,1e308]) == 1e308
+    x = np.array([[1.,1.],[9.,3.],[0.,0.]])
+    idx = np.array([0,0,2]); counts=np.bincount(idx,minlength=3)
+    assert ratio(x[idx,0],x[idx,1]) == ratio(x[:,0]*counts,x[:,1]*counts)
+    return {'oracle_self_test':'pass'}
+
+if __name__ == '__main__':
+    import json
+    print(json.dumps(self_test()))

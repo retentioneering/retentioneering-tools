@@ -412,6 +412,8 @@ class ABTestWidget(RetentioneeringWidget):
         ]
         if len(diff) == 3:
             labels = (str(diff[1]), str(diff[2]))
+            if labels[0] == labels[1] and type(diff[1]) is not type(diff[2]):
+                labels = tuple(f"{v!r} ({type(v).__name__})" for v in diff[1:])
         else:
             labels = ("Group 1", "Group 2")
         return {

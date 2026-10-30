@@ -22,9 +22,10 @@ const CORRECTIONS: [string, string][] = [
   ["holm", "Holm"], ["bonferroni", "Bonferroni"], ["bh", "Benjamini–Hochberg"], ["none", "None"],
 ];
 const SCOPES: [string, string][] = [["metric", "Each metric"], ["all", "All metrics together"]];
-const TESTS: [string, string][] = [
-  ["auto", "Auto (by metric kind)"], ["z_test", "z-test (0/1 metrics)"],
-  ["welch_t_test", "Welch t-test"], ["bootstrap", "Bootstrap"],
+export const TESTS: [string, string][] = [
+  ["auto", "Auto: binary exact; other outcomes descriptive"], ["fisher_exact", "Fisher exact (binary)"],
+  ["descriptive", "Descriptive (no inference)"], ["z_test", "z-test (binary, approximate)"],
+  ["welch_t_test", "Welch (nonbinary, approximate)"], ["bootstrap", "Bootstrap (nonbinary, approximate)"],
 ];
 const PERIODS: [string, string][] = [["", "None"], ["D", "Day"], ["W", "Week"], ["M", "Month"]];
 const PERIOD_BASES: [string, string][] = [["calendar", "Calendar"], ["since_assignment", "Since assignment"]];
@@ -193,7 +194,7 @@ interface SidebarProps {
   isStatic: boolean;
   isLoading: boolean;
   params: Record<string, any>;
-  segLevels: Record<string, string[]>;
+  segLevels: Record<string, unknown[]>;
   segmentCols: string[];
   pathCols: string[];
   assignmentInfo: string;
@@ -207,19 +208,28 @@ export function armColumnChoices(segmentCols: string[], assignmentInfo: string):
   return assignmentInfo && !segmentCols.includes("arm") ? ["arm", ...segmentCols] : segmentCols;
 }
 
+/** Keep numeric and string levels distinct in HTML select values and round trips. */
+export function armLevelOptions(levels: unknown[]): { value: string; label: string }[] {
+  return levels.map(level => ({
+    value: JSON.stringify(level),
+    label: levels.filter(other => String(other) === String(level)).length > 1
+      ? `${JSON.stringify(level)} (${typeof level})` : String(level),
+  }));
+}
+
 function Sidebar({ host, isStatic, isLoading, params, segLevels, segmentCols, pathCols, assignmentInfo, metricsCount, onOpenMetrics }: SidebarProps) {
   const disabled = isLoading || isStatic;
   const diff: unknown[] | null = params.diff;
-  const segmentDiff = Array.isArray(diff) && diff.length === 3 ? (diff as string[]) : null;
+  const segmentDiff = Array.isArray(diff) && diff.length === 3 ? diff : null;
   const idDiff = Array.isArray(diff) && diff.length === 2;
-  const [seg, setSeg] = React.useState(segmentDiff?.[0] ?? "");
-  const [v1, setV1] = React.useState(segmentDiff ? String(segmentDiff[1]) : "");
-  const [v2, setV2] = React.useState(segmentDiff ? String(segmentDiff[2]) : "");
+  const [seg, setSeg] = React.useState(String(segmentDiff?.[0] ?? ""));
+  const [v1, setV1] = React.useState(segmentDiff ? JSON.stringify(segmentDiff[1]) : "");
+  const [v2, setV2] = React.useState(segmentDiff ? JSON.stringify(segmentDiff[2]) : "");
   React.useEffect(() => {
-    setSeg(segmentDiff?.[0] ?? ""); setV1(segmentDiff ? String(segmentDiff[1]) : ""); setV2(segmentDiff ? String(segmentDiff[2]) : "");
+    setSeg(String(segmentDiff?.[0] ?? "")); setV1(segmentDiff ? JSON.stringify(segmentDiff[1]) : ""); setV2(segmentDiff ? JSON.stringify(segmentDiff[2]) : "");
   }, [JSON.stringify(diff)]);
-  const levels = seg ? (segLevels[seg] ?? []).map(String) : [];
-  const armsDirty = seg !== (segmentDiff?.[0] ?? "") || v1 !== (segmentDiff ? String(segmentDiff[1]) : "") || v2 !== (segmentDiff ? String(segmentDiff[2]) : "");
+  const levels = seg ? armLevelOptions(segLevels[seg] ?? []) : [];
+  const armsDirty = seg !== (segmentDiff?.[0] ?? "") || v1 !== (segmentDiff ? JSON.stringify(segmentDiff[1]) : "") || v2 !== (segmentDiff ? JSON.stringify(segmentDiff[2]) : "");
   const canApplyArms = !!seg && !!v1 && !!v2 && v1 !== v2;
 
   const [horizon, setHorizon] = React.useState<string>(params.horizon || "");
@@ -230,7 +240,7 @@ function Sidebar({ host, isStatic, isLoading, params, segLevels, segmentCols, pa
     if (horizonValid && horizon.trim() !== (params.horizon || "")) host.set("horizon", horizon.trim());
   };
 
-  const set = (key: string) => (e: React.ChangeEvent<HTMLSelectElement>) => host.set(key, e.target.value);
+  const set = (key: string) => (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => host.set(key, e.target.value);
   const options = (list: [string, string][], current: string) =>
     (list.some(([v]) => v === current) ? list : [...list, [current, current] as [string, string]])
       .map(([v, label]) => <option key={v} value={v}>{label}</option>);
@@ -250,7 +260,7 @@ function Sidebar({ host, isStatic, isLoading, params, segLevels, segmentCols, pa
         ) : (
           <>
             <select aria-label="Arm column" value={seg} disabled={disabled} style={{ ...sel, marginBottom: 6 }}
-              onChange={e => { const c = e.target.value; setSeg(c); const l = (segLevels[c] ?? []).map(String); setV1(l[0] ?? ""); setV2(l[1] ?? ""); }}>
+              onChange={e => { const c = e.target.value; setSeg(c); const l = armLevelOptions(segLevels[c] ?? []); setV1(l[0]?.value ?? ""); setV2(l[1]?.value ?? ""); }}>
               <option value="">— select —</option>
               {armChoices.map(c => <option key={c} value={c}>{c === "arm" && !segmentCols.includes("arm") ? "arm (assignment table)" : c}</option>)}
             </select>
@@ -258,17 +268,17 @@ function Sidebar({ host, isStatic, isLoading, params, segLevels, segmentCols, pa
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 <span style={{ color: "#ef4444", fontSize: 13 }}>●</span>
                 <select aria-label="Group 1" value={v1} disabled={disabled} style={{ ...sel, flex: 1, minWidth: 0, width: "auto" }} onChange={e => setV1(e.target.value)}>
-                  {levels.map(l => <option key={l} value={l} disabled={l === v2}>{l}</option>)}
+                  {levels.map(l => <option key={l.value} value={l.value} disabled={l.value === v2}>{l.label}</option>)}
                 </select>
                 <span style={{ color: "#6b7280", fontSize: 11 }}>vs</span>
                 <span style={{ color: "#3b82f6", fontSize: 13 }}>●</span>
                 <select aria-label="Group 2" value={v2} disabled={disabled} style={{ ...sel, flex: 1, minWidth: 0, width: "auto" }} onChange={e => setV2(e.target.value)}>
-                  {levels.map(l => <option key={l} value={l} disabled={l === v1}>{l}</option>)}
+                  {levels.map(l => <option key={l.value} value={l.value} disabled={l.value === v1}>{l.label}</option>)}
                 </select>
               </div>
             )}
             {armsDirty && !isStatic && (
-              <button disabled={!canApplyArms || isLoading} onClick={() => host.set("diff", JSON.stringify([seg, v1, v2]))}
+              <button disabled={!canApplyArms || isLoading} onClick={() => host.set("diff", JSON.stringify([seg, JSON.parse(v1), JSON.parse(v2)]))}
                 style={{ marginTop: 8, width: "100%", padding: "6px 0", background: canApplyArms ? "var(--retentioneering-yellow)" : "#f3f4f6", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: canApplyArms ? "pointer" : "default", color: canApplyArms ? "#1a1a1a" : "#9ca3af" }}>
                 Apply
               </button>
@@ -305,6 +315,7 @@ function Sidebar({ host, isStatic, isLoading, params, segLevels, segmentCols, pa
         <select aria-label="Test" value={params.test} disabled={disabled} style={sel} onChange={set("test")}>
           {options(TESTS, params.test)}
         </select>
+        <Hint>Auto uses Fisher exact for binary outcomes and descriptive estimates otherwise. Explicit Welch and bootstrap require nonbinary outcomes; z-test requires adequate expected cells and remains approximate.</Hint>
 
         <Rule />
         <SH>Strata</SH>

@@ -1,5 +1,8 @@
+import json
+import math
 from typing import Callable, Collection, Tuple
 
+import numpy as np
 import pandas as pd
 
 from retentioneering import engine
@@ -302,6 +305,28 @@ def _interval_levels(edges: list[float]) -> list[str]:
     return labels
 
 
+def _persistent_scalar(value, *, key=False):
+    """Supported lossless JSON scalars for persisted path-label mappings."""
+    if isinstance(value, np.generic):
+        value = value.item()
+    missing = value is None or value is pd.NA or value is pd.NaT
+    missing = missing or (isinstance(value, float) and math.isnan(value))
+    if missing and not key:
+        return None
+    if (
+        missing
+        or not isinstance(value, (str, bool, int, float))
+        or (isinstance(value, float) and not math.isfinite(value))
+    ):
+        raise InvalidParameterError(
+            "path_values",
+            type(value).__name__,
+            ["finite string, boolean or numeric keys/labels; labels may be missing"],
+            reason="Recipes require lossless JSON scalars; convert unsupported labels explicitly.",
+        )
+    return value
+
+
 def _path_values_series(path_values) -> pd.Series:
     """Validate `path_values` and return it as a Series indexed by path id."""
     if isinstance(path_values, pd.Series):
@@ -320,6 +345,17 @@ def _path_values_series(path_values) -> pd.Series:
             "path_values",
             f"{len(dup)} repeated path id(s), e.g. {list(dup[:5])}",
             ["one value per path id (a unique index)"],
+        )
+    keys = [_persistent_scalar(value, key=True) for value in series.index]
+    for value in series:
+        _persistent_scalar(value)
+    text_keys = [str(key) for key in keys]
+    json_keys = [key if isinstance(key, str) else json.dumps(key) for key in keys]
+    if len(set(text_keys)) != len(keys) or len(set(json_keys)) != len(keys):
+        raise InvalidParameterError(
+            "path_values",
+            "mapping keys collide when serialized",
+            ["keys with distinct JSON/string representations"],
         )
     return series
 

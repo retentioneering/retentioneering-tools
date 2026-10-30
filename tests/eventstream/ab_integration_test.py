@@ -123,7 +123,7 @@ def test_public_binary_intervals_have_same_orientation_and_roster(analysis):
         stream,
         roster,
         [{**metric, "agg": "mean"}],
-        binary_intervals={"method": "newcombe"},
+        binary_intervals={"method": "exact"},
     )
     flexible = stream.ab_test_data(
         ("arm", "t", "c"),
@@ -175,7 +175,7 @@ def test_repeated_mcp_calls_keep_assignment_diagnostics_self_contained(analysis)
         )
         session = ReportSession(stream, {}, assignment=assignment)
         srm = tools.get_sample_ratio(session)
-        assert srm["sampling_assumption"] == "independent_multinomial"
+        assert srm["sampling_assumption"] == "independent_bernoulli"
         assert any("48 of 180" in warning for warning in srm["warnings"])
         scorecard = tools.get_ab_test(
             session,

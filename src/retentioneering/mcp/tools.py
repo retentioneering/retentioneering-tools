@@ -309,7 +309,7 @@ def _experiment_facts(stream: Eventstream) -> dict:
     df = stream.df
     levels, truncated = {}, []
     for col, values in stream.get_segment_levels().items():
-        values = [str(v) for v in values]
+        values = [_json_label(v) for v in values]
         if len(values) > _MAX_LEVELS:
             truncated.append(col)
         levels[col] = values[:_MAX_LEVELS]
@@ -343,10 +343,14 @@ def _assignment_facts(assignment: Any) -> dict:
         table = normalize_assignment(assignment)
     except Exception as exc:  # reported, not raised: describe() must answer
         return {"error": str(exc)}
-    arms = table["arm"].astype(str).value_counts().sort_index()
+    arms = table["arm"].value_counts(sort=False)
+    labels = list(arms.index)
     out: dict[str, Any] = {
         "paths": int(len(table)),
-        "arms": {str(k): int(v) for k, v in arms.items()},
+        "arms": {_display_label(k, labels): int(v) for k, v in arms.items()},
+        "arm_levels": [
+            {"level": _json_label(k), "paths": int(v)} for k, v in arms.items()
+        ],
         "has_assigned_at": "assigned_at" in table.columns,
         "usage": (
             "get_sample_ratio and get_ab_test count every assigned path (silent ones "
@@ -731,14 +735,15 @@ def add_ab_test(
                 entry[column] = int(row[column])
         entry["conditional"] = bool(row.get("conditional", False))
         for column in ("delta", "delta_ci_low", "delta_ci_high", "mde"):
-            entry[column] = _json_number(row.get(column), 6)
-        entry["p_value_adjusted"] = _json_number(row.get("p_value_adjusted"), 8)
-        entry["mde_alpha"] = _json_number(row.get("mde_alpha"), 8)
+            entry[column] = _json_number(row.get(column))
+        entry["p_value_adjusted"] = _json_number(row.get("p_value_adjusted"))
+        entry["mde_alpha"] = _json_number(row.get("mde_alpha"))
         entry["correction_family"] = row.get("correction_family", "")
         entry["support_warning"] = row.get("support_warning", "")
         if "reading" in row:
             entry["reading"] = row["reading"]
         entry["scope"] = scope
+        entry.update(_ab_metadata(row, entry["unit"]))
         own = [r for r in strata_rows if r.get("metric") == name]
         if own:
             flag = own[0].get("strata_pre_exposure")
@@ -748,12 +753,20 @@ def add_ab_test(
             )
             entry["exploratory"] = all(bool(r.get("exploratory")) for r in own)
             entry["strata_correction_family"] = own[0].get("correction_family")
+            entry["strata_diagnostics_basis"] = own[0].get("strata_diagnostics_basis")
         entries.append(entry)
     return {
         "tab_id": tab_id,
         "label": label,
         "correction": correction,
         "correction_scope": correction_scope,
+        "diff": list(diff),
+        "observation_end": observation_end,
+        "observation_basis": (result.get("overall") or [{}])[0].get(
+            "observation_basis"
+        ),
+        "analysis_unit": (result.get("overall") or [{}])[0].get("analysis_unit"),
+        "bootstrap_algorithm": result.get("bootstrap_algorithm"),
         "metrics": entries,
         "warnings": result.get("warnings", []),
     }
@@ -860,7 +873,7 @@ def get_conversion_rate(
         # never occurs at all) and has to survive as JSON null, not as the
         # bare NaN token json.dumps would otherwise emit.
         value = float(value)
-        return None if math.isnan(value) else round(value, 4)
+        return value if math.isfinite(value) else None
 
     def _cell(column: str, value: Any) -> Any:
         if column in ("start_anchor", "end_anchor"):
@@ -868,7 +881,7 @@ def get_conversion_rate(
         if column.endswith(("paths_with_start", "converted")):
             return int(value)
         if column == "p_value":
-            return _json_number(value, 8)
+            return _json_number(value)
         if column == "conditional":
             return bool(value)
         return _num(value)
@@ -885,15 +898,72 @@ def get_conversion_rate(
         out["ci_level"] = ci_level
     if diff:
         out["diff"] = list(diff)
+    for key in ("ci_basis", "ci_level", "population_basis", "independence_assumption"):
+        if key in frame.attrs:
+            out[key] = frame.attrs[key]
     return out
 
 
-def _json_number(value: Any, digits: int = 6) -> float | None:
-    """A float for JSON: NaN/inf become null (an absent estimate is not 0)."""
+def _json_number(value: Any) -> float | None:
+    """Preserve finite machine values; formatting belongs to the display layer.
+
+    NaN/inf become null. Rounding here could turn positive tails into zero,
+    or move a p-value/interval endpoint across an inference boundary.
+    """
     if value is None:
         return None
     value = float(value)
-    return round(value, digits) if math.isfinite(value) else None
+    return value if math.isfinite(value) else None
+
+
+def _json_label(value: Any) -> Any:
+    """Preserve supported scalar arm identity across the JSON boundary."""
+    if hasattr(value, "item"):
+        value = value.item()
+    return (
+        value
+        if isinstance(value, (str, int, float, bool)) or value is None
+        else str(value)
+    )
+
+
+def _display_label(value: Any, levels: list) -> str:
+    if sum(str(v) == str(value) for v in levels) > 1:
+        scalar = _json_label(value)
+        return f"{scalar!r} ({type(scalar).__name__})"
+    return str(value)
+
+
+def _ab_metadata(row: dict, unit: str) -> dict:
+    """Keep method, support and unavailable interval reasons on every MCP row."""
+    out = {
+        "numeric_unit": "share" if unit == "pp" else "value",
+        "display_scale": 100 if unit == "pp" else 1,
+    }
+    for key in (
+        "test",
+        "ci_basis",
+        "p_basis",
+        "mde_basis",
+        "support_warning",
+        "delta_ci_adjusted_basis",
+        "delta_ci_adjusted_status",
+        "strata_diagnostics_basis",
+    ):
+        if key in row:
+            out[key] = row[key]
+    for key in (
+        "rel_delta_ci_low",
+        "rel_delta_ci_high",
+        "delta_ci_low_adj",
+        "delta_ci_high_adj",
+        "valid_replicates",
+    ):
+        if key in row:
+            out[key] = _json_number(row[key])
+    if row.get("test") == "fisher_exact":
+        out["relative_ci_status"] = "not_available_for_fisher_exact"
+    return out
 
 
 def get_sample_ratio(
@@ -911,8 +981,11 @@ def get_sample_ratio(
 
     Check allocation before interpreting outcomes. A mismatch is a diagnostic
     alarm requiring investigation of assignment, exclusions and logging, not
-    proof that any one of them failed. The chi-square test assumes independent
-    multinomial assignments; fixed-allocation designs need a compatible audit.
+    proof that any one of them failed. Two arms use an exact binomial test under
+    independent Bernoulli assignment; multiple arms use approximate Pearson
+    inference under independent multinomial assignment, withheld when expected
+    counts are sparse. Fixed-allocation designs need a compatible audit.
+    A null mismatch or unavailable inference_status is not evidence of balance.
     Returns numbers only (no report tab); quote them in backticks.
 
     With an assignment table in the session (serve(stream, assignment=...);
@@ -946,10 +1019,11 @@ def get_sample_ratio(
 
     Returns
     -------
-    segment_col, path_col, mismatch (bool), p_value, chi2, dof, alpha,
+    segment_col, path_col, mismatch (bool or null when unavailable), p_value, chi2, dof, alpha,
     multi_valued_paths (paths with >1 arm: an assignment bug), silent_paths
     (assigned paths with no events; 0 without a table), unassigned_paths,
-    basis, sampling_assumption, warnings, reading (one sentence: the expected and observed split, the p-value and
+    basis, sampling_assumption, p_value_method, inference_status, support_warning,
+    expected_count_min (overall and split rows), warnings, reading (one sentence: the expected and observed split, the p-value and
     the conclusion, e.g. "expected 50/50, observed 5040/4960 (control/treatment),
     p 0.42: no mismatch"; quote it), and levels — one row per arm with paths, share,
     expected_share. With strata_col: strata, one row per stratum with stratum, paths,
@@ -985,9 +1059,9 @@ def get_sample_ratio(
     out: dict[str, Any] = {
         "segment_col": segment_col,
         "path_col": path_col or src.schema.path_col,
-        "mismatch": bool(result["mismatch"]),
-        "p_value": _json_number(result["p_value"], 8),
-        "chi2": _json_number(result["chi2"], 4),
+        "mismatch": None if result["mismatch"] is None else bool(result["mismatch"]),
+        "p_value": _json_number(result["p_value"]),
+        "chi2": _json_number(result["chi2"]),
         "dof": int(result["dof"]),
         "alpha": float(result["alpha"]),
         "multi_valued_paths": int(result["multi_valued_paths"]),
@@ -995,14 +1069,18 @@ def get_sample_ratio(
         "unassigned_paths": int(result["unassigned_paths"]),
         "basis": result["basis"],
         "sampling_assumption": result["sampling_assumption"],
+        "p_value_method": result["p_value_method"],
+        "inference_status": result["inference_status"],
+        "support_warning": result["support_warning"],
+        "expected_count_min": _json_number(result["expected_count_min"]),
         "warnings": list(dict.fromkeys(str(w.message) for w in caught)),
         "reading": result["reading"],
         "levels": [
             {
-                "level": str(row["level"]),
+                "level": _json_label(row["level"]),
                 "paths": int(row["paths"]),
-                "share": _json_number(row["share"], 4),
-                "expected_share": _json_number(row["expected_share"], 4),
+                "share": _json_number(row["share"]),
+                "expected_share": _json_number(row["expected_share"]),
             }
             for row in levels.to_dict("records")
         ],
@@ -1018,10 +1096,15 @@ def get_sample_ratio(
             {
                 key: str(row[key]),
                 "paths": int(row["paths"]),
-                "chi2": _json_number(row["chi2"], 4),
-                "p_value": _json_number(row["p_value"], 8),
-                "p_value_adjusted": _json_number(row["p_value_adjusted"], 8),
-                "mismatch": bool(row["mismatch"]),
+                "chi2": _json_number(row["chi2"]),
+                "p_value": _json_number(row["p_value"]),
+                "p_value_adjusted": _json_number(row["p_value_adjusted"]),
+                "mismatch": None if row["mismatch"] is None else bool(row["mismatch"]),
+                "sampling_assumption": row["sampling_assumption"],
+                "p_value_method": row["p_value_method"],
+                "inference_status": row["inference_status"],
+                "support_warning": row["support_warning"],
+                "expected_count_min": _json_number(row["expected_count_min"]),
             }
             for row in result[name].to_dict("records")
         ]
@@ -1033,8 +1116,8 @@ def _scope_text(
 ) -> str:
     """What one row's p_value_adjusted and interval are corrected against."""
     tail = (
-        "intervals are per comparison (unadjusted); the verdict reads "
-        "p_value_adjusted"
+        "primary intervals are per comparison (unadjusted); separate Bonferroni "
+        "interval fields carry their own availability status; the verdict reads p_value_adjusted"
     )
     if correction == "none":
         return (
@@ -1070,8 +1153,8 @@ def get_ab_test(
     """
     Compare two arms of an experiment on path metrics: delta, interval, verdict, MDE.
 
-    Run get_sample_ratio first: if the arms do not have the planned sizes, no
-    metric of the test can be trusted. Returns numbers only (no report tab): quote
+    Run get_sample_ratio first: allocation alarms require investigation, and
+    unavailable inference is not evidence of balance. Returns numbers only (no report tab): quote
     them in backticks. Population (the `population` field): with an assignment
     table in the session (serve(stream, assignment=...), shown by describe()),
     every assigned user, silent ones included (intention to treat, "assignment");
@@ -1127,8 +1210,10 @@ def get_ab_test(
         (immature). Needs the session's assignment table with assigned_at. Different
         horizons answer different questions: choose it before reading.
     test:
-        "auto" (default: z-test for 0/1 metrics, Welch for totals and values,
-        bootstrap for ratios), "z_test", "welch_t_test" or "bootstrap".
+        "auto" (default: Fisher exact for binary outcomes, descriptive for
+        nonbinary outcomes), "fisher_exact", "descriptive", "z_test",
+        "welch_t_test" or "bootstrap". Explicit z is guarded and approximate;
+        Welch/bootstrap require nonbinary outcomes and remain approximate.
     correction:
         "holm" (default), "bonferroni", "bh" or "none".
     correction_scope:
@@ -1154,14 +1239,15 @@ def get_ab_test(
     value only for some paths — time_between, column_mean, order value: it
     compares those paths, not the arms), group1_value, group2_value, delta,
     delta_ci_low, delta_ci_high, rel_delta, p_value (raw), p_value_adjusted, mde
-    (the effect the test detects with 80% power at mde_alpha), verdict
+    (normal planning approximation at the requested power and mde_alpha;
+    mde_basis labels it, not exact power for the selected test), verdict
     ("increase", "decrease", "inconclusive", "descriptive", "insufficient_data"),
     test, correction_family (what was adjusted together), mde_alpha (the level the
     mde is computed at, alpha / m under a correction; the verdict compares
     p_value_adjusted with 1 - ci_level), reading (one sentence built from the
     row's numbers: the window it covers, what the per-comparison interval
     includes or excludes, the p-value after the correction, for an inconclusive
-    row the effect the design detects and the paths a new test needs for a
+    row the normal planning approximation and approximate paths a new test needs for a
     smaller one, and the row's flags; quote it), unit ("pp": a 0/1 metric whose delta fields are shares and whose
     reading is in percentage points; "value": the metric's own unit) and scope
     (what the row is corrected against: e.g. "holm within this metric's rows
@@ -1173,7 +1259,10 @@ def get_ab_test(
     strata_count, heterogeneity_p_value, strata_correction_family,
     strata_pre_exposure, strata_pre_exposure_source ("declared", "recipe",
     "not_pre_exposure") and exploratory (true unless the strata count as
-    pre-exposure); support_warning per metric ("no_data": no path of either arm
+    pre-exposure); ci_basis, p_basis, mde_basis, numeric_unit/display_scale, relative_ci_status,
+    and optional Bonferroni delta_ci_low_adj/high_adj with delta_ci_adjusted_basis
+    and delta_ci_adjusted_status; insufficient_tail_resamples withholds endpoints
+    when the adjusted bootstrap tails are unresolved. support_warning per metric ("no_data": no path of either arm
     has the behaviour, or no value in one arm for a value or ratio metric;
     "one_arm_only": the behaviour exists in one arm only; "invalid_replicates":
     at least one requested bootstrap replicate without a value in an arm, so no
@@ -1262,13 +1351,14 @@ def get_ab_test(
             if column.endswith("_paths") or column.endswith("_support"):
                 out[column] = int(value)
             elif column in ("p_value", "p_value_adjusted", "stratum_vs_rest_p_value"):
-                out[column] = _json_number(value, 8)
+                out[column] = _json_number(value)
             elif isinstance(value, str):
                 out[column] = value
             elif column in ("period_complete", "conditional"):
                 out[column] = bool(value)
             else:
-                out[column] = _json_number(value, 6)
+                out[column] = _json_number(value)
+        out.update(_ab_metadata(row, units.get(row["metric"], "value")))
         return out
 
     main_cols = (
@@ -1314,7 +1404,7 @@ def get_ab_test(
                 f"top {min(3, len(part))} by |delta| of {len(part)}"
             )
             entry["heterogeneity_p_value"] = _json_number(
-                part["heterogeneity_p_value"].iloc[0] if len(part) else None, 8
+                part["heterogeneity_p_value"].iloc[0] if len(part) else None
             )
             flag = part["strata_pre_exposure"].iloc[0] if len(part) else pd.NA
             entry["strata_correction_family"] = (
@@ -1325,6 +1415,11 @@ def get_ab_test(
                 str(part["strata_pre_exposure_source"].iloc[0]) if len(part) else None
             )
             entry["exploratory"] = bool(part["exploratory"].all())
+            entry["strata_diagnostics_basis"] = (
+                part["strata_diagnostics_basis"].iloc[0]
+                if len(part) and "strata_diagnostics_basis" in part
+                else None
+            )
             entry["strata"] = [
                 _row(
                     r,
@@ -1512,9 +1607,9 @@ def get_ab_bootstrap(
             "delta_ci_low",
             "delta_ci_high",
         ):
-            entry[column] = _json_number(row[column], 6)
-        entry["p_value"] = _json_number(row["p_value"], 8)
-        entry["p_value_adjusted"] = _json_number(row["p_value_adjusted"], 8)
+            entry[column] = _json_number(row[column])
+        entry["p_value"] = _json_number(row["p_value"])
+        entry["p_value_adjusted"] = _json_number(row["p_value_adjusted"])
         for field in (
             "correction_family",
             "p_basis",
@@ -1523,7 +1618,7 @@ def get_ab_bootstrap(
             "ci_scope",
         ):
             entry[field] = row[field]
-        entry["share_positive"] = _json_number(row["share_positive"], 4)
+        entry["share_positive"] = _json_number(row["share_positive"])
         entry["valid_replicates"] = int(row["valid_replicates"])
         entry["unit"] = units.get(row["metric"], "value")
         entry["numeric_unit"] = "share" if entry["unit"] == "pp" else "value"

@@ -198,10 +198,10 @@ def aa_metrics(column: str = "order_value") -> list:
     revenue = {"metric": "column_sum", "metric_args": {"column": column}}
     return [
         _has("order_success", "conversion"),
-        {"name": "orders_per_user", **ORDERS},
-        {"name": "revenue_per_user", **revenue},
+        {"name": "orders_per_user", **ORDERS, "test": "welch_t_test"},
+        {"name": "revenue_per_user", **revenue, "test": "welch_t_test"},
         {"name": "revenue_bootstrap", **revenue, "test": "bootstrap"},
-        {"name": "aov", **revenue, "denominator": ORDERS},
+        {"name": "aov", **revenue, "denominator": ORDERS, "test": "bootstrap"},
     ]
 
 

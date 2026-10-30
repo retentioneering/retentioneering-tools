@@ -46,6 +46,11 @@ function label(value: unknown): string {
   return value === null || value === undefined ? "—" : String(value);
 }
 
+function armLabel(value: unknown, other: unknown): string {
+  return String(value) === String(other) && typeof value !== typeof other
+    ? `${JSON.stringify(value)} (${typeof value})` : label(value);
+}
+
 function words(value: unknown): string {
   return label(value).replace(/_/g, " ");
 }
@@ -70,7 +75,10 @@ function estimate(row: ExperimentRow, key: string, signed = false): string {
 
 function methodName(value: unknown): string {
   const names: Record<string, string> = {
-    bootstrap_percentile: "Percentile bootstrap", wilson: "Wilson", newcombe: "Newcombe",
+    bootstrap_percentile: "Percentile bootstrap (approximate)", wilson: "Wilson", newcombe: "Newcombe",
+    clopper_pearson: "Clopper–Pearson (exact)", clopper_pearson_bonferroni: "Conservative exact Clopper–Pearson difference",
+    wilson_approximate: "Wilson (approximate)", newcombe_approximate: "Newcombe (approximate)",
+    fisher_exact_two_sided: "Fisher exact, two-sided", welch_two_sided: "Welch, two-sided (approximate)",
   };
   return names[String(value)] ?? words(value);
 }
@@ -146,7 +154,7 @@ export function ExperimentTable({ rows, control, treatment, sharedScale = false 
   return <div style={{ overflowX: "auto" }}>
     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 800 }}>
       <thead><tr>
-        {["Outcome", `Control · ${label(control)}`, `Treatment · ${label(treatment)}`, "Treatment − control", "Declared tests"].map(heading =>
+        {["Outcome", `Control · ${armLabel(control, treatment)}`, `Treatment · ${armLabel(treatment, control)}`, "Treatment − control", "Declared tests"].map(heading =>
           <th key={heading} scope="col" style={{ ...cell, color: MUTED, background: "#f7f9fa", fontWeight: 600 }}>{heading}</th>)}
       </tr></thead>
       <tbody>{rows.map(row => <tr key={`${row.family}:${row.metric}`} data-metric={row.metric}>
@@ -171,7 +179,7 @@ export function ExperimentTable({ rows, control, treatment, sharedScale = false 
         </td>
         <td style={cell}>
           {row.test_method ? <>
-            <div>{words(row.test_method)}</div>
+            <div>{methodName(row.test_method)}</div>
             <div style={small}>p {number(row.p_value)}<br />Adjusted p {number(row.p_value_adjusted)}<br />Status: {words(row.test_status)}</div>
           </> : <span style={small}>Not requested</span>}
         </td>
@@ -189,7 +197,7 @@ export function Diagnostics({ payload }: { payload: ExperimentPayload }) {
     <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%" }}>
       <thead><tr>{["Variant", "Assigned", "Observed", "Silent"].map(h => <th key={h} scope="col" style={{ ...cell, padding: "5px 8px" }}>{h}</th>)}</tr></thead>
       <tbody>{payload.diagnostics.map((d, i) => <tr key={i}>
-        {[label(d.arm), number(d.n_assigned), number(d.n_observed), number(d.n_without_events)].map((v, j) => <td key={j} style={{ ...cell, padding: "5px 8px" }}>{v}</td>)}
+        {[armLabel(d.arm, d.arm === meta.control ? meta.treatment : meta.control), number(d.n_assigned), number(d.n_observed), number(d.n_without_events)].map((v, j) => <td key={j} style={{ ...cell, padding: "5px 8px" }}>{v}</td>)}
       </tr>)}</tbody>
     </table></div>
     <p style={small}>Population: {words(meta.population_basis)}<br />Unit: {label(meta.unit_col)}<br />Window: [{label(observation.start)}, {label(observation.end)})</p>

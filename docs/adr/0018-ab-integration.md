@@ -57,7 +57,7 @@ intentional and observable.
 | Window | Observed span, explicit logging cutoff, fixed follow-up, calendar or exposure-age bins | Fixed `[start, end)`, all assignments at or before start; `complete=True` required |
 | Effect direction | `diff=(column, group1, group2)` means group1 minus group2 | Treatment minus control |
 | Metrics | Registry metrics, named outcomes, optional ratio-of-sums denominator | Explicit mean, ratio of sums, or eligible mean of individual ratios |
-| Default inference | Binary z/Wilson/Newcombe; Welch for totals/values; whole-unit bootstrap for ratios | No implicit inference; request bootstrap, binary intervals and/or explicit tests |
+| Default inference | Binary Fisher/Clopper–Pearson conservative difference; nonbinary descriptive | No implicit inference; request bootstrap, binary intervals and/or explicit tests |
 | Tests | Auto dispatch or selected method; bootstrap SE approximation explicitly labelled | Explicit Fisher exact / Welch mapping; intervals and hypothesis tests configured separately |
 | Multiplicity | Holm across all declared rows in a call by default | Holm across explicitly requested hypotheses |
 | Stratification/time comparison | Pre-exposure strata, periods, joint early/late contrasts | Deliberately outside this adapter |
@@ -71,7 +71,7 @@ redefined into an experiment roster API.
 
 Shared implementation boundaries:
 
-- `stats/primitives.py`: Wilson/Newcombe intervals, stable sample summaries and
+- `stats/primitives.py`: Fisher and Clopper–Pearson/conservative difference, explicit approximate Wilson/Newcombe intervals, stable sample summaries and
   Welch calculations, correction procedures and other shared inference formulas.
 - `stats/resampling.py`: whole-unit multinomial/Poisson count weights, weighted
   sums, and percentile-interval availability. Numerator and denominator, periods
@@ -165,8 +165,8 @@ sparse support or heavy tails.
 
 An original constant arm has no empirical arm interval. A contrast remains
 estimable when the other arm varies; two constant arms do not justify a zero-width
-empirical interval. Binary Wilson/Newcombe intervals remain an explicitly selected
-alternative in the strict adapter and the analytic default in the flexible one.
+empirical interval. Exact binary intervals are the flexible default; strict
+binary intervals require an explicit exact or approximate Newcombe request.
 
 The shared sampler is versioned as `whole_unit_counts_v1_baseline_first`: seed
 child 0 draws the baseline/control/group2, child 1 the comparison/treatment/group1.
@@ -196,8 +196,9 @@ useful effect; failure to reject a guardrail does not establish non-inferiority.
 
 Unknown or post-exposure strata are descriptive: suppress confirmatory p-values,
 verdicts, heterogeneity, balance and stratum-versus-rest tests. Keep descriptive
-estimates and intervals with an explicit label. Inference requires a declaration
-or recognized recipe showing membership fixed before exposure. Active-period
+estimates and intervals with an explicit label. Inference requires an explicit analyst declaration that membership was fixed
+before exposure. A truncation, transferred attribute or legacy recipe flag is
+insufficient; reassert the declaration when transferring labels. Active-period
 populations have the same descriptive restriction. MCP contrast summaries must
 obey these rules as well as scorecard rows.
 
@@ -270,3 +271,39 @@ design, CUPED, automated causal identification, general cluster bootstrap and a
 unified high-level analysis-plan object. Those need separate estimand and design
 specifications. This branch is a reviewable integration proposal, not authorization
 to merge either source PR or this branch into master.
+
+### 9. Conservative inference boundary after independent review
+
+The later review narrows the earlier integration defaults. Known binary scorecard
+outcomes use Fisher exact inference and conservative Clopper–Pearson-based
+differences; nonbinary auto calls are descriptive. The strict adapter adds no
+inference without a request. `binary_intervals={"method": "exact"}` opts into the
+conservative method; explicit Newcombe remains approximate. Relative intervals
+are withheld on the exact route, and conservative differences are not Fisher-test
+inversions. Known-binary Welch and scorecard bootstrap reject. Explicit binary
+z inference requires at least five pooled-null expected successes and failures
+per arm; explicit nonbinary Welch/bootstrap remain approximate advanced methods.
+
+MDE is labeled `normal_approximation`, not actual Fisher power. BH requires
+independence or PRDS. Default exact/descriptive rows must not imply exactness for
+unrequested asymptotic heterogeneity or stratum-versus-rest diagnostics.
+
+Truncation alone, old inferred recipe flags and transferred metadata cannot
+establish a pre-treatment segment; an analyst must reassert that declaration.
+ID families and persistent scalar labels are constrained to preserve identity;
+recipe snapshots are deep copies. Two-arm SRM is exact under Bernoulli allocation;
+sparse multiarm checks expose unavailable inference with tri-state mismatch.
+
+Bootstrap requests are bounded at 1,000,000 replicates and 10,000,000
+replicate-by-contribution entries. Contrasts reject changing measurement
+eligibility, overflow raises, and insufficient adjusted-tail resolution returns
+`insufficient_tail_resamples` instead of substituting a normal-SE interval.
+The ordinary conversion/funnel exact surface preserves observed-path population
+and conditioning metadata. Automatic graph/step significance scans are deferred.
+
+These are method and input restrictions, not certification of arbitrary data.
+See [the supported inference guide](../guide/ab-testing.md#supported-inference),
+[the strict contract](../guide/experiments.md#uncertainty-and-tests), and
+[identity restrictions](../guide/eventstream.md#identity-and-persistent-recipes).
+The original teaching fixtures, independent audit results and negative cases
+remain evidence; selected stories do not establish frequentist calibration.

@@ -10,8 +10,10 @@ encoding.
 
 from __future__ import annotations
 
+import importlib.util
 import inspect
 import math
+import pathlib
 import sys
 
 import numpy as np
@@ -378,6 +380,23 @@ class TestStyled:
             )
             assert not any(cell.get("font-weight") == "bold" for cell in props)
             assert "1px solid" in styled.to_html()
+
+
+class TestOneEncoding:
+    def test__the_widgets_draw_with_these_constants(self) -> None:
+        # one source: js/widget/src/generated/ab_encoding.generated.ts is written
+        # from tools/ab_tables.py by scripts/export_ab_encoding.py
+        script = pathlib.Path(__file__).resolve().parents[2] / "scripts"
+        spec = importlib.util.spec_from_file_location(
+            "export_ab_encoding", script / "export_ab_encoding.py"
+        )
+        export = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(export)
+        assert export.OUTPUT_PATH.read_text() == export.render(), (
+            "js/widget/src/generated/ab_encoding.generated.ts is stale: run "
+            "`make export-ab-encoding` and commit the result."
+        )
+        assert 'export const RED = "239, 68, 68";' in export.render()
 
 
 class TestStyledWithoutJinja2:

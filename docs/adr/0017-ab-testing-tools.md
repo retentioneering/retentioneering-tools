@@ -277,7 +277,10 @@ take the getter's arguments plus `values=` (frame columns, validated) and
 row, the frame's `attrs` plus `values`. They are named `get_*` because they return
 numbers (ADR-0008 rule 6); a bare noun would read as a widget. `styled=True`
 returns a pandas `Styler` with the M1 encoding in CSS that `to_excel` keeps;
-`openpyxl` stays optional.
+`openpyxl` stays optional. The encoding's colours and opacity are constants of
+`tools/ab_tables.py`, from which the widgets' are generated
+(`make export-ab-encoding`, checked by a test), so the table and the matrix
+cannot drift apart.
 
 The MCP server is unchanged: ADR-0009 asks that renames reach the server and
 that tool results stay compact; nothing is renamed, and the screens' MCP tools of

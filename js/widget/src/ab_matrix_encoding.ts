@@ -14,20 +14,22 @@
  *    grey, the cross and muted text when not tested; nothing for a cell with no
  *    row in the frame.
  *
- * The same rules are written for pandas in `tools/ab_tables.py` (`styled=True`).
+ * The same rules are written for pandas in `tools/ab_tables.py` (`styled=True`),
+ * whose colours and opacity these are (generated, `make export-ab-encoding`).
  */
+import * as encoding from "./generated/ab_encoding.generated";
 
 /** group 1 above group 2: red-500, the diff palette (viz-core `AB_RED`). */
-export const MATRIX_RED = "239, 68, 68";
+export const MATRIX_RED = encoding.RED;
 /** group 1 below group 2: blue-500 (viz-core `AB_BLUE`). */
-export const MATRIX_BLUE = "59, 130, 246";
+export const MATRIX_BLUE = encoding.BLUE;
 /** Opacity of a background at the scale maximum (keeps dark text readable). */
-export const MAX_ALPHA = 0.75;
-export const OUTLINE_BLACK = "#111827";
-export const OUTLINE_GREY = "#d1d5db";
-export const CROSS_GREY = "#d1d5db";
-export const TEXT_MAIN = "#111827";
-export const TEXT_MUTED = "#9ca3af";
+export const MAX_ALPHA = encoding.MAX_ALPHA;
+export const OUTLINE_BLACK = encoding.SIGNIFICANT_BORDER;
+export const OUTLINE_GREY = encoding.MUTED_BORDER;
+export const CROSS_GREY = encoding.MUTED_BORDER;
+export const TEXT_MAIN = encoding.MAIN_TEXT;
+export const TEXT_MUTED = encoding.UNTESTED_TEXT;
 /** Width of the wide outline, px; drawn inside the cell so neighbours never overlap. */
 export const OUTLINE_WIDTH = 2.5;
 

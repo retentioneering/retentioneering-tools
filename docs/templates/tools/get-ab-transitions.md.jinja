@@ -67,7 +67,9 @@ The family is every edge with enough support, found after looking at the data: a
 screen. Its discoveries are where the arms differ, not decisions. To confirm one,
 declare it as the metric of a new test (for example `matches_pattern` on the two
 events). Declaring a few edges before the test with `edges=[(source, target),
-...]` makes them the whole family, and their rows the only ones returned.
+...]` makes them the whole family, and their rows the only ones returned; their
+readings name a declared family instead of a screen (`"declared family (bh over 1
+tested edge): confirmatory, if the edges were declared before the test"`).
 
 Simulated under a true null (20 seeds of the synthetic A/A data, about 37 tested
 edges each), no run gave a discovery at any of the five weights, and the raw

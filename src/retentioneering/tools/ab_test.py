@@ -2797,13 +2797,14 @@ def row_reading(
         The clause of a ``conditional`` row, in place of the default "a value for
         ... paths" (a transition probability says which transitions it is a share
         of, and that they are post-treatment behaviour).
-    screen : tuple of (str, int), optional
-        ``(what, n_tested)`` for a row of an exploratory screen
-        (``get_ab_transitions``, ``get_ab_steps``): ``what`` names the rows
-        (``"edges"``, ``"cells"``). A tested row says the family size; an
-        ``increase`` / ``decrease`` row says it is a screen result to confirm
-        with a declared metric in a new test; an untested row says it is outside
-        the family.
+    screen : tuple of (str, int, bool), optional
+        ``(what, n_tested, declared)`` for a row of ``get_ab_transitions`` or
+        ``get_ab_steps``: ``what`` names one row (``"edge"``, ``"cell"``),
+        ``declared`` is True when the rows were declared before the test
+        (``edges=``). A tested row says the family size; an ``increase`` /
+        ``decrease`` row of a screen says it is a result to confirm with a
+        declared metric in a new test, one of a declared family that the family
+        is confirmatory; an untested row says it is outside the family.
     """
     pp = (kind == "binary") if in_pp is None else bool(in_pp)
     scale, unit = (100.0, " pp") if pp else (1.0, "")
@@ -2944,13 +2945,25 @@ def row_reading(
     if warning in _SUPPORT_WARNING_TEXT:
         parts.append(_SUPPORT_WARNING_TEXT[warning])
     if screen is not None:
-        what, n_tested = screen
+        what, n_tested, declared = screen
+        tested = f"{n_tested} tested {what}{'' if n_tested == 1 else 's'}"
         family = (
-            f"no correction over {n_tested} tested {what}"
+            f"no correction over {tested}"
             if correction == "none"
-            else f"{correction} over {n_tested} tested {what}"
+            else f"{correction} over {tested}"
         )
-        if verdict in ("increase", "decrease"):
+        if declared:
+            # rows named before the test: a confirmatory family, not a screen
+            if verdict in ("increase", "decrease"):
+                parts.append(
+                    f"declared family ({family}): confirmatory, if the {what}s were "
+                    "declared before the test"
+                )
+            elif verdict == "insufficient_data" or not _finite(p_adj):
+                parts.append(f"not tested: outside the declared family ({family})")
+            else:
+                parts.append(f"declared family: {family}")
+        elif verdict in ("increase", "decrease"):
             parts.append(
                 f"screen result ({family}): a hypothesis to confirm as the declared "
                 "metric of a new test, not a decision"

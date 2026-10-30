@@ -186,7 +186,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   with the joint path bootstrap and flagged `conditional=True`, because their
   denominators are post-treatment behaviour. `count` raises (use
   `avg_per_path`); the time weights are not tested. `edges=[(source, target),
-  ...]` declared before the test makes a confirmatory family. An arm's value
+  ...]` declared before the test makes a confirmatory family, and its readings
+  say so instead of calling a discovery a screen result. An arm's value
   equals `transition_graph_data` for that arm on the stream's paths. An
   exploratory screen: a discovery's reading calls it a hypothesis for a declared
   metric of a new test. With `correction="bonferroni"` the simultaneous

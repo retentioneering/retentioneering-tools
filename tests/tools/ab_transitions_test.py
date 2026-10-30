@@ -183,6 +183,38 @@ class TestTinyStream:
         assert frame.attrs["edges"] == "declared"
         assert (frame["correction_family"] == "edges=declared/unique_paths").all()
 
+    def test_declared_edges_read_as_a_confirmatory_family(self) -> None:
+        stream = _tiny()
+        one = stream.get_ab_transitions(
+            ("arm", "A", "B"), edges=[("a", "b")], min_support=1
+        )
+        reading = one["reading"].iloc[0]
+        assert one.attrs["n_tested"] == 1
+        assert "declared family: bh over 1 tested edge" in reading
+        assert "screen" not in reading and "tested edges" not in reading
+        two = stream.get_ab_transitions(
+            ("arm", "A", "B"), edges=[("a", "b"), ("b", "c")], min_support=1
+        )
+        assert (
+            "outside the declared family (bh over 1 tested edge)"
+            in (_row(two, "b", "c")["reading"])
+        )
+        # the whole graph is a screen
+        screen = stream.get_ab_transitions(("arm", "A", "B"), min_support=1)
+        assert (
+            screen["reading"]
+            .str.contains(f"screen: bh over {screen.attrs['n_tested']} tested edges")
+            .any()
+        )
+
+    def test_one_tested_cell_is_singular(self) -> None:
+        # step 1: a in 4 paths (2 without), b and c in one each
+        frame = _tiny().get_ab_steps(("arm", "A", "B"), max_steps=1, min_support=2)
+        assert frame.attrs["n_tested"] == 1
+        cell = frame[(frame["event"] == "a") & (frame["step"] == 1)].iloc[0]
+        assert cell["reading"].endswith("; screen: bh over 1 tested cell")
+        assert not frame["reading"].str.contains("1 tested cells").any()
+
     def test_steps_are_shares_of_paths_at_each_step(self) -> None:
         frame = _tiny().get_ab_steps(("arm", "A", "B"), max_steps=3, min_support=1)
         cell = frame[(frame["event"] == "c") & (frame["step"] == 2)].iloc[0]
@@ -351,6 +383,19 @@ class TestNorthwindPlantedTruth:
         assert loop["verdict"] == "increase" and loop["group2_edge_paths"] == 0
         assert frame.attrs["n_tested"] > 50
         assert "screen result" in quick["reading"]
+
+    def test_a_declared_discovery_is_confirmatory(self, stream, assignment) -> None:
+        frame = stream.get_ab_transitions(
+            ARM_DIFF, assignment=assignment, edges=[("cart", "cart")]
+        )
+        row = frame.iloc[0]
+        assert row["verdict"] == "increase"
+        assert (
+            "declared family (bh over 1 tested edge): confirmatory, if the edges "
+            "were declared before the test"
+        ) in row["reading"]
+        assert "not a decision" not in row["reading"]
+        assert "1 tested edges" not in row["reading"]
 
     def test_the_checkout_shortcut_shows_as_a_conditional_drop(self, stream) -> None:
         frame = stream.get_ab_transitions(DIFF, "proba_out")

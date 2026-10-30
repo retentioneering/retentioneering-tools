@@ -1134,8 +1134,9 @@ class Eventstream:
             The randomised unit; defaults to `schema.path_col`.
         edges : list of tuple, optional
             `[(source, target), ...]`: test only these edges, declared before the
-            test (a confirmatory family); rows for them only. Events must exist in
-            the stream (or be `path_start` / `path_end`).
+            test (a confirmatory family, which the readings name); rows for them
+            only. Events must exist in the stream (or be `path_start` /
+            `path_end`).
         test : {"auto", "z_test", "welch_t_test", "bootstrap"}, default "auto"
             `"auto"` is the test of the weight above; `"z_test"` fits only
             `"unique_paths"`, ratios take only `"bootstrap"`.

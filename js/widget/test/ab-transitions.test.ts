@@ -142,6 +142,9 @@ test('the diff legend names the overlay and the family size', () => {
   assert.ok(text.includes('faint not in the frame') && !text.includes('ITT') && !text.includes('filtered'));
   const itt = abLegendText({ ...payload, population: 'assignment', horizon: '28D' });
   assert.ok(itt.includes('ITT') && itt.includes('horizon 28D'));
+  // one tested edge is singular
+  const one = abLegendText({ ...payload, n_tested: 1 });
+  assert.ok(one.includes('(bh, 1 tested edge)') && !one.includes('1 tested edges'));
   const filtered = { ...payload, n_rows: 92 };
   assert.equal(abIsFiltered(filtered), true);
   assert.equal(abIsFiltered(payload), false);

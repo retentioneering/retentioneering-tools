@@ -510,6 +510,15 @@ class TestGetAbTransitionsAndSteps:
         assert "error" not in result, result
         assert result["n_rows"] == 1 and result["n_tested"] == 1
         assert result["top"][0]["unit"] == "value"
+        # a declared family, one tested row: neither "screen" nor "1 tested rows"
+        assert result["scope"].startswith(
+            "bh over the 1 tested row of this call (a declared family: confirmatory"
+        )
+        assert "screen" not in result["scope"]
+        assert "declared family" in result["top"][0]["reading"]
+        screen = tools.get_ab_transitions(session, DIFF)
+        assert "exploratory screen" in screen["scope"]
+        assert f"over the {screen['n_tested']} tested rows" in screen["scope"]
         ratio = tools.get_ab_transitions(session, DIFF, "proba_out")
         assert all(r["conditional"] for r in ratio["top"])
         assert "error" in tools.get_ab_transitions(session, DIFF, "count")

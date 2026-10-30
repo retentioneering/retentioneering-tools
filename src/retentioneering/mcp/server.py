@@ -903,7 +903,7 @@ def _build_server(
             refused.
         edges:
             Optional [[source, target], ...] declared before the test: only these
-            edges form the family.
+            edges form the family (a confirmatory one; scope and readings say so).
         correction:
             "bh" (default), "holm", "bonferroni" or "none".
         ci_level:

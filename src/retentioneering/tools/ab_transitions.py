@@ -513,6 +513,7 @@ def _readings(
     horizon,
     what: str,
     conditional_text,
+    declared: bool = False,
 ) -> list[str]:
     alpha = helpers["alpha"]
     window = window_text(horizon)
@@ -536,7 +537,7 @@ def _readings(
                 conditional_text=(
                     conditional_text(row) if conditional_text is not None else None
                 ),
-                screen=(what, helpers["n_tested"]),
+                screen=(what, helpers["n_tested"], declared),
             )
         )
     return texts
@@ -789,12 +790,13 @@ def ab_transitions(
         correction=correction,
         min_support=min_support,
         horizon=None if horizon is None else pop.window.horizon_length,
-        what="edges",
+        what="edge",
         conditional_text=(
             (lambda row: _conditional_text(edge_weight, row))
             if kind == "ratio"
             else None
         ),
+        declared=declared is not None,
     )
     present = [c for c in TRANSITION_COLUMNS if c in frame.columns]
     out = _order(frame[present])
@@ -939,7 +941,7 @@ def ab_steps(
         correction=correction,
         min_support=min_support,
         horizon=None if horizon is None else pop.window.horizon_length,
-        what="cells",
+        what="cell",
         conditional_text=None,
     )
     present = [c for c in STEP_COLUMNS if c in frame.columns]

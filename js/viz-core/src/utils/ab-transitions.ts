@@ -282,7 +282,10 @@ export function abIsFiltered(payload: AbTransitionsPayload): boolean {
 export function abLegendText(payload: AbTransitionsPayload): string {
   const alpha = payload.alpha != null ? payload.alpha : 0.05;
   const correction = payload.correction && payload.correction !== "none" ? `${payload.correction}, ` : "";
-  const tested = payload.n_tested != null ? `${payload.n_tested} tested edges` : "tested edges";
+  const tested =
+    payload.n_tested != null
+      ? `${payload.n_tested} tested ${payload.n_tested === 1 ? "edge" : "edges"}`
+      : "tested edges";
   const scope: string[] = [];
   if (payload.population === "assignment") scope.push("ITT over the assignment table");
   if (payload.horizon) scope.push(`horizon ${payload.horizon}`);

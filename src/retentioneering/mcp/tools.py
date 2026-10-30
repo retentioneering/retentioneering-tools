@@ -1559,6 +1559,18 @@ def _screen_result(
 
     verdicts = frame["verdict"].value_counts()
     first = frame.iloc[0] if len(frame) else None
+    n_tested = int(meta.get("n_tested", 0))
+    correction = meta.get("correction")
+    family = (
+        f"{'no correction' if correction == 'none' else correction} over the "
+        f"{n_tested} tested {'row' if n_tested == 1 else 'rows'} of this call"
+    )
+    what = (
+        "a declared family: confirmatory, if the edges were declared before the test"
+        if meta.get("edges") == "declared"
+        else "an exploratory screen: a discovery is a hypothesis for a declared "
+        "metric of a new test"
+    )
     out: dict[str, Any] = {
         "diff": meta.get("diff"),
         "path_col": meta.get("path_col"),
@@ -1566,7 +1578,7 @@ def _screen_result(
         "ci_level": meta.get("ci_level"),
         "correction": meta.get("correction"),
         "n_rows": int(len(frame)),
-        "n_tested": int(meta.get("n_tested", 0)),
+        "n_tested": n_tested,
         "n_increase": int(verdicts.get("increase", 0)),
         "n_decrease": int(verdicts.get("decrease", 0)),
         "n_inconclusive": int(verdicts.get("inconclusive", 0)),
@@ -1575,10 +1587,8 @@ def _screen_result(
         "group1_paths": None if first is None else int(first["group1_paths"]),
         "group2_paths": None if first is None else int(first["group2_paths"]),
         "scope": (
-            f"{meta.get('correction')} over the {int(meta.get('n_tested', 0))} tested "
-            "rows of this call (an exploratory screen: a discovery is a hypothesis "
-            "for a declared metric of a new test); intervals are per row "
-            "(unadjusted); the verdict reads p_value_adjusted"
+            f"{family} ({what}); intervals are per row (unadjusted); the verdict "
+            "reads p_value_adjusted"
         ),
         "top": [_row(r) for r in frame.head(int(top)).to_dict("records")],
     }
@@ -1624,7 +1634,7 @@ def get_ab_transitions(
         time weights are refused.
     edges:
         Optional [[source, target], ...] declared before the test: only these edges
-        are tested (a confirmatory family).
+        are tested (a confirmatory family; scope and readings say so).
     horizon:
         As in get_ab_test (needs the session's assignment table with assigned_at).
     correction:

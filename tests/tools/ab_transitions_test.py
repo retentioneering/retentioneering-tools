@@ -521,6 +521,17 @@ class TestErrors:
             stream.get_ab_transitions(DIFF, "proba_out", n_bootstrap=200)
             stream.get_ab_transitions(DIFF)
 
+    @pytest.mark.parametrize(
+        "name, value", [("path_pattern", "cart"), ("anchor", {"pattern": "cart"})]
+    )
+    def test_steps_refuse_a_pattern_or_an_anchor(self, stream, name, value) -> None:
+        with pytest.raises(InvalidParameterError) as info:
+            stream.get_ab_steps(DIFF, **{name: value})
+        message = str(info.value)
+        assert f"parameter '{name}'" in message
+        assert "counts steps from each path's start in this release" in message
+        assert "truncate_paths(start_anchor=" in message
+
     def test_edges_must_name_events(self, stream) -> None:
         with pytest.raises(InvalidParameterError, match="edges"):
             stream.get_ab_transitions(DIFF, edges=[("cart", "kart")])

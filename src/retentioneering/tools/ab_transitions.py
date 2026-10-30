@@ -118,6 +118,14 @@ _REFUSED_WEIGHTS = {
         "descriptively with transition_graph_data(edge_weight='time_q95', diff=...)"
     ),
 }
+#: Why ``get_ab_steps`` refuses ``step_matrix_data``'s ``path_pattern`` and ``anchor``.
+_STEPS_FROM_START = (
+    "get_ab_steps counts steps from each path's start in this release; a pattern "
+    "or an anchor would centre the cells on the paths where it matches, a "
+    "selection by behaviour the treatment may change. To compare the steps from "
+    "an event, cut the paths first with truncate_paths(start_anchor=<event>, "
+    "end_anchor='path_end') on an event before exposure, and screen the result"
+)
 
 #: Column order shared by both tables after their key columns.
 _STAT_COLUMNS: tuple[str, ...] = (
@@ -843,8 +851,13 @@ def ab_steps(
     ci_level: float = 0.95,
     power: float = 0.8,
     min_support: int = 10,
+    path_pattern: Any = None,
+    anchor: Any = None,
 ) -> pd.DataFrame:
     """The table of ``Eventstream.get_ab_steps`` (see its docstring)."""
+    for name, value in (("path_pattern", path_pattern), ("anchor", anchor)):
+        if value is not None:
+            raise InvalidParameterError(name, value, ["None"], reason=_STEPS_FROM_START)
     if (
         isinstance(max_steps, bool)
         or not isinstance(max_steps, (int, np.integer))

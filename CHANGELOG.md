@@ -194,7 +194,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   the same for the step matrix: per cell `(event, step)`, the share of each arm's
   paths whose k-th event is the event (`path_end` for a shorter path), pooled
   z-test, Benjamini–Hochberg over the tested cells. Values equal
-  `step_matrix_data` per arm on the stream's paths.
+  `step_matrix_data` per arm on the stream's paths. Steps count from each
+  path's start: `path_pattern` and `anchor` raise `InvalidParameterError`,
+  which says to cut the paths with `truncate_paths` on a pre-exposure event
+  first.
 - `transition_graph(diff=..., ab_transitions=frame)` highlights the frame of
   `get_ab_transitions` on the diff graph: significant edges in their sign's
   colour (and kept whatever the edge filter), inconclusive ones grey, untested

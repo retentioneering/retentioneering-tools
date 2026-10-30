@@ -1253,6 +1253,8 @@ class Eventstream:
         ci_level: float = 0.95,
         power: float = 0.8,
         min_support: int = 10,
+        path_pattern: str | None = None,
+        anchor: str | dict | None = None,
     ) -> pd.DataFrame:
         """
         Test every step-matrix cell between two arms: which events at which step differ.
@@ -1266,7 +1268,7 @@ class Eventstream:
         diff=...)` for it on the stream's paths. An exploratory screen, read after
         the scorecard: a discovery is a hypothesis for a declared metric of a new
         test. Steps count from each path's start; to compare around an event, cut
-        the paths with `truncate_paths` first (no `path_pattern` or `anchor`).
+        the paths with `truncate_paths` first (`path_pattern` and `anchor` raise).
 
         Parameters
         ----------
@@ -1296,6 +1298,15 @@ class Eventstream:
         min_support : int, default 10
             Pooled paths with the event at the step (and pooled paths without it)
             below which a cell is `"insufficient_data"`: reported, not tested.
+        path_pattern : None
+            Not in this release: any value raises `InvalidParameterError`. Steps
+            count from each path's start; a pattern (as in `step_matrix_data`)
+            would keep and centre the paths where it matches, a selection by
+            behaviour the treatment may change. To compare the steps from an
+            event, cut the paths first with `truncate_paths(start_anchor=...,
+            end_anchor="path_end")` on an event before exposure.
+        anchor : None
+            Not in this release, as `path_pattern`.
 
         Returns
         -------
@@ -1309,8 +1320,8 @@ class Eventstream:
         Raises
         ------
         DiffConfigError, InvalidParameterError, EmptyEventstreamError
-            As in `get_ab_test`; `max_steps` below 1 raises
-            `InvalidParameterError`.
+            As in `get_ab_test`; `max_steps` below 1, a `path_pattern` or an
+            `anchor` raises `InvalidParameterError`.
 
         Examples
         --------
@@ -1330,6 +1341,8 @@ class Eventstream:
             ci_level=ci_level,
             power=power,
             min_support=min_support,
+            path_pattern=path_pattern,
+            anchor=anchor,
         )
 
     @_tracked("headless_describe")

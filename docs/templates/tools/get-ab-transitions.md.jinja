@@ -39,7 +39,12 @@ the arm, so their deltas are effects of the assignment.
 
 An edge is tested when its pooled support reaches `min_support`: paths with the
 transition, and for `unique_paths` paths without it too. The rest are reported with
-their estimates, `verdict="insufficient_data"`, and are not in the family. The
+their estimates, `verdict="insufficient_data"`, and are not in the family; so is an
+edge with enough support but no p-value: a weight constant in both arms (a
+`proba_in` of 1 in both arms when every transition into `target` comes from
+`source`), or a bootstrap with more than 1 % of replicates without a value in an
+arm. The scorecard reads such a row `inconclusive`; here it is outside the family,
+so `increase`, `decrease` and `inconclusive` add up to `n_tested`. The
 p-values of the tested edges are adjusted together (`correction`,
 Benjamini-Hochberg by default: among the edges called significant, the share of
 false discoveries is at most about `1 - ci_level` on average), the verdict reads
@@ -86,7 +91,8 @@ edges are tested:
   `alpha / n_tested`, a conservative level for the screen.
 - **insufficient_data** — `"...: pooled support 8 < min_support 10; estimate shown
   descriptively; not tested: outside the screen's family (bh over 90 tested
-  edges)"`.
+  edges)"`; a row constant in both arms says `"no p-value: the metric is constant
+  in both arms; estimate shown descriptively"` instead of the support.
 - a ratio weight adds `conditional on post-treatment behaviour: a share of the
   transitions out of 'product_view' (4593 of 4828 and 4654 of 4905 paths have one),
   so it also moves when the treatment changes who reaches 'product_view'; compares

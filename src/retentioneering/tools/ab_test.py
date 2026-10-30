@@ -2857,11 +2857,14 @@ def row_reading(
     elif verdict == "insufficient_data":
         if support_count < min_support:
             parts.append(f"pooled support {support_count} < min_support {min_support}")
-        else:
+        elif non_support_count is not None and non_support_count < min_support:
             parts.append(
                 f"pooled paths without the event {non_support_count} < "
                 f"min_support {min_support}"
             )
+        else:
+            # enough support but no p-value: a screen does not test the row
+            parts.append(_no_p_value_text(row, constant))
         parts.append("estimate shown descriptively")
     elif verdict in ("increase", "decrease"):
         if not has_ci:
@@ -2879,18 +2882,9 @@ def row_reading(
             parts.append(f"relative {_signed(pct, 1 if abs(pct) < 10 else 0)} %")
     else:  # inconclusive
         if not _finite(p_adj):
+            parts.append(_no_p_value_text(row, constant))
             if row.get("support_warning") == "invalid_replicates":
-                parts.append(
-                    "no interval or p-value: more than 1 % of bootstrap replicates "
-                    "had no value in an arm; estimate shown descriptively"
-                )
-            elif constant:
-                parts.append("no p-value: the metric is constant in both arms")
-            else:
-                parts.append(
-                    "no p-value: the spread cannot be estimated (an arm has fewer "
-                    "than two paths with a value)"
-                )
+                parts.append("estimate shown descriptively")
         elif not has_ci:
             parts.append(f"no interval; {p_part}")
         elif covers_zero:
@@ -2974,6 +2968,21 @@ def row_reading(
             parts.append("corrected within this metric only; name one decision metric")
     text = "; ".join(parts)
     return f"{window}: {text}" if window else text
+
+
+def _no_p_value_text(row: dict, constant: bool) -> str:
+    """Why a row with enough support has no p-value."""
+    if row.get("support_warning") == "invalid_replicates":
+        return (
+            "no interval or p-value: more than 1 % of bootstrap replicates had no "
+            "value in an arm"
+        )
+    if constant:
+        return "no p-value: the metric is constant in both arms"
+    return (
+        "no p-value: the spread cannot be estimated (an arm has fewer than two "
+        "paths with a value)"
+    )
 
 
 def _validity_flagged(row: dict) -> bool:

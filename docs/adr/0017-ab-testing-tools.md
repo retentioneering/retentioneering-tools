@@ -195,8 +195,12 @@ An arm's value equals `transition_graph_data` / `step_matrix_data` for that arm
 on the stream's paths, for every weight.
 
 **A2 — a screen with FDR control.** The family is every edge (cell) with enough
-pooled support, adjusted together with Benjamini–Hochberg by default
-(`correction_family` names it, `attrs["n_tested"]` sizes it). It is found after
+pooled support and a p-value, adjusted together with Benjamini–Hochberg by default
+(`correction_family` names it, `attrs["n_tested"]` sizes it). A row outside it —
+below the support rule, or without a p-value (constant in both arms, invalid
+bootstrap replicates) — is `insufficient_data`, so the tested verdicts add up to
+`n_tested`; the scorecard, which has no family size to agree with, reads a
+supported row without a p-value as `inconclusive`. It is found after
 looking, so it is exploratory by construction: a discovery's reading ends "a
 hypothesis to confirm as the declared metric of a new test, not a decision".
 `edges=[(source, target), ...]` declared before the test makes a confirmatory

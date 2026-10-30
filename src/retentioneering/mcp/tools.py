@@ -1643,7 +1643,8 @@ def get_ab_transitions(
     -------
     diff, path_col, population, ci_level, correction, edge_weight, n_rows (edges
     seen), n_tested (the correction family), n_increase, n_decrease,
-    n_inconclusive, n_untested (below min_support: not tested), group sizes,
+    n_inconclusive, n_untested (insufficient_data: below min_support or without a
+    p-value, not tested; n_increase + n_decrease + n_inconclusive = n_tested), group sizes,
     unassigned_paths, immature_paths (with horizon), scope, warnings, and top — per
     edge: source, target, group1_edge_paths, group2_edge_paths (paths with the
     transition), group1_value, group2_value, delta, delta_ci_low, delta_ci_high,

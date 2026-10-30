@@ -421,7 +421,9 @@ def _compare(
         mde_alpha=mde_alpha,
         mde=mde,
         rel_mde=rel_mde,
-        verdict=verdicts(p_adjusted, delta, alpha, support=support),
+        # a row without a p-value (constant in both arms, invalid replicates) is
+        # not tested: insufficient_data, so the other verdicts count n_tested
+        verdict=verdicts(p_adjusted, delta, alpha, support=tested),
         test=test,
         ci_basis=_CI_BASIS[test],
         p_basis=_P_BASIS[test],

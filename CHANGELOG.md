@@ -177,7 +177,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   arm's value, the delta and its per-edge interval, a p-value adjusted over the
   tested edges (Benjamini–Hochberg by default), a verdict and a `reading`. The
   arms, population (`assignment=` for ITT), unit guard, `horizon`, support rule
-  and verdict are the scorecard's. `unique_paths` (share of paths with the
+  and verdict are the scorecard's, except that a row without a p-value (a value
+  constant in both arms, too many invalid bootstrap replicates) is not tested and
+  reads `insufficient_data`, so `increase`, `decrease` and `inconclusive` add up
+  to `n_tested` (and so do the MCP counts). `unique_paths` (share of paths with the
   transition, z-test) and `avg_per_path` (count per path, Welch) are effects of
   the assignment; `proba_out`, `proba_in` and `share_of_total` are ratios tested
   with the joint path bootstrap and flagged `conditional=True`, because their

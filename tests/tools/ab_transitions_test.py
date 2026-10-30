@@ -195,6 +195,49 @@ class TestTinyStream:
         assert ended["group2_value"] == pytest.approx(1 / 3)
 
 
+# ---------------------------------------------------------------- the family
+class TestFamily:
+    def test_a_row_without_a_p_value_is_not_tested(self, stream, assignment) -> None:
+        # every transition into payment comes from checkout_start (and so on):
+        # proba_in is 1 in both arms, every replicate gives the same delta and
+        # there is no p-value, so the row is outside the family
+        frame = stream.get_ab_transitions(ARM_DIFF, "proba_in", assignment=assignment)
+        constant = frame[frame["reading"].str.contains("constant in both arms")]
+        assert set(zip(constant["source"], constant["target"])) >= {
+            ("checkout_start", "payment"),
+            ("payment", "order_success"),
+        }
+        assert (constant["group1_value"] == 1).all()
+        assert (constant["group2_value"] == 1).all()
+        assert (constant["verdict"] == "insufficient_data").all()
+        assert constant["p_value"].isna().all()
+        assert (
+            constant["reading"]
+            .str.contains(
+                "no p-value: the metric is constant in both arms; estimate shown "
+                "descriptively"
+            )
+            .all()
+        )
+        assert constant["reading"].str.contains("not tested").all()
+        assert not constant["reading"].str.contains("min_support").any()
+
+    @pytest.mark.parametrize("weight", EDGE_WEIGHTS)
+    def test_tested_verdicts_add_up_to_n_tested(self, stream, assignment, weight):
+        ratio = weight in ("proba_out", "proba_in", "share_of_total")
+        options = {"n_bootstrap": 200} if ratio else {}
+        frame = stream.get_ab_transitions(
+            ARM_DIFF, weight, assignment=assignment, **options
+        )
+        tested = frame["verdict"].isin(["increase", "decrease", "inconclusive"])
+        assert tested.sum() == frame.attrs["n_tested"]
+        assert frame.loc[tested, "p_value_adjusted"].notna().all()
+        assert (frame.loc[~tested, "verdict"] == "insufficient_data").all()
+        steps = stream.get_ab_steps(ARM_DIFF, assignment=assignment)
+        tested = steps["verdict"].isin(["increase", "decrease", "inconclusive"])
+        assert tested.sum() == steps.attrs["n_tested"]
+
+
 # ---------------------------------------------------------------- equality with the graph
 class TestDescriptiveEquality:
     @pytest.mark.parametrize("weight", EDGE_WEIGHTS)

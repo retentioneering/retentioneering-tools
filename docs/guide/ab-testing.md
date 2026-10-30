@@ -352,7 +352,9 @@ edges.attrs["n_tested"], edges["verdict"].value_counts().to_dict()
 | checkout_start | home | 0.0190 | 0.0060 | +1.30 pp | [+0.87, +1.75] | 2.6e-8 | increase |
 | checkout_start | payment | 0.2883 | 0.2877 | +0.06 pp | [−1.71, +1.84] | 0.98 | inconclusive |
 
-With the default `edge_weight="unique_paths"` a row is the share of assigned users
+A row that is not tested — below `min_support`, or without a p-value because its
+value is constant in both arms — is `insufficient_data`, so the other verdicts add
+up to `n_tested`. With the default `edge_weight="unique_paths"` a row is the share of assigned users
 whose path has the transition. Most discoveries restate the treatment itself
 (`quick_add` replaces `add_to_cart`); two are new. The `cart -> cart` self-loop
 exists in the treatment arm only — the curators' reopened carts of the strata above.

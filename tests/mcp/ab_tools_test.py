@@ -514,6 +514,20 @@ class TestGetAbTransitionsAndSteps:
         assert all(r["conditional"] for r in ratio["top"])
         assert "error" in tools.get_ab_transitions(session, DIFF, "count")
 
+    def test_counts_add_up_to_the_family(self) -> None:
+        # visit -> order is the one way into order: proba_in is 1 in both arms,
+        # no p-value, so the row is untested, not inconclusive
+        result = tools.get_ab_transitions(_itt_session(), DIFF, "proba_in", top=50)
+        assert "error" not in result, result
+        tested = result["n_increase"] + result["n_decrease"] + result["n_inconclusive"]
+        assert tested == result["n_tested"]
+        assert tested + result["n_untested"] == result["n_rows"]
+        row = next(
+            r for r in result["top"] if (r["source"], r["target"]) == ("visit", "order")
+        )
+        assert row["verdict"] == "insufficient_data" and row["p_value"] is None
+        assert "constant in both arms" in row["reading"]
+
     def test_itt_with_horizon(self) -> None:
         result = tools.get_ab_transitions(_itt_session(), DIFF, horizon="7D")
         json.dumps(result, allow_nan=False)

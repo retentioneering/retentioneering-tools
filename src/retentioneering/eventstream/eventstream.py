@@ -1192,8 +1192,12 @@ class Eventstream:
               `delta_ci_high` (per edge), `delta_ci_low_adj`*, `delta_ci_high_adj`*
               (Bonferroni), `rel_delta`.
             - `p_value`, `p_value_adjusted`, `correction_family`, `mde_alpha`,
-              `mde`, `rel_mde`, `verdict` (as in `get_ab_test`), `test`,
-              `ci_basis`, `p_basis`, `valid_replicates`, `support_warning`.
+              `mde`, `rel_mde`, `verdict` (as in `get_ab_test`, except that a
+              row without a p-value — a value constant in both arms, or more
+              than 1 % of bootstrap replicates without a value — is not tested
+              and reads `"insufficient_data"`, so `increase`, `decrease` and
+              `inconclusive` add up to `n_tested`), `test`, `ci_basis`,
+              `p_basis`, `valid_replicates`, `support_warning`.
             - `reading`: the row in one sentence, with the family size.
 
             `attrs` holds `n_tested` (the family size), `correction`, `ci_level`,

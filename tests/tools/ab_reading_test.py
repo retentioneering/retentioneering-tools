@@ -204,6 +204,28 @@ class TestInconclusive:
         )
         assert text == "no p-value: the metric is constant in both arms"
 
+    def test_a_supported_row_a_screen_does_not_test(self) -> None:
+        # a screen labels a supported row without a p-value insufficient_data:
+        # the reading says why it has none, not a support count
+        untested = _row(
+            p_value=float("nan"),
+            p_value_adjusted=float("nan"),
+            delta_se=float("nan"),
+            verdict="insufficient_data",
+        )
+        text = _read(untested, kind="ratio", non_support_count=None, constant=True)
+        assert text == (
+            "no p-value: the metric is constant in both arms; estimate shown "
+            "descriptively"
+        )
+        text = _read(
+            dict(untested, support_warning="invalid_replicates"),
+            kind="ratio",
+            non_support_count=None,
+        )
+        assert text.startswith("no interval or p-value: more than 1 % of bootstrap")
+        assert text.count("estimate shown descriptively") == 1
+
     def test_no_spread(self) -> None:
         text = _read(
             _row(

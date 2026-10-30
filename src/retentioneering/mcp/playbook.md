@@ -266,7 +266,8 @@ p-value: `p_value_adjusted` below `1 - ci_level` (`mde_alpha` is only the level 
 `inconclusive` is not "no effect": report the interval as the range of effects the
 data still allow, by quoting the row's `reading`. The `mde` is the effect the test detects with 80 % power at
 `mde_alpha`, a design quantity: never say the effect is smaller than the `mde`.
-`insufficient_data`: pooled support (paths, not events) below `min_support`; report its estimates
+`insufficient_data`: pooled support (paths, not events) below `min_support` (in the
+transition and step screens also a row without a p-value, constant in both arms); report its estimates
 descriptively. `support_warning="no_data"`: no path of either arm has the
 behaviour — say "no data in either arm", not "one arm only" — or a value / ratio
 metric has no value in one arm (the reading says which). `conditional=true`: the

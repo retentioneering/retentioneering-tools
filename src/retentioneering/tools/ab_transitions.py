@@ -291,9 +291,11 @@ def _compare(
     s1, s2 = _arm_nonzero(num, arm, 0), _arm_nonzero(num, arm, 1)
     sum1, sum2 = _arm_sums(num, arm, 0), _arm_sums(num, arm, 1)
     if kind == "ratio":
-        den = quantity.den[:, quantity.den_index]
-        d1, d2 = _arm_sums(den, arm, 0), _arm_sums(den, arm, 1)
-        paths1, paths2 = _arm_nonzero(den, arm, 0), _arm_nonzero(den, arm, 1)
+        # per denominator column, then gathered per row (never den[:, den_index])
+        den, index = sparse.csr_matrix(quantity.den), quantity.den_index
+        d1, d2 = _arm_sums(den, arm, 0)[index], _arm_sums(den, arm, 1)[index]
+        paths1 = _arm_nonzero(den, arm, 0)[index]
+        paths2 = _arm_nonzero(den, arm, 1)[index]
         with np.errstate(invalid="ignore", divide="ignore"):
             g1 = np.where(d1 > 0, sum1 / d1, np.nan)
             g2 = np.where(d2 > 0, sum2 / d2, np.nan)
@@ -429,32 +431,29 @@ def _compare(
 def _replicates(quantity, arm, n_bootstrap, weights, random_state):
     """Joint path-bootstrap replicates of every row's arm value.
 
-    One call of :func:`~retentioneering.tools._bootstrap.bootstrap_paths` over the
-    numerator columns and, for a ratio, the denominator columns, all as per-path
-    means (``den=None``): with the same weights in a replicate the ratio of two
-    weighted means is the ratio of the weighted sums, so a denominator shared by
-    many rows (transitions out of one event) is resampled once.
+    One call of :func:`~retentioneering.tools._bootstrap.bootstrap_paths`: a
+    ratio divides each edge's resampled count by its shared denominator column
+    (``den_index``: transitions out of one event are resampled once for every
+    edge from it), so a row's replicates equal those of ``bootstrap_paths`` on
+    that edge's numerator and denominator alone; other quantities are per-path
+    means (``den=None``).
     """
-    num = quantity.num
-    n_rows = num.shape[1]
-    columns = num if quantity.kind != "ratio" else sparse.hstack([num, quantity.den])
-    result = bs.bootstrap_paths(
-        sparse.csr_matrix(columns),
-        None,
-        arm,
-        n_bootstrap,
-        weights,
-        random_state=random_state,
-    )
-    r1, r2 = result.group1[:, :n_rows], result.group2[:, :n_rows]
+    num = sparse.csr_matrix(quantity.num)
     if quantity.kind == "ratio":
-        index = n_rows + quantity.den_index
-        b1, b2 = result.group1[:, index], result.group2[:, index]
-        with np.errstate(invalid="ignore", divide="ignore"):
-            r1 = np.where(b1 > 0, r1 / b1, np.nan)
-            r2 = np.where(b2 > 0, r2 / b2, np.nan)
-    valid = (np.isfinite(r1) & np.isfinite(r2)).sum(axis=0)
-    return r1, r2, valid
+        result = bs.bootstrap_paths(
+            num,
+            sparse.csr_matrix(quantity.den),
+            arm,
+            n_bootstrap,
+            weights,
+            random_state=random_state,
+            den_index=np.asarray(quantity.den_index, dtype=np.int64),
+        )
+    else:
+        result = bs.bootstrap_paths(
+            num, None, arm, n_bootstrap, weights, random_state=random_state
+        )
+    return result.group1, result.group2, result.valid
 
 
 # ======================================================================= tables

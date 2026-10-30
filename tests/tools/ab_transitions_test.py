@@ -327,6 +327,75 @@ class TestNorthwindPlantedTruth:
             stream.get_ab_transitions(DIFF, weight, n_bootstrap=1000)
             assert time.perf_counter() - started < 20
 
+    @pytest.mark.slow
+    def test_eighty_event_types_run_within_budget(self) -> None:
+        """A dense graph (about 6,500 edges, 2,500 tested): ratio weights keep one
+        denominator column per event, never one per edge."""
+        rng = np.random.default_rng(0)
+        lengths = rng.integers(5, 40, 10_000)
+        users = np.repeat(np.arange(10_000), lengths)
+        events = rng.zipf(1.3, len(users)) % 80
+        df = pd.DataFrame(
+            {
+                "user_id": users,
+                "event": [f"e{e:02d}" for e in events],
+                "timestamp": pd.Timestamp("2026-01-01")
+                + pd.to_timedelta(np.arange(len(users)), unit="s"),
+                "exp_group": np.where(users % 2 == 0, "treatment", "control"),
+            }
+        )
+        wide = Eventstream(df, {"segment_cols": ["exp_group"]})
+        for weight, budget in (("unique_paths", 5), ("proba_out", 20)):
+            started = time.perf_counter()
+            frame = wide.get_ab_transitions(DIFF, weight)
+            assert time.perf_counter() - started < budget, weight
+            assert len(frame) > 6000 and frame.attrs["n_tested"] > 2000
+
+
+class TestRatioBootstrap:
+    """A ratio row's replicates are those of its own numerator and denominator."""
+
+    @staticmethod
+    def _per_path(stream, source, target):
+        from retentioneering.tools.transition_matrix import path_transition_counts
+
+        counts = path_transition_counts(stream, "user_id")
+        arm = stream.get_path_segments("exp_group")
+        users = arm.index
+        edge = counts[(counts["source"] == source) & (counts["target"] == target)]
+        num = edge.set_index("user_id")["count"].reindex(users).fillna(0)
+        out = counts[counts["source"] == source].groupby("user_id")["count"].sum()
+        den = out.reindex(users).fillna(0)
+        return num.to_numpy(float), den.to_numpy(float), arm.to_numpy()
+
+    def test_replicates_equal_the_edge_alone(self, stream) -> None:
+        from retentioneering.tools import _bootstrap as bs
+
+        frame = stream.get_ab_transitions(
+            DIFF, "proba_out", n_bootstrap=300, random_state=5
+        )
+        num, den, labels = self._per_path(stream, "checkout_start", "payment")
+        arm = np.where(labels == "treatment", 0, np.where(labels == "control", 1, -1))
+        alone = bs.bootstrap_paths(num, den, arm, 300, random_state=5)
+        d_reps = alone.delta[:, 0]
+        row = _row(frame, "checkout_start", "payment")
+        low, high = bs.percentile_ci(d_reps, 0.95)
+        assert (row["delta_ci_low"], row["delta_ci_high"]) == (low[0], high[0])
+        assert row["delta_se"] == bs.bootstrap_se(d_reps)[0]
+
+    def test_se_agrees_with_the_delta_method(self, stream) -> None:
+        frame = stream.get_ab_transitions(DIFF, "proba_out")
+        for source, target in [("cart", "checkout_start"), ("product_view", "catalog")]:
+            num, den, labels = self._per_path(stream, source, target)
+            var = 0.0
+            for level in ("treatment", "control"):
+                n, d = num[labels == level], den[labels == level]
+                ratio = n.sum() / d.sum()
+                resid = n - ratio * d
+                var += (resid**2).sum() / (len(n) - 1) / len(n) / d.mean() ** 2
+            se = _row(frame, source, target)["delta_se"]
+            assert se == pytest.approx(np.sqrt(var), rel=0.1), (source, target)
+
 
 # ---------------------------------------------------------------- calibration
 def _discoveries(frame: pd.DataFrame) -> int:

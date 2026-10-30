@@ -55,6 +55,43 @@ class TestEngine:
         np.testing.assert_array_equal(sparse_res.group2, dense.group2)
         np.testing.assert_array_equal(sparse_res.valid, dense.valid)
 
+    def test_sparse_input_is_not_changed(self) -> None:
+        from scipy import sparse
+
+        num = sparse.csr_matrix(np.array([[1.0, np.nan], [0, 2.0], [3.0, 1.0], [1, 1]]))
+        den = sparse.csr_matrix(np.array([[np.inf, 1.0], [1, 1], [1, 1], [1, 1]]))
+        before = (num.data.copy(), den.data.copy())
+        bs.bootstrap_paths(num, None, np.array([0, 0, 1, 1]), 100)
+        bs.bootstrap_paths(num, den, np.array([0, 0, 1, 1]), 100)
+        np.testing.assert_array_equal(num.data, before[0])
+        np.testing.assert_array_equal(den.data, before[1])
+
+    @pytest.mark.parametrize("weights", ["multinomial", "poisson"])
+    def test_shared_denominators_equal_each_cell_alone(self, weights) -> None:
+        from scipy import sparse
+
+        rng = np.random.default_rng(3)
+        num = rng.poisson(0.4, size=(500, 6)).astype(float)
+        den = num[:, [0, 1, 2]] + num[:, [3, 4, 5]] + rng.poisson(0.5, (500, 3))
+        den_index = np.array([0, 1, 2, 0, 1, 2])
+        arm = (np.arange(500) % 2).astype(int)
+        shared = bs.bootstrap_paths(
+            sparse.csr_matrix(num),
+            sparse.csr_matrix(den),
+            arm,
+            300,
+            weights,
+            batch=70,
+            den_index=den_index,
+        )
+        for j, k in enumerate(den_index):
+            alone = bs.bootstrap_paths(num[:, j], den[:, k], arm, 300, weights)
+            np.testing.assert_array_equal(shared.group1[:, j], alone.group1[:, 0])
+            np.testing.assert_array_equal(shared.group2[:, j], alone.group2[:, 0])
+            assert shared.valid[j] == alone.valid[0]
+        with pytest.raises(InvalidParameterError):
+            bs.bootstrap_paths(num, den, arm, 10, den_index=np.array([0, 3]))
+
     def test_replicates_do_not_depend_on_other_cells(self) -> None:
         num, den, arm = _toy(cells=4)
         full = bs.bootstrap_paths(num, den, arm, 200)

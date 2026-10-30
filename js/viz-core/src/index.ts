@@ -36,6 +36,8 @@ export {
   abEdgeIndex,
   abEdgeClass,
   abEdgeLook,
+  abDrawsEdge,
+  abEdgeLabel,
   abTooltipLines,
   abTooltipValues,
   abLegendText,

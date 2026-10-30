@@ -3116,11 +3116,14 @@ class Eventstream:
             diff mode: significant edges in the colour of their sign and never
             hidden by the edge filter, inconclusive edges grey, untested edges
             grey and dashed, edges the frame has no row for (a filtered frame,
-            or outside its window) faint; under the overlay the edge tooltip
-            shows the test's values (for `unique_paths` the arms' shares, not
-            the graph's path counts), the delta, its interval, the adjusted
-            p-value and the verdict, and the legend names the correction, the
-            family size and the population. Needs the frame's `diff` (the same
+            or outside its window) faint. Every row of the frame on an edge of
+            the graph is drawn, also where the graph's two values tie, and its
+            label is the frame's delta (in pp for shares), the number its
+            colour reads; under the overlay the edge tooltip shows the test's
+            values (for `unique_paths` the arms' shares, not the graph's path
+            counts), the delta, its interval, the adjusted p-value and the
+            verdict, and the legend names the correction, the family size and
+            the population. Needs the frame's `diff` (the same
             groups in the same order; a frame computed on `("arm", ...)` with
             an assignment table matches the arm segment), its `edge_weight`
             (the default when `edge_weight` is not given) and its `path_col`;

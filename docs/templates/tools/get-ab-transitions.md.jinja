@@ -106,7 +106,9 @@ edges are tested:
 graph: significant edges in their sign's colour (red where group 1 is higher, blue
 where it is lower) at full opacity, inconclusive edges thin and grey, untested ones
 grey and dashed, and edges without a row in the frame (filtered out, or outside its
-window) faintest. The edge tooltip shows the test's values — for `unique_paths` the
+window) faintest. Every row of the frame on an edge of the graph is drawn, also
+when the graph's values tie in the two arms, and is labelled with the frame's delta
+(in pp for the shares). The edge tooltip shows the test's values — for `unique_paths` the
 arms' shares in %, not the graph's path counts, whose difference can even have the
 other sign when the arms differ in size — the delta, its interval, the adjusted
 p-value and the verdict; the legend names the correction, the family size, ITT and

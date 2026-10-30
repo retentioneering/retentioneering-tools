@@ -226,7 +226,10 @@ twin): it is validated against the graph's `diff`, `edge_weight` and
 persisted in `state_file`. Significant edges are drawn in their sign's colour and
 bypass the edge filter; inconclusive edges turn grey, untested ones dashed, edges
 without a row faint, and the tooltip shows the test's values (shares for
-`unique_paths`) so its units agree with the test. When the sidebar changes the
+`unique_paths`) so its units agree with the test. The label of an edge with a row
+is the frame's delta, and every row on an edge of the graph is drawn even where
+the graph's own difference is 0: with arms of different sizes a path-count
+difference can be 0, or have the other sign, while the shares differ. When the sidebar changes the
 weight, the diff or the path column, the overlay steps aside.
 
 Validation: on `load_ab_test()` the screens find the planted cart loop (story 4)

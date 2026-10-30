@@ -16,9 +16,11 @@ import { formatTime } from "../../utils/format-time";
 import { resolveDiffLabels } from "../../utils/diff-tooltip";
 import {
   type AbTransitionsPayload,
+  abDrawsEdge,
   abEdgeClass,
   abEdgeIndex,
   abEdgeKey,
+  abEdgeLabel,
   abEdgeLook,
   abLegendText,
   abTooltipLines,
@@ -1214,22 +1216,34 @@ export const TransitionGraph = observer(function TransitionGraph({
       hasBackward: boolean;
     }> = [];
 
+    // An edge with a non-zero value; under the A/B overlay also a row of the
+    // frame on an edge of the graph whose two arms tie (abIndex is empty
+    // without the overlay, so the plain diff mode is unchanged).
+    const isDrawn = (source: string, target: string, value: number): boolean =>
+      abDrawsEdge(
+        value,
+        abIndex.get(abEdgeKey(source, target)),
+        store.getDiffGroupValue(source, target, "group1"),
+        store.getDiffGroupValue(source, target, "group2"),
+      );
+
     graphEvents.forEach((rowEvent) => {
       graphEvents.forEach((colEvent) => {
         const isSelfLoop = rowEvent.id === colEvent.id;
 
         const forwardValue = store.getMatrixValue(rowEvent.id, colEvent.id);
-        if (!Number.isFinite(forwardValue) || forwardValue === 0) return;
+        if (!isDrawn(rowEvent.id, colEvent.id, forwardValue)) return;
+        const weight = Number.isFinite(forwardValue) ? forwardValue : 0;
 
         const backwardValue = store.getMatrixValue(colEvent.id, rowEvent.id);
         const hasBackward =
-          !isSelfLoop && Number.isFinite(backwardValue) && backwardValue !== 0;
+          !isSelfLoop && isDrawn(colEvent.id, rowEvent.id, backwardValue);
 
         list.push({
           source: rowEvent.id,
           target: colEvent.id,
-          weight: forwardValue,
-          normalizedWeight: normalize(forwardValue),
+          weight,
+          normalizedWeight: normalize(weight),
           isSelfLoop,
           hasBackward,
         });
@@ -1238,7 +1252,7 @@ export const TransitionGraph = observer(function TransitionGraph({
 
     list.sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight));
     return list;
-  }, [store, visibleEvents, maxWeight, isProbability, isDifferential]);
+  }, [store, visibleEvents, maxWeight, isProbability, isDifferential, abIndex]);
 
   // Smallest nonzero |weight| on the graph — the data-driven lower bound of
   // the manual slider's log scale. Without it the scale starts at
@@ -1544,9 +1558,16 @@ export const TransitionGraph = observer(function TransitionGraph({
 
       const edgeColor = applyAlphaColor(baseEdgeColor, edgeOpacity);
 
-      const baseValue = isDifferential
-        ? (edge.weight > 0 ? "+" : "") + formatValue(edge.weight)
-        : formatValue(edge.weight);
+      // Under the A/B overlay a frame row's label is the frame's delta (in pp
+      // for shares), the number its colour and tooltip read.
+      const abLabel = abOverlay
+        ? abEdgeLabel(abIndex.get(abEdgeKey(edge.source, edge.target)), abOverlay)
+        : null;
+      const baseValue =
+        abLabel ??
+        (isDifferential
+          ? (edge.weight > 0 ? "+" : "") + formatValue(edge.weight)
+          : formatValue(edge.weight));
 
       elements.push({
         group: "edges",

@@ -364,7 +364,9 @@ are abandoned, it does not stop anyone paying.
 
 Pass the frame to the graph to see it: `stream.transition_graph(diff=diff,
 ab_transitions=edges)` draws significant edges in their sign's colour, inconclusive
-ones grey, untested ones dashed and edges without a row in the frame faint, and its
+ones grey, untested ones dashed and edges without a row in the frame faint; it
+labels each edge with the frame's delta in pp and draws every row of the frame,
+also where the arms' path counts tie, and its
 tooltip shows the test's values (the arms' shares, not the graph's path counts),
 the interval and the adjusted p-value. `get_ab_steps(diff, max_steps=8, assignment=assignment)`
 does the same per step: 93 cells tested, `quick_add` higher and `add_to_cart` lower

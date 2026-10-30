@@ -205,11 +205,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - `transition_graph(diff=..., ab_transitions=frame)` highlights the frame of
   `get_ab_transitions` on the diff graph: significant edges in their sign's
   colour (and kept whatever the edge filter), inconclusive ones grey, untested
-  ones dashed, edges without a row in the frame faint; under the overlay the edge
+  ones dashed, edges without a row in the frame faint. Every row of the frame on
+  an edge of the graph is drawn, also where the graph's path counts tie, and is
+  labelled with the frame's delta (in pp for shares), so label, colour and
+  tooltip read the same number; under the overlay the edge
   tooltip shows the test's values (for `unique_paths` the arms' shares, not the
   graph's path counts), the delta's interval, the adjusted p-value and the
   verdict, and the legend names the correction, the family size, ITT, the
-  horizon and a filtered frame. The frame must match the graph's `diff`
+  horizon, what the labels show and a filtered frame. The plain diff graph is
+  unchanged. The frame must match the graph's `diff`
   (segment form or id lists), `edge_weight` and `path_col`; `path_pattern` is
   refused. It is carried by the static HTML export (legend open) and not stored
   in `state_file`.

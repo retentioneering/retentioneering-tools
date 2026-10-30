@@ -127,6 +127,40 @@ export function abEdgeIndex(payload: AbTransitionsPayload | null): Map<string, A
   return index;
 }
 
+/**
+ * Whether the diff graph draws the edge `source -> target`: the plain diff mode
+ * draws an edge whose difference (`diff`) is not 0; under the overlay a row of
+ * the frame (`stat`) on an edge of the graph — either arm has it — is drawn too,
+ * so a tested edge whose two graph values tie (path counts equal, shares not)
+ * still gets a line. Without `stat` this is the plain rule.
+ */
+export function abDrawsEdge(
+  diff: number,
+  stat: AbEdgeStat | undefined,
+  group1: number | null,
+  group2: number | null,
+): boolean {
+  if (Number.isFinite(diff) && diff !== 0) return true;
+  if (!stat) return false;
+  const has = (value: number | null) => value != null && Number.isFinite(value) && value !== 0;
+  return has(group1) || has(group2);
+}
+
+/**
+ * The label of an edge under the overlay: the frame's delta in the frame's
+ * units (pp for shares), the number its colour and tooltip read — the graph's
+ * own difference (path counts for `unique_paths`) can have the other sign when
+ * the arms differ in size. Null for an edge without a row: it keeps the graph's
+ * difference, as its tooltip does.
+ */
+export function abEdgeLabel(
+  stat: AbEdgeStat | undefined,
+  payload: AbTransitionsPayload,
+): string | null {
+  if (!stat) return null;
+  return formatAbDelta(stat.delta, payload);
+}
+
 /** The overlay class of an edge: significant with its sign, tested but
  *  inconclusive, not tested (below the support rule), or absent from the frame. */
 export function abEdgeClass(stat: AbEdgeStat | undefined): AbEdgeClass {
@@ -212,8 +246,10 @@ export function formatAbValue(value: number | null | undefined, payload: AbTrans
   return abIsShare(payload) ? `${(value * 100).toFixed(2)} %` : value.toFixed(3);
 }
 
-/** A delta of the test: percentage points for shares, the count otherwise. */
+/** A delta of the test: percentage points for shares, the count otherwise;
+ *  "-" without a unit when there is no estimate. */
 export function formatAbDelta(value: number | null | undefined, payload: AbTransitionsPayload): string {
+  if (value == null || !Number.isFinite(value)) return "-";
   const pp = abIsShare(payload);
   return `${fmt(value, pp ? 100 : 1, pp ? 2 : 3)}${pp ? " pp" : ""}`;
 }
@@ -291,8 +327,10 @@ export function abLegendText(payload: AbTransitionsPayload): string {
   if (payload.horizon) scope.push(`horizon ${payload.horizon}`);
   if (abIsFiltered(payload)) scope.push(`frame filtered to ${payload.edges.length} of ${payload.n_rows} rows`);
   const where = scope.length ? `; ${scope.join(", ")}` : "";
+  const labels = abIsShare(payload) ? "the test's delta in pp" : "the test's delta per path";
   return (
     `Significant at ${alpha} (${correction}${tested}${where}): red higher, blue lower in group 1; ` +
-    "grey inconclusive; dashed not tested; faint not in the frame"
+    "grey inconclusive; dashed not tested; faint not in the frame. " +
+    `Labels: ${labels} (faint edges: the graph's own difference)`
   );
 }

@@ -71,6 +71,9 @@ _HINT = (
 
 _PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+#: Id-match warnings already shown in this process (see ``align_assignment``).
+_ID_MATCH_WARNED: set[str] = set()
+
 
 def warn_user(message: str, category: type[Warning] = UserWarning) -> None:
     """Emit a warning attributed to the first frame outside the library.
@@ -307,9 +310,14 @@ def align_assignment(
                 "and wrong when the ids are spelled differently: index the table "
                 f"by '{path_col}'."
             )
-        warn_user(
+        message = (
             f"{detail}; the rest count as silent paths (0 for every metric). {advice}"
         )
+        if message not in _ID_MATCH_WARNED:
+            # once per table and stream: a push audience that mostly never opens
+            # the app is expected, and every later call on it would repeat this
+            _ID_MATCH_WARNED.add(message)
+            warn_user(f"{message} (Shown once per assignment table.)")
     return table
 
 

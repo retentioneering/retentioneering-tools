@@ -1,5 +1,7 @@
 """`get_sample_ratio`: sample ratio mismatch check."""
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -367,6 +369,25 @@ def test_assignment_ids_mostly_unmatched_warn() -> None:
         "arm", assignment=pd.Series(_arms(50, 50))
     )
     assert result["silent_paths"] == 40
+
+
+def test_id_match_warning_is_shown_once_per_table() -> None:
+    stream = _stream(_arms(20, 20))
+    table = pd.Series(_arms(50, 50))
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        stream.get_sample_ratio("arm", assignment=table)
+        stream.get_ab_test(
+            ("arm", "treatment", "control"),
+            [{"metric": "has_event", "metric_args": {"event": "visit"}}],
+            assignment=table,
+        )
+    shown = [w for w in caught if "only 40 of 100" in str(w.message)]
+    assert len(shown) == 1
+    assert "Shown once per assignment table" in str(shown[0].message)
+    # another table is another warning
+    with pytest.warns(UserWarning, match="only 40 of 120"):
+        stream.get_sample_ratio("arm", assignment=pd.Series(_arms(60, 60)))
 
 
 def test_unit_guard_with_integer_ids() -> None:

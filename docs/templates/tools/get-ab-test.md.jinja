@@ -46,7 +46,7 @@ the bundled synthetic experiment, `load_ab_test()`.
 Table ids are matched to `path_col` as they are, or by their string form when
 none matches as is (ids read from JSON or CSV). No match at all raises
 `InvalidParameterError`; fewer than half of the table's ids matched gives a
-`UserWarning` with the counts — right when most assigned paths never produced an
+`UserWarning` with the counts, once per table — right when most assigned paths never produced an
 event, wrong when the ids are spelled differently. A table whose index is named
 after a coarser path column (user ids, with `path_col="session_id"`) or after a
 finer one (`session_id` read per user) raises; an unnamed index whose ids are

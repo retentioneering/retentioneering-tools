@@ -196,21 +196,23 @@ times counts once. For a per-visit figure, carve out the subpopulation with
    whether strata are pre-exposure, which is why step 1 comes first. It starts with
    the window it covers ("over the whole observation period", "calendar week 2026-03-09",
    "days 14-27 since assignment"): a period row is not the test's result, so
-   always name the window when you quote a number. With several metrics each
-   reading ends "corrected within this metric only; name one decision metric": only
-   the decision metric declared in step 2 can be called a win; never pick it after
-   seeing the rows. A guardrail is read alone: it passes only when its interval
-   clears the declared margin (a grey guardrail whose interval reaches past the
-   margin has not passed). `correction_scope="all"` is for a scorecard read without
-   one decision metric, never for guardrails; every row's `scope` says what it is
-   corrected against. `unit` says whether
-   the reading is in percentage points (`pp`, a 0/1 metric whose `delta` fields
-   are shares) or in the metric's own unit (`value`).
+   always name the window when you quote a number. The default
+   `correction_scope="all"` adjusts every declared row of every metric in each
+   call, retaining unavailable hypotheses in the family size. Separate calls
+   (overall, strata, periods) remain separate families; this does not correct
+   arbitrary exploration or peeking. `correction_scope="metric"` is an explicit
+   opt-in for predeclared families. A guardrail passes only when its interval
+   clears a declared harm margin; an inconclusive result is not evidence of safety.
+   Every row's `scope` labels the family. `unit` is percentage points (`pp`) for
+   binary outcomes whose numeric delta fields are shares, otherwise `value`.
 4. Optional: `strata_col=` for a segment fixed before exposure (platform at signup),
    `period="W"` for stability over time. Strata rows are adjusted with `correction`
    (`strata_correction_family`); `exploratory=true` (or `strata_pre_exposure` not
-   true) means the strata may be post-exposure: report them as exploratory.
-5. Time: with the assignment table, `horizon="28D"` reads each user's first 28 days
+   true) means the strata may be post-exposure: their rows are descriptive, with
+   no confirmatory p-values or heterogeneity/balance tests.
+5. Time: declare `observation_end` from the logging contract (an exclusive
+   timestamp, not the last event). With the assignment table, `horizon="28D"`
+   reads each user's first 28 days
    (choose the window before reading: different horizons answer different
    questions), and `period="14D", period_basis="since_assignment"` gives rows by
    days since assignment. `get_ab_bootstrap(..., contrast={"novelty": [["0-13"],
@@ -223,7 +225,7 @@ times counts once. For a per-visit figure, carve out the subpopulation with
 Population (`population` on every row): with an assignment table in the session
 (`serve(stream, assignment=...)`; `describe()` shows `assignment`) every assigned
 user, silent ones included (intention to treat, `"assignment"`), and `horizon` /
-since-assignment periods work. Without one, the stream's paths (users with at least
+since-assignment periods work with an explicit `observation_end`. Without one, the stream's paths (users with at least
 one event) split by the arm segment, over the whole window: silent assigned users
 are not counted, there is no horizon, and the funnel and the scorecard can differ
 from an ITT read. Say which population a number is about. Quote `warnings` if the
@@ -348,3 +350,13 @@ Confirm with the user, then call `update_base_stream` with one or more of:
 {"type": "filter_paths", "op": ">", "metric": "length", "value": 3}
 {"type": "filter_events", "drop": {"event": ["noise_event"]}}
 ```
+
+
+## Experiments (Python source API)
+
+The development Python API provides `Eventstream.experiment_data` and
+`Eventstream.experiment`. It requires a separate complete assignment dataframe;
+the current MCP report session does not register this second source. Do not
+synthesize a roster from observed paths or claim an experiment tool is available
+in MCP. Use the Python workflow documented in /docs/experiments; keep a
+behavioral segment diff descriptive until a valid assignment design is supplied.

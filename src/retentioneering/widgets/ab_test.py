@@ -31,7 +31,9 @@ _BINARY_METRICS = frozenset(
     {"has_event", "has_any_event", "has_all_events", "matches_pattern", "in_segment"}
 )
 #: Per-path totals (a silent path counts 0).
-_COUNT_METRICS = frozenset({"event_count", "length", "active_days", "column_sum"})
+_COUNT_METRICS = frozenset(
+    {"event_count", "length", "active_days", "column_sum", "event_value_sum"}
+)
 #: Metrics measured in seconds.
 _SECONDS_METRICS = frozenset({"duration", "time_between"})
 
@@ -41,9 +43,10 @@ _DEFAULTS: dict[str, Any] = {
     "period_basis": "calendar",
     "period_population": "itt",
     "horizon": "",
+    "observation_end": "",
     "test": "auto",
     "correction": "holm",
-    "correction_scope": "metric",
+    "correction_scope": "all",
     "ci_level": 0.95,
     "power": 0.8,
     "n_bootstrap": "1000",
@@ -120,9 +123,10 @@ class ABTestWidget(RetentioneeringWidget):
     period_basis = traitlets.Unicode("calendar").tag(sync=True)
     period_population = traitlets.Unicode("itt").tag(sync=True)
     horizon = traitlets.Unicode("").tag(sync=True)
+    observation_end = traitlets.Unicode("").tag(sync=True)
     test = traitlets.Unicode("auto").tag(sync=True)
     correction = traitlets.Unicode("holm").tag(sync=True)
-    correction_scope = traitlets.Unicode("metric").tag(sync=True)
+    correction_scope = traitlets.Unicode("all").tag(sync=True)
     ci_level = traitlets.Float(0.95).tag(sync=True)
     power = traitlets.Float(0.8).tag(sync=True)
     # an int or "auto"; kept as text so the JS side reads one type
@@ -158,6 +162,7 @@ class ABTestWidget(RetentioneeringWidget):
         "period_basis",
         "period_population",
         "horizon",
+        "observation_end",
         "test",
         "correction",
         "correction_scope",
@@ -182,6 +187,7 @@ class ABTestWidget(RetentioneeringWidget):
         period_basis=_UNSET,
         period_population=_UNSET,
         horizon=_UNSET,
+        observation_end=_UNSET,
         test=_UNSET,
         correction=_UNSET,
         correction_scope=_UNSET,
@@ -235,6 +241,7 @@ class ABTestWidget(RetentioneeringWidget):
             "period_basis": period_basis,
             "period_population": period_population,
             "horizon": horizon,
+            "observation_end": observation_end,
             "test": test,
             "correction": correction,
             "correction_scope": correction_scope,
@@ -254,6 +261,8 @@ class ABTestWidget(RetentioneeringWidget):
             value = args[name]
             if value is _UNSET or (value is None and name != "strata_pre_exposure"):
                 value = default
+            elif name == "observation_end":
+                value = str(value)
             elif name in ("period", "horizon"):
                 value = _duration_str(value)
             elif name == "n_bootstrap":
@@ -297,9 +306,10 @@ class ABTestWidget(RetentioneeringWidget):
             "period_basis": raw["period_basis"] or "calendar",
             "period_population": raw["period_population"] or "itt",
             "horizon": raw["horizon"] or None,
+            "observation_end": raw["observation_end"] or None,
             "test": raw["test"] or "auto",
             "correction": raw["correction"] or "holm",
-            "correction_scope": raw["correction_scope"] or "metric",
+            "correction_scope": raw["correction_scope"] or "all",
             "ci_level": float(raw["ci_level"]),
             "power": float(raw["power"]),
             "n_bootstrap": n_bootstrap,
@@ -347,6 +357,7 @@ class ABTestWidget(RetentioneeringWidget):
             key: params[key]
             for key in (
                 "horizon",
+                "observation_end",
                 "test",
                 "correction",
                 "correction_scope",
@@ -409,6 +420,7 @@ class ABTestWidget(RetentioneeringWidget):
             "periods": scorecard_records(periods),
             "metric_kinds": dict(zip(names, kinds)),
             "metric_units": dict(zip(names, units)),
+            "bootstrap_algorithm": overall.attrs.get("bootstrap_algorithm"),
             "group1_label": labels[0],
             "group2_label": labels[1],
             "ci_level": params["ci_level"],

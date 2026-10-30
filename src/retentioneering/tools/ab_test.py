@@ -14,7 +14,8 @@ Design (plan v2, lead decisions D3, D5, D6, D12, D13)
   replicates are drawn once per call and shared by every bootstrap cell.
 * Period rows are intention-to-treat per period by default. ``period_population="active"``
   rows are descriptive (``verdict="descriptive"``, no p-value).
-* The multiplicity family is the set of rows of one metric; the ``verdict`` uses
+* The default multiplicity family is all declared rows in the call; an explicit
+  ``correction_scope="metric"`` retains separate metric families. The ``verdict`` uses
   ``p_value_adjusted`` only; the confidence interval is per comparison and labelled so.
 * Statistical dispatch: 0/1 metric -> pooled z-test with Wilson/Newcombe intervals;
   per-path count or value metric -> Welch t; ratio-of-sums metric -> joint path bootstrap
@@ -62,6 +63,7 @@ from retentioneering.tools._diff import (
     MISSING,
     MULTI,
     DiffGroups,
+    _check_independent_path_grain,
     align_assignment,
     normalize_assignment,
     per_path_label,
@@ -103,7 +105,9 @@ BINARY_METRICS = frozenset(
     {"has_event", "has_any_event", "has_all_events", "matches_pattern", "in_segment"}
 )
 #: Metrics that are non-negative per-path totals: a path with no events counts as 0.
-COUNT_METRICS = frozenset({"event_count", "length", "active_days", "column_sum"})
+COUNT_METRICS = frozenset(
+    {"event_count", "length", "active_days", "column_sum", "event_value_sum"}
+)
 #: Metrics that are undefined for a path with no events (NaN, left out of the mean).
 VALUE_METRICS = frozenset({"duration", "time_between", "column_mean", "column_last"})
 
@@ -117,6 +121,9 @@ COLUMNS: tuple[str, ...] = (
     "period_end",
     "period_complete",
     "population",
+    "observation_end",
+    "observation_basis",
+    "analysis_unit",
     "group1_paths",
     "group2_paths",
     "group1_support",
@@ -197,7 +204,7 @@ _BOOTSTRAP_CHUNK = 128
 LOW_SUPPORT_PATHS = 30
 #: Above this share of bootstrap replicates with no value in an arm, a bootstrap row
 #: gets ``support_warning="invalid_replicates"`` and NaN intervals, p-value and SE.
-MAX_INVALID_REPLICATES = 0.01
+MAX_INVALID_REPLICATES = 0.0
 #: ``support_warning`` values, in order of precedence.
 SUPPORT_WARNINGS = (
     "",
@@ -427,9 +434,11 @@ def _sorted_ids(index: pd.Index) -> pd.Index:
 
 
 def _coverage(ts: pd.Series) -> tuple[pd.Timestamp, pd.Timestamp]:
-    """The stream's observed range: from midnight of the first event's day to the last
-    event's timestamp (the end of data: a window that closes after it is not
-    observed in full)."""
+    """Observed event span, used only as a descriptive calendar display range.
+
+    Event timestamps alone do not establish complete observation. Horizon and
+    since-assignment analyses require a separately declared logging cutoff.
+    """
     return ts.min().floor("D"), ts.max()
 
 
@@ -920,7 +929,7 @@ class MetricMatrix:
         One row per period: ``period, period_start, period_end, period_complete``.
     immature : ndarray (n_periods,) or None
         Paths excluded from each period because their window is not closed at the
-        stream's end (``horizon`` or ``period_basis="since_assignment"``).
+        declared logging cutoff (``horizon`` or ``period_basis="since_assignment"``).
     strata : pandas.Series or None
         Stratum label per path.
     strata_pre_exposure : bool or None
@@ -966,6 +975,7 @@ class MetricMatrix:
         horizon: Any | None = None,
         strata_pre_exposure: bool | None = None,
         strata_labels: pd.Series | None = None,
+        observation_end: pd.Timestamp | None = None,
     ) -> "MetricMatrix":
         """Run the metric registry once over the union of numerators and denominators.
 
@@ -976,7 +986,7 @@ class MetricMatrix:
         normalised table, see :func:`~retentioneering.tools._diff.normalize_assignment`)
         events before ``assigned_at`` are dropped and silent paths get zero rows. With
         ``horizon`` only events in ``[assigned_at, assigned_at + horizon)`` count and
-        paths whose window ends after the stream's last event are left out. With
+        paths whose window ends after the explicit ``observation_end`` cutoff are left out. With
         ``strata_labels`` (a column of the assignment table) the strata come from the
         table instead of the stream's events.
         """
@@ -987,13 +997,32 @@ class MetricMatrix:
         ts_col = schema.timestamp_col
         df = stream.df
         cov_start, cov_end = _coverage(df[ts_col])
+        if observation_end is not None:
+            cov_end = observation_end
 
         path_ids = _sorted_ids(groups.ids1.append(groups.ids2))
+        missing_time = df[path_col].isin(path_ids) & df[ts_col].isna()
+        if missing_time.any():
+            raise InvalidParameterError(
+                "event timestamps",
+                f"{int(missing_time.sum())} compared event(s) have missing timestamps",
+                [
+                    "finite timestamps for compared events so window eligibility is known"
+                ],
+            )
         arm = np.where(path_ids.isin(groups.ids1), 0, 1)
 
         assigned_at = None
         if assignment is not None and "assigned_at" in assignment.columns:
             assigned_at = assignment["assigned_at"].reindex(path_ids)
+            if observation_end is not None:
+                if (assigned_at >= observation_end).any():
+                    raise InvalidParameterError(
+                        "observation_end",
+                        observation_end,
+                        ["a cutoff after every compared assignment time"],
+                    )
+                cov_start = assigned_at.min().floor("D")
 
         # ---- the analysed window: drop pre-assignment events, apply the horizon
         since = period is not None and period_basis == "since_assignment"
@@ -1010,6 +1039,8 @@ class MetricMatrix:
                     ],
                 )
         keep = df[path_col].isin(path_ids).to_numpy()
+        if observation_end is not None:
+            keep = keep & df[ts_col].lt(observation_end).to_numpy()
         horizon_immature = 0
         length = None
         if assigned_at is not None:
@@ -1030,7 +1061,7 @@ class MetricMatrix:
                 keep = keep & df[path_col].isin(path_ids).to_numpy()
         if (arm == 0).sum() == 0 or (arm == 1).sum() == 0:
             raise EmptyEventstreamError(
-                "an arm has no path whose horizon window is closed at the stream's end"
+                "an arm has no path whose horizon window is closed at observation_end"
             )
         if keep.all():
             work = stream
@@ -1051,7 +1082,13 @@ class MetricMatrix:
                 assigned_at,
                 cov_start,
                 cov_end,
+                declared_window=observation_end is not None,
+                horizon=length,
             )
+            if periods.empty:
+                raise EmptyEventstreamError(
+                    "no period falls within the declared observation window"
+                )
 
         configs: dict[str, dict] = {}
         for spec in specs:
@@ -1068,7 +1105,11 @@ class MetricMatrix:
         values: dict[str, tuple[np.ndarray, np.ndarray | None]] = {}
         for spec in specs:
             num = raw[:, :, keys.index(_config_key(spec.config))]
-            if spec.kind == "value":
+            if np.isinf(num).any():
+                raise InvalidMetricConfigError(
+                    f"metric {spec.name!r}: nonfinite numerator"
+                )
+            if spec.kind in {"value", "ratio"}:
                 num = num.copy()
             else:
                 num = np.where(np.isnan(num), 0.0, num)
@@ -1077,7 +1118,15 @@ class MetricMatrix:
             den = None
             if spec.denominator is not None:
                 den = raw[:, :, keys.index(_config_key(spec.denominator))]
-                den = np.where(np.isfinite(den), den, 0.0)
+                if np.isinf(den).any() or (den[np.isfinite(den)] < 0).any():
+                    raise InvalidMetricConfigError(
+                        f"metric {spec.name!r}: ratio denominators must be finite and nonnegative"
+                    )
+                # Missing value metrics are not observed zero denominators.
+                # Their undefined numerator/denominator pairs are ineligible together.
+                missing = ~np.isfinite(num) | ~np.isfinite(den)
+                num = np.where(missing, 0.0, num)
+                den = np.where(missing, 0.0, den)
             values[spec.name] = (num, den)
 
         # ---- period populations
@@ -1125,7 +1174,7 @@ class MetricMatrix:
             if not filled.any():
                 raise EmptyEventstreamError(
                     "no since-assignment bin has a path whose window is closed at "
-                    "the stream's end"
+                    "observation_end"
                 )
             if not filled.all():
                 periods = periods[filled]
@@ -1269,6 +1318,9 @@ def _period_keys(
     assigned_at: pd.Series | None,
     cov_start: pd.Timestamp,
     cov_end: pd.Timestamp,
+    *,
+    declared_window: bool = False,
+    horizon: pd.Timedelta | None = None,
 ) -> tuple[np.ndarray, pd.DataFrame]:
     """Integer period key per row and the period table (sorted chronologically)."""
     ts = df[ts_col]
@@ -1284,7 +1336,13 @@ def _period_keys(
             )
         since = ts - df[path_col].map(assigned_at)
         keys = (since // length).to_numpy().astype(np.int64)
-        uniq = np.unique(keys)
+        if declared_window:
+            span = cov_end - assigned_at.min()
+            if horizon is not None:
+                span = min(span, horizon)
+            uniq = np.arange(max(0, math.ceil(span / length)), dtype=np.int64)
+        else:
+            uniq = np.unique(keys)
         size = length // unit
         rows = []
         for k in uniq:
@@ -1302,7 +1360,11 @@ def _period_keys(
     length, freq, n = _calendar_period(period)
     if length is not None:
         keys = ((ts - cov_start) // length).to_numpy().astype(np.int64)
-        uniq = np.unique(keys)
+        uniq = (
+            np.arange(max(0, math.ceil((cov_end - cov_start) / length)), dtype=np.int64)
+            if declared_window
+            else np.unique(keys)
+        )
         rows = []
         for k in uniq:
             start = cov_start + length * int(k)
@@ -1326,7 +1388,15 @@ def _period_keys(
             first = cov_start.tz_localize(None) if tz is not None else cov_start
             origin = pd.Period(first, freq=freq).ordinal
             keys = origin + (keys - origin) // n * n
-        uniq = np.unique(keys)
+        if declared_window:
+            first = cov_start.tz_localize(None) if tz is not None else cov_start
+            last = cov_end - pd.Timedelta(1, "ns")
+            last = last.tz_localize(None) if tz is not None else last
+            start_ordinal = pd.Period(first, freq=freq).ordinal
+            last_ordinal = pd.Period(last, freq=freq).ordinal
+            uniq = np.arange(start_ordinal, last_ordinal + 1, n, dtype=np.int64)
+        else:
+            uniq = np.unique(keys)
         rows = []
         for k in uniq:
             p = pd.Period(ordinal=int(k), freq=freq)
@@ -1335,7 +1405,11 @@ def _period_keys(
                 start, end = start.tz_localize(tz), end.tz_localize(tz)
             label = str(p) if n == 1 else f"{start:%Y-%m-%d}/{end - _DAY:%Y-%m-%d}"
             rows.append({"period": label, "period_start": start, "period_end": end})
-    table = pd.DataFrame(rows, index=pd.Index(uniq, name="key"))
+    table = pd.DataFrame(
+        rows,
+        columns=["period", "period_start", "period_end"],
+        index=pd.Index(uniq, name="key"),
+    )
     table["period_complete"] = (table["period_start"] >= cov_start) & (
         table["period_end"] <= cov_end
     )
@@ -1414,7 +1488,7 @@ class ABTest:
     ci_level: float = 0.95
     power: float = 0.8
     correction: str = "holm"
-    correction_scope: str = "metric"
+    correction_scope: str = "all"
     n_bootstrap: int | str = 1000
     bootstrap_weights: str = "multinomial"
     min_support: int = 10
@@ -1424,6 +1498,8 @@ class ABTest:
     period_basis: str = "calendar"
     period: Any = None
     horizon: pd.Timedelta | None = None
+    observation_end: pd.Timestamp | None = None
+    analysis_unit: str | None = None
     #: The prepared assignment table (ids matched to the stream), or None.
     assignment_table: pd.DataFrame | None = field(default=None, repr=False)
     _replicates_cache: dict = field(default_factory=dict, repr=False)
@@ -1444,7 +1520,7 @@ class ABTest:
         horizon: Any | None = None,
         test: str = "auto",
         correction: str = "holm",
-        correction_scope: str = "metric",
+        correction_scope: str = "all",
         ci_level: float = 0.95,
         power: float = 0.8,
         n_bootstrap: int | str = 1000,
@@ -1453,6 +1529,7 @@ class ABTest:
         random_state: int = 42,
         path_col: str | None = None,
         strata_pre_exposure: bool | None = None,
+        observation_end: Any | None = None,
     ) -> "ABTest":
         """Validate the arguments, resolve the groups, build the matrix."""
         schema = stream.schema
@@ -1501,6 +1578,7 @@ class ABTest:
         path_col = path_col or schema.path_col
         if path_col not in schema.path_cols:
             raise InvalidParameterError("path_col", path_col, list(schema.path_cols))
+        _check_independent_path_grain(stream, path_col)
         if period is None:
             # mode switches of period rows mean nothing without period= (ADR-0008)
             for name, value, default in (
@@ -1568,6 +1646,39 @@ class ABTest:
             )
         if horizon is not None:
             _fixed_length(horizon, "horizon")
+        if period_basis == "since_assignment" and period is not None:
+            _fixed_length(period, "period")
+        if (
+            horizon is not None or period_basis == "since_assignment"
+        ) and observation_end is None:
+            raise InvalidParameterError(
+                "observation_end",
+                None,
+                [
+                    "an explicit exclusive logging cutoff for horizon/since-assignment analysis"
+                ],
+                reason="The last observed event does not establish complete observation.",
+            )
+        if observation_end is not None:
+            try:
+                observation_end = pd.Timestamp(observation_end)
+            except (TypeError, ValueError) as exc:
+                raise InvalidParameterError(
+                    "observation_end", observation_end, ["a finite timestamp"]
+                ) from exc
+            if pd.isna(observation_end):
+                raise InvalidParameterError(
+                    "observation_end", observation_end, ["a finite timestamp"]
+                )
+            # Do not silently localize mismatched clocks.
+            try:
+                stream.df[schema.timestamp_col].lt(observation_end)
+            except (TypeError, ValueError) as exc:
+                raise InvalidParameterError(
+                    "observation_end",
+                    observation_end,
+                    ["a timestamp matching the stream timezone"],
+                ) from exc
         table = prepare_assignment(stream, path_col, table)
         if table is None and _is_segment_diff(diff):
             check_segment_unit(stream, path_col, diff[0])
@@ -1593,6 +1704,7 @@ class ABTest:
             horizon=horizon,
             strata_pre_exposure=strata_pre_exposure,
             strata_labels=strata_labels,
+            observation_end=observation_end,
         )
         return cls(
             groups=groups,
@@ -1612,6 +1724,8 @@ class ABTest:
             period=period,
             horizon=None if horizon is None else _fixed_length(horizon, "horizon"),
             assignment_table=table,
+            observation_end=observation_end,
+            analysis_unit=path_col,
         )
 
     # ------------------------------------------------------------------ public
@@ -1654,7 +1768,9 @@ class ABTest:
         table = self._adjust(table, extras)
         if self.matrix.strata is not None:
             table = self._strata_columns(table, extras, rest)
-        return self._finalise(table, extras)
+        out = self._finalise(table, extras)
+        out.attrs["bootstrap_algorithm"] = bs.BOOTSTRAP_ALGORITHM
+        return out
 
     def bootstrap(
         self, contrast: dict[str, tuple[list[str], list[str]]] | None = None
@@ -1700,7 +1816,9 @@ class ABTest:
             out["contrast"] = np.nan
             out = pd.concat([out, extra], ignore_index=True)
         columns = [c for c in BOOTSTRAP_COLUMNS if c in out.columns]
-        return out[columns]
+        out = out[columns]
+        out.attrs["bootstrap_algorithm"] = result.algorithm
+        return out
 
     def contrast_summary(
         self, contrast: dict[str, tuple[list[str], list[str]]]
@@ -1735,7 +1853,44 @@ class ABTest:
                     mask &= reps[col].isna() if pd.isna(value) else reps[col] == value
                 d = reps.loc[mask, "delta"].to_numpy(dtype=float)
                 low, high = bs.percentile_ci(d[:, None], self.ci_level)
-                finite = d[np.isfinite(d)]
+                valid = int(np.isfinite(d).sum())
+                invalid = valid != len(d)
+                constant_arms = []
+                for group_arm in (0, 1):
+                    selected = arm == group_arm
+                    da, db = den[selected, a], den[selected, b]
+                    na, nb = num[selected, a], num[selected, b]
+                    if np.array_equal(da, db):
+                        # With identical per-unit weights the paired change is
+                        # itself a ratio-of-sums contribution. Preserve pairing.
+                        constant_arms.append(
+                            _stats.paired_constant_statistic(na, nb, da)
+                        )
+                    else:
+                        constant_arms.append(
+                            _stats.constant_statistic(np.column_stack([na, da]))
+                            and _stats.constant_statistic(np.column_stack([nb, db]))
+                        )
+                constant = not invalid and (
+                    all(constant_arms)
+                    or _stats.constant_statistic(np.column_stack([d, np.ones(len(d))]))
+                )
+                descriptive = self.period_population == "active" or (
+                    self.matrix.strata is not None
+                    and self.matrix.strata_pre_exposure is not True
+                )
+                status = (
+                    "invalid_replicates"
+                    if invalid
+                    else ("degenerate_distribution" if constant else "ok")
+                )
+                p = float(bs.bootstrap_p(np.array([g1 - g2]), d[:, None])[0])
+                if status == "ok" and not np.isfinite([p, low[0], high[0]]).all():
+                    status = "numerical_failure"
+                if descriptive or status != "ok":
+                    p = float("nan")
+                if status != "ok":
+                    low[0] = high[0] = float("nan")
                 row = dict(zip(keys, key))
                 row.update(
                     contrast=name,
@@ -1744,14 +1899,49 @@ class ABTest:
                     delta=g1 - g2,
                     delta_ci_low=float(low[0]),
                     delta_ci_high=float(high[0]),
-                    p_value=float(bs.bootstrap_p(np.array([g1 - g2]), d[:, None])[0]),
-                    share_positive=(
-                        float((finite > 0).mean()) if len(finite) else float("nan")
-                    ),
-                    valid_replicates=int(len(finite)),
+                    p_value=p,
+                    p_basis="bootstrap_se",
+                    inference_status="descriptive" if descriptive else status,
+                    interval_status=status,
+                    share_positive=float((d > 0).mean())
+                    if valid == len(d) and valid
+                    else float("nan"),
+                    valid_replicates=valid,
                 )
                 rows.append(row)
-        return pd.DataFrame(rows)
+        out = pd.DataFrame(rows)
+        out["p_value_adjusted"] = np.nan
+        out["correction_family"] = ""
+        families = (
+            {None: out.index}
+            if self.correction_scope == "all"
+            else out.groupby("metric", sort=False).groups
+        )
+        adjust = {
+            "holm": _stats.holm,
+            "bonferroni": _stats.bonferroni,
+            "bh": _stats.benjamini_hochberg,
+            "none": lambda p: np.asarray(p, dtype=float),
+        }[self.correction]
+        for index in families.values():
+            out.loc[index, "p_value_adjusted"] = adjust(
+                out.loc[index, "p_value"].to_numpy(dtype=float)
+            )
+            out.loc[index, "correction_family"] = [
+                "none"
+                if self.correction == "none"
+                else (
+                    "all_metrics/contrasts"
+                    if self.correction_scope == "all"
+                    else f"metric={metric}/contrasts"
+                )
+                for metric in out.loc[index, "metric"]
+            ]
+        # A contrast family is declared separately from the scorecard. Its
+        # percentile intervals are pointwise, not adjusted alongside its p-values.
+        out["ci_scope"] = "pointwise"
+        out.attrs["bootstrap_algorithm"] = bs.BOOTSTRAP_ALGORITHM
+        return out
 
     def paths(self) -> pd.DataFrame:
         """The per-path table behind the scorecard (see :func:`ab_paths`)."""
@@ -1760,8 +1950,15 @@ class ABTest:
         path_col = matrix.path_ids.name
         ids = _sorted_ids(groups.ids1.append(groups.ids2))
         out = pd.DataFrame(index=ids)
-        out["arm"] = np.where(ids.isin(groups.ids1), groups.label1, groups.label2)
+        # np.where coerces mixed scalar labels (e.g. 1 and "1") into one dtype.
+        labels = pd.Series(index=ids, dtype=object)
+        in1 = ids.isin(groups.ids1)
+        labels.loc[in1] = groups.label1
+        labels.loc[~in1] = groups.label2
+        out["arm"] = labels
         table = self.assignment_table
+        if table is not None:
+            out["arm"] = table["arm"].reindex(ids)
         if table is not None and "assigned_at" in table.columns:
             out["assigned_at"] = table["assigned_at"].reindex(ids)
         position = matrix.path_ids.get_indexer(ids)
@@ -1938,9 +2135,12 @@ class ABTest:
         # be every path), paths with a value for values; the rule is pooled over
         # the arms (S-02): a behaviour present in one arm only is the strongest
         # effect there is, not missing data
-        if spec.kind in ("binary", "ratio"):
+        if spec.kind == "binary":
             s1 = int(((num > 0) & in1).sum())
             s2 = int(((num > 0) & in2).sum())
+        elif spec.kind == "ratio":
+            s1 = int(((den > 0) & in1).sum())
+            s2 = int(((den > 0) & in2).sum())
         elif spec.kind == "count":
             s1 = int(((num != 0) & in1).sum())
             s2 = int(((num != 0) & in2).sum())
@@ -1995,14 +2195,12 @@ class ABTest:
         elif test == "welch_t_test":
             x1, x2 = num[in1 & (den > 0)], num[in2 & (den > 0)]
             n1, n2 = len(x1), len(x2)
-            g1 = float(x1.mean()) if n1 else nan
-            g2 = float(x2.mean()) if n2 else nan
-            v1 = float(x1.var(ddof=1)) if n1 > 1 else nan
-            v2 = float(x2.var(ddof=1)) if n2 > 1 else nan
-            constant = n1 > 1 and n2 > 1 and v1 == 0 and v2 == 0
-            _, df, p, se = _stats.welch_t(g1, v1, n1, g2, v2, n2)
-            l1, h1 = _t_interval(g1, v1, n1, level)
-            l2, h2 = _t_interval(g2, v2, n2, level)
+            g1, l1, h1 = _stats.sample_mean_ci(x1, level)
+            g2, l2, h2 = _stats.sample_mean_ci(x2, level)
+            _, df, p, se, numeric_status = _stats.welch_samples(x1, x2)
+            constant = numeric_status == "degenerate_distribution"
+            if numeric_status != "ok":
+                extra["support"] = False
             se_f, df_f = float(se), float(df)
 
             def ci_at(lv, d=g1 - g2, se_f=se_f, df_f=df_f):
@@ -2042,20 +2240,30 @@ class ABTest:
             extra["mde_at"] = lambda a, se_f=se_f: _stats.mde_from_se(
                 se_f, a, self.power
             )
-            constant = bool(se == 0)
+            constant1 = _stats.constant_statistic(np.column_stack([num[in1], den[in1]]))
+            constant2 = _stats.constant_statistic(np.column_stack([num[in2], den[in2]]))
+            constant = (constant1 and constant2) or bool(se == 0)
+            if constant1:
+                l1 = h1 = nan
+            if constant2:
+                l2 = h2 = nan
             if constant:
-                # every replicate gives the same delta: no spread, no interval
-                dl = dh = rl = rh = nan
+                # Two empirical constant arms have no estimated contrast spread;
+                # roundoff in weighted decimal sums does not supply uncertainty.
+                dl = dh = rl = rh = p = nan
+                extra["support"] = False
                 extra["ci_at"] = lambda lv: (nan, nan)
             if invalid_replicates:
                 # an absent estimate is NaN: no interval, no p, no SE, no MDE
                 l1 = h1 = l2 = h2 = dl = dh = rl = rh = p = se = nan
                 extra["ci_at"] = lambda lv: (nan, nan)
                 extra["mde_at"] = lambda a: nan
+                extra["support"] = False
 
         if constant:
             # a zero standard error is not an estimate of the spread (S-13)
             se = nan
+            extra["mde_at"] = lambda a: nan
         extra["constant"] = constant
         # an arm with no estimate (no path in the row, or no value for a value or
         # ratio metric): nothing to compare (R2-03), whatever the pooled support
@@ -2069,7 +2277,9 @@ class ABTest:
         else:
             rel = g1 / g2 - 1
         p = float(p)
-        descriptive = self.period_population == "active"
+        descriptive = self.period_population == "active" or (
+            matrix.strata is not None and matrix.strata_pre_exposure is not True
+        )
         if descriptive or not extra["support"]:
             p = nan
         extra["descriptive"] = descriptive
@@ -2142,7 +2352,7 @@ class ABTest:
         for metric, index in families.items():
             p = rows.loc[index, "p_value"].to_numpy(dtype=float)
             rows.loc[index, "p_value_adjusted"] = adjust(p)
-            m = int(np.isfinite(p).sum())
+            m = len(p)
             if self.correction != "none" and m > 1:
                 rows.loc[index, "mde_alpha"] = round(self.alpha / m, 12)
             rows.loc[index, "correction_family"] = [
@@ -2221,7 +2431,9 @@ class ABTest:
         rows["group2_share"] = [share2[k] for k in keys]
         rows["balance_p_value"] = [balance[k[1]] for k in keys]
 
-        q_support = np.array([e["q_support"] for e in extras], dtype=bool)
+        q_support = np.array(
+            [e["q_support"] and not e["descriptive"] for e in extras], dtype=bool
+        )
         het_p = np.full(len(rows), np.nan)
         het_df = np.zeros(len(rows), dtype=int)
         het_used = np.zeros(len(rows), dtype=int)
@@ -2248,7 +2460,7 @@ class ABTest:
             d_s, se_s = rows["delta"].iloc[i], rows["delta_se"].iloc[i]
             with np.errstate(invalid="ignore"):
                 se = (
-                    math.sqrt(se_s**2 + se_r**2)
+                    math.hypot(se_s, se_r)
                     if np.isfinite([se_s, se_r]).all()
                     else np.nan
                 )
@@ -2265,6 +2477,8 @@ class ABTest:
         rows["strata_pre_exposure"] = pd.array([flag] * len(rows), dtype="boolean")
         rows["strata_pre_exposure_source"] = matrix.strata_pre_exposure_source
         rows["exploratory"] = flag is not True
+        if flag is not True or self.period_population == "active":
+            rows["balance_p_value"] = np.nan
         return rows
 
     def _window(self, row: dict) -> str:
@@ -2290,6 +2504,13 @@ class ABTest:
         matrix = self.matrix
         rows = rows.copy()
         rows["unassigned_paths"] = matrix.unassigned_paths
+        rows["observation_end"] = self.observation_end
+        rows["observation_basis"] = (
+            "declared_logging_cutoff"
+            if self.observation_end is not None
+            else "observed_event_span"
+        )
+        rows["analysis_unit"] = self.analysis_unit
         if matrix.periods is not None:
             meta = matrix.periods.set_index("period")
             rows["period_start"] = rows["period"].map(meta["period_start"])
@@ -2342,6 +2563,7 @@ def ab_paths(
     *,
     assignment: pd.Series | pd.DataFrame | None = None,
     horizon: Any | None = None,
+    observation_end: Any | None = None,
     path_col: str | None = None,
 ) -> pd.DataFrame:
     """One row per compared path with every metric's per-path value; the table
@@ -2352,6 +2574,7 @@ def ab_paths(
         metrics,
         assignment=assignment,
         horizon=horizon,
+        observation_end=observation_end,
         path_col=path_col,
     )
     out = test.paths()
@@ -2456,7 +2679,7 @@ def row_reading(
     window: str | None = None,
     several_metrics: bool = False,
     constant: bool = False,
-    correction_scope: str = "metric",
+    correction_scope: str = "all",
     n_metrics: int = 1,
 ) -> str:
     """One sentence that reads a scorecard row from its own numbers.
@@ -2545,15 +2768,28 @@ def row_reading(
     elif verdict == "descriptive":
         parts.append(
             "active population: not randomised, describes who was active in the period"
+            if row.get("population") == "active"
+            else "descriptive strata: pre-exposure membership has not been established"
+        )
+    elif row.get("support_warning") == "invalid_replicates":
+        parts.append(
+            "no interval or p-value: at least one bootstrap replicate "
+            "had no value in an arm; estimate shown descriptively"
+        )
+    elif constant:
+        parts.append(
+            "no p-value: the metric is constant in both arms; estimate shown descriptively"
         )
     elif verdict == "insufficient_data":
         if support_count < min_support:
             parts.append(f"pooled support {support_count} < min_support {min_support}")
-        else:
+        elif non_support_count is not None and non_support_count < min_support:
             parts.append(
                 f"pooled paths without the event {non_support_count} < "
                 f"min_support {min_support}"
             )
+        else:
+            parts.append("the sampling spread is unavailable for this comparison")
         parts.append("estimate shown descriptively")
     elif verdict in ("increase", "decrease"):
         if not has_ci:
@@ -2573,7 +2809,7 @@ def row_reading(
         if not _finite(p_adj):
             if row.get("support_warning") == "invalid_replicates":
                 parts.append(
-                    "no interval or p-value: more than 1 % of bootstrap replicates "
+                    "no interval or p-value: at least one bootstrap replicate "
                     "had no value in an arm; estimate shown descriptively"
                 )
             elif constant:
@@ -2662,14 +2898,6 @@ def _cell_key(key: tuple) -> tuple:
     """A ``(metric, stratum)`` groupby key with a missing stratum as None (NaN keys
     from two groupbys are different objects and never match in a dict)."""
     return tuple(None if pd.isna(k) else k for k in key)
-
-
-def _t_interval(mean: float, var: float, n: int, level: float) -> tuple[float, float]:
-    """Student t interval of one arm's mean; NaN with fewer than two values."""
-    if n < 2 or not math.isfinite(var):
-        return float("nan"), float("nan")
-    half = stats.t.ppf(0.5 + level / 2, n - 1) * math.sqrt(var / n)
-    return mean - half, mean + half
 
 
 def _validate_on_stream(stream, specs: list[ABMetricSpec]) -> None:

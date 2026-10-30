@@ -17,9 +17,10 @@ Engine (lead decision D12)
   size) or Poisson(1).
 * Replicates are produced in batches of ``batch`` (default 200) so memory stays
   ``batch x paths``; results are identical for any batch size (``rtol=1e-12`` in tests).
-* ``random_state`` seeds ``numpy.random.SeedSequence(random_state).spawn(2)`` — one child
-  per arm — so the first ``B`` replicates of a longer run equal a shorter run, and the
-  replicates of a cell do not depend on which other cells are requested.
+* ``random_state`` seeds ``numpy.random.SeedSequence(random_state).spawn(2)`` — baseline
+  (group 2) gets child 0, comparison (group 1) child 1 — so the first ``B``
+  replicates of a longer run equal a shorter run, and a cell's replicates do not
+  depend on which other cells are requested.
 * The caller sorts rows by path id, so results do not depend on the order of events in
   the source frame.
 * A cell whose weighted denominator is 0 in a replicate is NaN in that replicate;
@@ -37,21 +38,28 @@ import pandas as pd
 from scipy import stats
 
 from retentioneering.exceptions import InvalidParameterError
+from retentioneering.stats.primitives import stable_sample_summary
+from retentioneering.stats.resampling import (
+    BOOTSTRAP_ALGORITHM,
+    draw_sums,
+    draw_weights,
+    percentile_interval,
+)
 
 __all__ = [
-    "BootstrapResult",
-    "WEIGHTS",
     "MIN_REPLICATES",
-    "bootstrap_paths",
-    "percentile_ci",
+    "WEIGHTS",
+    "BootstrapResult",
     "bootstrap_p",
+    "bootstrap_paths",
     "contrast_rows",
+    "percentile_ci",
 ]
 
 #: Resampling schemes of :func:`bootstrap_paths`.
 WEIGHTS = ("multinomial", "poisson")
 
-#: Fewer finite replicates than this give NaN intervals and p-values.
+#: Minimum requested draws for inference; every draw must also be finite.
 MIN_REPLICATES = 100
 
 
@@ -70,6 +78,8 @@ class BootstrapResult:
         Number of replicates.
     weights : str
         ``"multinomial"`` or ``"poisson"``.
+    algorithm : str
+        Versioned draw algorithm, including the baseline-first seed convention.
     """
 
     group1: np.ndarray
@@ -77,6 +87,7 @@ class BootstrapResult:
     valid: np.ndarray
     n_bootstrap: int
     weights: str
+    algorithm: str = BOOTSTRAP_ALGORITHM
 
     @property
     def delta(self) -> np.ndarray:
@@ -85,15 +96,8 @@ class BootstrapResult:
 
 
 def _draw(rng: np.random.Generator, weights: str, b: int, n: int) -> np.ndarray:
-    """Weights of ``b`` replicates over ``n`` paths of one arm (float64, shape (b, n))."""
-    if weights == "poisson":
-        return rng.poisson(1.0, size=(b, n)).astype(np.float64)
-    # Multinomial: n draws with replacement per replicate, counted per path. The draws
-    # come from the generator in replicate order, so batching does not change them.
-    idx = rng.integers(0, n, size=(b, n))
-    flat = idx + (np.arange(b, dtype=np.int64) * n)[:, None]
-    counts = np.bincount(flat.ravel(), minlength=b * n)
-    return counts.reshape(b, n).astype(np.float64)
+    """Compatibility wrapper for the common whole-unit weight kernel."""
+    return draw_weights(rng, weights, b, n)
 
 
 def bootstrap_paths(
@@ -164,7 +168,9 @@ def bootstrap_paths(
         den = np.where(missing, 0.0, den)
 
     n_cells = num.shape[1]
-    children = np.random.SeedSequence(random_state).spawn(2)
+    # Baseline/group 2 gets child 0, comparison/group 1 child 1, matching the
+    # strict experiment adapter's control-first sampling contract.
+    children = np.random.SeedSequence(random_state).spawn(2)[::-1]
     out = []
     for g, child in enumerate(children):
         rng = np.random.default_rng(child)
@@ -173,14 +179,10 @@ def bootstrap_paths(
         n = int(mask.sum())
         values = np.full((n_bootstrap, n_cells), np.nan)
         if n > 0:
-            for start in range(0, n_bootstrap, int(batch)):
-                b = min(int(batch), n_bootstrap - start)
-                sums = _draw(rng, weights, b, n) @ stacked
-                top, bottom = sums[:, :n_cells], sums[:, n_cells:]
-                with np.errstate(invalid="ignore", divide="ignore"):
-                    values[start : start + b] = np.where(
-                        bottom > 0, top / bottom, np.nan
-                    )
+            sums = draw_sums(stacked, n_bootstrap, int(batch), rng, weights)
+            top, bottom = sums[:, :n_cells], sums[:, n_cells:]
+            with np.errstate(invalid="ignore", divide="ignore"):
+                values = np.where(bottom > 0, top / bottom, np.nan)
         out.append(values)
     valid = (np.isfinite(out[0]) & np.isfinite(out[1])).sum(axis=0)
     return BootstrapResult(out[0], out[1], valid, int(n_bootstrap), weights)
@@ -189,38 +191,38 @@ def bootstrap_paths(
 def percentile_ci(
     replicates: np.ndarray, ci_level: float = 0.95
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Percentile interval over axis 0, ignoring NaN.
+    """Pointwise percentile intervals; every requested draw must be defined.
 
-    Returns ``(low, high)`` arrays of shape ``replicates.shape[1:]``; ``(nan, nan)`` for a
-    column with fewer than :data:`MIN_REPLICATES` finite replicates.
+    Returns ``(low, high)`` arrays. A column with any nonfinite draw, fewer than
+    :data:`MIN_REPLICATES` requested draws, or no empirical spread is unavailable.
+    Invalid denominator draws are not removed to condition on a selected subset.
     """
     reps = np.asarray(replicates, dtype=np.float64)
     if reps.ndim == 1:
         reps = reps[:, None]
-    tail = (1 - float(ci_level)) / 2
-    finite = np.isfinite(reps).sum(axis=0)
     low = np.full(reps.shape[1], np.nan)
     high = np.full(reps.shape[1], np.nan)
-    ok = finite >= MIN_REPLICATES
-    if ok.any():
-        q = np.nanquantile(reps[:, ok], [tail, 1 - tail], axis=0)
-        low[ok], high[ok] = q[0], q[1]
+    for column in range(reps.shape[1]):
+        low[column], high[column], _, _ = percentile_interval(
+            reps[:, column], ci_level, min_replicates=MIN_REPLICATES
+        )
     return low, high
 
 
 def bootstrap_se(replicates: np.ndarray) -> np.ndarray:
-    """Standard deviation (``ddof=1``) of the finite replicates per column.
+    """Standard deviation (ddof=1) when every requested replica is finite.
 
-    NaN for a column with fewer than :data:`MIN_REPLICATES` finite replicates.
+    Nonfinite denominator draws are not discarded. At least MIN_REPLICATES
+    draws are required; constants have zero spread and no bootstrap p-value.
     """
     reps = np.asarray(replicates, dtype=np.float64)
     if reps.ndim == 1:
         reps = reps[:, None]
     finite = np.isfinite(reps).sum(axis=0)
     se = np.full(reps.shape[1], np.nan)
-    ok = finite >= MIN_REPLICATES
-    if ok.any():
-        se[ok] = np.nanstd(reps[:, ok], axis=0, ddof=1)
+    ok = (finite == len(reps)) & (finite >= MIN_REPLICATES)
+    for column in np.flatnonzero(ok):
+        _, se[column], _, _ = stable_sample_summary(reps[:, column])
     return se
 
 
@@ -228,9 +230,9 @@ def bootstrap_p(delta: np.ndarray, replicates: np.ndarray) -> np.ndarray:
     """Two-sided p-value from the bootstrap standard error: ``2 * Phi(-|delta| / sd*)``.
 
     ``delta`` is the point estimate per column, ``sd*`` the standard deviation of the
-    replicate deltas (NaN ignored). NaN when ``sd* == 0``, when ``delta`` is NaN, or with
-    fewer than :data:`MIN_REPLICATES` finite replicates. The normal approximation has no
-    ``1 / B`` floor, unlike a percentile p-value.
+    replicate deltas. NaN if any requested replicate is nonfinite, ``sd* == 0``,
+    ``delta`` is NaN, or fewer than :data:`MIN_REPLICATES` draws were requested.
+    The normal approximation has no ``1 / B`` floor, unlike a percentile p-value.
     """
     se = bootstrap_se(replicates)
     d = np.atleast_1d(np.asarray(delta, dtype=np.float64))

@@ -30,6 +30,8 @@ here; load individual ADRs when a task touches the corresponding area.
 | [0016](0016-condition-shorthand-leaves.md) | Shorthand leaves in conditions | `{"has_event": "purchase"}` means `= True`, for 0/1 metrics only |
 | [0017](0017-ab-testing-tools.md) | A/B testing tools | path-level groups, ITT periods, verdict from the adjusted p; supersedes ADR-0012's StatTests item |
 
+| [0018](0018-ab-integration.md) | A/B integration | Shared statistical kernel, explicit adapters, cutoff/independence/ratio contracts; integrates PRs #216 and #217 |
+
 ## Adding a new ADR
 
 Copy the section skeleton of any existing record, number it sequentially,

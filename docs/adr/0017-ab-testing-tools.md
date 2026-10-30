@@ -3,6 +3,8 @@
 Status: Accepted (2026-10). Supersedes the **StatTests** item of
 [ADR-0012](0012-features-dropped-from-3x.md); the rest of ADR-0012 stands.
 
+Superseded in part by [ADR-0018](0018-ab-integration.md) on the integration branch: API defaults, observation cutoffs, unit guards and bootstrap availability. The original reasoning below is preserved for context.
+
 ## Context
 
 5.0 cut 3.x's `StatTests` (ADR-0012). What analysts asked for since is not a

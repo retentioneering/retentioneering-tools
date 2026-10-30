@@ -26,9 +26,10 @@ The store and the test
 ----------------------
 Users are assigned at their first app open (``assigned_at``), 50/50, from Monday
 2026-03-02 for six weeks (``cohort_week`` ``"W1"`` .. ``"W6"``); the generator's
-window ends on 2026-04-27 00:00, exactly eight weeks after the start, and the last
-event (2026-04-26 22:04) is the end of data that ``horizon`` and since-assignment
-bins use. About 3 % of assigned users
+window ends on 2026-04-27 00:00, exactly eight weeks after the start. Pass
+``observation_end="2026-04-27"`` explicitly for ``horizon`` and since-assignment
+bins: this is the exclusive logging cutoff, not the timestamp of the last event
+(2026-04-26 22:04). Absence of activity does not prove absence of observation. About 3 % of assigned users
 never produce a tracked event ("silent" users): they are in the assignment table of
 :func:`load_ab_test_assignment` but not in the events. Every session opens with
 browsing (``home``, ``catalog``, ``search``, ``search_filter``, ``product_view``,
@@ -143,12 +144,12 @@ if TYPE_CHECKING:
 __all__ = [
     "AB_TESTS",
     "DEFAULT_AB_TEST",
+    "DEFAULT_N_USERS",
+    "DEFAULT_SEED",
+    "EVENTS",
     "list_ab_tests",
     "load_ab_test",
     "load_ab_test_assignment",
-    "EVENTS",
-    "DEFAULT_N_USERS",
-    "DEFAULT_SEED",
 ]
 
 DEFAULT_N_USERS = 10_000
@@ -774,7 +775,7 @@ def load_ab_test(
     with_truth: bool = False,
     n_users: int | None = None,
     seed: int | None = None,
-) -> "Eventstream | pd.DataFrame":
+) -> Eventstream | pd.DataFrame:
     """Generate a bundled A/B test dataset (default: "Northwind Home").
 
     Every dataset is a synthetic randomised experiment generated deterministically

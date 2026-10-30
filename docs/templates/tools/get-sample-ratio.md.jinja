@@ -10,6 +10,10 @@ and every comparison of the experiment is suspect until the cause is found.
 and month, spelled as in `get_ab_test`), and `strata_col=` per segment fixed at
 assignment; a segment computed after exposure is not a valid stratum here.
 With `assignment=`, `segment_col` is optional: the table alone is counted.
+SRM requires the coarsest declared path grain. A session-indexed assignment table does not
+make repeated sessions of a user independent; finer-grain counts can be inspected
+descriptively, without a chi-square test. Declare a finer unit as primary only if the design
+makes those units independent.
 
 The result's `reading` puts the check in one sentence: `"expected 50/50,
 observed 5040/4960 (control/treatment), p 0.42: no mismatch"`, or

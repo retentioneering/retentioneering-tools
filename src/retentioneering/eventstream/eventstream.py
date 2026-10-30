@@ -619,9 +619,10 @@ class Eventstream:
         period_basis: str = "calendar",
         period_population: str = "itt",
         horizon=None,
+        observation_end=None,
         test: str = "auto",
         correction: str = "holm",
-        correction_scope: str = "metric",
+        correction_scope: str = "all",
         ci_level: float = 0.95,
         power: float = 0.8,
         n_bootstrap: "int | str" = 1000,
@@ -648,10 +649,10 @@ class Eventstream:
         diff : tuple
             `("segment_col", group1, group2)` or `(ids1, ids2)`, resolved per path;
             `delta = group1 - group2`. A path in both groups, or two strings, raise
-            `DiffConfigError`. A segment that keeps one arm in at least 99 % of the
-            users with several sessions (at least 10 users) raises
-            `InvalidParameterError` at the session grain: per-session intervals of a
-            per-user experiment are too narrow.
+            `DiffConfigError`. Inference requires the coarsest declared path grain:
+            a finer `path_col` raises `InvalidParameterError`, including explicit
+            ID splits and small samples. A schema declares independence; it does
+            not verify the randomization mechanism.
         metrics : list of dict
             Registry configs (as for `get_metrics`, one column per path) with optional
             `name`, `denominator` (a config: a ratio of sums, e.g. revenue / orders)
@@ -659,7 +660,7 @@ class Eventstream:
             metric are rejected. A path with no events counts 0 for 0/1 metrics
             (`has_event`, `has_any_event`, `has_all_events`, `matches_pattern`,
             `in_segment`) and totals (`event_count`, `length`, `active_days`,
-            `column_sum`); values (`duration`, `time_between`, `column_mean`,
+            `column_sum`, `event_value_sum`); values (`duration`, `time_between`, `column_mean`,
             `column_last`) leave it out.
         assignment : pandas.Series or pandas.DataFrame, optional
             Per-path arm table, the intention-to-treat population: a Series `path_id ->
@@ -698,9 +699,13 @@ class Eventstream:
             - `"itt"` — every path assigned by the period's end, 0 when silent.
             - `"active"` — paths active in the period: survivors, so
               `verdict="descriptive"`, no p-value.
+        observation_end : timestamp-like, optional
+            Exclusive cutoff through which event logging is asserted complete.
+            Required for horizon and since-assignment periods; never inferred
+            from the last observed event.
         horizon : str or pandas.Timedelta, optional
             Window per path from `assigned_at`, e.g. `"28D"`; paths whose window is not
-            closed by the last event are `immature_paths`. Needs `assigned_at`.
+            closed by `observation_end` are `immature_paths`. Needs `assigned_at`.
         test : {"auto", "z_test", "welch_t_test", "bootstrap"}, default "auto"
             The test of every metric without its own `test`.
 
@@ -718,7 +723,7 @@ class Eventstream:
               `delta_ci_high_adj`.
             - `"bh"` — Benjamini-Hochberg (false discovery rate).
             - `"none"` — no correction.
-        correction_scope : {"metric", "all"}, default "metric"
+        correction_scope : {"all", "metric"}, default "all"
             What one correction family holds.
 
             - `"metric"` — one metric's rows (strata, periods). Name one decision metric
@@ -758,6 +763,9 @@ class Eventstream:
             - `metric`; `stratum`*; `period`*, `period_start`*, `period_end`*,
               `period_complete`* (False when the data or `horizon` cuts the window).
             - `population`: `"assignment"`, `"stream"` or `"active"`.
+            - `observation_end`: the exclusive logging cutoff, or None;
+              `observation_basis`: `"declared_logging_cutoff"` or `"observed_event_span"`;
+              `analysis_unit`: the independent path identifier declared by the schema.
             - `group1_paths`, `group2_paths`; `group1_support`, `group2_support`
               (paths with a value); `conditional` (a support below its arm's paths:
               the row compares the paths with a value).
@@ -836,7 +844,8 @@ class Eventstream:
 
             # weekly ITT rows, and a fixed 28-day window per user
             stream.get_ab_test(diff, metrics, assignment=assignment, period="W")
-            stream.get_ab_test(diff, metrics, assignment=assignment, horizon="28D")
+            stream.get_ab_test(diff, metrics, assignment=assignment, horizon="28D",
+                               observation_end="2026-04-27")
         """
         from retentioneering.tools.ab_test import ABTest
 
@@ -850,6 +859,7 @@ class Eventstream:
             period_basis=period_basis,
             period_population=period_population,
             horizon=horizon,
+            observation_end=observation_end,
             test=test,
             correction=correction,
             correction_scope=correction_scope,
@@ -875,8 +885,9 @@ class Eventstream:
         period_basis: str = "calendar",
         period_population: str = "itt",
         horizon=None,
+        observation_end=None,
         contrast: dict | None = None,
-        correction_scope: str = "metric",
+        correction_scope: str = "all",
         n_bootstrap: "int | str" = 1000,
         bootstrap_weights: str = "multinomial",
         random_state: int = 42,
@@ -897,7 +908,7 @@ class Eventstream:
         ----------
         diff, metrics, assignment, strata_col, period, period_basis : see get_ab_test
             As in `get_ab_test`.
-        period_population, horizon, bootstrap_weights, random_state, path_col : see get_ab_test
+        period_population, horizon, observation_end, bootstrap_weights, random_state, path_col : see get_ab_test
             As in `get_ab_test`.
         strata_pre_exposure : bool, optional
             As in `get_ab_test` (here it only decides the `UserWarning`).
@@ -908,12 +919,12 @@ class Eventstream:
             periods (summed numerators over summed denominators). Both sides run on
             the same paths: those in the population of every contrasted period (with
             since-assignment bins, the paths whose windows of all contrasted bins
-            close by the stream's last event), so the contrast is a change within the
+            close by `observation_end`), so the contrast is a change within the
             same paths, not a change of cohort mix between early and late bins; a
             `horizon` is a choice of window, not a requirement. Needs `period`.
             Example: `{"novelty": (["0-13"], ["28-41"])}` with `period="14D",
             period_basis="since_assignment"`.
-        correction_scope : {"metric", "all"}, default "metric"
+        correction_scope : {"all", "metric"}, default "all"
             As in `get_ab_test`; here it only sets the family size `m` of
             `n_bootstrap="auto"`, so the replicates match the scorecard's.
         n_bootstrap : int or "auto", default 1000
@@ -971,6 +982,7 @@ class Eventstream:
             period_basis=period_basis,
             period_population=period_population,
             horizon=horizon,
+            observation_end=observation_end,
             correction_scope=correction_scope,
             n_bootstrap=n_bootstrap,
             bootstrap_weights=bootstrap_weights,
@@ -987,6 +999,7 @@ class Eventstream:
         *,
         assignment: "pd.Series | pd.DataFrame | None" = None,
         horizon=None,
+        observation_end=None,
         path_col: str | None = None,
     ) -> pd.DataFrame:
         """
@@ -1010,10 +1023,13 @@ class Eventstream:
         assignment : pandas.Series or pandas.DataFrame, optional
             As in `get_ab_test`: the intention-to-treat population (silent paths
             included, events before `assigned_at` dropped).
+        observation_end : timestamp-like, optional
+            Exclusive cutoff through which event logging is asserted complete.
+            Required for horizon and since-assignment periods; never inferred
+            from the last observed event.
         horizon : str or pandas.Timedelta, optional
             As in `get_ab_test`: only events in `[assigned_at, assigned_at +
-            horizon)` count; paths whose window is not closed by the stream's last
-            event stay in the table with `mature=False` and NaN metric values.
+            horizon)` count; paths whose window is not closed by `observation_end` stay in the table with `mature=False` and NaN metric values.
         path_col : str, optional
             Path grain; defaults to `schema.path_col` (the unit guard of
             `get_ab_test` applies).
@@ -1049,6 +1065,7 @@ class Eventstream:
                           "metric_args": {"event": "order_success"}}],
                 assignment=assignment,
                 horizon="28D",
+                observation_end="2026-04-27",
             )
             paths[paths["mature"]].groupby("arm")["conversion"].mean()
 
@@ -1067,6 +1084,7 @@ class Eventstream:
             metrics,
             assignment=assignment,
             horizon=horizon,
+            observation_end=observation_end,
             path_col=path_col,
         )
 
@@ -2872,6 +2890,154 @@ class Eventstream:
             state_file=state_file,
         )
 
+    @_tracked("headless_experiment")
+    def experiment_data(
+        self,
+        *,
+        assignments,
+        metrics,
+        observation,
+        variant_col="exp_group",
+        control="control",
+        treatment="treatment",
+        unit_col=None,
+        bootstrap=None,
+        funnel_steps=None,
+        expected_allocation=None,
+        tests=None,
+        event_catalog=None,
+        binary_intervals=None,
+    ) -> dict:
+        """Estimate fixed-window experiment outcomes from a complete assignment roster.
+
+        Assignments define the population, including units without events.
+        Supported outcomes are unit-level means and explicit ratios; bootstrap
+        draws whole independent units within each assigned arm. Source history
+        before assignment is allowed; only events in [start, end) contribute.
+
+        Parameters
+        ----------
+        assignments : pandas.DataFrame
+            One row per independent unit, with its ID, variant and assignment time.
+        metrics : list of dict
+            Named scalar path metric configurations with explicit aggregation:
+            mean, ratio_of_sums, or mean_of_ratios with eligibility. Optional
+            display metadata labels measurement units without changing estimates;
+            effect_unit labels absolute differences separately (percent uses pp).
+        observation : dict
+            start, end, assignment_time_col and complete=True. All assignments
+            must precede or equal start. Complete logging is an explicit input
+            assertion, not inferred from each unit's last event.
+        variant_col : str, default 'exp_group'
+            Assignment variant column.
+        control, treatment : scalar
+            Distinct assigned variants; effects are treatment minus control.
+        unit_col : str, optional
+            Independent assignment/resampling unit; must be the coarsest declared
+            schema path grain. For genuine session randomization, declare sessions
+            as the primary schema grain.
+        bootstrap : dict, optional
+            Percentile method, n_resamples, confidence_level, random_state and
+            batch_size. None disables bootstrap; the resolved seed is exported.
+        funnel_steps : list of str, optional
+            Ordered within-window steps. Cumulative reach uses all assignments;
+            conditional transitions use the preceding reached-step population.
+        expected_allocation : float, optional
+            Expected treatment probability for an independent-Bernoulli SRM check.
+        tests : dict, optional
+            Explicit methods mapping outcome names to fisher_exact or welch,
+            with adjustment='holm'. Tests and intervals are separate procedures.
+        event_catalog : dict, optional
+            Declared event names per column, supplementing observed values, for
+            known outcomes that have zero occurrences in the complete source.
+        binary_intervals : dict, optional
+            Explicit method='newcombe' and confidence_level for independent
+            binary outcomes. Wilson marginal intervals and Newcombe differences;
+            no implicit substitution for a requested percentile bootstrap.
+
+        Returns
+        -------
+        dict
+            Versioned aggregate summary, population diagnostics and resolved
+            metadata. Intervals are pointwise. Unavailable results carry explicit
+            statuses. User IDs and raw bootstrap draws are not exported.
+        """
+        from retentioneering.tools.experiment import experiment_data
+
+        return experiment_data(
+            self,
+            assignments=assignments,
+            metrics=metrics,
+            observation=observation,
+            variant_col=variant_col,
+            control=control,
+            treatment=treatment,
+            unit_col=unit_col,
+            bootstrap=bootstrap,
+            funnel_steps=funnel_steps,
+            expected_allocation=expected_allocation,
+            tests=tests,
+            event_catalog=event_catalog,
+            binary_intervals=binary_intervals,
+        ).to_dict()
+
+    @_tracked("widget_experiment")
+    def experiment(
+        self,
+        *,
+        assignments,
+        metrics,
+        observation,
+        variant_col="exp_group",
+        control="control",
+        treatment="treatment",
+        unit_col=None,
+        bootstrap=None,
+        funnel_steps=None,
+        expected_allocation=None,
+        tests=None,
+        event_catalog=None,
+        binary_intervals=None,
+        height=650,
+        sidebar_open=True,
+    ):
+        """Display a calculated experiment scorecard and funnel in Jupyter.
+
+        All data parameters match experiment_data; see that method for population,
+        outcome and inference semantics. This first view shows a fixed computed
+        result. It does not restore an assignment roster from a saved widget state.
+
+        Parameters
+        ----------
+        assignments, metrics, observation, variant_col, control, treatment, unit_col,
+        bootstrap, funnel_steps, expected_allocation, tests, event_catalog, binary_intervals
+            Identical to experiment_data.
+        height : int, default 650
+            Display height in pixels.
+        sidebar_open : bool, default True
+            Whether diagnostic details start expanded.
+        """
+        from retentioneering.widgets.experiment import ExperimentWidget
+
+        return ExperimentWidget(
+            self,
+            assignments=assignments,
+            metrics=metrics,
+            observation=observation,
+            variant_col=variant_col,
+            control=control,
+            treatment=treatment,
+            unit_col=unit_col,
+            bootstrap=bootstrap,
+            funnel_steps=funnel_steps,
+            expected_allocation=expected_allocation,
+            tests=tests,
+            event_catalog=event_catalog,
+            binary_intervals=binary_intervals,
+            height=height,
+            sidebar_open=sidebar_open,
+        )
+
     @_tracked("widget_funnel")
     def funnel(
         self,
@@ -2983,11 +3149,10 @@ class Eventstream:
             resolved per path: a path that falls in both groups (a segment that
             changes within the path, overlapping id lists) raises
             `DiffConfigError` — compare at a finer `path_col` or carry a per-path
-            label with `add_segment(path_values=...)`. A segment `diff` constant
-            within (at least 99 % of) the paths of a coarser path column, with at
-            least 10 of them holding several finer paths, raises
-            `InvalidParameterError` at the finer `path_col`: per-session intervals
-            of a per-user experiment are too narrow (the guard of `get_ab_test`).
+            label with `add_segment(path_values=...)`. Intervals require the
+            coarsest declared path grain, including explicit ID splits and small
+            samples; finer `path_col` raises `InvalidParameterError`. The schema
+            declares independence and cannot prove it.
             Without `ci_level` the diff keeps the widgets' event-level split and
             no guard applies.
         correction : {"none", "holm", "bonferroni", "bh"}, default "none"
@@ -3172,11 +3337,10 @@ class Eventstream:
             with the diff columns. The intervals and the p-value treat every path as
             an independent unit, so they assume `path_col` is the unit that was
             assigned to a group: session paths of a user-level experiment give
-            intervals that are too narrow. A segment `diff` constant within (at
-            least 99 % of) the paths of a coarser path column, with at least 10 of
-            them holding several finer paths, raises `InvalidParameterError` at
-            the finer `path_col` (the guard of `get_ab_test`); pass `path_col` of
-            the randomised unit. See Notes on conditional rows.
+            intervals that are too narrow. A finer-than-coarsest declared path grain
+            raises `InvalidParameterError` for any diff form and sample size.
+            Pass the declared randomised unit; the schema does not prove that
+            observations are independent. See Notes on conditional rows.
 
         Returns
         -------
@@ -3385,6 +3549,7 @@ class Eventstream:
         period_basis: str | None = None,
         period_population: str | None = None,
         horizon=None,
+        observation_end=None,
         test: str | None = None,
         correction: str | None = None,
         correction_scope: str | None = None,
@@ -3411,6 +3576,7 @@ class Eventstream:
             "period_basis": period_basis,
             "period_population": period_population,
             "horizon": horizon,
+            "observation_end": observation_end,
             "test": test,
             "correction": correction,
             "correction_scope": correction_scope,
@@ -3444,9 +3610,10 @@ class Eventstream:
         period_basis: str = "calendar",
         period_population: str = "itt",
         horizon=None,
+        observation_end=None,
         test: str = "auto",
         correction: str = "holm",
-        correction_scope: str = "metric",
+        correction_scope: str = "all",
         ci_level: float = 0.95,
         power: float = 0.8,
         n_bootstrap: "int | str" = 1000,
@@ -3466,6 +3633,7 @@ class Eventstream:
             period_basis=period_basis,
             period_population=period_population,
             horizon=horizon,
+            observation_end=observation_end,
             test=test,
             correction=correction,
             correction_scope=correction_scope,

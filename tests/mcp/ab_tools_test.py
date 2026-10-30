@@ -109,10 +109,15 @@ class TestGetAbTest:
         assert conv["group1_paths"] == 200 and conv["group2_paths"] == 200
         assert conv["delta"] == pytest.approx(0.1)
         assert conv["delta_ci_low"] < conv["delta"] < conv["delta_ci_high"]
-        assert conv["verdict"] == "increase"
+        assert conv["verdict"] == "inconclusive"
+        assert conv["p_value_adjusted"] > 0.05 > conv["p_value"]
         assert conv["test"] == "z_test"
-        assert conv["correction_family"] == "metric=conversion"
-        assert conv["mde_alpha"] == pytest.approx(0.05)
+        assert conv["ci_basis"] == "wilson"
+        assert conv["p_basis"] == "pooled_z"
+        assert "valid_replicates" in conv
+        assert result["bootstrap_algorithm"] == "whole_unit_counts_v1_baseline_first"
+        assert conv["correction_family"] == "all_metrics"
+        assert conv["mde_alpha"] == pytest.approx(0.025)
         assert "strata" not in conv and "periods" not in conv
         assert result["unassigned_paths"] == 0
 
@@ -133,7 +138,7 @@ class TestGetAbTest:
         assert deltas == sorted(deltas, reverse=True)
         assert {s["stratum"] for s in conv["strata"]} == {"ios", "web"}
         # Holm over the two strata: alpha / 2 per comparison
-        assert conv["strata_correction_family"] == "metric=conversion/strata"
+        assert conv["strata_correction_family"] == "all_metrics/strata"
         assert [s["mde_alpha"] for s in conv["strata"]] == [pytest.approx(0.025)] * 2
         # a source column: the recipe cannot show it was fixed before exposure
         assert conv["strata_pre_exposure"] is False
@@ -143,7 +148,7 @@ class TestGetAbTest:
         assert all("stratum_vs_rest_p_value" in s for s in conv["strata"])
         assert any("strata_pre_exposure=True" in w for w in result["warnings"])
         assert conv["support_warning"] == ""
-        assert conv["periods_correction_family"] == "metric=conversion/periods"
+        assert conv["periods_correction_family"] == "all_metrics/periods"
         assert [p["period"] for p in conv["periods"]] == [
             "2024-01-01/2024-01-07",
             "2024-01-08/2024-01-14",
@@ -252,16 +257,19 @@ class TestReading:
             assert all(p["reading"] for p in entry["periods"])
         conv, orders = result["metrics"]
         assert conv["reading"].startswith(
-            "over the whole observation period: interval ["
+            "over the whole observation period: per-comparison interval ["
         )
-        assert "excludes 0 (p " in conv["reading"]
-        assert conv["reading"].endswith("name one decision metric")
+        assert "excludes 0, but p " in conv["reading"]
+        assert conv["reading"].endswith("corrected across all 2 metrics")
         assert all("exploratory:" in s["reading"] for s in conv["strata"])
         assert conv["periods"][0]["reading"].startswith("calendar week 2024-01-01: ")
         assert conv["unit"] == "pp" and orders["unit"] == "value"
         for row in conv["strata"] + conv["periods"]:
             assert row["unit"] == "pp"
-            assert row["p_value"] <= row["p_value_adjusted"]
+            if row["verdict"] == "descriptive":
+                assert row["p_value"] is None and row["p_value_adjusted"] is None
+            else:
+                assert row["p_value"] <= row["p_value_adjusted"]
 
     def test__sample_ratio_reading(self) -> None:
         result = tools.get_sample_ratio(_session(), "arm")
@@ -362,17 +370,24 @@ class TestAssignmentThroughMcp:
             }
         ]
         result = tools.get_ab_test(
-            session, ["arm", "treatment", "control"], metrics, horizon="14D"
+            session,
+            ["arm", "treatment", "control"],
+            metrics,
+            horizon="14D",
+            observation_end="2024-01-29",
         )
         json.dumps(result, allow_nan=False)
         assert "error" not in result, result
         assert result["population"] == "assignment"
         assert result["immature_paths"] > 0
+        assert result["observation_end"] == "2024-01-29"
+        assert result["observation_basis"] == "declared_logging_cutoff"
         direct = session.active_stream.get_ab_test(
             ("arm", "treatment", "control"),
             metrics,
             assignment=session.assignment,
             horizon="14D",
+            observation_end="2024-01-29",
         )
         conv, orders, aov = result["metrics"]
         assert conv["group1_paths"] == direct["group1_paths"].iloc[0]
@@ -382,7 +397,7 @@ class TestAssignmentThroughMcp:
         assert not conv["conditional"] and aov["conditional"]
         assert aov["group1_support"] < aov["group1_paths"]
         for entry in result["metrics"]:
-            assert "not corrected against each other" in entry["scope"]
+            assert "holm across every row" in entry["scope"]
             assert "p_value" in entry
         joint = tools.get_ab_test(
             session,
@@ -392,6 +407,7 @@ class TestAssignmentThroughMcp:
             test="auto",
             period="7D",
             period_basis="since_assignment",
+            observation_end="2024-01-29",
         )
         assert "error" not in joint, joint
         assert joint["metrics"][0]["correction_family"] == "all_metrics"
@@ -401,25 +417,40 @@ class TestAssignmentThroughMcp:
 
     def test_without_a_table_horizon_is_an_error(self) -> None:
         result = tools.get_ab_test(
-            _ab_session(), ["arm", "treatment", "control"], _METRICS, horizon="7D"
+            _ab_session(),
+            ["arm", "treatment", "control"],
+            _METRICS,
+            horizon="7D",
+            observation_end="2024-01-29",
         )
         assert "error" in result and "horizon" in result["error"]
         # m7: the error says where MCP gets the table
         assert "serve(stream, assignment=table)" in result["error"]
         added = tools.add_ab_test(
-            _ab_session(), "AB", ["arm", "treatment", "control"], _METRICS, horizon="7D"
+            _ab_session(),
+            "AB",
+            ["arm", "treatment", "control"],
+            _METRICS,
+            horizon="7D",
+            observation_end="2024-01-29",
         )
         assert "serve(stream, assignment=table)" in added["error"]
 
     def test_add_ab_test_uses_the_table(self) -> None:
         session = _itt_session()
         result = tools.add_ab_test(
-            session, "AB", ["arm", "treatment", "control"], _METRICS, horizon="7D"
+            session,
+            "AB",
+            ["arm", "treatment", "control"],
+            _METRICS,
+            horizon="7D",
+            observation_end="2024-01-29",
         )
         assert "error" not in result, result
         tab = session.pending_tabs[0]["data"]
         assert tab["result"]["overall"][0]["population"] == "assignment"
         assert tab["horizon"] == "7D"
+        assert tab["observation_end"] == "2024-01-29"
         # R3C-06: who was counted and what was corrected, as get_ab_test says
         entry = result["metrics"][0]
         for key in ("population", "correction_family", "mde_alpha", "scope", "unit"):
@@ -447,17 +478,24 @@ class TestAssignmentThroughMcp:
             period="7D",
             contrast={"early_late": [["0-6"], ["7-13"]]},
             period_basis="since_assignment",
+            observation_end="2024-01-29",
             n_bootstrap=200,
         )
         json.dumps(result, allow_nan=False)
         assert "error" not in result, result
         (row,) = result["rows"]
         assert row["contrast"] == "early_late" and row["unit"] == "pp"
+        assert row["numeric_unit"] == "share" and row["display_scale"] == 100
         assert row["delta"] == pytest.approx(
             row["group1_value"] - row["group2_value"], abs=1e-5
         )
         assert row["delta_ci_low"] <= row["delta_ci_high"]
         assert 0 <= row["share_positive"] <= 1
+        assert row["p_value_adjusted"] >= row["p_value"]
+        assert row["correction_family"] == "all_metrics/contrasts"
+        assert row["ci_scope"] == "pointwise"
+        assert row["inference_status"] == "ok"
+        assert result["bootstrap_algorithm"] == "whole_unit_counts_v1_baseline_first"
         assert result["population"] == "assignment"
         assert "error" in tools.get_ab_bootstrap(
             session, ["arm", "treatment", "control"], _METRICS[:1], "7D", {}

@@ -100,9 +100,8 @@ def test_diff_matches_hand_counts(stream) -> None:
     assert row.group1_base_rate == pytest.approx(base1)
     assert row.group2_base_rate == pytest.approx(base2)
     assert row.delta == pytest.approx(k1 / n1 - k2 / n2)
-    pooled = (k1 + k2) / (n1 + n2)
-    z = (k1 / n1 - k2 / n2) / np.sqrt(pooled * (1 - pooled) * (1 / n1 + 1 / n2))
-    assert row.p_value == pytest.approx(2 * stats.norm.sf(abs(z)))
+    assert row.conditional
+    assert np.isnan(row.p_value)  # selected after exposure: descriptive only
     assert row.delta_ci_low < row.delta < row.delta_ci_high
     assert "unassigned_paths" not in row.index  # overlapping groups raise instead
     ref = stats.binomtest(int(k1), int(n1)).proportion_ci(0.95, method="wilson")
@@ -118,7 +117,7 @@ def test_diff_level_changes_intervals(stream) -> None:
         "add_to_cart", "order_success", ci_level=0.8, diff=diff
     )
     assert wide.iloc[0].delta_ci_low < narrow.iloc[0].delta_ci_low
-    assert wide.iloc[0].p_value == narrow.iloc[0].p_value
+    assert np.isnan(wide.iloc[0].p_value) and np.isnan(narrow.iloc[0].p_value)
 
 
 def test_diff_fan_out_and_event_missing_in_one_group() -> None:
@@ -210,5 +209,5 @@ def test_diff_flags_conditional_rows(stream) -> None:
         diff=("exp_group", "treatment", "control"),
     )
     assert out["conditional"].tolist() == [False, False, True, True, True, True]
-    # the p-value stays, flagged
-    assert out["p_value"].notna().any()
+    assert out.loc[~out.conditional, "p_value"].notna().any()
+    assert out.loc[out.conditional, "p_value"].isna().all()

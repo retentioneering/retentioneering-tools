@@ -171,17 +171,17 @@ class TestMultiplicity:
     def test_holm_ties_and_nan(self) -> None:
         out = st.holm([0.02, np.nan, 0.02, 0.5])
         assert np.isnan(out[1])
-        # m = 3 finite values
-        assert out[[0, 2, 3]] == pytest.approx([0.06, 0.06, 0.5])
+        # m = 4 declared tests; an unavailable test must not shrink the family
+        assert out[[0, 2, 3]] == pytest.approx([0.08, 0.08, 1.0])
 
     def test_holm_clipped(self) -> None:
         assert st.holm([0.6, 0.7]) == pytest.approx([1.0, 1.0])
 
     def test_bonferroni_nan(self) -> None:
         out = st.bonferroni([0.01, np.nan, 0.4])
-        assert out[0] == pytest.approx(0.02)
+        assert out[0] == pytest.approx(0.03)
         assert np.isnan(out[1])
-        assert out[2] == pytest.approx(0.8)
+        assert out[2] == pytest.approx(1.0)
 
     def test_benjamini_hochberg_hand_example(self) -> None:
         p = [0.01, 0.04, 0.03, 0.005]
@@ -198,7 +198,7 @@ class TestMultiplicity:
     def test_benjamini_hochberg_nan_and_ties(self) -> None:
         out = st.benjamini_hochberg([0.02, np.nan, 0.02, 0.5])
         assert np.isnan(out[1])
-        assert out[[0, 2, 3]] == pytest.approx([0.03, 0.03, 0.5])
+        assert out[[0, 2, 3]] == pytest.approx([0.04, 0.04, 2 / 3])
         assert np.isnan(st.benjamini_hochberg([np.nan])).all()
 
     def test_all_nan(self) -> None:

@@ -14,7 +14,7 @@ same result — and the widget makes up to three calls to it:
 | **Strata** (when `strata_col` is set) | the same call with `strata_col` and `strata_pre_exposure` | one per metric × stratum |
 | **Periods** (when `period` is set) | the same call with `period`, `period_basis` and `period_population` | one per metric × period |
 
-Every other argument — `assignment`, `horizon`, `test`, `correction`,
+Every other argument — `assignment`, `horizon`, `observation_end`, `test`, `correction`,
 `correction_scope`, `ci_level`, `path_col`, ... — applies to all three
 (the sidebar shows `correction_scope` as "Corrected together"). Each tab therefore holds
 exactly the rows `get_ab_test` returns for that call, so any number in the
@@ -24,7 +24,9 @@ The sidebar edits the arms, the metrics (the same editor as Segment Overview,
 with a row label and an optional ratio-of-sums denominator), `ci_level`
 (90 / 95 / 99 %), `correction` and its family (`correction_scope`), `test`, the
 strata column and whether it was fixed before exposure, `period` (day / week /
-month) and its basis, and `horizon`. Every change recomputes. Changing the
+month) and its basis, `horizon` and the exclusive complete-logging cutoff
+`observation_end`. Horizons and since-assignment periods require this cutoff;
+the last event cannot establish complete follow-up. Every change recomputes. Changing the
 horizon or the metrics after seeing a result is peeking: declare the read first,
 then look. The `assignment` table is passed in code only (with it, the arm column
 list also offers the table's own `arm`, for `diff=("arm", ...)`); a `state_file`
@@ -54,11 +56,13 @@ The interval is **per comparison and never adjusted**; the verdict reads the
 **adjusted** p-value (`correction` within the rows of one metric, or across every
 row of every metric with `correction_scope="all"`; the note under the plot says
 which). So a row can have an interval that excludes 0 and still be
-`inconclusive`. With the default family metrics are not corrected against each
-other: name one decision metric before reading the plot, and read each guardrail
-on its own against a harm margin declared before the test — trust the
-verdict for the decision, and `correction="bonferroni"` when you need a
-simultaneous interval (`delta_ci_low_adj` / `delta_ci_high_adj` in the
+`inconclusive`. The default `correction_scope="all"` corrects every declared row
+of every metric within the current tab's call, including unavailable tests.
+Tabs are separate analyses; the library does not adjust for all exploratory
+calls a reader might make. Use `correction_scope="metric"` only with explicitly
+predeclared separate families. A guardrail needs a declared harm margin; a grey
+verdict does not establish non-inferiority. Use `correction="bonferroni"` when a
+simultaneous interval is needed (`delta_ci_low_adj` / `delta_ci_high_adj` in the
 headless result).
 
 **An inconclusive row is not "no effect".** Its interval says which effects the
@@ -74,7 +78,7 @@ A **support** badge (hover for its meaning) flags a row's support:
 
 - `no data` — no path of either arm has the behaviour, or an arm has no
   estimate: nothing to compare, the row is `insufficient_data`;
-- `invalid replicates` — more than 1 % of bootstrap replicates had no value in an
+- `invalid replicates` — at least one requested bootstrap replicate had no value in an
   arm: no interval or p-value, the estimate is descriptive;
 - `one arm only` — the behaviour exists in one arm only (a loop the treatment
   created): the test ran;
@@ -100,7 +104,9 @@ questions:
 A stratum is a randomised comparison only if the treatment could not change who
 is in it. Rows whose strata are not declared (`strata_pre_exposure=True`, or
 "Declared pre-exposure" in the sidebar) or read from a truncation in the
-recipe are **exploratory**: marked `*`, in italics, under a banner.
+recipe are **descriptive and exploratory**: marked `*`, in italics, under a
+banner. Their p-values, balance tests, heterogeneity tests and confirmatory
+verdicts are suppressed; descriptive estimates and intervals remain visible.
 
 ### Periods
 
@@ -111,30 +117,27 @@ period that is not complete — the data ends inside it, or the `horizon` cuts i
 — and reads low for that reason alone. With `period_population="active"` the
 rows compare only the paths active in the period: survivors, not randomised
 groups; they are `descriptive`, carry no p-value and are drawn as **squares**.
-The correction family is a metric's periods: a coloured period has survived
-the correction across all of them, and every extra period costs power. Calendar
+By default the correction family includes every metric and period returned
+by the period call. A coloured period has survived that correction. Calendar
 periods mix users at different times since their assignment; for an effect
 that changes with exposure age (novelty), bin by
 `period_basis="since_assignment"` (it needs an `assignment` table with
-`assigned_at`), as the guide's
+`assigned_at` and an explicit `observation_end`), as the guide's
 [periods section](/docs/ab-testing#periods-horizon-and-novelty) does.
 
 ### What the numbers assume
 
-- **The path is the randomised unit.** Intervals treat paths as independent; a
-  session grain for a per-user experiment gives intervals that are too narrow.
-  With `assignment=`, a grain finer than the table's is refused. Without a
-  table, a segment `diff` is refused at the session grain when the arm is
-  constant within at least 99 % of the users holding several sessions (and at
-  least 10 such users), and warns from 90 %.
+- **The path is the declared randomised unit.** Intervals treat paths as
+  independent. A grain finer than the coarsest declared path grain is refused
+  for inference, including small samples and explicit-ID splits. For a genuine
+  session-randomized design, declare sessions as the primary independent unit
+  in a separate schema and justify that design. A schema cannot prove randomization.
 - **The population.** Without `assignment`, the arms are the paths of the
   stream — users with at least one event, split by the `diff` segment. With an
   assignment table the comparison is intention-to-treat: every assigned path,
   silent ones counting as zeros, events before `assigned_at` dropped.
-- **Metrics chosen before looking.** Metrics are separate correction families:
-  with five metrics at 5 % each, the chance of a false "increase" or "decrease"
-  somewhere when nothing changed is about 1 in 4. Name the decision metric up
-  front.
+- **Metrics chosen before looking.** The default corrects all rows in the
+  call; it cannot account for outcomes or windows selected after inspecting data.
 - **Strata fixed before exposure**, as above, and no filter on post-exposure
   behaviour (users who reached checkout) before the test.
 - **The arms have the planned sizes.** Check with

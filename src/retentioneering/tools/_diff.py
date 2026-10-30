@@ -63,16 +63,40 @@ MULTI = "<MULTI>"
 ASSIGNMENT_ARM = "arm"
 
 _HINT = (
-    "An experiment compares paths, so every path must sit in exactly one group: "
-    "use a finer grain (e.g. path_col='session_id') if the value changes between "
-    "sessions, or a path-level segment (add_segment(name, path_values=...))."
+    "An experiment compares independent assignment units, so every unit must sit "
+    "in exactly one group. Reconcile conflicting assignments or select a valid "
+    "unit-level segment. Choosing a finer path grain does not establish independence."
 )
 
 
 _PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-#: Id-match warnings already shown in this process (see ``align_assignment``).
-_ID_MATCH_WARNED: set[str] = set()
+
+def _check_independent_path_grain(stream, path_col):
+    """Path-level intervals must not silently treat nested paths as independent.
+
+    The coarsest declared grain is a necessary guard, not proof of a randomized
+    design. Finer-grain descriptive point estimates remain available. Designs
+    with independent finer-grain assignment must declare that unit as the primary
+    schema grain. A schema declaration alone cannot prove independence.
+    """
+    columns = list(stream.schema.path_cols)
+    if path_col not in columns:
+        raise InvalidParameterError("path_col", path_col, columns)
+    if path_col != columns[0]:
+        raise InvalidParameterError(
+            "path_col",
+            path_col,
+            [columns[0]],
+            reason=(
+                "Intervals assume independent paths. Nested paths may share an "
+                f"assignment unit ('{columns[0]}'); use the coarsest declared grain "
+                "or, only when independently randomized, declare the finer unit as the "
+                "primary schema grain. An assignment table alone does not establish "
+                "independence. "
+                "Point estimates without intervals remain available at this grain"
+            ),
+        )
 
 
 def warn_user(message: str, category: type[Warning] = UserWarning) -> None:
@@ -226,6 +250,10 @@ def normalize_assignment(assignment: pd.Series | pd.DataFrame) -> pd.DataFrame:
         raise InvalidParameterError("assignment", type(assignment).__name__, shape)
     if table.empty:
         raise InvalidParameterError("assignment", "an empty table", shape)
+    if table.index.hasnans:
+        raise InvalidParameterError(
+            "assignment", "missing unit identifiers", ["a non-null path-id index"]
+        )
     if not table.index.is_unique:
         dup = table.index[table.index.duplicated()].unique()
         raise InvalidParameterError(
@@ -236,7 +264,13 @@ def normalize_assignment(assignment: pd.Series | pd.DataFrame) -> pd.DataFrame:
     arm = table["arm"].astype(object)
     table["arm"] = arm.where(arm.notna(), MISSING)
     if "assigned_at" in table.columns:
-        table["assigned_at"] = pd.to_datetime(table["assigned_at"])
+        table["assigned_at"] = pd.to_datetime(table["assigned_at"], format="mixed")
+        if table["assigned_at"].isna().any():
+            raise InvalidParameterError(
+                "assignment",
+                "missing or invalid assigned_at",
+                ["a valid assignment timestamp for every assigned path"],
+            )
     return table
 
 
@@ -289,7 +323,7 @@ def align_assignment(
         f"(table ids e.g. {list(table.index[:3])}, stream ids e.g. "
         f"{list(stream_ids[:3])})"
     )
-    if n_matched == 0 and n_table:
+    if n_matched == 0 and n_table and table.index.name != path_col:
         raise InvalidParameterError(
             "assignment",
             f"{detail}; every path would count as silent",
@@ -310,14 +344,10 @@ def align_assignment(
                 "and wrong when the ids are spelled differently: index the table "
                 f"by '{path_col}'."
             )
-        message = (
-            f"{detail}; the rest count as silent paths (0 for every metric). {advice}"
+        warn_user(
+            f"{detail}; the rest remain silent assignments (zero for additive/binary "
+            f"outcomes; unavailable for undefined value metrics). {advice}"
         )
-        if message not in _ID_MATCH_WARNED:
-            # once per table and stream: a push audience that mostly never opens
-            # the app is expected, and every later call on it would repeat this
-            _ID_MATCH_WARNED.add(message)
-            warn_user(f"{message} (Shown once per assignment table.)")
     return table
 
 
@@ -456,7 +486,13 @@ def _assignment_groups(stream, diff, path_col, assignment):
     paths2 = table.index[table["arm"].isin(v2_vals)]
 
     if segment_col in stream.schema.segment_cols:
-        labels = per_path_label(stream.df, segment_col, path_col)
+        events = stream.df
+        if "assigned_at" in table.columns:
+            start = events[path_col].map(table["assigned_at"])
+            events = events.loc[
+                start.isna() | events[stream.schema.timestamp_col].ge(start)
+            ]
+        labels = per_path_label(events, segment_col, path_col)
         labels = labels[labels != MISSING]
         multi = labels.index[labels == MULTI]
         if len(multi):
@@ -465,8 +501,8 @@ def _assignment_groups(stream, diff, path_col, assignment):
                 f"stream, e.g. {list(multi[:5])}. {_HINT}"
             )
         common = labels.index.intersection(table.index)
-        stream_arm = labels.reindex(common).astype(str)
-        table_arm = table["arm"].reindex(common).astype(str)
+        stream_arm = labels.reindex(common).astype(object)
+        table_arm = table["arm"].reindex(common).astype(object)
         disagree = common[(stream_arm != table_arm).to_numpy()]
         if len(disagree):
             raise DiffConfigError(

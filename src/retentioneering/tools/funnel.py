@@ -10,19 +10,20 @@ p-value.
 """
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from retentioneering import engine
-from retentioneering.engine.dialect import event_position
 from retentioneering.exceptions import InvalidParameterError
 from retentioneering.tools import _stats
-from retentioneering.tools.conversion import _check_ci_level
+from retentioneering.tools.conversion import (
+    _check_ci_level,
+    _check_independent_path_grain,
+)
 from retentioneering.tools.types import T_Diff
-from retentioneering.utils.sql_quoting import quote_literal
 
-if False:
-    from retentioneering.eventstream.eventstream import Eventstream  # noqa: F401
+if TYPE_CHECKING:
+    from retentioneering.eventstream.eventstream import Eventstream
 
 
 #: Multiple-comparison corrections over the overall-step p-values.
@@ -64,6 +65,8 @@ class Funnel:
             raise InvalidParameterError(
                 "path_col", path_col, self.eventstream.schema.path_cols
             )
+        if ci_level is not None:
+            _check_independent_path_grain(self.eventstream, path_col)
         event_col = self.eventstream.schema.event_col
         available_events = set(self.eventstream.df[event_col].unique().tolist())
         for step in steps:
@@ -101,8 +104,8 @@ class Funnel:
                 stream2 = self.eventstream.filter_events(
                     keep={path_col: list(groups.ids2)}
                 )
-            f1 = Funnel(stream1)._fit_single(steps, path_col)
-            f2 = Funnel(stream2)._fit_single(steps, path_col)
+            f1 = Funnel(stream1)._fit_single(steps, path_col, self.eventstream)
+            f2 = Funnel(stream2)._fit_single(steps, path_col, self.eventstream)
 
             combined = []
             for i, step in enumerate(steps):
@@ -132,68 +135,21 @@ class Funnel:
                 _add_diff_ci(result, ci_level, correction)
             return result
 
-    def _fit_single(self, steps: list[str], path_col: str) -> dict:
-        event_col = self.eventstream.schema.event_col
-        index_col = self.eventstream.schema.index
+    def _fit_single(self, steps: list[str], path_col: str, source_stream=None) -> dict:
+        from retentioneering.paths.ordered_reach import ordered_reach_counts
 
-        df = self.eventstream.df
-        total_paths = int(df[path_col].nunique())
+        total_paths = int(self.eventstream.df[path_col].nunique())
         if not steps:
             return {"steps": [], "total_paths": total_paths}
-
-        path_col_q = engine.quote_ident(path_col)
-        event_col_q = engine.quote_ident(event_col)
-        index_col_q = engine.quote_ident(index_col)
-        subindex_col_q = engine.quote_ident(self.eventstream.schema.subindex)
-        position = event_position(index_col_q, subindex_col_q)
-        joined_position = event_position(f"df.{index_col_q}", f"df.{subindex_col_q}")
-
-        # Sequential funnel semantics: a path reaches step k iff there
-        # exist positions p1 < p2 < ... < pk with event(p_j) = steps[j].
-        # A position is (index, subindex): synthetic markers can share their
-        # source event's index, but still precede it in the stream's order.
-        # Chained CTEs: step_k holds, per path, the earliest occurrence of
-        # steps[k-1] that comes strictly after the path's step_{k-1} match.
-        # This correctly handles repeated events and duplicate step names.
-        #
-        # path_cols is validated (coarsest-first, strictly nested) at
-        # Eventstream construction time, and path_col is restricted to
-        # schema.path_cols above, so comparing full event positions is
-        # correct at any accepted grain (see ADR-0004).
-        ctes = []
-        for step_num, step_event in enumerate(steps, start=1):
-            ev = quote_literal(step_event)
-            if step_num == 1:
-                ctes.append(
-                    f"step_1 AS ("
-                    f"SELECT {path_col_q} AS path_id, MIN({position}) AS idx "
-                    f"FROM df "
-                    f"WHERE {event_col_q} = {ev} "
-                    f"GROUP BY {path_col_q}"
-                    f")"
-                )
-            else:
-                prev = f"step_{step_num - 1}"
-                ctes.append(
-                    f"step_{step_num} AS ("
-                    f"SELECT df.{path_col_q} AS path_id, MIN({joined_position}) AS idx "
-                    f"FROM df "
-                    f"JOIN {prev} ON df.{path_col_q} = {prev}.path_id "
-                    f"WHERE df.{event_col_q} = {ev} AND {joined_position} > {prev}.idx "
-                    f"GROUP BY df.{path_col_q}"
-                    f")"
-                )
-        counts = ", ".join(
-            f"(SELECT COUNT(*) FROM step_{i}) AS count_{i}"
-            for i in range(1, len(steps) + 1)
+        source = self.eventstream if source_stream is None else source_stream
+        counts = ordered_reach_counts(
+            source, steps, path_col=path_col, frame=self.eventstream.df
         )
-        query = f"WITH {', '.join(ctes)} SELECT {counts}"
-        row = engine.run(query, df=df).iloc[0]
 
         funnel_data = []
         prev_count = None
         for step_num, step_event in enumerate(steps, start=1):
-            count = int(row[f"count_{step_num}"])
+            count = int(counts[f"reach_{step_num}"])
             conversion_rate = count / total_paths if total_paths > 0 else 0.0
             step_conversion_rate = (
                 conversion_rate
@@ -235,6 +191,8 @@ def _add_single_ci(result: dict, ci_level: float) -> None:
         _put(steps, f"{name}_ci_high", high)
     result["ci_level"] = ci_level
     result["ci_basis"] = {"rate": CI_BASIS["rate"]}
+    result["population_basis"] = "observed_paths"
+    result["independence_assumption"] = "independent_observed_paths"
 
 
 def _add_diff_ci(result: dict, ci_level: float, correction: str) -> None:
@@ -269,6 +227,8 @@ def _add_diff_ci(result: dict, ci_level: float, correction: str) -> None:
 
     result["ci_level"] = ci_level
     result["ci_basis"] = dict(CI_BASIS)
+    result["population_basis"] = "observed_paths"
+    result["independence_assumption"] = "independent_observed_paths"
     result["correction"] = correction
     # spelled as get_ab_test spells it: "metric=<what>/<dimension>", "none"
     result["correction_family"] = (

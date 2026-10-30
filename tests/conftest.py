@@ -9,16 +9,6 @@ import pytest
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
-@pytest.fixture(autouse=True)
-def _fresh_id_match_warnings():
-    """The id-match warning shows once per table in a process; each test starts
-    with none shown, so a test that expects it does not depend on test order."""
-    from retentioneering.tools._diff import _ID_MATCH_WARNED
-
-    _ID_MATCH_WARNED.clear()
-    yield
-
-
 @pytest.fixture()
 def base_dir() -> str:
     return BASE_DIR

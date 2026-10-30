@@ -188,7 +188,8 @@ class TestDiffCi:
         expected = (
             adjust(raw)
             if adjust is not None
-            else np.where(finite, np.minimum(1, raw * finite.sum()), np.nan)
+            # An unavailable step remains part of the declared family.
+            else np.where(finite, np.minimum(1, raw * len(raw)), np.nan)
         )
         np.testing.assert_allclose(got, expected, rtol=1e-12)
         assert r["correction"] == correction

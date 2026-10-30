@@ -16,8 +16,9 @@ are a different shape of answer and are not expressible here — use a transitio
 matrix on a subpopulation for those.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
@@ -26,6 +27,7 @@ from retentioneering.engine import dialect
 from retentioneering.exceptions import InvalidParameterError
 from retentioneering.paths import anchors
 from retentioneering.tools import _stats
+from retentioneering.tools._diff import _check_independent_path_grain
 from retentioneering.utils.durations import parse_duration
 
 if TYPE_CHECKING:
@@ -137,6 +139,10 @@ class ConversionRate:
             return self._fit_diff(
                 start_anchor, end_anchor, within, path_col, ci_level, diff
             )
+        if ci_level is not None:
+            _check_independent_path_grain(
+                self.eventstream, path_col or self.eventstream.schema.path_col
+            )
         result = self._fit_single(start_anchor, end_anchor, within, path_col)
         if ci_level is not None:
             low, high = _stats.wilson_ci(
@@ -157,6 +163,7 @@ class ConversionRate:
         path_col = path_col or es.schema.path_col
         if path_col not in es.schema.path_cols:
             raise InvalidParameterError("path_col", path_col, es.schema.path_cols)
+        _check_independent_path_grain(es, path_col)
         ci_level = ci_level if ci_level is not None else DEFAULT_CI_LEVEL
         # Anchors are validated against the whole stream, so a typo is reported
         # the same way as without diff, and an event absent from one group only
@@ -196,14 +203,15 @@ class ConversionRate:
         out["delta_ci_low"] = low
         out["delta_ci_high"] = high
         out["p_value"] = _stats.two_proportion_z(k1, n1, k2, n2)[1]
-        # the denominator is the paths that reached the start anchor: unless that is
-        # the path's start, the groups are selected after exposure (the funnel's
-        # step_conditional); the p-value is kept, flagged
+        # A nontrivial start anchor selects a population after exposure. Keep
+        # descriptive intervals, but do not attach an unconditional A/B test to
+        # that selected contrast (the same rule as conditional funnel steps).
         starts = anchors.parse_specs(start_anchor, param="start_anchor")
         n_ends = len(anchors.parse_specs(end_anchor, param="end_anchor"))
         out["conditional"] = [
             not _is_path_start(spec) for spec in starts for _ in range(n_ends)
         ]
+        out.loc[out["conditional"], "p_value"] = float("nan")
         return out[DIFF_COLUMNS].reset_index(drop=True)
 
     def _fit_single(

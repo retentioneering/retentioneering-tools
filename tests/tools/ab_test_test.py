@@ -79,6 +79,16 @@ def _table() -> pd.DataFrame:
 
 def _fit(stream, metrics=(CONV,), **kwargs) -> pd.DataFrame:
     kwargs.setdefault("min_support", 1)
+    if (
+        kwargs.get("horizon") is not None
+        or kwargs.get("period_basis") == "since_assignment"
+    ):
+        # These legacy fixtures declare logging complete immediately after their
+        # final generated row. Production callers must supply their own cutoff.
+        kwargs.setdefault(
+            "observation_end",
+            stream.df[stream.schema.timestamp_col].max() + pd.Timedelta(1, "ns"),
+        )
     return ABTest.from_stream(stream, DIFF, list(metrics), **kwargs).fit()
 
 
@@ -322,15 +332,32 @@ class TestMatrix:
                 _fit(_tiny(), assignment=_table()["arm"], **kwargs)
 
     def test_unit_guard(self) -> None:
-        with pytest.raises(InvalidParameterError, match="too narrow"):
+        with pytest.raises(
+            InvalidParameterError, match="Intervals assume independent paths"
+        ):
             _fit(_tiny(), assignment=_table(), path_col="session_id")
 
     def test_period_needs_primary_path_col(self) -> None:
-        with pytest.raises(InvalidParameterError, match="primary"):
+        with pytest.raises(
+            InvalidParameterError, match="Intervals assume independent paths"
+        ):
             _fit(_tiny(), period="W", path_col="session_id")
 
     def test_session_grain_without_assignment(self) -> None:
-        out = _fit(_tiny(), path_col="session_id").iloc[0]
+        with pytest.raises(
+            InvalidParameterError, match="Intervals assume independent paths"
+        ):
+            _fit(_tiny(), path_col="session_id")
+        # An independently randomized session design must declare that primary grain.
+        stream = Eventstream(
+            _tiny().to_dataframe(),
+            {
+                "path_cols": ["session_id"],
+                "segment_cols": ["arm", "platform"],
+                "custom_cols": ["user_id"],
+            },
+        )
+        out = _fit(stream).iloc[0]
         assert (out.group1_paths, out.group2_paths) == (3, 4)
 
     def test_assignment_must_agree_with_the_segment(self) -> None:
@@ -441,6 +468,9 @@ class TestScorecard:
         assert list(out.columns) == [
             "metric",
             "population",
+            "observation_end",
+            "observation_basis",
+            "analysis_unit",
             "group1_paths",
             "group2_paths",
             "group1_support",
@@ -539,27 +569,38 @@ class TestScorecard:
 
     def test_verdict_comes_from_the_adjusted_p(self) -> None:
         stream = _counts_stream(_THREE)
-        with _exploratory():
+        with warnings.catch_warnings():
             plain = ABTest.from_stream(
-                stream, DIFF, [CONV], strata_col="group", correction="none"
+                stream,
+                DIFF,
+                [CONV],
+                strata_col="group",
+                strata_pre_exposure=True,
+                correction="none",
             ).fit()
-        with _exploratory():
-            holm = ABTest.from_stream(stream, DIFF, [CONV], strata_col="group").fit()
+        with warnings.catch_warnings():
+            holm = ABTest.from_stream(
+                stream, DIFF, [CONV], strata_col="group", strata_pre_exposure=True
+            ).fit()
         a_plain, a_holm = plain.iloc[0], holm.iloc[0]
         assert a_plain.p_value < 0.05 and a_plain.verdict == "increase"
         assert a_holm.p_value == pytest.approx(a_plain.p_value)
         assert a_holm.p_value_adjusted > 0.05 and a_holm.verdict == "inconclusive"
         # the per-comparison interval still excludes 0: it is not what the verdict reads
         assert a_holm.delta_ci_low > 0
-        assert list(holm["correction_family"].unique()) == ["metric=conv/strata"]
+        assert list(holm["correction_family"].unique()) == ["all_metrics/strata"]
         assert list(plain["correction_family"].unique()) == ["none"]
 
     def test_mde_at_the_corrected_alpha(self) -> None:
         from retentioneering.tools import _stats as st
 
-        with _exploratory():
+        with warnings.catch_warnings():
             out = ABTest.from_stream(
-                _counts_stream(_THREE), DIFF, [CONV], strata_col="group"
+                _counts_stream(_THREE),
+                DIFF,
+                [CONV],
+                strata_col="group",
+                strata_pre_exposure=True,
             ).fit()
         row = out.iloc[0]
         assert row.mde_alpha == pytest.approx(0.05 / 3)
@@ -579,12 +620,13 @@ class TestScorecard:
     def test_bonferroni_adds_simultaneous_intervals(self) -> None:
         from retentioneering.tools import _stats as st
 
-        with _exploratory():
+        with warnings.catch_warnings():
             out = ABTest.from_stream(
                 _counts_stream(_THREE),
                 DIFF,
                 [CONV],
                 strata_col="group",
+                strata_pre_exposure=True,
                 correction="bonferroni",
             ).fit()
         row = out.iloc[0]
@@ -597,12 +639,13 @@ class TestScorecard:
     def test_benjamini_hochberg(self) -> None:
         from retentioneering.tools import _stats as st
 
-        with _exploratory():
+        with warnings.catch_warnings():
             out = ABTest.from_stream(
                 _counts_stream(_THREE),
                 DIFF,
                 [CONV],
                 strata_col="group",
+                strata_pre_exposure=True,
                 correction="bh",
             ).fit()
         np.testing.assert_allclose(
@@ -617,13 +660,14 @@ class TestScorecard:
             ("none", "treatment"): (40, 15),  # control never converts
             ("none", "control"): (40, 0),
         }
-        with _exploratory():
+        with warnings.catch_warnings():
             out = (
                 ABTest.from_stream(
                     _counts_stream(cells),
                     DIFF,
                     [CONV],
                     strata_col="group",
+                    strata_pre_exposure=True,
                     min_support=10,
                 )
                 .fit()
@@ -655,9 +699,14 @@ class TestScorecard:
         cells = dict(_THREE)
         cells[("d", "treatment")] = (40, 3)  # fewer than 5 events: not used in Q
         cells[("d", "control")] = (40, 4)
-        with _exploratory():
+        with warnings.catch_warnings():
             out = ABTest.from_stream(
-                _counts_stream(cells), DIFF, [CONV], strata_col="group", min_support=1
+                _counts_stream(cells),
+                DIFF,
+                [CONV],
+                strata_col="group",
+                strata_pre_exposure=True,
+                min_support=1,
             ).fit()
         assert list(out["stratum"]) == ["a", "b", "c", "d"]
         np.testing.assert_allclose(out["group1_share"], [200 / 640] * 3 + [40 / 640])
@@ -665,16 +714,20 @@ class TestScorecard:
         assert set(out["heterogeneity_strata_used"]) == {3}
         assert set(out["heterogeneity_dof"]) == {2}
         assert out["heterogeneity_p_value"].nunique() == 1
-        # a source column: the recipe cannot show it was fixed before exposure
-        assert not out["strata_pre_exposure"].any()
-        assert set(out["strata_pre_exposure_source"]) == {"not_pre_exposure"}
-        assert out["exploratory"].all()
+        # Inferential subgroup tests require the declared pre-exposure membership.
+        assert out["strata_pre_exposure"].all()
+        assert set(out["strata_pre_exposure_source"]) == {"declared"}
+        assert not out["exploratory"].any()
 
     def test_stratum_vs_rest(self) -> None:
         cells = {k: v for k, v in _THREE.items() if k[0] in ("a", "b")}
-        with _exploratory():
+        with warnings.catch_warnings():
             out = ABTest.from_stream(
-                _counts_stream(cells), DIFF, [CONV], strata_col="group"
+                _counts_stream(cells),
+                DIFF,
+                [CONV],
+                strata_col="group",
+                strata_pre_exposure=True,
             ).fit()
         # with two strata the complement of one is the other: the same test as Q
         np.testing.assert_allclose(
@@ -734,7 +787,7 @@ class TestScorecard:
         # an absent estimate is NaN: no SE and no MDE either
         assert np.isnan(row.delta_se) and np.isnan(row.mde) and np.isnan(row.rel_mde)
         assert row.group1_value == pytest.approx(10.0)  # the point estimate stays
-        assert row.verdict == "inconclusive"
+        assert row.verdict == "insufficient_data"
 
     def test_poisson_weights_and_auto_replicates(self) -> None:
         with _exploratory():
@@ -777,6 +830,7 @@ class TestBootstrapTable:
             assignment=_random_assignment(),
             period="7D",
             period_basis="since_assignment",
+            observation_end="2024-02-06",
             n_bootstrap=200,
         )
         table = test.bootstrap({"novelty": (["0-6"], ["7-13"])})
@@ -801,7 +855,7 @@ class TestBootstrapTable:
         got = num[treated].sum(axis=0) / den[treated].sum(axis=0)
         df = _random().to_dataframe()
         at = _random_assignment()["assigned_at"]
-        end = df["timestamp"].max()
+        end = pd.Timestamp("2024-02-06")
         common = at[(at + pd.Timedelta(days=14) <= end)]
         common = common[
             _random_assignment()["arm"].reindex(common.index) == "treatment"
@@ -961,7 +1015,7 @@ class TestAssignmentIds:
 
     def test_no_matching_id_raises(self) -> None:
         table = _random_assignment()
-        table.index = table.index.str.upper()
+        table.index = table.index.str.upper().rename(None)
         with pytest.raises(InvalidParameterError, match="only 0 of 1200"):
             _fit(_random(), assignment=table)
 
@@ -1012,13 +1066,24 @@ class TestAssignmentIds:
             df, {"path_cols": ["user_id", "session_id"], "segment_cols": ["arm"]}
         )
         table = _table().rename_axis("user_id")
-        with pytest.raises(InvalidParameterError, match="too narrow"):
+        with pytest.raises(
+            InvalidParameterError, match="Intervals assume independent paths"
+        ):
             _fit(stream, assignment=table, path_col="session_id")
         # unnamed, the counts tie: ambiguous, so refused too
-        with pytest.raises(InvalidParameterError, match="name its index"):
+        with pytest.raises(
+            InvalidParameterError, match="Intervals assume independent paths"
+        ):
             _fit(stream, assignment=table.rename_axis(None), path_col="session_id")
-        # a table declared per session is taken at its word
-        _fit(stream, assignment=table.rename_axis("session_id"), path_col="session_id")
+        # Naming a session table does not establish independent randomization.
+        with pytest.raises(
+            InvalidParameterError, match="Intervals assume independent paths"
+        ):
+            _fit(
+                stream,
+                assignment=table.rename_axis("session_id"),
+                path_col="session_id",
+            )
 
 
 class TestTimezones:
@@ -1257,7 +1322,9 @@ class TestIntegerIds:
             {u: ("treatment" if u % 2 else "control") for u in range(1, 41)}
         )
         # per-user table, per-session analysis: every user id is also a session id
-        with pytest.raises(InvalidParameterError, match="too narrow"):
+        with pytest.raises(
+            InvalidParameterError, match="Intervals assume independent paths"
+        ):
             _fit(stream, assignment=users, path_col="session_id")
         # per-session table read at the user grain: a session_id index raises (R2-01)
         sessions = df.groupby("session_id")["arm"].first()
@@ -1272,7 +1339,10 @@ class TestIntegerIds:
         # the right pairing runs
         assert len(_fit(stream, assignment=users)) == 1
         named = sessions.rename_axis("session_id")
-        assert len(_fit(stream, assignment=named, path_col="session_id")) == 1
+        with pytest.raises(
+            InvalidParameterError, match="Intervals assume independent paths"
+        ):
+            _fit(stream, assignment=named, path_col="session_id")
 
 
 @pytest.mark.slow
@@ -1346,13 +1416,13 @@ class TestUnitGuard:
             ABTest.from_stream(stream, diff, [CONV], assignment=named)
         with pytest.warns(UserWarning, match="are session_id ids and only"):
             ABTest.from_stream(stream, diff, [CONV], assignment=sessions)
-        # at its own grain the table runs without a warning
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            out = ABTest.from_stream(
+        # A matching table name does not remove clustering by user.
+        with pytest.raises(
+            InvalidParameterError, match="Intervals assume independent paths"
+        ):
+            ABTest.from_stream(
                 stream, diff, [CONV], assignment=named, path_col="session_id"
-            ).fit()
-        assert out["delta"].iloc[0] > 0.1
+            )
 
     def test_segment_constant_per_user_at_the_session_grain(self) -> None:
         rows = []
@@ -1379,19 +1449,23 @@ class TestUnitGuard:
         )
         diff = ("arm", "treatment", "control")
         with pytest.raises(
-            InvalidParameterError, match="constant within every user_id"
+            InvalidParameterError, match="Intervals assume independent paths"
         ):
             ABTest.from_stream(stream, diff, [CONV], path_col="session_id")
-        with pytest.raises(InvalidParameterError, match="too narrow"):
+        with pytest.raises(
+            InvalidParameterError, match="Intervals assume independent paths"
+        ):
             stream.get_sample_ratio("arm", path_col="session_id")
         # the user grain runs; a session table named after its grain is taken at
         # its word
         assert len(ABTest.from_stream(stream, diff, [CONV]).fit()) == 1
         table = df.drop_duplicates("session_id").set_index("session_id")["arm"]
-        out = ABTest.from_stream(
-            stream, diff, [CONV], assignment=table, path_col="session_id"
-        ).fit()
-        assert out["group1_paths"].iloc[0] == 40
+        with pytest.raises(
+            InvalidParameterError, match="Intervals assume independent paths"
+        ):
+            ABTest.from_stream(
+                stream, diff, [CONV], assignment=table, path_col="session_id"
+            )
 
     @staticmethod
     def _per_user_arms(n_users: int, mixed: int) -> Eventstream:
@@ -1416,27 +1490,27 @@ class TestUnitGuard:
         )
 
     def test_a_few_users_with_both_arms_do_not_disable_the_guard(self) -> None:
-        """R3C-02: the guard reads a share, not "every user"."""
+        """Arm variation and sample size cannot prove independence of nested paths."""
         diff = ("arm", "treatment", "control")
-        stream = self._per_user_arms(200, mixed=1)
-        with pytest.raises(InvalidParameterError, match=r"199 of the 200 user_ids"):
-            ABTest.from_stream(stream, diff, [CONV], path_col="session_id")
-        stream = self._per_user_arms(100, mixed=10)  # 90 % constant: warn
-        with pytest.warns(UserWarning, match="constant within 90 of the 100"):
-            ABTest.from_stream(stream, diff, [CONV], path_col="session_id")
-        stream = self._per_user_arms(100, mixed=30)  # 70 %: not per user
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            ABTest.from_stream(stream, diff, [CONV], path_col="session_id")
+        for n_users, mixed in ((200, 1), (100, 10), (100, 30), (4, 0)):
+            stream = self._per_user_arms(n_users, mixed)
+            with pytest.raises(
+                InvalidParameterError, match="Intervals assume independent paths"
+            ):
+                ABTest.from_stream(stream, diff, [CONV], path_col="session_id")
 
     def test_funnel_and_conversion_intervals_use_the_guard(self) -> None:
         """m4: the inferential funnel and conversion calls refuse the finer grain."""
         diff = ("arm", "treatment", "control")
         stream = self._per_user_arms(40, mixed=0)
         steps = ["visit", "order"]
-        with pytest.raises(InvalidParameterError, match="constant within every"):
+        with pytest.raises(
+            InvalidParameterError, match="Intervals assume independent paths"
+        ):
             stream.funnel_data(steps, diff=diff, path_col="session_id", ci_level=0.95)
-        with pytest.raises(InvalidParameterError, match="constant within every"):
+        with pytest.raises(
+            InvalidParameterError, match="Intervals assume independent paths"
+        ):
             stream.get_conversion_rate(
                 "visit", "order", diff=diff, path_col="session_id"
             )
@@ -1472,7 +1546,14 @@ class TestDaylightSaving:
         # 02:30 happens twice in Berlin on 2026-10-25
         stream, table = self._stream_and_table("2026-10-25 02:30")
         with pytest.raises(InvalidParameterError, match="occur twice"):
-            ABTest.from_stream(stream, DIFF, [CONV], assignment=table, horizon="1D")
+            ABTest.from_stream(
+                stream,
+                DIFF,
+                [CONV],
+                assignment=table,
+                horizon="1D",
+                observation_end=pd.Timestamp("2026-10-30", tz="Europe/Berlin"),
+            )
         with pytest.raises(InvalidParameterError, match="tz-aware assigned_at"):
             stream.get_sample_ratio(assignment=table)
 
@@ -1603,12 +1684,14 @@ class TestEmptyArmAndConstantRows:
 
 
 class TestCorrectionScope:
-    """U2: one family per metric (default) or over every metric."""
+    """One declared family over all metrics by default; explicit per-metric opt-in."""
 
     def test_all_metrics_in_one_family(self) -> None:
         stream = _random(effect=0.05)
         metrics = [CONV, ORDERS, REVENUE]
-        per_metric = ABTest.from_stream(stream, DIFF, metrics).fit()
+        per_metric = ABTest.from_stream(
+            stream, DIFF, metrics, correction_scope="metric"
+        ).fit()
         joint = ABTest.from_stream(stream, DIFF, metrics, correction_scope="all").fit()
         assert (per_metric["p_value_adjusted"] == per_metric["p_value"]).all()
         expected = st_holm(joint["p_value"].to_numpy())
@@ -1659,9 +1742,19 @@ class TestAbPaths:
         assignment = pd.concat([assignment, silent])
         metrics = [CONV, ORDERS, MEAN_VALUE, AOV]
         card = stream.get_ab_test(
-            DIFF, metrics, assignment=assignment, horizon="7D"
+            DIFF,
+            metrics,
+            assignment=assignment,
+            horizon="7D",
+            observation_end="2024-02-04",
         ).set_index("metric")
-        paths = stream.get_ab_paths(DIFF, metrics, assignment=assignment, horizon="7D")
+        paths = stream.get_ab_paths(
+            DIFF,
+            metrics,
+            assignment=assignment,
+            horizon="7D",
+            observation_end="2024-02-04",
+        )
         assert paths.index.name == "user_id"
         assert list(paths.columns) == [
             "arm",

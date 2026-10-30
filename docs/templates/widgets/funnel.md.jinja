@@ -53,23 +53,26 @@ stays grey, whatever its size. A funnel tests one comparison per step, so with
 many steps some p-values fall under 0.05 by chance: `correction="holm"` (or
 `"bonferroni"`, or `"bh"` for the false discovery rate) adjusts the overall-delta
 p-values across the steps into `delta_conversion_rate_p_value_adjusted`. The
-intervals are never adjusted, so a delta can be coloured while its adjusted
-p-value is above your threshold — read the adjusted p-value for the decision.
+intervals remain per comparison. With a correction, colouring additionally requires
+the adjusted p-value to be below `1 - ci_level`; a per-comparison interval excluding
+zero can therefore remain grey after multiplicity correction.
 The relative delta in the table divides by group 2, the control.
 
 With intervals, a `diff` must split **paths**, not events: a path whose segment
 changes inside it would sit in both groups, and the groups would not be
 independent. Such a `diff` raises `DiffConfigError` with the count; compare a
-segment that is constant per path (an experiment arm attached with
-[`add_segment(path_values=...)`](/docs/data-processors/add-segment)) or a finer
-`path_col`. Two more things the numbers assume:
+segment that is constant at the independent path grain (an experiment arm attached with
+[`add_segment(path_values=...)`](/docs/data-processors/add-segment)). Finer-grain point-only
+funnels remain available for descriptive questions. Two more things the numbers assume:
 
 - **The denominator is the paths with at least one event.** A user assigned to
   an arm who never produced an event is not counted; for an intention-to-treat
   read that includes them, use `get_ab_test(assignment=...)`.
 - **Each path is one independent unit.** That holds when `path_col` is the unit
   that was randomised. Session paths of a user-level experiment are not
-  independent and give intervals that are too narrow.
+  independent and give intervals that are too narrow. Interval calls reject any
+  finer-than-coarsest path column, including single funnels and explicit id-list diffs,
+  even in small samples. Schema order is a necessary declaration, not proof of independence.
 
 On the bundled A/B test, the purchase path of each arm (the add itself is left
 out: in treatment most adds are a different event, `quick_add`):
@@ -91,7 +94,9 @@ Headless, `funnel_data(..., ci_level=0.95)` returns the same numbers: a
 `*_ci_low` / `*_ci_high` pair next to every rate and delta,
 `delta_conversion_rate_p_value` and `delta_conversion_rate_p_value_adjusted`,
 `step_conditional`, and at the top level `ci_level`, `ci_basis`, `correction`
-and `correction_family`. Every funnel result also carries its
+and `correction_family`. Interval payloads also report
+`population_basis="observed_paths"` and `independence_assumption="independent_observed_paths"`.
+Every funnel result also carries its
 denominators: `total_paths`, or `funnel1_total_paths` / `funnel2_total_paths`.
 An estimate that does not exist (an interval over zero paths, a test where both
 groups convert at 0% or 100%) is `NaN`, never 0.

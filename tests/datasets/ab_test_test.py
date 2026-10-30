@@ -23,8 +23,7 @@ import pandas as pd
 import pytest
 from sklearn.metrics import adjusted_rand_score
 
-from retentioneering.datasets import ab_test
-from retentioneering.datasets import load_ab_test, load_ab_test_assignment
+from retentioneering.datasets import ab_test, load_ab_test, load_ab_test_assignment
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.exceptions import InvalidParameterError
 
@@ -37,6 +36,7 @@ PRE_EXPOSURE_END = [
     "path_end",
 ]
 ALPHA = 0.05
+OBSERVATION_END = ab_test.START + pd.Timedelta(days=ab_test.N_DAYS)
 CONVERSION = {
     "name": "conversion",
     "metric": "has_event",
@@ -320,7 +320,8 @@ class TestStories:
         assert 0.04 < rows.loc["scanner", "delta"] < 0.15
         assert -0.12 < rows.loc["curator", "delta"] < -0.04
         assert abs(rows.loc["other", "delta"]) < 0.02
-        assert rows.loc["other", "verdict"] == "inconclusive"
+        assert (rows["verdict"] == "descriptive").all()
+        assert rows["p_value_adjusted"].isna().all()
 
     def test_story4_cart_loop_in_treatment_curators_only(self, stream, truth) -> None:
         _, treatment, control = stream.transition_graph_data(
@@ -341,7 +342,11 @@ class TestStories:
     def test_story5_novelty_since_assignment(self, stream, assignment) -> None:
         # ITT per since-assignment window, over the users whose window lies inside
         # the data (silent users included); the contrast has a joint interval.
-        periods = {"period": "14D", "period_basis": "since_assignment"}
+        periods = {
+            "period": "14D",
+            "period_basis": "since_assignment",
+            "observation_end": OBSERVATION_END,
+        }
         rows = stream.get_ab_test(
             DIFF, [CONVERSION], assignment=assignment, **periods
         ).set_index("period")

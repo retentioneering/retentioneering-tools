@@ -180,3 +180,25 @@ came from a tab). `playbook("conversion_rate")` carries the procedure.
   Node required). pip-installed wheels ship the bundle.
 - Telemetry: the library reports anonymous usage (method names, never data);
   see the docs "Tracking" page for scope and opt-out.
+
+
+## Development: assignment-aware experiments
+
+This source branch adds `experiment_data` / `experiment`; they are not in PyPI 5.3.0.
+Require a complete separate assignment roster, fixed calendar observation window
+and declared independent unit. Do not derive assignments from active event rows.
+`experiment_data` returns JSON-safe summary/diagnostics/metadata; `experiment`
+is a native fixed-result view with the same data parameters. Supported scalar
+metrics include has_event, event_count, matches_pattern and event_value_sum.
+The latter requires event/value_col (and optional event_col) in metric_args;
+matching nonfinite values raise rather than being silently filled.
+Use explicit bootstrap and/or binary_intervals={'method':'newcombe',
+'confidence_level':.95}; methods and unavailable statuses survive export.
+Percentile intervals are pointwise; tests are separately declared Fisher/Welch
+with Holm. Constant arms and sparse ratios need visible diagnostics.
+Source history before assignment is allowed outside the outcome window.
+The strict report has no automatic winner, censoring/sequential design or widget
+roster restore. Its Python report surface is separate from the comparative
+scorecard MCP binding (`serve(stream, assignment=table)`); horizons and
+since-assignment periods require an explicit `observation_end`. Read /docs/experiments
+and installed docstrings before writing code for a released version.

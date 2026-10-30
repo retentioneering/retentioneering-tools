@@ -231,3 +231,16 @@ native skill loader. Two skills ship today: `retentioneering-product-analytics`
 `retentioneering-contributing` (turning findings into issues/PRs that match this
 repository's conventions). When public API changes, re-verify the version-checked claims
 in each skill's `references/api-map.md`.
+
+
+### A/B integration contracts
+
+Read `docs/adr/0018-ab-integration.md` when changing experiment inference.
+`ab_test_data` / `ab_test` is the comparative scorecard (`get_ab_test` remains
+a compatible name); `experiment_data` / `experiment` is the strict fixed-calendar
+roster report. Both use `stats/primitives.py` and `stats/resampling.py`; do not
+introduce independent copies of inference formulas or draw generators. Horizons
+and since-assignment periods require an explicit exclusive `observation_end`.
+Keep silent assignments, declared family size, unavailable inference statuses and
+MCP metadata intact. Tests and tutorials must state the population and independent
+unit. Source PRs #216 and #217 remain linked in ADR-0018.

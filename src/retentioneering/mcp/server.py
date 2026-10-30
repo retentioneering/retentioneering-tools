@@ -505,7 +505,8 @@ def _build_server(
         horizon: str | None = None,
         period_basis: str = "calendar",
         test: str = "auto",
-        correction_scope: str = "metric",
+        correction_scope: str = "all",
+        observation_end: str | None = None,
     ) -> str:
         """
         Register an A/B test scorecard tab in the pending report.
@@ -549,6 +550,7 @@ def _build_server(
             period_basis,
             test,
             correction_scope,
+            observation_end=observation_end,
         )
         return json.dumps(result, ensure_ascii=False, allow_nan=False)
 
@@ -605,8 +607,8 @@ def _build_server(
             delta (group1 - group2) with delta_ci_low / delta_ci_high and
             p_value. Assumes path_col is the unit that was assigned. The
             denominator is paths with the start anchor: unless it is
-            "path_start" the row is conditional=true and the p_value describes
-            selected paths, it does not test; use get_ab_test with a
+            "path_start" the row is conditional=true and its p_value is unavailable;
+            descriptive intervals remain. Use get_ab_test with a
             matches_pattern metric for the effect.
 
         Returns
@@ -642,9 +644,10 @@ def _build_server(
         """
         Check an A/B test's arm sizes against the expected split (sample ratio mismatch).
 
-        Run this FIRST on any experiment, before reading a metric: if the arms do
-        not have the planned sizes, paths were lost from one arm and every
-        comparison is suspect. Numbers only, no report tab: quote in backticks.
+        Check allocation before interpreting outcomes. Mismatch is a diagnostic
+        alarm requiring investigation, not proof of faulty randomization. The
+        chi-square check assumes independent multinomial assignments; fixed
+        allocation needs a compatible audit. Numbers only; quote in backticks.
         With the session's assignment table (describe()['assignment']) the counts
         are the table's rows, silent users included, and segment_col is optional.
 
@@ -671,7 +674,8 @@ def _build_server(
         Returns
         -------
         JSON with mismatch, p_value, chi2, dof, multi_valued_paths (assignment
-        bug when > 0), silent_paths, unassigned_paths, basis, reading (one sentence: expected vs
+        inconsistency when > 0), silent_paths, unassigned_paths, basis,
+        sampling_assumption, warnings, reading (one sentence: expected vs
         observed split, p and the conclusion; quote it), levels (paths, share,
         expected_share per arm) and, with strata_col, strata (per stratum: paths,
         p_value, p_value_adjusted by Holm across strata, mismatch), with period,
@@ -704,7 +708,8 @@ def _build_server(
         horizon: str | None = None,
         period_basis: str = "calendar",
         test: str = "auto",
-        correction_scope: str = "metric",
+        correction_scope: str = "all",
+        observation_end: str | None = None,
     ) -> str:
         """
         Compare two arms of an experiment on path metrics: delta, interval, verdict, MDE.
@@ -718,8 +723,8 @@ def _build_server(
         mde is not a bound on the effect. Population (`population`): with the session's assignment table
         (serve(stream, assignment=...)) every assigned user, silent ones included;
         without one the stream paths (users with >= 1 event) by the segment in
-        diff, so silent assigned users are not counted. Metrics are not corrected
-        against each other (correction_scope="metric"): read the decision metric,
+        diff, so silent assigned users are not counted. Metrics are corrected
+        together by default (correction_scope="all"); explicitly predeclare the decision metric,
         and each guardrail on its own against a harm margin declared up front.
 
         Parameters
@@ -744,6 +749,9 @@ def _build_server(
             needs the assignment table; period a fixed length such as "7D").
         period_population:
             "itt" (default) or "active" (survivors only; descriptive, no p).
+        observation_end:
+            Exclusive declared logging cutoff; required for horizon or
+            since-assignment periods. Never inferred from event activity.
         horizon:
             e.g. "28D": only each user's first 28 days count; users not observed
             that long are left out (needs the assignment table's assigned_at).
@@ -753,9 +761,8 @@ def _build_server(
         correction:
             "holm" (default), "bonferroni", "bh" or "none".
         correction_scope:
-            "metric" (default: within one metric's rows) or "all" (every row of
-            every metric in one family: a scorecard read without one decision
-            metric; never for guardrails, which are read alone).
+            "all" (default: every declared row of every metric in this call) or
+            "metric" (separate families per metric, explicitly predeclared).
         ci_level:
             Interval level, default 0.95.
         path_col:
@@ -800,6 +807,7 @@ def _build_server(
             period_basis,
             test,
             correction_scope,
+            observation_end=observation_end,
         )
         return json.dumps(result, ensure_ascii=False, allow_nan=False)
 
@@ -817,6 +825,7 @@ def _build_server(
         n_bootstrap: int = 1000,
         path_col: str | None = None,
         local_preprocessors: list | None = None,
+        observation_end: str | None = None,
     ) -> str:
         """
         Contrast an A/B effect between periods with a joint bootstrap interval (novelty).
@@ -829,7 +838,7 @@ def _build_server(
         Parameters
         ----------
         diff, metrics, path_col, local_preprocessors, horizon, strata_col,
-        strata_pre_exposure:
+        strata_pre_exposure, observation_end:
             As in get_ab_test.
         period:
             The bins the contrast names: "14D" with period_basis="since_assignment"
@@ -850,6 +859,14 @@ def _build_server(
         between the sides), delta with delta_ci_low / delta_ci_high (percentile,
         unadjusted), p_value (bootstrap SE, unadjusted), share_positive (share of
         replicates with delta > 0, not a p-value), valid_replicates and unit.
+        p_value_adjusted uses Holm across all declared contrast rows, labelled by
+        correction_family. inference_status, interval_status and ci_scope expose
+        unavailable/descriptive inference and pointwise intervals. The JSON also
+        records observation_end, observation_basis and bootstrap_algorithm.
+        Binary numeric fields are shares (numeric_unit="share", display_scale=100);
+        unit="pp" is their display unit. Other metrics use display_scale=1.
+        Invalid draws are not dropped; unknown/post-exposure strata have no
+        confirmatory p-values.
         """
         result = tools.get_ab_bootstrap(
             session,
@@ -865,6 +882,7 @@ def _build_server(
             n_bootstrap,
             path_col,
             local_preprocessors,
+            observation_end=observation_end,
         )
         return json.dumps(result, ensure_ascii=False, allow_nan=False)
 

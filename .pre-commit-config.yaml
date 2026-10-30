@@ -6,6 +6,9 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-added-large-files
+        # Frozen 1.2 MiB compressed synthetic teaching fixture, covered by
+        # its manifest checksums and notebook integration checks.
+        exclude: ^notebooks/data/lumeo/events\.csv\.gz$
       - id: check-merge-conflict
       - id: mixed-line-ending
 

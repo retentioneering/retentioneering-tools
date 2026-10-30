@@ -55,6 +55,8 @@ Totals per path (A/B: Welch; a silent path counts 0):
   length           {}                        events per path
   active_days      {} or {"active_events": ["purchase"]}   distinct days
   column_sum       {"column": "amount"}      a value column, see describe()
+  event_value_sum  {"event": "purchase", "value_col": "amount"}
+                   sum matching finite values; matching missing/invalid values fail
 Values, undefined for some paths (A/B: Welch over the paths with a value;
 the row is conditional=true when a path has none):
   duration         {}                        seconds, first to last event

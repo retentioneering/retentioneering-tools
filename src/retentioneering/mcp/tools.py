@@ -20,6 +20,8 @@ docstrings rather than reusing these numpy-style ones verbatim.
 
 from __future__ import annotations
 
+from retentioneering.stats.resampling import BOOTSTRAP_ALGORITHM
+
 import inspect
 import json
 import math
@@ -643,7 +645,8 @@ def add_ab_test(
     horizon: str | None = None,
     period_basis: str = "calendar",
     test: str = "auto",
-    correction_scope: str = "metric",
+    correction_scope: str = "all",
+    observation_end: str | None = None,
 ) -> dict:
     """
     Compute an A/B test scorecard and register it as a tab in the pending report.
@@ -662,7 +665,7 @@ def add_ab_test(
         Tab label shown in the report. No colons in the label.
     diff, metrics, strata_col, period, period_population, correction, ci_level,
     path_col, strata_pre_exposure, local_preprocessors, horizon, period_basis,
-    test, correction_scope:
+    test, correction_scope, observation_end:
         As in get_ab_test.
 
     Returns
@@ -692,6 +695,7 @@ def add_ab_test(
             period_basis=period_basis if period else None,
             period_population=period_population if period else None,
             horizon=horizon or None,
+            observation_end=observation_end,
             test=test,
             correction=correction,
             correction_scope=correction_scope,
@@ -816,7 +820,7 @@ def get_conversion_rate(
         assumes path_col is the unit that was assigned (user-level test -> user
         paths). The denominator is the paths with the start anchor: unless that is
         "path_start", each row is conditional=true, the groups are selected after
-        exposure and the p_value describes, it does not test; for the treatment's
+        exposure and the p_value is unavailable; descriptive intervals remain. For the treatment's
         effect use get_ab_test with a matches_pattern metric (an ITT share).
 
     Returns
@@ -905,10 +909,11 @@ def get_sample_ratio(
     """
     Check an A/B test's arm sizes against the expected split (sample ratio mismatch).
 
-    Run this FIRST on any experiment, before reading a single metric: if the
-    arms do not have the planned sizes, paths were lost from one arm and every
-    comparison is suspect. Returns numbers only (no report tab); quote them in
-    backticks.
+    Check allocation before interpreting outcomes. A mismatch is a diagnostic
+    alarm requiring investigation of assignment, exclusions and logging, not
+    proof that any one of them failed. The chi-square test assumes independent
+    multinomial assignments; fixed-allocation designs need a compatible audit.
+    Returns numbers only (no report tab); quote them in backticks.
 
     With an assignment table in the session (serve(stream, assignment=...);
     describe() shows it) the counts are the table's rows, silent assigned users
@@ -944,7 +949,7 @@ def get_sample_ratio(
     segment_col, path_col, mismatch (bool), p_value, chi2, dof, alpha,
     multi_valued_paths (paths with >1 arm: an assignment bug), silent_paths
     (assigned paths with no events; 0 without a table), unassigned_paths,
-    basis, reading (one sentence: the expected and observed split, the p-value and
+    basis, sampling_assumption, warnings, reading (one sentence: the expected and observed split, the p-value and
     the conclusion, e.g. "expected 50/50, observed 5040/4960 (control/treatment),
     p 0.42: no mismatch"; quote it), and levels — one row per arm with paths, share,
     expected_share. With strata_col: strata, one row per stratum with stratum, paths,
@@ -959,15 +964,17 @@ def get_sample_ratio(
     except Exception as exc:
         return {"error": f"local_preprocessors: {exc}"}
     try:
-        result = src.get_sample_ratio(
-            segment_col or None,
-            expected_shares=expected_shares,
-            alpha=alpha,
-            path_col=path_col or None,
-            assignment=getattr(session, "assignment", None),
-            strata_col=strata_col or None,
-            period=period or None,
-        )
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            result = src.get_sample_ratio(
+                segment_col or None,
+                expected_shares=expected_shares,
+                alpha=alpha,
+                path_col=path_col or None,
+                assignment=getattr(session, "assignment", None),
+                strata_col=strata_col or None,
+                period=period or None,
+            )
     except Exception as exc:
         return {"error": str(exc)}
 
@@ -987,6 +994,8 @@ def get_sample_ratio(
         "silent_paths": int(result["silent_paths"]),
         "unassigned_paths": int(result["unassigned_paths"]),
         "basis": result["basis"],
+        "sampling_assumption": result["sampling_assumption"],
+        "warnings": list(dict.fromkeys(str(w.message) for w in caught)),
         "reading": result["reading"],
         "levels": [
             {
@@ -1055,7 +1064,8 @@ def get_ab_test(
     horizon: str | None = None,
     period_basis: str = "calendar",
     test: str = "auto",
-    correction_scope: str = "metric",
+    correction_scope: str = "all",
+    observation_end: str | None = None,
 ) -> dict:
     """
     Compare two arms of an experiment on path metrics: delta, interval, verdict, MDE.
@@ -1108,6 +1118,9 @@ def get_ab_test(
     period_population:
         "itt" (default, inferential) or "active" (only paths active in the period —
         survivors; rows are descriptive, no p-value).
+    observation_end:
+        Exclusive timestamp through which logging is declared complete. Required
+        for horizon and since-assignment periods; never inferred from the last event.
     horizon:
         A fixed window per user, e.g. "14D" or "28D": only events in the first 14
         days after assigned_at count, and users not observed that long are left out
@@ -1119,10 +1132,9 @@ def get_ab_test(
     correction:
         "holm" (default), "bonferroni", "bh" or "none".
     correction_scope:
-        "metric" (default): the correction runs within one metric's rows, metrics
-        are not corrected against each other — name one decision metric, and read
-        each guardrail alone against a declared harm margin. "all": every row of
-        every metric in one family (a scorecard read without one decision metric).
+        "all" (default): every declared row of every metric in this call is one
+        family, including unavailable hypotheses. "metric" opts into separate
+        families per metric and must follow a predeclared analysis plan.
     ci_level:
         Confidence level of the intervals (default 0.95).
     path_col:
@@ -1164,7 +1176,7 @@ def get_ab_test(
     pre-exposure); support_warning per metric ("no_data": no path of either arm
     has the behaviour, or no value in one arm for a value or ratio metric;
     "one_arm_only": the behaviour exists in one arm only; "invalid_replicates":
-    more than 1 % of bootstrap replicates without a value in an arm, so no
+    at least one requested bootstrap replicate without a value in an arm, so no
     interval or p-value; "low_support": few paths behind a bootstrap interval,
     coverage below nominal);
     warnings (the library's warnings for this call); with period: periods (period,
@@ -1189,6 +1201,7 @@ def get_ab_test(
     kwargs = {
         "assignment": assignment,
         "horizon": horizon or None,
+        "observation_end": observation_end,
         "test": test,
         "correction": correction,
         "correction_scope": correction_scope,
@@ -1279,6 +1292,9 @@ def get_ab_test(
         "correction_family",
         "mde_alpha",
         "support_warning",
+        "ci_basis",
+        "p_basis",
+        "valid_replicates",
         "reading",
     )
     entries = []
@@ -1362,6 +1378,10 @@ def get_ab_test(
         "correction": correction,
         "correction_scope": correction_scope,
         "population": str(overall["population"].iloc[0]),
+        "observation_end": observation_end,
+        "observation_basis": str(overall["observation_basis"].iloc[0]),
+        "analysis_unit": str(overall["analysis_unit"].iloc[0]),
+        "bootstrap_algorithm": overall.attrs.get("bootstrap_algorithm"),
         "unassigned_paths": int(overall["unassigned_paths"].iloc[0]),
         "metrics": entries,
     }
@@ -1392,6 +1412,7 @@ def get_ab_bootstrap(
     n_bootstrap: int = 1000,
     path_col: str | None = None,
     local_preprocessors: list | None = None,
+    observation_end: str | None = None,
 ) -> dict:
     """
     Contrast an A/B effect between periods with a joint bootstrap interval (novelty).
@@ -1404,7 +1425,7 @@ def get_ab_bootstrap(
     Parameters
     ----------
     diff, metrics, path_col, local_preprocessors, horizon, strata_col,
-    strata_pre_exposure:
+    strata_pre_exposure, observation_end:
         As in get_ab_test.
     period:
         The bins the contrast names: a fixed length with
@@ -1432,6 +1453,15 @@ def get_ab_bootstrap(
     delta_ci_low, delta_ci_high (percentile of the replicates, unadjusted), p_value (from the
     bootstrap standard error, unadjusted), share_positive (share of replicates
     with delta > 0; not a p-value), valid_replicates, unit ("pp" or "value").
+    p_value_adjusted and correction_family describe Holm correction over all
+    declared contrast rows (separate from the scorecard). inference_status,
+    interval_status and ci_scope expose descriptive or unavailable inference.
+    For binary outcomes, numeric delta/interval fields are shares: numeric_unit
+    is "share", display_scale=100 and unit="pp" is the display unit. Other
+    metrics use numeric_unit="value", display_scale=1.
+    observation_end, observation_basis and bootstrap_algorithm identify the
+    observation assertion and sampler. Invalid draws are never dropped to make
+    an interval; unknown/post-exposure strata have no confirmatory p-values.
     """
     if (err := _require_stream(session)) is not None:
         return err
@@ -1460,6 +1490,7 @@ def get_ab_bootstrap(
                 period=period,
                 period_basis=period_basis,
                 horizon=horizon or None,
+                observation_end=observation_end,
                 ci_level=ci_level,
                 n_bootstrap=n_bootstrap,
                 path_col=path_col or None,
@@ -1483,9 +1514,20 @@ def get_ab_bootstrap(
         ):
             entry[column] = _json_number(row[column], 6)
         entry["p_value"] = _json_number(row["p_value"], 8)
+        entry["p_value_adjusted"] = _json_number(row["p_value_adjusted"], 8)
+        for field in (
+            "correction_family",
+            "p_basis",
+            "inference_status",
+            "interval_status",
+            "ci_scope",
+        ):
+            entry[field] = row[field]
         entry["share_positive"] = _json_number(row["share_positive"], 4)
         entry["valid_replicates"] = int(row["valid_replicates"])
         entry["unit"] = units.get(row["metric"], "value")
+        entry["numeric_unit"] = "share" if entry["unit"] == "pp" else "value"
+        entry["display_scale"] = 100 if entry["unit"] == "pp" else 1
         rows.append(entry)
     return {
         "diff": list(diff),
@@ -1493,6 +1535,13 @@ def get_ab_bootstrap(
         "period_basis": period_basis,
         "contrast": contrast,
         "n_bootstrap": test.resolved_n_bootstrap(),
+        "bootstrap_algorithm": BOOTSTRAP_ALGORITHM,
+        "observation_end": observation_end,
+        "observation_basis": (
+            "declared_logging_cutoff"
+            if observation_end is not None
+            else "observed_event_span"
+        ),
         "population": "assignment" if test.matrix.with_assignment else "stream",
         "rows": rows,
         "warnings": list(dict.fromkeys(str(w.message) for w in caught)),

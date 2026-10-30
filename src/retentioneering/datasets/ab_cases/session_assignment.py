@@ -39,23 +39,26 @@ Solutions (spoilers)
 1. Users are in both arms: about 37 % of users have more than one session, and
    most of those (31 % of all users) saw both cards. ``get_sample_ratio("exp_group")`` at the user grain
    reports them as ``multi_valued_paths`` and a mismatch, although the session
-   split is a clean 50/50 (``get_sample_ratio`` with the table and
-   ``path_col="session_id"``: no mismatch).
+   counts are close to 50/50. A finer-grain SRM call is rejected even with the
+   session table: balanced session counts do not establish independent units.
 2. ``get_ab_test`` at the user grain refuses: with the stream's segment
    (``DiffConfigError``: "'exp_group' is not constant within 2454 of the
    compared paths (user_id)" at the default seed: users in both groups), and with
    the session table (``InvalidParameterError``: "the assignment table is indexed
    by 'session_id', a finer path column", so every user would take the arm of a
    session).
-3. At the session grain (``path_col="session_id"``) the scorecard runs, and the
-   add rate per session reads as a clear increase, but its interval is too
-   narrow: it treats every session as an independent unit while the effect of the
-   card differs by user (planted per-user effects on the per-session add
-   probability: normal, mean +5 pp, standard deviation 25 pp, before the
-   probability is clipped to [0.01, 0.95], which lifts the realised mean to about
-   +7 pp) and the heavy users contribute many sessions each. A user-clustered
-   standard error of the same delta is 1.5 to 1.8 times the reported
-   ``delta_se`` (1.55 at the default seed).
+3. The scorecard also rejects ``path_col="session_id"`` with the declared
+   user/session hierarchy, even when given the session-indexed assignment table.
+   Ordinary ``get_metrics`` still returns descriptive session outcomes. A manual
+   independent-session standard error understates uncertainty: the card's effect
+   differs by user (planted per-user changes in the add probability: normal, mean
+   +5 pp, standard deviation 25 pp before clipping probabilities to [0.01, 0.95],
+   giving a realised mean around +7 pp), and heavy users contribute many sessions.
+   A user-clustered standard error of the same contrast is 1.5 to 1.8 times the
+   naive one (1.55 at the default seed). Declaring sessions as the primary schema
+   grain would bypass the structural guard but falsely assert independence in this
+   simulator; it is only used as an explicit unsafe diagnostic in validation tests.
+
 4. The first session of every user is a clean user-level experiment: cut each path
    before its second ``session_start`` (``truncate_paths("path_start",
    [{"pattern": "session_start->.*->session_start", "at": 1, "offset": -1},

@@ -20,6 +20,7 @@ import { render as renderFunnel }           from "./funnel";
 import { render as renderSegmentOverview }  from "./segment_overview";
 import { render as renderClusterAnalysis }  from "./cluster_analysis";
 import { render as renderABTest }           from "./ab_test";
+import { render as renderExperiment }       from "./experiment";
 
 /** Apply a GraphView (object, or a name from the widget's `views` list) to
  *  a rendered transition graph. No-op for widgets that don't expose the
@@ -194,6 +195,7 @@ function dispatch(ctx: RenderContext) {
   if (type === "segment_overview")  return renderSegmentOverview(ctx);
   if (type === "cluster_analysis")  return renderClusterAnalysis(ctx);
   if (type === "ab_test")           return renderABTest(ctx);
+  if (type === "experiment")        return renderExperiment(ctx);
   return renderTransitionGraph(ctx);
 }
 

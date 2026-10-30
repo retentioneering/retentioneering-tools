@@ -339,6 +339,11 @@ function Sidebar({ host, isStatic, isLoading, params, segLevels, segmentCols, pa
 
         <Rule />
         <SH>Horizon</SH>
+        <input aria-label="Complete observation cutoff" value={params.observation_end || ""}
+          disabled={disabled} placeholder="Complete logging through (exclusive timestamp)"
+          onChange={set("observation_end")}
+          style={{ ...sel, width: "100%", marginBottom: 6 }} />
+        <Hint>Required for a horizon or since-assignment periods. Declare the logging cutoff; the last event is not evidence of complete observation.</Hint>
         <input aria-label="Horizon" value={horizon} disabled={disabled || !hasAssignedAt}
           placeholder={hasAssignedAt ? "e.g. 28D (empty: whole window)" : "needs assignment with assigned_at"}
           onChange={e => setHorizon(e.target.value)} onBlur={commitHorizon}
@@ -377,7 +382,7 @@ function SidebarToggle({ onClick }: { onClick: () => void }) {
 
 const PARAM_KEYS = [
   "diff", "metrics", "strata_col", "strata_pre_exposure", "period", "period_basis", "period_population",
-  "horizon", "test", "correction", "correction_scope", "ci_level", "path_col",
+  "horizon", "observation_end", "test", "correction", "correction_scope", "ci_level", "path_col",
 ];
 
 function readParams(host: RenderContext["host"]): Record<string, any> {
@@ -388,7 +393,7 @@ function readParams(host: RenderContext["host"]): Record<string, any> {
   }
   out.ci_level = Number(out.ci_level) || 0.95;
   out.correction = out.correction || "holm";
-  out.correction_scope = out.correction_scope || "metric";
+  out.correction_scope = out.correction_scope || "all";
   out.test = out.test || "auto";
   out.period_basis = out.period_basis || "calendar";
   return out;

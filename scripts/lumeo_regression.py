@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Regression check of the A/B tools against the Lumeo drawer experiment.
 
 The Lumeo data (40k users, ~1M events, a smart-cart drawer tested against the
@@ -42,8 +41,9 @@ from pathlib import Path
 
 os.environ.setdefault("RETENTIONEERING_NO_TRACK", "1")
 
-import pandas as pd  # noqa: E402
-from retentioneering.eventstream.eventstream import Eventstream  # noqa: E402
+import pandas as pd
+
+from retentioneering.eventstream.eventstream import Eventstream
 
 DIFF = ("exp_group", "treatment", "control")
 BEHAVIOUR = [
@@ -319,8 +319,9 @@ def run(data_dir: Path, report: Report) -> None:
             0.22,
             0.01,
         )
-        report.check(
-            "add_to_cart -> order_success p", rate["p_value"].iloc[0], 0.847, 0.005
+        report.check_true(
+            "conditional conversion has no causal p-value",
+            bool(rate["conditional"].all() and rate["p_value"].isna().all()),
         )
 
 

@@ -11,7 +11,7 @@ The two meet in the other direction too. A test that reads grey on the top line 
 | Inferential: a randomised comparison with an interval and a test | Descriptive: a picture to generate the next hypothesis |
 |---|---|
 | [`get_sample_ratio()`](/docs/tools/get-sample-ratio) on the assignment or the full stream | `transition_graph`, `step_matrix`, `step_sankey` in [diff mode](/docs/widgets#diff-mode) |
-| [`get_ab_test()`](/docs/tools/get-ab-test) on the assignment table, overall and per stratum fixed before exposure (declared, such as a platform fixed at signup, or read from a truncation in the recipe) | `get_ab_test` strata not known to be pre-exposure (`exploratory=True`) |
+| [`get_ab_test()`](/docs/tools/get-ab-test) on the assignment table, overall and per stratum fixed before exposure (declared, such as a platform fixed at signup, or read from a truncation in the recipe) | `get_ab_test` strata not known to be pre-exposure (`exploratory=True`, `verdict="descriptive"`, no p-values) |
 | `get_ab_test(period=...)` rows over every user assigned by the period's end (ITT per period) | `period_population="active"` rows (`verdict="descriptive"`) |
 | [`get_ab_bootstrap()`](/docs/tools/get-ab-bootstrap) contrasts, such as a novelty effect | step-to-step funnel rates (`step_conditional=True`) |
 | `funnel(ci_level=...)` overall steps | conversion *after* a behaviour the treatment changes, e.g. `get_conversion_rate(diff=...)` from a loop (`conditional=True`) |
@@ -24,28 +24,22 @@ Four objects define every A/B number in the library: the unit, the population, t
 
 Every inferential method treats one path as one independent observation: intervals and tests are computed over paths, and the bootstrap resamples whole paths. That is right only when `path_col` is the unit that was randomised. If users were assigned to arms, the paths must be users; the sessions of one user share the user's arm and habits, so treating them as independent makes every interval too narrow.
 
-With an assignment table the library checks this for you:
+The scorecard, its bootstrap and per-path table, sample-ratio check, and funnel/conversion
+intervals require the **coarsest declared path grain**. This rule applies to every diff form,
+including explicit id lists and assignment tables, and to small samples. A session-indexed
+assignment table does not make repeated sessions of a user independent:
 
 ```python
 stream.get_ab_test(diff, metrics, assignment=assignment, path_col="session_id")
-# InvalidParameterError: Invalid value 'session_id' for parameter 'path_col'. Allowed values:
-# ["'user_id' — the assignment table lists user_id ids, so user_id is the randomised unit;
-#   per-session_id intervals would treat correlated paths of one user_id as independent and
-#   come out too narrow (Deng et al. 2018)"]
+# InvalidParameterError: nested sessions are not the declared independent grain.
 ```
 
-Without one (a `diff` on a segment column alone), the library reads the unit from the segment. When the arm is constant within the users — at least 99 % of the users that hold several sessions keep one arm, and at least 10 such users do — a session `path_col` raises the same error; from 90 % it warns:
-
-```python
-stream.get_ab_test(diff, metrics, path_col="session_id")
-# InvalidParameterError: Invalid value 'session_id' for parameter 'path_col': 'exp_group' is
-# constant within every user_id (8115 of them hold several session_id paths), so user_id is the
-# randomised unit; per-session_id intervals would treat correlated paths of one user_id as
-# independent and come out too narrow (Deng et al. 2018). If session_ids were randomised one by
-# one, pass the assignment table indexed by 'session_id'. ...
-```
-
-`funnel_data(ci_level=...)` and `get_conversion_rate(diff=...)` apply the same guard, since both report intervals; a descriptive funnel diff (no `ci_level`) does not. A segment that changes between the sessions of many users passes the guard: if the sessions were not randomised one by one, the grain is yours to check.
+Point-only funnels and ordinary path metrics remain available at finer grains. If the design
+truly makes sessions independent, declare sessions as the primary schema grain before analysis.
+That declaration is a contract, not statistical evidence: reordering schema columns cannot
+remove within-user dependence. A household, reseller or account may be the true independent unit
+even when the schema starts with a user id. For a cluster-randomized design, aggregate and analyse
+at that independent unit with its assignment roster.
 
 ### The population: intention to treat
 
@@ -72,7 +66,7 @@ With `assignment=`, every row of the table is in the population. Users who were 
 
 `diff=("exp_group", "treatment", "control")` names the two arms, and every delta is **group 1 minus group 2** — treatment minus control. The inferential methods resolve `diff` per path: a path that falls in both groups (a segment that changes within the path, overlapping id lists) raises `DiffConfigError` instead of being counted twice. With an assignment table, `diff[0]` is `"arm"` (the table alone) or a segment column of the stream, and then every path's segment must agree with the table; any other name raises `DiffConfigError`, so a typo cannot switch the check off.
 
-The descriptive widgets keep their event-level `diff` — a path whose segment changes can contribute to both sides — which is the right tool for "inside vs outside an incident window" and the wrong one for an experiment. [ADR-0017](https://github.com/retentioneering/retentioneering-tools/blob/master/docs/adr/0017-ab-testing-tools.md) records why the two coexist.
+Most descriptive widgets keep their event-level `diff` — a path whose segment changes can contribute to both sides — which is the right tool for "inside vs outside an incident window" and the wrong one for an experiment. [ADR-0017](https://github.com/retentioneering/retentioneering-tools/blob/master/docs/adr/0017-ab-testing-tools.md) records why the two coexist.
 
 ### The metrics: registry configs, one number per path
 
@@ -81,7 +75,7 @@ A metric of the scorecard is an ordinary [path metric](/docs/path-metrics) confi
 | Kind | Examples | Silent paths | Default test |
 |---|---|---|---|
 | 0/1 | `has_event`, `has_any_event`, `has_all_events`, `matches_pattern`, `in_segment` | count as 0 | pooled two-proportion z-test, Wilson / Newcombe intervals |
-| total per path | `event_count`, `length`, `active_days`, `column_sum` | count as 0 | Welch's t-test |
+| total per path | `event_count`, `length`, `active_days`, `column_sum`, `event_value_sum` | count as 0 | Welch's t-test |
 | value per path | `duration`, `time_between`, `column_mean`, `column_last` | left out of the mean | Welch's t-test |
 | ratio of sums | any total with a `denominator`, e.g. revenue / orders | — | joint path bootstrap |
 
@@ -121,13 +115,13 @@ metrics = [
 scorecard = stream.get_ab_test(diff, metrics=metrics, assignment=assignment)
 ```
 
-| metric | group1_value | group2_value | delta | delta_ci_low | delta_ci_high | p_value | mde | verdict | test |
+| metric | group1_value | group2_value | delta | delta_ci_low | delta_ci_high | p_value_adjusted | mde | verdict | test |
 |---|---|---|---|---|---|---|---|---|---|
-| conversion | 0.2433 | 0.2373 | 0.0060 | -0.0107 | 0.0228 | 0.479 | 0.0239 | inconclusive | z_test |
-| adders | 0.6323 | 0.6347 | -0.0025 | -0.0213 | 0.0164 | 0.798 | 0.0270 | inconclusive | z_test |
-| orders_per_user | 0.3034 | 0.2889 | 0.0145 | -0.0086 | 0.0377 | 0.219 | 0.0331 | inconclusive | welch_t_test |
-| revenue_per_user | 20.14 | 18.64 | 1.50 | -0.28 | 3.28 | 0.099 | 2.55 | inconclusive | welch_t_test |
-| aov | 66.39 | 64.53 | 1.86 | -1.30 | 5.03 | 0.262 | 4.64 | inconclusive | bootstrap |
+| conversion | 0.2433 | 0.2373 | 0.0060 | -0.0107 | 0.0228 | 0.959 | 0.0292 | inconclusive | z_test |
+| adders | 0.6323 | 0.6347 | -0.0025 | -0.0213 | 0.0164 | 0.959 | 0.0329 | inconclusive | z_test |
+| orders_per_user | 0.3034 | 0.2889 | 0.0145 | -0.0086 | 0.0377 | 0.875 | 0.0404 | inconclusive | welch_t_test |
+| revenue_per_user | 20.14 | 18.64 | 1.50 | -0.28 | 3.28 | 0.493 | 3.11 | inconclusive | welch_t_test |
+| aov | 66.39 | 64.53 | 1.86 | -1.14 | 4.92 | 0.875 | 5.29 | inconclusive | bootstrap |
 
 The groups are the 4,960 treatment and 5,040 control users of the table (`group1_paths`, `group2_paths`), of whom 132 and 135 are silent. "Adders" counts either way of adding — `add_to_cart` or `quick_add` — because the feature replaces most treatment adds with its own event, and a metric on `add_to_cart` alone would measure the replacement, not the behaviour.
 
@@ -142,20 +136,20 @@ Every row is one metric (and one stratum and one period, when requested). The co
 - **The test.** `p_value` of the row's test; `p_value_adjusted` after the correction; `correction_family`, the text naming what was corrected together; `mde_alpha`, the level the `mde` is computed at (`alpha / m` under a correction, `alpha = 1 - ci_level`). The verdict does not use `mde_alpha`: it compares `p_value_adjusted` with `1 - ci_level`.
 - **What the test could see.** `mde` and `rel_mde`, the minimum detectable absolute and relative effect at `mde_alpha`, the `power` you asked for (0.8 by default) and the realised sample sizes.
 - **Who has a value.** `group1_support`, `group2_support` (paths with a value: every path for 0/1 metrics and totals, buyers for an order value) and `conditional`, True when a support is below its arm's paths: the row compares the paths with a value, not the whole arms (the AOV row below compares 1,207 and 1,196 buyers). `reading` says the row in one sentence; the [tool page](/docs/tools/get-ab-test#reading-a-row) lists its templates.
-- **How it was computed.** `test` (`z_test`, `welch_t_test`, `bootstrap`), `ci_basis` (`wilson`, `welch`, `path_bootstrap`), `p_basis` (`pooled_z`, `welch`, `bootstrap_se`); for bootstrap rows, `valid_replicates` (replicates with a value in both arms); `support_warning`, empty unless the row's support is unusual: `"no_data"` (no path of either arm has the behaviour), `"invalid_replicates"` (a bootstrap row where more than 1 % of the replicates have no value in an arm: NaN interval, no p-value), `"one_arm_only"` (one arm has no supporting path) or `"low_support"` (a bootstrap row with fewer than 30 supported paths per arm, where percentile intervals under-cover).
+- **How it was computed.** `test` (`z_test`, `welch_t_test`, `bootstrap`), `ci_basis` (`wilson`, `welch`, `path_bootstrap`), `p_basis` (`pooled_z`, `welch`, `bootstrap_se`); for bootstrap rows, `valid_replicates` (replicates with a value in both arms); `support_warning`, empty unless the row's support is unusual: `"no_data"` (no path of either arm has the behaviour), `"invalid_replicates"` (a bootstrap row where any replicate has no value in an arm: NaN interval, no p-value), `"one_arm_only"` (one arm has no supporting path) or `"low_support"` (a bootstrap row with fewer than 30 supported paths per arm, where percentile intervals under-cover).
 
 **The verdict** is a pure function of the adjusted p-value. It has five values:
 
 - `increase` / `decrease` — `p_value_adjusted < 1 - ci_level`, with the sign of `delta`;
-- `inconclusive` — everything else with a p-value, including a NaN one;
+- `inconclusive` — an available test that does not reject after correction;
 - `descriptive` — rows that compare selected groups (`period_population="active"`), with no p-value and no `mde`;
-- `insufficient_data` — too little support pooled across both arms: for a 0/1 metric, fewer than `min_support` (default 10) paths with the event, or fewer than `min_support` without it, in the two arms together; for totals, fewer than `min_support` paths with a non-zero total; for ratios, fewer than `min_support` paths with a non-zero numerator; for values, fewer than `min_support` paths with a value. The estimates stay, the test does not run. A row where no path of either arm has the behaviour — the silent users' `<MISSING>` stratum, a loop nobody in a stratum enters — is `insufficient_data` with `support_warning="no_data"`, whatever the kind of metric. Because support is pooled, a behaviour present in one arm only — a loop the feature creates — still gets a p-value and a verdict, flagged `support_warning="one_arm_only"`.
+- `insufficient_data` — unavailable inference (including undefined or degenerate bootstrap replicates) or too little support pooled across both arms: for a 0/1 metric, fewer than `min_support` (default 10) paths with the event, or fewer than `min_support` without it, in the two arms together; for totals, fewer than `min_support` paths with a non-zero total; for ratios, fewer than `min_support` paths with a non-zero numerator; for values, fewer than `min_support` paths with a value. The estimates stay, the test does not run. A row where no path of either arm has the behaviour — the silent users' `<MISSING>` stratum, a loop nobody in a stratum enters — is `insufficient_data` with `support_warning="no_data"`, whatever the kind of metric. Because support is pooled, a behaviour present in one arm only — a loop the feature creates — still gets a p-value and a verdict, flagged `support_warning="one_arm_only"`.
 
-**Read an inconclusive row with its interval and `mde`.** Conversion moved by +0.60 pp, with an interval from −1.07 to +2.28 pp. The `mde` of about 2.4 pp is the effect this test detects with 80 % power at alpha 0.05 (`mde_alpha`; nothing is corrected in a family of one row): a design quantity, not a bound on the true effect. The interval is what bounds it, and the honest summary is "an effect larger than about +2.3 pp or below about −1.1 pp is unlikely; a smaller one, in either direction, is possible" — not "the feature does nothing". See [Inconclusive is not "no effect"](#5-inconclusive-is-not-no-effect).
+**Read an inconclusive row with its interval and `mde`.** Conversion moved by +0.60 pp, with an interval from −1.07 to +2.28 pp. For a single conversion-row call, the `mde` of about 2.4 pp is the effect this test detects with 80 % power at the reported `mde_alpha` (0.05 in a single-row call; lower when several rows share a correction family): a design quantity, not a bound on the true effect. The interval is what bounds it, and the honest summary is "an effect larger than about +2.3 pp or below about −1.1 pp is unlikely; a smaller one, in either direction, is possible" — not "the feature does nothing". See [Inconclusive is not "no effect"](#5-inconclusive-is-not-no-effect).
 
 **The interval and the verdict can disagree, on purpose.** The interval is per comparison and never adjusted for multiplicity; the verdict reads the adjusted p-value. A row whose interval excludes 0 can still be `inconclusive` once its family is corrected — the periods section below has one. `correction="bonferroni"` adds a simultaneous interval (`delta_ci_low_adj`, `delta_ci_high_adj`) when you need one that agrees with the verdict.
 
-**The correction family is the rows of one metric** — its strata and its periods — so `correction_family` reads `metric=conversion` on a plain scorecard, `metric=conversion/strata` with `strata_col` and `metric=conversion/periods` with `period`. By default (`correction_scope="metric"`) metrics are separate families and are **not** corrected against each other: with five independent metrics at 5 % each, the chance that at least one of them reads `increase` or `decrease` when nothing changed is about 23 %. Decide which metric is the decision metric before the test, and read the others as supporting evidence. `correction_scope="all"` puts every row of the call into one family, for a scorecard read without one decision metric. Guardrails are read the other way: each on its own (the default), against a harm margin declared before the test — see [rule 2](#from-scorecard-to-decision). Correcting guardrails together would raise each one's bar for `decrease` and make harm harder to detect.
+**The default correction family is every declared row in the call** (`correction_scope="all"`, `correction_family="all_metrics"`): metrics, strata and periods are corrected together. Rows with unavailable p-values still count toward the planned family; insufficient support must not make the remaining tests less conservative. `correction_scope="metric"` is an explicit option for separate, predeclared metric families. It does not protect a decision chosen after scanning across metrics. Separate calls are not automatically corrected together, so declare the primary read, secondary analyses and their decision rule before looking at results. Guardrails require a predeclared harm margin and a decision design; a nonsignificant two-sided test does not certify safety.
 
 ## Funnels with intervals
 
@@ -182,25 +176,27 @@ Every overall step is grey. The step-to-step column (marked †, `step_condition
 
 **Why conditional steps are descriptive.** The denominator of `checkout_start → payment` is the users who started a checkout, and the treatment changed who that is: in Northwind, the treatment build also shows a "checkout now" shortcut after every add that reaches the cart, `quick_add` or not, and it starts checkouts that never pay. The step rate compares two different populations, so its difference is a mixture of the treatment's effect and the change in who got there — of unknown sign. The overall `payment` row, out of every path in each arm, is the randomised comparison, and it is +0.06 pp. The conditional rate is still worth reading: it points at the mechanism (the "checkout now" shortcut), which is a hypothesis for the next test.
 
-Two more things the funnel's numbers assume. **The denominator is the paths with at least one event** — 4,828 and 4,905 paths here, not the 4,960 and 5,040 assigned users of the scorecard (`population="assignment"`); `assignment=` on the funnel is not available yet, so for an ITT read of a step use `get_ab_test` with a 0/1 metric of that step and `assignment=`. **Each path is one unit**, so use the randomised grain as `path_col`.
+Two more things the funnel's numbers assume. **The denominator is the paths with at least one event** — 4,828 and 4,905 paths here, not the 4,960 and 5,040 assigned users of the scorecard (`population="assignment"`); `assignment=` on the funnel is not available yet, so for an ITT read of a step use `get_ab_test` with a 0/1 metric of that step and `assignment=`. **Each path is assumed independent**. Interval calls reject finer-than-coarsest path columns; point-only funnels can still describe sessions. `experiment_data()` provides an assigned-unit analysis, including silent users and ordered funnel outcomes, when the estimand is intention-to-treat.
 
 ## Periods, horizon and novelty
 
 The scorecard above counts every event a user produced after assignment, until the data end. Users who entered in the first week were observed for eight weeks, those who entered in the sixth for two, so the effect it reports is an average over different exposure times, weighted by when users happened to arrive. Three arguments make the time dimension explicit. Different horizons answer different questions, so choose the one that matches the decision before reading any of them.
 
-**`horizon=` gives every user the same window.** Only events in `[assigned_at, assigned_at + horizon)` count, and users whose window had not closed by the stream's last event, where the data end, are left out (`immature_paths`). The estimand becomes "the effect within N days of assignment":
+**`horizon=` gives every user the same window.** Only events in `[assigned_at, assigned_at + horizon)` count, and users whose window had not closed by the explicit `observation_end` are left out (`immature_paths`). This exclusive cutoff asserts complete logging through a known time; the last observed event cannot certify it. `horizon` and `period_basis="since_assignment"` require it. Northwind's generator logs through `2026-04-27 00:00`, even though nobody acts at the final instant. The estimand becomes "the effect within N days of assignment":
 
 ```python
 conversion = [metrics[0]]
-stream.get_ab_test(diff, conversion, assignment=assignment, horizon="28D")
+observation_end = "2026-04-27"  # exclusive, known from the generator/logging contract
+stream.get_ab_test(diff, conversion, assignment=assignment, horizon="28D",
+                   observation_end=observation_end)
 ```
 
 | horizon | group1_paths | group2_paths | immature_paths | delta | interval | p_value | mde | verdict |
 |---|---|---|---|---|---|---|---|---|
 | none | 4960 | 5040 | — | +0.60 pp | [−1.07, +2.28] | 0.479 | 2.39 pp | inconclusive |
-| `"14D"` | 4958 | 5037 | 5 | +2.75 pp | [+1.38, +4.12] | 0.0001 | 1.96 pp | increase |
-| `"28D"` | 4323 | 4379 | 1298 | +2.09 pp | [+0.43, +3.75] | 0.014 | 2.38 pp | increase |
-| `"42D"` | 3175 | 3161 | 3664 | +1.00 pp | [−1.09, +3.09] | 0.347 | 2.98 pp | inconclusive |
+| `"14D"` | 4960 | 5040 | 0 | +2.71 pp | [+1.34, +4.08] | 0.0001 | 1.96 pp | increase |
+| `"28D"` | 4329 | 4384 | 1287 | +2.08 pp | [+0.42, +3.74] | 0.014 | 2.38 pp | increase |
+| `"42D"` | 3190 | 3184 | 3626 | +0.99 pp | [−1.09, +3.07] | 0.351 | 2.98 pp | inconclusive |
 
 These are different questions with different answers, not one question measured more or less precisely. Pick the horizon that matches the decision before the test starts — "do users buy more in their first four weeks?" — and report that one row. Trying horizons until one turns green is a form of peeking (see [pitfall 6](#6-peeking-and-open-ended-metrics)).
 
@@ -208,31 +204,34 @@ These are different questions with different answers, not one question measured 
 
 ```python
 stream.get_ab_test(diff, conversion, assignment=assignment,
-                   period="14D", period_basis="since_assignment")
+                   period="14D", period_basis="since_assignment",
+                   observation_end=observation_end)
 ```
 
 | period | group1_paths | group2_paths | immature_paths | delta | interval | p_value_adjusted | verdict |
 |---|---|---|---|---|---|---|---|
-| 0-13 | 4958 | 5037 | 5 | +2.75 pp | [+1.38, +4.12] | 0.0003 | increase |
-| 14-27 | 4323 | 4379 | 1298 | −0.67 pp | [−1.73, +0.39] | 0.213 | inconclusive |
-| 28-41 | 3175 | 3161 | 3664 | −1.48 pp | [−2.63, −0.33] | 0.023 | decrease |
+| 0-13 | 4960 | 5040 | 0 | +2.71 pp | [+1.34, +4.08] | 0.0003 | increase |
+| 14-27 | 4329 | 4384 | 1287 | −0.69 pp | [−1.75, +0.36] | 0.198 | inconclusive |
+| 28-41 | 3190 | 3184 | 3626 | −1.52 pp | [−2.67, −0.37] | 0.019 | decrease |
 
 The effect is front-loaded: positive in the first two weeks after assignment, negative from the fifth week on. The open-ended scorecard averages these, and the 14- and 28-day horizons read mostly the early part. `period_complete` is False where some assigned user's window had not closed; a bin whose window closes after the end of data for every user is left out.
 
-**An effect that changes with exposure age is a contrast between two of those windows**, and it needs an interval of its own. In the table above the windows hold different users — days 0–13 9,995 of the 10,000, days 28–41 only the 6,336 whose six weeks had closed — and a difference between those rows would mix the change of the effect with the change of who is counted. `contrast=` avoids that: it compares the same paths in every contrasted bin, keeping only the paths whose windows closed in all of them, so the library balances the contrast whatever the horizon. `horizon="42D"` below makes that population explicit (with it, every bin of the table above would hold the same 6,336 users); it is a choice of window, not a requirement. The two windows' estimates are correlated, so their intervals cannot be combined by eye; [`get_ab_bootstrap()`](/docs/tools/get-ab-bootstrap) evaluates every period on the same resampled users:
+**An effect that changes with exposure age is a contrast between two of those windows**, and it needs an interval of its own. In the table above the windows hold different users — days 0–13 all 10,000, days 28–41 only the 6,374 whose six weeks had closed — and a difference between those rows would mix the change of the effect with the change of who is counted. `contrast=` avoids that: it compares the same paths in every contrasted bin, keeping only the paths whose windows closed in all of them, so the library balances the contrast whatever the horizon. `horizon="42D"` below makes that population explicit (with it, every bin of the table above would hold the same 6,374 users); it is a choice of window, not a requirement. The two windows' estimates are correlated, so their intervals cannot be combined by eye; [`get_ab_bootstrap()`](/docs/tools/get-ab-bootstrap) evaluates every period on the same resampled users:
 
 ```python
 reps = stream.get_ab_bootstrap(
     diff, conversion, assignment=assignment,
     period="14D", period_basis="since_assignment", horizon="42D",
+    observation_end=observation_end,
     contrast={"novelty": (["0-13"], ["28-41"])},
 )
 novelty = reps.loc[reps["contrast"] == "novelty", "delta"]
+assert novelty.notna().all()  # never drop undefined contrasts before taking quantiles
 novelty.quantile([0.025, 0.975]).tolist()
-# [0.0284, 0.0675]
+# [0.0299, 0.0679]
 ```
 
-For the same 6,336 users, the treatment's effect in days 0–13 exceeds its effect in days 28–41 by 4.86 pp, with an interval from 2.84 to 6.75 pp that excludes 0: the effect changes with exposure age, from a lift to a small decrease. The point estimate is the difference of the two bins on those users, `get_ab_test(..., period="14D", period_basis="since_assignment", horizon="42D")`: +3.38 pp in days 0–13 minus −1.48 pp in days 28–41; it is the `delta` the MCP tool `get_ab_bootstrap` reports, and the replicates give the interval (their mean, 4.79 pp, is not the estimate). Novelty is one explanation of that shape; users trying the feature early and buying what they would have bought later is another, and the data do not separate them.
+For the same 6,374 users, the treatment's effect in days 0–13 exceeds its effect in days 28–41 by 4.91 pp, with an interval from 2.99 to 6.79 pp that excludes 0: the effect changes with exposure age, from a lift to a small decrease. The point estimate is the difference of the two bins on those users, `get_ab_test(..., period="14D", period_basis="since_assignment", horizon="42D", observation_end=observation_end)`: +3.39 pp in days 0–13 minus −1.52 pp in days 28–41; it is the `delta` the MCP tool `get_ab_bootstrap` reports, and the replicates give the interval (their mean is not the point estimate). Novelty is one explanation of that shape; users trying the feature early and buying what they would have bought later is another, and the data do not separate them.
 
 **Calendar periods** (`period="W"`, the default `period_basis="calendar"`) answer a different question: did the effect hold over the calendar weeks of the test? Each week's row includes every user assigned by the end of that week, active or not (ITT per period), and the weeks of one metric are one correction family:
 
@@ -255,7 +254,7 @@ The third week's interval excludes 0 and its verdict is still `inconclusive`: th
 
 ## Blind pre-exposure clusters as strata
 
-A grey top line can hide users for whom the treatment works and users for whom it backfires. `strata_col=` repeats every metric within the levels of a segment — but a split is only a randomised comparison if the treatment could not have changed who is in which level. The level must be fixed **before exposure**: a signup platform, an acquisition channel, or behaviour measured on the part of each path the treatment could not yet touch. Only you know that a column such as `platform` was fixed at signup (the docstring of each bundled dataset lists its segments fixed at assignment; Northwind's are `platform` and `cohort_week`), so you declare it: `get_ab_test(..., strata_col="platform", strata_pre_exposure=True)`. Without the declaration the library reads the stream's recipe, and a stratum it cannot vouch for is flagged `exploratory=True` with a warning.
+A grey top line can hide users for whom the treatment works and users for whom it backfires. `strata_col=` repeats every metric within the levels of a segment — but a split is only a randomised comparison if the treatment could not have changed who is in which level. The level must be fixed **before exposure**: a signup platform, an acquisition channel, or behaviour measured on the part of each path the treatment could not yet touch. Only you know that a column such as `platform` was fixed at signup (the docstring of each bundled dataset lists its segments fixed at assignment; Northwind's are `platform` and `cohort_week`), so you declare it: `get_ab_test(..., strata_col="platform", strata_pre_exposure=True)`. Without the declaration the library reads the stream's recipe, and a stratum it cannot vouch for is flagged `exploratory=True` with a warning. Such rows retain descriptive estimates and intervals, but suppress p-values, MDE and balance/heterogeneity tests; a balanced share does not rescue post-treatment selection.
 
 **The exposure point** is the first event at which the treatment can change what a user sees or does. In Northwind `quick_add` sits on the product page, and the log agrees: 97.7 % of `quick_add` events follow a `product_view` (the rest a `reviews_view`). So exposure starts at a user's first `product_view`, and the window before it is pre-exposure by the product's design — there is no button to see yet. That is still your argument, not something the log proves, and the least you can check is that the window does not differ between the arms (the [tutorial](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_tutorial.ipynb) does, in step 6). The recipe in five steps: cut the window, cluster users on it without looking at the arm or the outcome, read one label per user, carry the labels onto the full stream with your declaration, and stratify:
 
@@ -349,8 +348,8 @@ Run it on the assignment or on the full stream, and per group only for variables
 
 A scorecard is evidence; the launch call is a decision with a cost of being wrong in each direction. Five rules turn one into the other, most of them fixed before the test starts.
 
-1. **Declare the decision metric and its horizon up front.** One metric (conversion), one window (the whole observation period, or "within 28 days of assignment"), one read date. Every other row is supporting evidence: metrics are not corrected against each other by default, and different horizons answer different questions. The [tutorial](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_tutorial.ipynb) writes its two reads down in step 2, before any table is printed.
-2. **Name the guardrails and the harm each may do.** Metrics that must not get worse — revenue per user, refunds, support contacts — each with the largest harm you accept, declared before the test. Read each guardrail on its own (the default `correction_scope="metric"`): correcting guardrails against each other raises each one's bar for `decrease` and makes harm harder to detect. A guardrail passes only when its interval clears the margin — for a "must not drop" metric, when the lower bound lies above minus the margin; a grey guardrail whose interval reaches past the margin has not passed. A margin-based verdict is not available yet: compare the interval with the margin yourself.
+1. **Declare the decision metric and its horizon up front.** One metric (conversion), one window (the whole observation period, or "within 28 days of assignment"), one read date. Every other row is supporting evidence: the default corrects all rows within a call, and different calls and horizons still need a declared decision rule. The [tutorial](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_tutorial.ipynb) writes its two reads down in step 2, before any table is printed.
+2. **Name the guardrails and the harm each may do.** Metrics that must not get worse — revenue per user, refunds, support contacts — each with the largest harm you accept, declared before the test. Declare whether the guardrails form one family or separate decision rules; `correction_scope="metric"` is an explicit opt-in, not the default. A two-sided zero-effect test is not a non-inferiority test. A guardrail passes only when its interval clears the margin — for a "must not drop" metric, when the lower bound lies above minus the margin; a grey guardrail whose interval reaches past the margin has not passed. A margin-based verdict is not available yet: compare the interval with the margin yourself.
 3. **Gate on the sample ratio.** A `mismatch` from `get_sample_ratio` stops the readout: no metric is trusted until the lost users are explained.
 4. **Read an inconclusive decision metric against the effect that matters.** Compare the interval with the smallest effect worth shipping for. If the whole interval lies below it, the feature does not pay for itself at any size the data allow; if the interval still holds an effect that would matter, the test could not tell, and "no effect" is not the answer. The answer is a new test sized for the effect that matters, with its horizon and read date fixed before it starts; extending this one, or re-reading it at another horizon, is peeking ([pitfall 6](#6-peeking-and-open-ended-metrics)). The `reading`'s multiplier ("to detect 1 pp, about 5.7× the paths are needed in a new test sized before it starts") is an input to that design.
 5. **A discovered segment licenses a follow-up test, not a launch.** Strata found after the main read are hypotheses (pitfall 7). Ship to a segment only after a test targeted at it, with the segment and the decision metric declared before it starts.
@@ -373,13 +372,17 @@ Each of these makes a path comparison look like an experiment result. The librar
 
 Any split or filter by something the treatment can change — reaching a funnel step, entering a loop, path length, a cluster on the full stream — compares groups the treatment selected, with a bias of unknown sign. A balanced share between arms does not rescue it. This is the most common error in the experiment literature: Montgomery, Nyhan & Torres found it in 46.7 % of the experimental studies they reviewed in top political science journals ([AJPS](https://ajps.org/2019/06/10/conditioning-on-posttreatment-variables-can-ruin-your-experiment/)); GrowthBook calls such variables [bad controls](https://www.plushcap.com/content/growthbook/blog/growthbook-bad-controls-why-splitting-your-experiment-on-a-post-treatment-variable-backfires).
 
-In the library: conditional funnel steps carry no p-value (`step_conditional`); strata that are neither declared (`strata_pre_exposure=True`) nor cut by a truncation in the recipe warn and are flagged `strata_pre_exposure=False`; `get_ab_test(strata_col=...)` expects a pre-exposure segment. For a loop the treatment creates, the share of assigned users who enter it (`get_ab_test` with a `matches_pattern` metric and `assignment=`) is ITT; conversion *after* the loop (`get_conversion_rate("cart->cart->cart", "order_success", diff=...)`) describes self-selected users who looped, and its result says so with `conditional=True`.
+In the library: conditional funnel steps carry no p-value (`step_conditional`); strata that are neither declared (`strata_pre_exposure=True`) nor cut by a truncation in the recipe warn and are flagged `strata_pre_exposure=False`; `get_ab_test(strata_col=...)` expects a pre-exposure segment. For a loop the treatment creates, the share of assigned users who enter it (`get_ab_test` with a `matches_pattern` metric and `assignment=`) is ITT; conversion *after* the loop (`get_conversion_rate("cart->cart->cart", "order_success", diff=...)`) describes self-selected users who looped, and its result says so with `conditional=True`, descriptive intervals and no p-value.
 
 ### 2. The unit of randomisation against the unit of analysis
 
 Users were randomised, sessions are analysed: sessions of one user are correlated, so per-session intervals are too narrow and p-values too small. The fix is to analyse at the randomised grain, or to resample whole users ([Deng, Knoblich & Lu, KDD 2018](https://arxiv.org/pdf/1803.06336v2); Bakshy & Eckles, "Uncertainty in online experiments with dependent data", KDD 2013).
 
-In the library: with `assignment=`, a `path_col` finer than the table's unit raises `InvalidParameterError`. A segment-form `diff` without a table raises too when the arm is constant within at least 99 % of the users that hold several sessions (at least 10 of them), and warns from 90 %; `get_ab_test`, `get_sample_ratio`, `funnel_data(ci_level=...)` and `get_conversion_rate(diff=...)` apply this guard. A segment that changes between the sessions of many users passes it, so the grain is still yours to check.
+In the library: scorecard, bootstrap, per-path export and SRM require the coarsest declared
+path grain, regardless of the diff syntax or assignment table. Funnel and conversion intervals
+use the same guard. Finer-grain point estimates remain descriptive. Only genuinely independent
+finer units may be declared as the primary schema grain; a schema declaration does not prove
+independence or repair a repeated-measures design.
 
 ### 3. Sample ratio mismatch in sub-populations
 
@@ -391,7 +394,7 @@ In the library: `get_sample_ratio(period="D")` per day of assignment and `get_sa
 
 Every extra metric, stratum, period, funnel step or edge is another chance of a false positive. Decide what is corrected together, and how: family-wise error control (Holm, Bonferroni) for a few confirmatory comparisons, false discovery rate control (Benjamini–Hochberg) for scans over many exploratory ones ([GrowthBook, multiple corrections](https://docs.growthbook.io/statistics/multiple-corrections); [Optimizely, Stats Engine](https://www.optimizely.com/insights/blog/statistics-for-the-internet-age-the-story-behind-optimizelys-new-stats-engine/); [Spotify, risk-aware decisions with multiple metrics](https://engineering.atspotify.com/2024/3/risk-aware-product-decisions-in-a-b-tests-with-multiple-metrics)).
 
-In the library: the family is the rows of one metric (`correction_family`); `correction="holm"` by default, `"bonferroni"` with simultaneous intervals, `"bh"` for many exploratory rows, `"none"`; the funnel corrects across its steps. Metrics are not corrected against each other unless you pass `correction_scope="all"` — name one decision metric in advance. A practical rule: Holm for a handful of pre-declared strata, BH for discovered clusters and scans.
+In the library: the default family is every declared row of the call (`correction_scope="all"`, `correction_family="all_metrics"`); `correction="holm"` by default, `"bonferroni"` with simultaneous intervals, `"bh"` for many exploratory rows, `"none"`; the funnel corrects across its steps. Separate metric families require explicit `correction_scope="metric"` and a predeclared design. Missing p-values stay in the family size. Name the decision metric in advance, and account for separate calls and repeated looks yourself. A practical rule: Holm for a handful of pre-declared strata, BH for discovered clusters and scans.
 
 ### 5. Inconclusive is not "no effect"
 

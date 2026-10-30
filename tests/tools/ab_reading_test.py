@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from retentioneering.datasets import load_ab_test, load_ab_test_assignment
+from retentioneering.datasets import ab_test, load_ab_test, load_ab_test_assignment
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.tools import _stats
 from retentioneering.tools.ab_test import (
@@ -19,6 +19,8 @@ from retentioneering.tools.ab_test import (
     row_reading,
 )
 from retentioneering.tools.sample_ratio import sample_ratio_reading
+
+OBSERVATION_END = ab_test.START + pd.Timedelta(days=ab_test.N_DAYS)
 
 EXPLORATORY = "exploratory: strata not pre-exposure (declare strata_pre_exposure=True if they are)"
 
@@ -189,7 +191,7 @@ class TestInconclusive:
             ),
             kind="ratio",
         )
-        assert text.startswith("no interval or p-value: more than 1 % of bootstrap")
+        assert text.startswith("no interval or p-value: at least one bootstrap")
         assert "estimate shown descriptively" in text
         assert "design" not in text
 
@@ -202,7 +204,9 @@ class TestInconclusive:
             ),
             constant=True,
         )
-        assert text == "no p-value: the metric is constant in both arms"
+        assert text == (
+            "no p-value: the metric is constant in both arms; estimate shown descriptively"
+        )
 
     def test_no_spread(self) -> None:
         text = _read(
@@ -315,7 +319,7 @@ class TestOtherVerdicts:
     def test_descriptive(self) -> None:
         text = _read(_row(verdict="descriptive", p_value_adjusted=float("nan")))
         assert text == (
-            "active population: not randomised, describes who was active in the period"
+            "descriptive strata: pre-exposure membership has not been established"
         )
 
 
@@ -355,12 +359,14 @@ class TestFlags:
         assert none == "days 49-55 since assignment: no data in either arm"
 
     def test_several_metrics_name_one_decision_metric(self) -> None:
-        text = _read(_row(), several_metrics=True)
+        text = _read(_row(), several_metrics=True, correction_scope="metric")
         assert text.endswith(
             "; corrected within this metric only; name one decision metric"
         )
         none = _read(_row(mde_alpha=0.05), correction="none", several_metrics=True)
         assert none.endswith("; not corrected across metrics; name one decision metric")
+        across = _read(_row(), several_metrics=True, n_metrics=3)
+        assert across.endswith("; corrected across all 3 metrics")
         assert "decision metric" not in _read(_row())
 
     def test_flags_in_order(self) -> None:
@@ -425,13 +431,7 @@ class TestScorecardColumn:
         assert by_metric.loc["chat", "reading"].startswith(
             "over the whole observation period: pooled support 6 < "
         )
-        assert (
-            out["reading"]
-            .str.endswith(
-                "; corrected within this metric only; name one decision metric"
-            )
-            .all()
-        )
+        assert out["reading"].str.endswith("; corrected across all 3 metrics").all()
         assert "pp" not in by_metric.loc["orders", "reading"]
 
     def test_the_reading_quotes_the_row(self) -> None:
@@ -448,7 +448,9 @@ class TestScorecardColumn:
                 _stream(), DIFF, [CONV], strata_col="platform"
             ).fit()
         assert strata["reading"].str.endswith(EXPLORATORY).all()
-        assert " after holm); " in strata["reading"].iloc[0]
+        assert strata["verdict"].eq("descriptive").all()
+        assert strata["p_value_adjusted"].isna().all()
+        assert strata["reading"].str.contains("pre-exposure membership").all()
         declared = ABTest.from_stream(
             _stream(), DIFF, [CONV], strata_col="platform", strata_pre_exposure=True
         ).fit()
@@ -551,10 +553,11 @@ class TestBundledDataset:
             ],
             assignment=assignment,
             horizon="14D",
+            observation_end=OBSERVATION_END,
         )
         assert out["reading"].iloc[0] == (
             "within 14 days of assignment: "
-            "interval [+1.38, +4.12] pp excludes 0 (p < 0.0001); relative +21 %"
+            "interval [+1.34, +4.08] pp excludes 0 (p 0.00011); relative +21 %"
         )
 
     def test_period_rows_name_their_window(self, data) -> None:
@@ -580,6 +583,7 @@ class TestBundledDataset:
             assignment=assignment,
             period="14D",
             period_basis="since_assignment",
+            observation_end=OBSERVATION_END,
             horizon="42D",
         )
         assert list(since["period"]) == ["0-13", "14-27", "28-41"]
@@ -603,6 +607,7 @@ class TestBundledDataset:
             assignment=assignment,
             period="14D",
             period_basis="since_assignment",
+            observation_end=OBSERVATION_END,
         )
         # "42-55" closes after the end of data for every user: no row
         assert list(since["period"]) == ["0-13", "14-27", "28-41"]
@@ -637,8 +642,8 @@ class TestSampleRatioReading:
         assert result["mismatch"]
         assert result["reading"] == (
             "mismatch: expected 50/50, observed 5300/4700 (control/treatment), "
-            "p < 0.0001 (alpha 0.001) — the test is invalid until the assignment is "
-            "fixed"
+            "p < 0.0001 (alpha 0.001) — investigate allocation and logging before "
+            "interpreting outcomes"
         )
 
     def test_unequal_design(self) -> None:
@@ -666,7 +671,8 @@ class TestSampleRatioReading:
         assert sample_ratio_reading(result) == (
             "mismatch: expected 50/50, observed 500/500 (control/treatment), p 1; "
             "3 path(s) carry more than one arm or disagree with the assignment table "
-            "— the test is invalid until the assignment is fixed; 2 path(s) with no "
+            "— investigate allocation and logging before interpreting outcomes; "
+            "2 path(s) with no "
             "arm in the split are not counted"
         )
 
@@ -708,8 +714,8 @@ class TestSampleRatioReading:
         stream = Eventstream(pd.DataFrame(rows), {"segment_cols": ["arm", "platform"]})
         result = stream.get_sample_ratio("arm", strata_col="platform")
         assert result["reading"].endswith(
-            "by platform: mismatch in android (adjusted p < 0.0001) — the test is "
-            "invalid until the assignment is fixed there"
+            "by platform: mismatch in android (adjusted p < 0.0001) — investigate "
+            "allocation and logging before interpreting outcomes there"
         )
         clean = _srm_stream(500, 500, platform=platform).get_sample_ratio(
             "arm", strata_col="platform"

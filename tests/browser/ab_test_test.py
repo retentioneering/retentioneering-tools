@@ -261,9 +261,14 @@ def test_horizon_is_validated_as_a_duration(tmp_path):
             page.wait_for_function(
                 "!document.querySelector('[data-testid=horizon-error]')"
             )
-            page.wait_for_timeout(100)
-            assert widget.horizon == "28D"
-            assert json.loads(widget.result)["overall"][0]["group1_paths"] < 4960
+            page.locator("[data-testid=ab-error]").wait_for(state="visible")
+            assert widget.horizon == "28D" and "observation_end" in widget.error
+            # A syntactically valid horizon still needs a declared logging cutoff.
+            page.get_by_label("Complete observation cutoff").fill("2026-04-27")
+            page.locator("[data-testid=scorecard-row]").first.wait_for(state="visible")
+            page.wait_for_function("!document.querySelector('[data-testid=ab-error]')")
+            assert widget.observation_end == "2026-04-27" and widget.error == ""
+            assert json.loads(widget.result)["overall"][0]["group1_paths"] == 4329
         finally:
             browser.close()
 

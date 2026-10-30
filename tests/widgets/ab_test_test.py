@@ -390,3 +390,37 @@ class TestMcpReportTab:
             session, "AB", list(DIFF), [{"metric": "event_count_bulk"}]
         )
         assert "error" in out and session.pending_tabs == []
+
+
+def test_static_export_preserves_cutoff_algorithm_and_event_value_kind():
+    stream = _stream()
+    frame = stream.to_dataframe()
+    frame["amount"] = 2.5
+    stream = Eventstream(
+        frame, {"segment_cols": ["grp", "platform"], "custom_cols": ["amount"]}
+    )
+    assignment = frame.groupby("user_id", observed=True)["grp"].first().to_frame("arm")
+    assignment["assigned_at"] = pd.Timestamp("2026-01-01")
+    metric = {
+        "name": "revenue",
+        "metric": "event_value_sum",
+        "metric_args": {"event": "buy", "value_col": "amount"},
+    }
+    params = {
+        "assignment": assignment,
+        "horizon": "7D",
+        "observation_end": "2026-01-30",
+        "n_bootstrap": 100,
+    }
+    expected = stream.ab_test_data(DIFF, [metric], **params)
+    widget = stream.ab_test(DIFF, [metric], **params)
+    exported = widget._export_data()
+    result = exported["result"]
+    assert result["metric_kinds"] == {"revenue": "count"}
+    assert result["bootstrap_algorithm"] == expected.attrs["bootstrap_algorithm"]
+    assert result["bootstrap_algorithm"] == "whole_unit_counts_v1_baseline_first"
+    _assert_same_cells(result["overall"], expected)
+    assert pd.Timestamp(exported["observation_end"]) == pd.Timestamp("2026-01-30")
+    assert result["overall"][0]["observation_end"] == "2026-01-30T00:00:00"
+    assert result["overall"][0]["observation_basis"] == "declared_logging_cutoff"
+    _strict(json.dumps(exported, allow_nan=False))

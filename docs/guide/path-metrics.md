@@ -5,6 +5,7 @@ Path metrics are scalar values computed per path (see [Key concepts](/docs/event
 - [Segment Overview](/docs/widgets/segment-overview) — metrics are aggregated per segment and displayed as a heatmap.
 - [Cluster Analysis](/docs/widgets/cluster-analysis) — metrics are used as features for clustering, and separately as overview metrics for the resulting clusters.
 - [Filter Paths](/docs/data-processors/filter-paths) — metrics are used as conditions to keep or drop entire paths.
+- [Experiments](/docs/experiments) — supported scalar outcomes are completed to an assignment roster before estimation.
 
 ## Available metrics
 
@@ -14,6 +15,7 @@ Path metrics are scalar values computed per path (see [Key concepts](/docs/event
 | `duration` | Time in seconds between the first and last event. | — |
 | `active_days` | Number of distinct calendar days with at least one event. Optionally restricted to specific events. | `active_events`: list[str] (optional) |
 | `event_count` | Number of times a single event occurred. | `event`: str (required) |
+| `event_value_sum` | Sum of finite numeric values on matching events; other events contribute zero. Missing matching values raise an error. Retain the value column in `custom_cols`. | `event`: str, `value_col`: str; optional `event_col` |
 | `has_event` | 1 if a single event occurred at least once, 0 otherwise. | `event`: str (required) |
 | `event_count_bulk` | Number of times each event occurred, expanded into one column per event. Omit `events` (or pass `None`) to count every event in the stream — an explicit empty list is invalid. | `events`: list[str] (optional; omit/`None` for all events) |
 | `has_event_bulk` | 1 if each event occurred at least once, 0 otherwise, expanded into one column per event. Omit `events` (or pass `None`) to check every event in the stream — an explicit empty list is invalid. | `events`: list[str] (optional; omit/`None` for all events) |

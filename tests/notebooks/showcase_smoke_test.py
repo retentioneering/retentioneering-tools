@@ -26,6 +26,10 @@ BUDGET_S = 120
 
 SETUP = f"""
 import os
+import sys
+
+# A kernel changes cwd to notebooks/; resolve the source checkout explicitly.
+sys.path.insert(0, {str(ROOT / "src")!r})
 
 os.environ["RETENTIONEERING_NO_TRACK"] = "1"
 

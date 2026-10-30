@@ -1,7 +1,5 @@
 """`get_sample_ratio`: sample ratio mismatch check."""
 
-import warnings
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -333,7 +331,9 @@ def test_unit_guard() -> None:
         {"path_cols": ["user_id", "session_id"], "segment_cols": ["arm"]},
     )
     table = pd.Series(_arms(20, 20))
-    with pytest.raises(InvalidParameterError, match="too narrow"):
+    with pytest.raises(
+        InvalidParameterError, match="Intervals assume independent paths"
+    ):
         stream.get_sample_ratio("arm", assignment=table, path_col="session_id")
     assert stream.get_sample_ratio("arm", assignment=table)["silent_paths"] == 0
 
@@ -371,25 +371,6 @@ def test_assignment_ids_mostly_unmatched_warn() -> None:
     assert result["silent_paths"] == 40
 
 
-def test_id_match_warning_is_shown_once_per_table() -> None:
-    stream = _stream(_arms(20, 20))
-    table = pd.Series(_arms(50, 50))
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-        stream.get_sample_ratio("arm", assignment=table)
-        stream.get_ab_test(
-            ("arm", "treatment", "control"),
-            [{"metric": "has_event", "metric_args": {"event": "visit"}}],
-            assignment=table,
-        )
-    shown = [w for w in caught if "only 40 of 100" in str(w.message)]
-    assert len(shown) == 1
-    assert "Shown once per assignment table" in str(shown[0].message)
-    # another table is another warning
-    with pytest.warns(UserWarning, match="only 40 of 120"):
-        stream.get_sample_ratio("arm", assignment=pd.Series(_arms(60, 60)))
-
-
 def test_unit_guard_with_integer_ids() -> None:
     # integer user and session ids share one range: the counts tie
     rows = []
@@ -409,7 +390,9 @@ def test_unit_guard_with_integer_ids() -> None:
         {"path_cols": ["user_id", "session_id"], "segment_cols": ["arm"]},
     )
     users = pd.Series({u: ("treatment" if u % 2 else "control") for u in range(1, 41)})
-    with pytest.raises(InvalidParameterError, match="too narrow"):
+    with pytest.raises(
+        InvalidParameterError, match="Intervals assume independent paths"
+    ):
         stream.get_sample_ratio("arm", assignment=users, path_col="session_id")
     # the reverse mistake: a per-session table read at the user grain
     sessions = pd.Series(

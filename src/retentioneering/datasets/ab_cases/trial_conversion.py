@@ -8,7 +8,8 @@ The app and the test
 --------------------
 Users are assigned when they start the trial (``assigned_at``, the
 ``trial_start`` event), 50/50, on any day of the six weeks from Monday
-2026-01-05; the data end on 2026-02-18 00:00, three days after the last trial
+2026-01-05; the data end on 2026-02-18 00:00 (pass
+``observation_end="2026-02-18"`` as the exclusive logging cutoff), three days after the last trial
 started, when the product team asked for a readout. Trial users open the app
 (``app_open``) and work in it (``project_create``, ``editor_use``,
 ``export``); the trial ends on day 14 (``trial_end``, logged by the backend for

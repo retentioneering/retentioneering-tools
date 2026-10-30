@@ -25,6 +25,10 @@ BUDGET_S = 60
 
 SETUP = f"""
 import os
+import sys
+
+# A kernel changes cwd to notebooks/; resolve the source checkout explicitly.
+sys.path.insert(0, {str(ROOT / "src")!r})
 
 os.environ["RETENTIONEERING_NO_TRACK"] = "1"
 
@@ -69,7 +73,13 @@ assert _verdicts(scorecard_28d) == {
     "revenue_per_user": "increase",
     "aov": "inconclusive",
 }
-assert (scorecard_28d["immature_paths"] > 0).all()
+assert (scorecard_28d["immature_paths"] == 1287).all()
+assert set(scorecard["correction_family"]) == {"all_metrics"}
+assert (scorecard["mde_alpha"] == 0.05 / len(metrics)).all()
+_expected_mature = assignment["assigned_at"] + pd.Timedelta("28D") <= pd.Timestamp(OBSERVATION_END)
+assert scorecard_28d.iloc[0][["group1_paths", "group2_paths"]].sum() == _expected_mature.sum()
+assert set(scorecard_28d["observation_basis"]) == {"declared_logging_cutoff"}
+assert (scorecard_28d["observation_end"] == pd.Timestamp(OBSERVATION_END)).all()
 
 # step 3: the widget draws the same scorecard without an error
 assert scorecard_widget.error == "" and json.loads(scorecard_widget.result)
@@ -88,11 +98,13 @@ assert float(naive.set_index("step").loc["checkout_start -> payment", "naive_p_v
 assert weekly["delta"].iloc[0] > 0 > weekly["delta"].iloc[-1]
 assert _verdicts(since, "period")["0-13"] == "increase"
 assert _verdicts(since, "period")["28-41"] == "decrease"
-# the readout quotes the late bin: a decrease of 1.5 pp at adjusted p 0.023
+# the readout quotes the late bin: a decrease of 1.5 pp at adjusted p 0.019
 _late = since.set_index("period").loc["28-41"]
-assert round(_late["delta"] * 100, 1) == -1.5 and round(_late["p_value_adjusted"], 3) == 0.023
+assert round(_late["delta"] * 100, 1) == -1.5 and round(_late["p_value_adjusted"], 3) == 0.019
 assert since["group1_paths"].nunique() == 1
 assert low > 0 and low < point < high
+assert novelty.notna().all() and novelty.nunique() > 1
+assert since.iloc[0][["group1_paths", "group2_paths"]].sum() == 6374
 
 # step 6: the window before the first product_view is short ("about three events per user")
 # and balanced between the arms; blind clusters, both signs after Holm
@@ -132,6 +144,7 @@ assert graph_treatment.loc["cart", "cart"] > 0 and graph_control.loc["cart", "ca
 # step 9: descriptive loop -> order (conditional), ITT loop share under the pooled support rule
 assert loop_to_order.iloc[0]["group2_paths_with_start"] == 0
 assert loop_to_order["conditional"].all()
+assert loop_to_order["p_value"].isna().all()
 _loop = loop_itt.set_index("stratum")
 assert round(_loop.loc["curator", "group1_value"] * 100) == 21
 assert _loop.loc["curator", "delta_ci_low"] > 0.1
@@ -158,7 +171,9 @@ assert (
 ).all()
 assert not post_length["strata_pre_exposure"].any() and post_length["exploratory"].all()
 assert (post_length["strata_pre_exposure_source"] == "not_pre_exposure").all()
-assert post_length["balance_p_value"].iloc[0] > 0.05
+assert post_length["balance_p_value"].isna().all()
+assert set(post_length["verdict"]) == {"descriptive"}
+assert post_length["p_value"].isna().all()
 # ... and it tells a different story from the pre-exposure split
 assert _verdicts(post_length, "stratum") != _verdicts(by_length, "stratum")
 assert _verdicts(post_length, "stratum")["short"] != "decrease"

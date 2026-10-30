@@ -1,8 +1,8 @@
 """Sample ratio mismatch (SRM) check.
 
-An A/B test whose arms do not have the expected sizes is broken before any metric is
-read: the assignment, the logging or a filter lost paths from one arm. ``get_sample_ratio``
-compares the number of paths per arm against expected shares with a chi-square
+Unexpected arm sizes can signal an allocation, logging or filtering problem.
+A small p-value is an investigation alarm, not proof of a broken experiment.
+``get_sample_ratio`` compares the number of paths per arm against expected shares with a chi-square
 goodness-of-fit test and also flags paths that carry more than one arm value.
 
 The check is a *design* check: run it on the assignment table (``assignment=``) or on the
@@ -32,6 +32,7 @@ from retentioneering.tools._diff import (
     ASSIGNMENT_ARM,
     MISSING,
     MULTI,
+    _check_independent_path_grain,
     coerce_level,
     normalize_assignment,
     per_path_label,
@@ -64,14 +65,14 @@ def _share_text(share: float) -> str:
 
 
 #: The consequence of a mismatch, in ``reading``.
-INVALID = "the test is invalid until the assignment is fixed"
+INVALID = "investigate allocation and logging before interpreting outcomes"
 
 
 def sample_ratio_reading(result: dict[str, Any]) -> str:
     """One sentence that reads a ``get_sample_ratio`` result from its own numbers.
 
     ``"expected 50/50, observed 4960/5040 (control/treatment), p 0.42: no mismatch"``,
-    or ``"mismatch: ... — the test is invalid until the assignment is fixed"``; paths
+    or ``"mismatch: ... — investigate allocation and logging before interpreting outcomes"``; paths
     carrying two arms, uncounted paths and the strata or periods that mismatch are
     added when present.
     """
@@ -193,7 +194,7 @@ class SampleRatio:
             the table alone); a segment column of the stream must then agree with the
             table path by path.
         expected_shares : dict, optional
-            ``{level: share}``; shares must sum to 1 within 1e-9. Default: equal split over
+            ``{level: share}``; finite positive shares must sum to 1 within 1e-9. Default: equal split over
             the column's levels (or over the assignment table's arms). Levels of the
             column that are not named here are not arms: their paths are reported in
             ``unassigned_paths``.
@@ -224,6 +225,7 @@ class SampleRatio:
         path_col = path_col or schema.path_col
         if path_col not in schema.path_cols:
             raise InvalidParameterError("path_col", path_col, list(schema.path_cols))
+        _check_independent_path_grain(stream, path_col)
         if not isinstance(alpha, (int, float)) or not 0 < alpha < 1:
             raise InvalidParameterError("alpha", alpha, ["a float in (0, 1)"])
         segment_cols = list(schema.segment_cols)
@@ -286,11 +288,16 @@ class SampleRatio:
             # stream paths the table does not list have no arm
             outside = int((~stream_paths.isin(table.index)).sum())
             if stream_labels is not None:
+                if "assigned_at" in table.columns:
+                    df = stream.df
+                    at = df[path_col].map(table["assigned_at"])
+                    post = df.loc[at.isna() | df[stream.schema.timestamp_col].ge(at)]
+                    stream_labels = per_path_label(post, segment_col, path_col)
                 common = stream_labels.index.intersection(table.index)
                 seen = stream_labels.reindex(common)
                 expected = table["arm"].reindex(common)
                 bad = (seen == MULTI) | (
-                    (seen != MISSING) & (seen.astype(str) != expected.astype(str))
+                    (seen != MISSING) & (seen.astype(object) != expected.astype(object))
                 )
                 multi = int(bad.sum())
             arms = table["arm"][table["arm"] != MISSING]
@@ -319,6 +326,8 @@ class SampleRatio:
             "silent_paths": silent,
             "unassigned_paths": unassigned,
             "basis": basis,
+            "sampling_assumption": "independent_multinomial",
+            "p_value_method": "pearson_chi_square_asymptotic",
         }
         if strata_col is not None:
             groups = self._strata(strata_col, path_col, counted.index, assignment)
@@ -368,9 +377,15 @@ class SampleRatio:
             levels.append(level)
             shares.append(float(share))
         shares_arr = np.asarray(shares)
-        if np.any(shares_arr < 0) or abs(shares_arr.sum() - 1.0) > 1e-9:
+        if (
+            not np.isfinite(shares_arr).all()
+            or np.any(shares_arr <= 0)
+            or abs(shares_arr.sum() - 1.0) > 1e-9
+        ):
             raise InvalidParameterError(
-                "expected_shares", expected_shares, ["non-negative shares summing to 1"]
+                "expected_shares",
+                expected_shares,
+                ["finite positive shares summing to 1"],
             )
         return levels, shares_arr
 

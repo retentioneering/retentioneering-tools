@@ -5,14 +5,16 @@
 
 The table is the scorecard's own input: the same population (the stream's paths,
 or every assigned path with `assignment`), the same window (events before
-`assigned_at` dropped, `horizon` applied) and the same per-path values as
+`assigned_at` dropped, `horizon` applied, events at or beyond an explicit
+`observation_end` excluded) and the same per-path values as
 [`get_ab_test`](/docs/tools/get-ab-test). Silent paths are 0 for 0/1 metrics and
 totals; a value metric is NaN where it is undefined (`time_between` without both
 events), so its mean runs over the paths with a value, as the scorecard's does; a
 ratio metric comes as numerator and denominator, and its arm value is the summed
 numerator over the summed denominator. Paths that a `horizon` leaves out stay in
 the table with `mature=False`, so the analysed population is
-`paths[paths["mature"]]`.
+`paths[paths["mature"]]`. A horizon requires an explicit `observation_end`: the
+exclusive end of complete logging, not the time of the last observed event.
 
 The scorecard covers the standard tests. Anything else starts from this table:
 variance reduction with a pre-period covariate (CUPED, regression adjustment),

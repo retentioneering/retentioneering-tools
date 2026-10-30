@@ -49,6 +49,9 @@ CASES = {
     )
 }
 SWEEP_SEEDS = range(1, 41)
+TRIAL_OBSERVATION_END = trial_conversion.START + pd.Timedelta(
+    days=trial_conversion.N_DAYS
+)
 
 
 def _has(event: str, name: str | None = None) -> dict:
@@ -139,12 +142,28 @@ FIRST_SESSION_END = [
 ]
 
 
+def _naive_session_stream(stream: Eventstream) -> Eventstream:
+    """Deliberately declare sessions independent for the diagnostic SE comparison.
+
+    The simulator's users create correlated sessions, so this assumption is false.
+    The library cannot discover clustering omitted from a schema; the manual
+    user-clustered SE below demonstrates the cost of that incorrect declaration.
+    """
+    return Eventstream(
+        stream.to_dataframe(),
+        {
+            "path_cols": ["session_id"],
+            "segment_cols": stream.schema.segment_cols,
+            "custom_cols": ["user_id", *stream.schema.custom_cols],
+        },
+    )
+
+
 def check_session_assignment(stream: Eventstream, assignment: pd.DataFrame) -> dict:
     adds = _has("add_to_cart", "adds")
     srm_user = stream.get_sample_ratio("exp_group")
-    srm_session = stream.get_sample_ratio(
-        "exp_group", assignment=assignment, path_col="session_id"
-    )
+    naive_sessions = _naive_session_stream(stream)
+    srm_session = naive_sessions.get_sample_ratio("exp_group", assignment=assignment)
     refuses = []
     try:
         stream.get_ab_test(DIFF, [adds])
@@ -155,9 +174,9 @@ def check_session_assignment(stream: Eventstream, assignment: pd.DataFrame) -> d
     except InvalidParameterError as exc:
         # the message the Solutions quote (story 2)
         refuses.append("indexed by 'session_id', a finer path column" in str(exc))
-    session = stream.get_ab_test(
-        DIFF, [adds], assignment=assignment, path_col="session_id"
-    ).iloc[0]
+    with pytest.raises(InvalidParameterError, match="independent paths"):
+        stream.get_ab_test(DIFF, [adds], assignment=assignment, path_col="session_id")
+    session = naive_sessions.get_ab_test(DIFF, [adds], assignment=assignment).iloc[0]
     _, se = clustered_se(stream, "add_to_cart")
     first = stream.truncate_paths("path_start", FIRST_SESSION_END)
     first_row = first.get_ab_test(DIFF, [adds]).iloc[0]
@@ -199,7 +218,15 @@ def winsorised(stream: Eventstream, quantile: float = 0.99) -> Eventstream:
 
 
 def check_aa_calibration(stream: Eventstream, assignment: pd.DataFrame) -> dict:
-    rows = _row(stream.get_ab_test(DIFF, aa_metrics(), assignment=assignment))
+    # Explicit within-metric inference demonstrates the misleading whale signal.
+    # The default joint family is more conservative; it does not repair the
+    # correlated reseller accounts that violate user independence.
+    unadjusted = stream.get_ab_test(
+        DIFF, aa_metrics(), assignment=assignment, correction_scope="metric"
+    )
+    rows = _row(unadjusted)
+    joint = stream.get_ab_test(DIFF, aa_metrics(), assignment=assignment)
+    assert (joint["p_value_adjusted"] >= unadjusted["p_value_adjusted"]).all()
     robust = _row(
         winsorised(stream).get_ab_test(
             DIFF, aa_metrics("order_value_capped")[2:], assignment=assignment
@@ -236,15 +263,20 @@ def check_aa_calibration(stream: Eventstream, assignment: pd.DataFrame) -> dict:
 def check_trial_conversion(stream: Eventstream, assignment: pd.DataFrame) -> dict:
     sub = [_has("subscribe", "subscribed")]
     whole = stream.get_ab_test(DIFF, sub, assignment=assignment).iloc[0]
-    horizon = stream.get_ab_test(DIFF, sub, assignment=assignment, horizon="21D").iloc[
-        0
-    ]
+    horizon = stream.get_ab_test(
+        DIFF,
+        sub,
+        assignment=assignment,
+        horizon="21D",
+        observation_end=TRIAL_OBSERVATION_END,
+    ).iloc[0]
     bins = stream.get_ab_test(
         DIFF,
         sub,
         assignment=assignment,
         period="7D",
         period_basis="since_assignment",
+        observation_end=TRIAL_OBSERVATION_END,
     ).set_index("period")
     srm = stream.get_sample_ratio("exp_group", assignment=assignment)
     return {
@@ -571,9 +603,11 @@ class TestSessionAssignment:
 
     def test__clustered_se_ratio(self, per_session) -> None:
         stream, assignment = per_session
-        row = stream.get_ab_test(
-            DIFF, [_has("add_to_cart")], assignment=assignment, path_col="session_id"
-        ).iloc[0]
+        row = (
+            _naive_session_stream(stream)
+            .get_ab_test(DIFF, [_has("add_to_cart")], assignment=assignment)
+            .iloc[0]
+        )
         delta, se = clustered_se(stream, "add_to_cart")
 
         assert delta == pytest.approx(row["delta"])
@@ -606,7 +640,7 @@ class TestAaCalibration:
             day=("timestamp", "min"),
             order=("event", lambda e: (e == "order_success").any()),
         )
-        weekend = sessions["day"].dt.dayofweek >= 5
+        weekend = sessions["day"].dt.day_of_week >= 5
         rate = sessions.groupby(weekend)["order"].mean()
 
         assert 1.3 < rate[True] / rate[False] < 2.0
@@ -625,9 +659,13 @@ class TestTrialConversion:
         stream, assignment = trial
         sub = [_has("subscribe", "subscribed")]
         whole = stream.get_ab_test(DIFF, sub, assignment=assignment).iloc[0]
-        h21 = stream.get_ab_test(DIFF, sub, assignment=assignment, horizon="21D").iloc[
-            0
-        ]
+        h21 = stream.get_ab_test(
+            DIFF,
+            sub,
+            assignment=assignment,
+            horizon="21D",
+            observation_end=TRIAL_OBSERVATION_END,
+        ).iloc[0]
 
         assert 0.015 < whole["delta"] < 0.045
         assert abs(h21["delta"]) < 0.025

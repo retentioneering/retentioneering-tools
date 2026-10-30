@@ -7,285 +7,38 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 
-- `add_segment(name, path_values=...)` adds a segment from one value per path —
-  a pandas Series indexed by path id or a dict — broadcast to every event of the
-  path. It carries an experiment's assignment table onto the event log, or labels
-  computed on another stream (clusters found on a truncated stream) onto the full
-  one. Paths the mapping does not hold get no value (`<MISSING>` in `diff`); a
-  non-unique index raises `InvalidParameterError`, and so does a mapping whose
-  ids match no path id (keyed by another column or grain), while one where fewer
-  than half match warns, as `get_ab_test(assignment=...)` does; string keys from
-  JSON match integer path ids, so the MCP `add_segment` step accepts it too.
-- `get_path_segments(segment_col, path_col=None)` returns one segment value per
-  path, `<MULTI>` where the value changes within the path and `<MISSING>` where it
-  is null throughout — the inverse of `path_values`, and a quick check that an
-  experiment arm is constant per user. The result records in
-  `attrs["pre_exposure"]` whether the segment was computed on a stream truncated
-  before exposure, so a stratum carried over with `add_segment(path_values=...)`
-  keeps its provenance.
-- Path metrics over custom columns: `column_sum`, `column_mean` and
-  `column_last` take `metric_args={"column": <custom column>}` and work wherever
-  a registry metric does — `get_metrics`, Segment Overview, Cluster Analysis,
-  `add_segment(metric_bins=...)` and Filter Paths conditions. A sum of no values
-  is 0; a mean or last value of no values is `NaN`, not 0. The JS metric editor
-  offers a column dropdown (numeric columns for sum and mean).
-- `get_sample_ratio(segment_col=None, expected_shares=None, alpha=0.001,
-  path_col=None, assignment=None, strata_col=None, period=None)` checks an
-  experiment for sample ratio mismatch: paths per arm against the expected
-  split (chi-square goodness of fit), with `mismatch` also raised by paths that
-  carry more than one arm. `assignment=` counts an assignment table instead of
-  the stream (silent paths included; `segment_col` is then optional, and a
-  segment column of the stream is checked against the table);
-  `unassigned_paths` counts the paths left out of the test (stream paths the
-  table does not list, paths with no arm or an arm outside `expected_shares`).
-  `strata_col=` repeats the check per stratum fixed at assignment and
-  `period=` per calendar unit of assignment (`"D"`, `"W"`, `"M"`, spelled as in
-  `get_ab_test`), with Holm-adjusted p-values. The MCP server has a
-  numbers-only `get_sample_ratio` tool.
-- `get_conversion_rate(..., ci_level=None, diff=None)`: `ci_level` adds Wilson
-  intervals of the rate (`conversion_rate_ci_low` / `conversion_rate_ci_high`);
-  `diff` compares two groups of paths in one row — `group1_*` / `group2_*`
-  rates with intervals, base rates and lifts, `delta` with a Newcombe interval
-  and a pooled z-test `p_value` (NaN when undefined); with `diff`,
-  `ci_level=None` means 0.95. A `conditional` flag
-  marks a comparison whose denominator is the paths that reached the start
-  anchor (a post-exposure population unless the anchor is the path start).
-  Groups are resolved per path, so a path whose segment changes inside it
-  raises `DiffConfigError` instead of being counted in both groups. The MCP `get_conversion_rate` tool
-  takes the same two arguments.
-- `funnel_data(..., ci_level=None, correction="none")` and `funnel(...,
-  ci_level=None, correction=None)` put confidence intervals on the funnel: a
-  Wilson interval on every rate and, with `diff`, a Newcombe interval on every
-  delta and a pooled z-test p-value on every overall-conversion delta
-  (`delta_conversion_rate_p_value`, plus `_adjusted` after `correction`:
-  `"none"`, `"holm"`, `"bonferroni"` or `"bh"` across the steps, named in
-  `correction_family`). Step-to-step deltas after the first step are flagged
-  `step_conditional`: they keep their interval but get no p-value, because the
-  treatment changes who reaches the previous step. With intervals, `diff`
-  groups are resolved per path and a path in both groups raises
-  `DiffConfigError`. The funnel widget draws an interval whisker on every bar,
-  shows each delta's interval and p-value (and the adjusted one) in the table,
-  marks conditional step deltas with † and colours a delta only when its
-  interval excludes 0 and, under a correction, its adjusted p-value is below
-  alpha — never a conditional one. A sidebar selector switches
-  intervals Off / 90% / 95% / 99% and picks the correction; both are saved with
-  the widget state and kept, read-only, in HTML exports. The Funnel docs page
-  explains what each number assumes and has a live example.
-- `get_ab_test(diff, metrics, ...)` reads out an experiment: one row per metric
-  (and per stratum with `strata_col`, per period with `period`) with per-arm
-  estimates, the delta with a per-comparison interval, a relative delta, the
-  p-value and its adjusted value (`correction="holm"` by default, also
-  `"bonferroni"` with simultaneous intervals, `"bh"`, `"none"`), the minimum
-  detectable effect at `mde_alpha` and a `verdict` read from the adjusted
-  p-value against `1 - ci_level`. The test follows the metric: z-test for 0/1
-  metrics, Welch for totals and values, a joint path bootstrap for ratio
-  metrics (`denominator`, e.g. average order value). `correction_scope="metric"`
-  (default) corrects within each metric's rows, so one decision metric is named
-  before the test and each guardrail is read alone against a declared margin;
-  `"all"` makes one family of every row, for a scorecard read without one
-  decision metric (`correction_family` names the family).
-  `assignment=` makes the population intention-to-treat (silent paths count,
-  events before `assigned_at` are dropped, assignment ids that arrive as
-  strings or ints match); `population` says whether a row covers the table
-  (`"assignment"`), the stream's paths (`"stream"`) or the survivors of an
-  active period row (`"active"`). `period=` gives ITT rows per calendar period
-  (pandas aliases such as `"W"`, `"M"`, `"Q"`; a bare number is refused),
-  `period_basis="since_assignment"` bins by exposure age and `horizon=` gives
-  every path the same window (`immature_paths`), on tz-aware streams too (a
-  naive `assigned_at` in the hour the clocks go back raises). Strata rows carry
-  shares, balance, heterogeneity (`heterogeneity_p_value`,
-  `heterogeneity_dof`) and stratum-versus-rest p-values, an `exploratory` flag
-  and `strata_pre_exposure_source` (`"declared"`, `"recipe"` or
-  `"not_pre_exposure"`); a stratum column of the assignment table keeps silent
-  paths in their stratum. `group1_support` / `group2_support` count the paths
-  with a value and `conditional` flags a row that compares only those paths
-  (`time_between`, `column_mean`, an order value). `min_support` (default 10)
-  is the pooled number of supporting paths below which a row is
-  `insufficient_data`: paths with the event for 0/1 metrics, with a non-zero
-  total for totals, with a non-zero numerator for ratios, with a value for
-  values. A behaviour seen in one arm only is tested and flagged
-  `support_warning="one_arm_only"`; a row with nothing to compare is
-  `insufficient_data` with `"no_data"`; bootstrap rows under 30 supporting paths
-  in an arm get `"low_support"` (verdict kept), and those with more than 1 % of
-  replicates without a value in an arm `"invalid_replicates"` (no interval or
-  p-value). Undefined estimates are NaN, never 0. The path must be the
-  randomised unit: a table of a coarser unit or indexed by a finer path
-  column, and without a table an arm segment constant within at least 99 % of
-  the users that hold several sessions (at least 10 such users; a warning from
-  90 %), refuse a session `path_col` with `InvalidParameterError`, and
-  `funnel_data(ci_level=)` and `get_conversion_rate(diff=)` apply the same
-  guard. Error messages name the fix (metric arguments under `metric_args`, a
-  three-element segment `diff`, the table's arm column, at most 10 ids of an
-  id-list `diff`). See [ADR-0017](docs/adr/0017-ab-testing-tools.md).
-- `get_ab_bootstrap(diff, metrics, ..., contrast=None)` returns the joint
-  bootstrap replicates behind it, one row per replicate × metric × stratum ×
-  period, so ratios of metrics and period contrasts (an effect that changes
-  with exposure age: days 0–13 minus days 28–41) get their own intervals; a
-  contrast compares the same paths in every contrasted period.
-- `ab_test(diff, metrics, ...)`: an A/B Test widget that draws `get_ab_test`'s
-  scorecard — a table (each arm's value, the delta with its interval, the
-  relative delta, the adjusted p-value, the MDE, the verdict, `support_warning`
-  with a tooltip per value, and `reading`) and a forest plot of the deltas
-  coloured by verdict (red increase, blue decrease, grey inconclusive, hollow
-  `insufficient_data`), with a Strata tab when `strata_col` is set
-  (heterogeneity and balance p-values, exploratory rows marked) and a Periods
-  tab when `period` is set (an interval band, incomplete periods hollow,
-  descriptive rows as squares). 0/1 metrics read in percentage points, the
-  others in their unit. Its data parameters are `get_ab_test`'s; the sidebar
-  edits the arms (with an assignment table, also its own `arm` column), the
-  metrics (the registry editor, with row names, a ratio-of-sums denominator and
-  custom-column metrics), the confidence level, the correction and its family,
-  the test, the strata column and its pre-exposure declaration, the period and
-  its basis, and the horizon, and every change recomputes. State persists with `state_file` (the `assignment` table is
-  passed again); HTML exports keep every tab, read-only. Its headless twin
-  `ab_test_data` is a documented alias of `get_ab_test`, which stays the name
-  the docs use. The MCP server's `add_ab_test` registers it as a report tab
-  (`[label:metric]` links focus a metric's row). Docs: an A/B Test widget page
-  with live demos on `load_ab_test()`.
-- `get_ab_test` rows end with a `reading` column: one sentence per row built from
-  the row's own numbers and templated per verdict, for people and agents to
-  quote. It starts with the window the row covers (`over the whole observation
-  period`, `within 28 days of assignment`, `calendar week 2026-03-09`, `days
-  14-27 since assignment`). An inconclusive row says what its interval includes,
-  the p-value (after the correction, when one applied; the interval is then
-  called per-comparison), the effect the design detects and how many times the
-  paths a new test would need for a smaller round effect (`"over the whole
-  observation period: interval [-1.07, +2.28] pp includes 0 (p 0.48); effects
-  outside it are unlikely; the design detects 2.39 pp at alpha 0.05 — to detect
-  1 pp, about 5.7× the paths are needed in a new test sized before it
-  starts"`); an increase or decrease gives the interval, the p-value and the
-  relative change; `insufficient_data` names the support that fell short;
-  descriptive rows say they are not randomised. Exploratory strata, periods
-  whose window is not complete, conditional rows and a `support_warning` are
-  appended (a row with such a flag does not say that effects outside its
-  interval are unlikely), and with several metrics each row asks for one
-  decision metric. 0/1 metrics read in percentage points, other metrics in their
-  own unit. `get_sample_ratio` returns a `reading` too (`"expected 50/50,
-  observed 5040/4960 (control/treatment), p 0.42: no mismatch"`, or `"mismatch:
-  ... — the test is invalid until the assignment is fixed"`, naming the strata or
-  periods that mismatch).
-- `get_ab_paths(diff, metrics, *, assignment=None, horizon=None, path_col=None)`
-  returns the per-path table behind the scorecard — arm, `assigned_at`,
-  `silent`, `mature` and every metric's per-path value in the analysed window
-  (numerator and denominator for ratios) — whose per-arm aggregation reproduces
-  `get_ab_test`: the starting point for CUPED, regression adjustment or a
-  custom test.
-- `add_segment(..., pre_exposure=True)` declares a segment fixed before
-  exposure; the declaration is kept in the recipe, and `get_ab_test(strata_col=)`
-  reads it as `strata_pre_exposure_source="declared"` without a warning.
-- MCP: four A/B tools. `get_sample_ratio`, `get_ab_test` (overall rows, the top
-  strata by effect size — labelled in `strata_selection` — and period rows) and
-  `get_ab_bootstrap` (an early-minus-late contrast of periods with its point
-  estimate and joint interval) return numbers only; `add_ab_test` registers the
-  `ab_test` widget as a report tab (`[label:metric]` links focus a metric's
-  row). Every row carries `population`, the supports, `conditional`, the raw and
-  adjusted p-values, `mde`, `mde_alpha`, `correction_family`, `reading`, `unit`
-  (`"pp"` or `"value"`) and a `scope` sentence, plus the strata's
-  pre-exposure flags and the call's `warnings`. `serve(stream, assignment=...)`
-  attaches an assignment table: the A/B tools then count every assigned user
-  (ITT) and accept `horizon=` and `period_basis="since_assignment"` (without a
-  table, the error says how to pass one). `describe()` lists segment levels,
-  the path columns each segment is constant on, value columns and the
-  assignment table's size; `describe_tool("metrics")` lists the registry,
-  `describe_tool("get_ab_test")` names the Python-only parameters and
-  `describe_tool("get_ab_bootstrap")` describes the MCP contrast summary. The
-  playbook's A/B scenario asks for the decision metric and the guardrails'
-  margins before the first call, quotes `reading` for inconclusive rows, and
-  proposes a new test sized before it starts rather than a longer one; it also
-  covers a treatment that renames an event, the order of a "who does it help"
-  analysis and the tab `export_report` needs.
-- `rete.datasets.load_ab_test()` and `load_ab_test_assignment()`: "Northwind Home",
-  a synthetic 50/50 A/B test of a `quick_add` feature (about 10,000 users, eight
-  weeks, generated deterministically from `seed=2026`, no data file). Segments
-  `exp_group`, `platform`, `cohort_week`; custom columns `order_value` and
-  `order_items` on `order_success` rows; the assignment table includes silent
-  users. Seven planted stories (grey top line, a conditional funnel step that only
-  looks significant, two pre-exposure user types with opposite effects, a
-  treatment-only cart loop, novelty since assignment, no AOV shift, a sign flip by
-  pre-exposure path length) are listed in the module docstring and each one is
-  checked by a test; `with_truth=True` adds the planted `user_type`.
-- A family of bundled A/B datasets: `load_ab_test(name="northwind_home", *,
-  as_dataframe=False, with_truth=False, n_users=None, seed=None)` and
-  `load_ab_test_assignment(name=...)` pick one by name (`None` means the
-  default, Northwind Home, unchanged byte for byte; an unknown name raises
-  `InvalidParameterError` listing the names), and `list_ab_tests()` /
-  `datasets.AB_TESTS` map every name to a one-line description. Five new
-  deterministic generators, each about a second at its default size, no data
-  file: `srm_platform_bug`, `session_assignment`,
-  `aa_calibration`, `trial_conversion` and `push_campaign` (20,000 users
-  assigned from a marketing table). Some hide an effect in a pre-exposure
-  segment, some are broken tests whose correct conclusion is to reject them.
-  Each generator's docstring states the design — where the treatment sits,
-  which segments are fixed at assignment, what the assignment table is — and
-  ends with a "Solutions (spoilers)" section (Northwind Home's stories moved
-  there too); every planted verdict is checked by a test through the public
-  API, and a slow seed sweep over 40 seeds checks that each planted effect holds
-  in at least 90 % of them and each true null in at least 85 %. User ids do not overlap between datasets. The Eventstream guide has a
-  table of the datasets.
-- Tutorial notebook `notebooks/ab_testing_tutorial.ipynb`: one analysis of the
-  Northwind Home experiment in eleven steps, from the assignment table to a
-  decision — SRM, a scorecard with two reads and one decision metric declared
-  before any result (the whole window, and the first 28 days after assignment),
-  the same scorecard as an `ab_test` widget, funnel intervals (on the paths with
-  events, unlike the scorecard's assignment population) and why a conditional
-  step's p-value misleads, calendar weeks versus the since-assignment novelty
-  contrast, a balance check of the window before the first `product_view`
-  (where `quick_add`, a product-page button, is first seen) and blind clusters
-  on it declared pre-exposure with `add_segment(..., pre_exposure=True)`, the
-  treatment-only cart loop as a descriptive rate and as an ITT metric, pre-
-  versus post-exposure strata, the planted truth, and the decision the facts
-  support. Every number is printed by a library call, and every step says what
-  it proves and what remains a hypothesis. It runs against the development
-  install until this release ships; CI executes it.
-- Reference notebook `notebooks/ab_testing_showcase.ipynb`: the same tools organised
-  by capability rather than by story — every bundled dataset with its planted
-  story found, every metric kind, test and correction, guardrails, `min_support`
-  and each `support_warning`, strata with `strata_pre_exposure`, the unit guard,
-  calendar and since-assignment periods, `horizon`, bootstrap contrasts,
-  `get_ab_paths`, funnel intervals, the widget and its `ab_test_data` twin, and
-  the MCP tools — with a closing cell that asserts every number its prose quotes.
-- Docs: a Tools reference section (`get_ab_test`, `get_ab_bootstrap`,
-  `get_ab_paths`, `get_sample_ratio`) rendered from the docstrings and listed
-  in `llms.txt`.
-- Docs: an A/B Testing guide (`docs/guide/ab-testing.md`) — the unit, the
-  intention-to-treat population, `diff` and the metrics; a worked example on
-  `load_ab_test()` with real outputs; how to read the scorecard (verdict, `mde`,
-  correction family and `correction_scope`, strata flags, what the `"recipe"`
-  source does and does not prove); funnels with intervals and why
-  step-to-step rates are descriptive; horizon, since-assignment periods and
-  novelty; blind pre-exposure clusters as strata, from the exposure point to
-  `add_segment(..., pre_exposure=True)`; sample ratio checks per stratum and
-  per day; "From scorecard to decision" (decision metric and horizon declared
-  up front, guardrails, the SRM gate, an inconclusive interval against the
-  effect that matters, a discovered segment as a follow-up test); eight
-  pitfalls with sources; and what is not available (CUPED, equivalence,
-  sequential tests), with `get_ab_paths` for an adjustment by hand. It has a live funnel demo on the A/B
-  dataset, a row in Path Analysis's question table, an "A/B tests" section in
-  the README and a note in Agent Skills.
+- Assignment-aware A/B scorecards, joint unit bootstrap, sample-ratio diagnostics,
+  pre-exposure strata, calendar periods and explicitly observed fixed horizons.
+- Native scorecard and strict experiment widgets with matching headless methods,
+  offline export, support/status diagnostics, confidence intervals and tests.
+- A shared statistical kernel for both analysis contracts: Wilson/Newcombe,
+  stable Welch, multiplicity adjustment and unit-weight resampling.
+- Column and event-value metrics, named metrics, explicit ratios, pre-exposure
+  path segments, six reproducible A/B datasets, MCP tools and English tutorials.
+- Independent statistical calibration records and a comparison/integration ADR
+  linking PR #216 and PR #217; severe-tail limitations remain explicit.
 
 ### Changed
 
-- `get_metrics` honours a metric's `name` as `get_ab_test` does; a name that
-  repeats another metric's column name raises `InvalidMetricConfigError`.
-- `PathIdNotFoundError` quotes at most 10 of the missing ids and their count.
-- `funnel_data` returns the path totals behind every rate: `total_paths`, or
-  `funnel1_total_paths` / `funnel2_total_paths` with `diff`. The funnel
-  widget's group sizes come from them, so a group in which no path reaches the
-  first step no longer shows a total of 0.
-- The funnel table's relative delta now divides by group 2 (the control):
-  `(rate1 - rate2) / rate2`, the base `get_ab_test`'s `rel_delta` uses; it was
-  `(rate1 - rate2) / rate1`. It reads "n/a" when group 2's rate is 0.
-- `MetricBuilder.build_metrics` takes `validate=False` to skip the check that
-  the configured events exist, for metrics computed on a slice of a stream.
-- Every widget encodes its computed `result` (and distribution results) as
-  strict JSON: NaN and infinite values are sent as `null`, which the front end
-  shows as "no estimate", instead of bare `NaN` tokens that the browser's
-  `JSON.parse` rejects.
+- Fixed horizons and since-assignment periods require an explicit complete
+  logging cutoff (`observation_end`); the last event does not establish maturity.
+- The scorecard defaults to Holm across all declared metric rows in each call.
+  Unknown/post-exposure strata and active-period selections are descriptive.
+- Multiplicity includes unavailable declared hypotheses. Bootstrap intervals
+  with undefined replicates retain an unavailable status instead of dropping draws.
+- Scorecard, funnel and conversion uncertainty requires independent units at the coarsest
+  declared path grain; finer-grain descriptive point estimates remain available.
+- Conditional conversion comparisons do not emit confirmatory p-values.
+- Funnel payloads include rate denominators; relative differences use group 2
+  as the baseline. `get_metrics` honours configured metric names.
 
 ### Fixed
 
-- The source tree no longer carries a zero-byte `datasets/.!51949!ecom.csv.gz`,
-  a leftover of an interrupted copy that was tracked next to the real dataset.
+- Exact Wilson boundaries, decimal-constant inference, numerical scale stability,
+  categorical silent-arm assignments and percentage-point effect labels.
+- Point-only funnels aggregate shared reach semantics in SQL. Notebook figures
+  preserve unavailable results; dataset rebuild metadata matches frozen data.
+
 - `time_median` and `time_q95` edge weights in `transition_graph` and
   `transition_graph_data` measure the exact gap between events instead of
   counting whole-second boundaries, so a 125 ms span no longer reads as 0 s or

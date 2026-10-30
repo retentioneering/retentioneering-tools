@@ -46,13 +46,15 @@ Solutions (spoilers)
    paths by revenue. Six whales, not three: whatever their size, k outliers in
    one arm cap Welch's t near the square root of k, so three could never look
    significant on their own.
-3. Revenue per user (``column_sum`` of ``order_value``) reads as an increase under
-   the default Welch test, and so does average order value under the bootstrap.
-   Both are the whales. Switching revenue to ``test="bootstrap"`` does not help:
-   the bootstrap resamples the same six paths, and its p-value comes from a
-   standard error they dominate. A robust metric does: winsorise the order value
-   (a custom column capped at its 99th percentile, about 600) and both revenue
-   rows are inconclusive.
+3. Isolated or explicitly separate-metric comparisons (``correction_scope="metric"``)
+   can report an increase for revenue per user (``column_sum`` of ``order_value``),
+   average order value, and revenue under ``test="bootstrap"``. The default
+   all-metric Holm family makes this scorecard inconclusive. Both outcomes still
+   share the same design defect: the bootstrap resamples the same dependent
+   reseller accounts. Multiplicity correction does not repair their dependence.
+   A capped custom-column revenue metric illustrates sensitivity to the tail;
+   choose both the cap and the independent analysis unit before a new test.
+
 
 Correct conclusion: the 0/1 metrics behave as a null should, but the assignment
 has a defect: accounts created together are assigned together, so the reseller,

@@ -6,10 +6,17 @@
 Paths are resampled within each arm, once per replicate, and every metric,
 stratum and period is evaluated on the same resample. Any quantity built from
 the rows of one replicate — a ratio of two metrics, the difference between two
-periods, the share of replicates where one arm wins — therefore has a valid
-joint distribution, and its percentile interval is read straight off the table.
+periods, the share of replicates where one arm wins — therefore preserves the joint dependence of those estimates, provided paths
+are independent analysis units. A percentile interval is available only when the
+statistic is defined in every replicate and has nonzero bootstrap variation;
+dropping undefined draws would silently change the sampling distribution.
 The replicates match the ones behind the ratio rows of
 [`get_ab_test`](/docs/tools/get-ab-test) for the same `random_state`.
+Fixed horizons and since-assignment periods require an explicit, exclusive
+`observation_end` logging cutoff, just as the scorecard does. The same seed, data
+and configuration reproduce the draw; numerical draws from the pre-integration
+implementation are not a compatibility promise.
+
 Replicate rows carry no `reading`: the sentence that reads each metric is on the
 scorecard row of `get_ab_test`.
 

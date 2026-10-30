@@ -1,0 +1,106 @@
+{
+  "repeats": 20,
+  "resamples": 1999,
+  "note": "Local wall-clock component estimates on a shared executor; no event extraction/UI. Candidate costs include shared augmented resampling plus only their own postprocessing. Welch includes moments/CI/p-value. No nested bootstrap.",
+  "results": [
+    {
+      "scenario": "money_null",
+      "timings_ms": {
+        "production_percentile": {
+          "median": 46.803352001006715,
+          "p90": 50.49451559607405
+        },
+        "basic": {
+          "median": 48.08496449550148,
+          "p90": 51.27109440363711
+        },
+        "bca": {
+          "median": 49.142071984533686,
+          "p90": 53.25639909860911
+        },
+        "bootstrap_t": {
+          "median": 48.06862249824917,
+          "p90": 51.29540380439721
+        },
+        "bootstrap_t_symmetric": {
+          "median": 48.072147503262386,
+          "p90": 51.33785919751972
+        },
+        "m_out_of_n_basic": {
+          "median": 75.8889659846318,
+          "p90": 80.72967009065906
+        },
+        "welch": {
+          "median": 0.4258069966454059,
+          "p90": 0.48044839495560154
+        }
+      }
+    },
+    {
+      "scenario": "money_unequal_null",
+      "timings_ms": {
+        "production_percentile": {
+          "median": 55.8903669952997,
+          "p90": 60.310001402103815
+        },
+        "basic": {
+          "median": 57.059424005274195,
+          "p90": 57.80166660406394
+        },
+        "bca": {
+          "median": 58.35704599303426,
+          "p90": 58.94124758779071
+        },
+        "bootstrap_t": {
+          "median": 57.137449497531634,
+          "p90": 57.81811170018045
+        },
+        "bootstrap_t_symmetric": {
+          "median": 57.090500500635244,
+          "p90": 57.75464540201938
+        },
+        "m_out_of_n_basic": {
+          "median": 91.70415250264341,
+          "p90": 92.66613401268842
+        },
+        "welch": {
+          "median": 0.44343351328279823,
+          "p90": 0.4793229920323938
+        }
+      }
+    },
+    {
+      "scenario": "money_large_null",
+      "timings_ms": {
+        "production_percentile": {
+          "median": 181.10213199543068,
+          "p90": 185.36897740705172
+        },
+        "basic": {
+          "median": 182.8221154937637,
+          "p90": 187.70247159118298
+        },
+        "bca": {
+          "median": 184.7378305028542,
+          "p90": 189.6851811921806
+        },
+        "bootstrap_t": {
+          "median": 182.82133949833224,
+          "p90": 187.7080697871861
+        },
+        "bootstrap_t_symmetric": {
+          "median": 182.8448194937664,
+          "p90": 187.70975249790354
+        },
+        "m_out_of_n_basic": {
+          "median": 281.7401544962195,
+          "p90": 286.77257310191635
+        },
+        "welch": {
+          "median": 0.5266920052235946,
+          "p90": 0.8295432024169714
+        }
+      }
+    }
+  ]
+}

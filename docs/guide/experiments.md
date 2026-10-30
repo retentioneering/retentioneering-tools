@@ -94,6 +94,26 @@ in the quantiles; they do not recover tail information absent from the sample.
 Do not interpret exclusion of zero by a bootstrap interval as the separately
 declared Fisher/Welch test result.
 
+Higher-order bootstrap methods are not automatic heavy-tail corrections. A
+paired follow-up on the PR #216 inference code compares basic, BCa,
+equal-tailed and symmetric bootstrap-t, m-out-of-n and Welch intervals using
+the same known-parameter generators. Some methods improve absolute effects in
+particular scenarios while worsening arm means, relative effects or a different
+allocation/effect combination. See the
+[heavy-tail comparison and decision](https://github.com/retentioneering/retentioneering-tools/blob/codex/heavy-tail-inference-audit/examples/experiments/validation/HEAVY_TAILS.md).
+These research candidates are not additional supported `bootstrap.method` values.
+
+For confirmatory revenue analysis, predeclare the mean-based estimand and
+inference procedure, and assess operating characteristics over plausible tails,
+allocation ratios and nonzero effects. Increasing independent units and
+preserving balance can help but do not certify a particular sample size.
+Report uncertainty and insufficient precision explicitly; do not select the
+method that happens to exclude zero. Fixed winsorization or `log1p` changes the
+target unless a justified correction/model reconnects inference to the original
+mean. Robust mean estimators can preserve that target, but a guaranteed interval
+requires an explicit, defensible tail/moment/support contract; a sample maximum
+or variance is not by itself a population bound.
+
 Wilson/Newcombe intervals also have discrete, parameter-dependent coverage;
 they are not exact 95% guarantees at every probability and sample size. For
 rare conversions, percentile intervals may be unavailable and relative effects

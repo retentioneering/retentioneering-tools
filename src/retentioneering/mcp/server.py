@@ -21,10 +21,12 @@ text in `mcp/_prompts.py`.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import socket
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from functools import wraps
 
 from mcp.server.mcpserver import MCPServer
@@ -40,7 +42,7 @@ from retentioneering.mcp._agent_logic import (
 from retentioneering.mcp._prompts import _system_instructions
 from retentioneering.mcp._report_session import ReportSession
 
-__all__ = ["serve", "_apply_preprocessors", "_find_unlinked_numbers"]
+__all__ = ["serve", "list_tools", "_apply_preprocessors", "_find_unlinked_numbers"]
 
 
 def serve(
@@ -123,6 +125,56 @@ def _check_port_available(port: int) -> None:
         ) from e
     finally:
         sock.close()
+
+
+def list_tools() -> list[dict]:
+    """The tools an agent connected to :func:`serve` sees, without starting a server.
+
+    Builds the same server ``serve()`` runs and asks it for its tool list, as an
+    MCP client would: nothing listens on a port. Works inside a notebook, where
+    an event loop is already running.
+
+    Returns
+    -------
+    list of dict
+        One per tool, in registration order: ``name``, ``description`` (the
+        first paragraph of what the agent reads) and ``parameters`` (the
+        argument names, required ones first).
+
+    Examples
+    --------
+    >>> from retentioneering.mcp import list_tools
+    >>> [tool["name"] for tool in list_tools()][:3]
+    ['load_data', 'update_base_stream', 'reset_base_stream']
+    """
+    server = _build_server(None, {})
+    registered = _run_coroutine(server.list_tools())
+    rows = []
+    for tool in registered:
+        text = (tool.description or "").strip()
+        schema = tool.input_schema or {}
+        names = list(schema.get("properties", {}))
+        required = [n for n in names if n in schema.get("required", [])]
+        rows.append(
+            {
+                "name": tool.name,
+                "description": " ".join(text.split("\n\n")[0].split()),
+                "parameters": required + [n for n in names if n not in required],
+            }
+        )
+    return rows
+
+
+def _run_coroutine(coro):
+    """Run ``coro`` to completion from sync code, also under a running event
+    loop (Jupyter), where ``asyncio.run`` refuses: there it runs on a worker
+    thread with a loop of its own."""
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, coro).result()
 
 
 # ── server builder ─────────────────────────────────────────────────────────────

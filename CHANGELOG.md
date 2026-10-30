@@ -5,8 +5,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added
+
+- `retentioneering.mcp.list_tools()` lists the tools an agent connected to
+  `serve()` sees (name, description, argument names) without starting a server
+  or opening a port, so a notebook can check what the agent will be offered.
+  It works inside Jupyter, where an event loop is already running.
+
 ### Fixed
 
+- `retentioneering.mcp.tools.playbook()` was annotated as returning a `dict`
+  but returns the scenario's recipe as text; the index of scenarios, returned
+  for an empty or unknown name, is still a dict. The annotation now says
+  `str | dict`. The MCP tool the agent calls is unchanged.
 - `time_median` and `time_q95` edge weights in `transition_graph` and
   `transition_graph_data` measure the exact gap between events instead of
   counting whole-second boundaries, so a 125 ms span no longer reads as 0 s or

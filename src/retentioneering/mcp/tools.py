@@ -739,7 +739,7 @@ def add_ab_test(
         entry["conditional"] = bool(row.get("conditional", False))
         for column in ("delta", "delta_ci_low", "delta_ci_high", "mde"):
             entry[column] = _json_number(row.get(column), 6)
-        entry["p_value_adjusted"] = _json_number(row.get("p_value_adjusted"), 8)
+        entry["p_value_adjusted"] = _json_p_value(row.get("p_value_adjusted"))
         entry["mde_alpha"] = _json_number(row.get("mde_alpha"), 8)
         entry["correction_family"] = row.get("correction_family", "")
         entry["support_warning"] = row.get("support_warning", "")
@@ -875,7 +875,7 @@ def get_conversion_rate(
         if column.endswith(("paths_with_start", "converted")):
             return int(value)
         if column == "p_value":
-            return _json_number(value, 8)
+            return _json_p_value(value)
         if column == "conditional":
             return bool(value)
         return _num(value)
@@ -901,6 +901,16 @@ def _json_number(value: Any, digits: int = 6) -> float | None:
         return None
     value = float(value)
     return round(value, digits) if math.isfinite(value) else None
+
+
+def _json_p_value(value: Any) -> float | None:
+    """A p-value for JSON, to three significant digits: fixed decimals would turn
+    a small p-value into 0 (4.28e-09 to 0.0 at eight decimals); NaN/inf become
+    null."""
+    if value is None:
+        return None
+    value = float(value)
+    return float(f"{value:.3g}") if math.isfinite(value) else None
 
 
 def get_sample_ratio(
@@ -990,7 +1000,7 @@ def get_sample_ratio(
         "segment_col": segment_col,
         "path_col": path_col or src.schema.path_col,
         "mismatch": bool(result["mismatch"]),
-        "p_value": _json_number(result["p_value"], 8),
+        "p_value": _json_p_value(result["p_value"]),
         "chi2": _json_number(result["chi2"], 4),
         "dof": int(result["dof"]),
         "alpha": float(result["alpha"]),
@@ -1021,8 +1031,8 @@ def get_sample_ratio(
                 key: str(row[key]),
                 "paths": int(row["paths"]),
                 "chi2": _json_number(row["chi2"], 4),
-                "p_value": _json_number(row["p_value"], 8),
-                "p_value_adjusted": _json_number(row["p_value_adjusted"], 8),
+                "p_value": _json_p_value(row["p_value"]),
+                "p_value_adjusted": _json_p_value(row["p_value_adjusted"]),
                 "mismatch": bool(row["mismatch"]),
             }
             for row in result[name].to_dict("records")
@@ -1260,7 +1270,7 @@ def get_ab_test(
             if column.endswith("_paths") or column.endswith("_support"):
                 out[column] = int(value)
             elif column in ("p_value", "p_value_adjusted", "stratum_vs_rest_p_value"):
-                out[column] = _json_number(value, 8)
+                out[column] = _json_p_value(value)
             elif isinstance(value, str):
                 out[column] = value
             elif column in ("period_complete", "conditional"):
@@ -1308,8 +1318,8 @@ def get_ab_test(
             entry["strata_selection"] = (
                 f"top {min(3, len(part))} by |delta| of {len(part)}"
             )
-            entry["heterogeneity_p_value"] = _json_number(
-                part["heterogeneity_p_value"].iloc[0] if len(part) else None, 8
+            entry["heterogeneity_p_value"] = _json_p_value(
+                part["heterogeneity_p_value"].iloc[0] if len(part) else None
             )
             flag = part["strata_pre_exposure"].iloc[0] if len(part) else pd.NA
             entry["strata_correction_family"] = (
@@ -1493,7 +1503,7 @@ def get_ab_bootstrap(
             "delta_ci_high",
         ):
             entry[column] = _json_number(row[column], 6)
-        entry["p_value"] = _json_number(row["p_value"], 8)
+        entry["p_value"] = _json_p_value(row["p_value"])
         entry["share_positive"] = _json_number(row["share_positive"], 4)
         entry["valid_replicates"] = int(row["valid_replicates"])
         entry["unit"] = units.get(row["metric"], "value")
@@ -1545,7 +1555,7 @@ def _screen_result(
         for column in keys + _SCREEN_COLUMNS:
             value = row[column]
             if column in ("p_value", "p_value_adjusted"):
-                out[column] = _json_number(value, 8)
+                out[column] = _json_p_value(value)
             elif column == "conditional":
                 out[column] = bool(value)
             elif column == "step" or column.endswith("_paths"):
@@ -1559,6 +1569,18 @@ def _screen_result(
 
     verdicts = frame["verdict"].value_counts()
     first = frame.iloc[0] if len(frame) else None
+    n_tested = int(meta.get("n_tested", 0))
+    correction = meta.get("correction")
+    family = (
+        f"{'no correction' if correction == 'none' else correction} over the "
+        f"{n_tested} tested {'row' if n_tested == 1 else 'rows'} of this call"
+    )
+    what = (
+        "a declared family: confirmatory, if the edges were declared before the test"
+        if meta.get("edges") == "declared"
+        else "an exploratory screen: a discovery is a hypothesis for a declared "
+        "metric of a new test"
+    )
     out: dict[str, Any] = {
         "diff": meta.get("diff"),
         "path_col": meta.get("path_col"),
@@ -1566,7 +1588,7 @@ def _screen_result(
         "ci_level": meta.get("ci_level"),
         "correction": meta.get("correction"),
         "n_rows": int(len(frame)),
-        "n_tested": int(meta.get("n_tested", 0)),
+        "n_tested": n_tested,
         "n_increase": int(verdicts.get("increase", 0)),
         "n_decrease": int(verdicts.get("decrease", 0)),
         "n_inconclusive": int(verdicts.get("inconclusive", 0)),
@@ -1575,10 +1597,8 @@ def _screen_result(
         "group1_paths": None if first is None else int(first["group1_paths"]),
         "group2_paths": None if first is None else int(first["group2_paths"]),
         "scope": (
-            f"{meta.get('correction')} over the {int(meta.get('n_tested', 0))} tested "
-            "rows of this call (an exploratory screen: a discovery is a hypothesis "
-            "for a declared metric of a new test); intervals are per row "
-            "(unadjusted); the verdict reads p_value_adjusted"
+            f"{family} ({what}); intervals are per row (unadjusted); the verdict "
+            "reads p_value_adjusted"
         ),
         "top": [_row(r) for r in frame.head(int(top)).to_dict("records")],
     }
@@ -1624,7 +1644,7 @@ def get_ab_transitions(
         time weights are refused.
     edges:
         Optional [[source, target], ...] declared before the test: only these edges
-        are tested (a confirmatory family).
+        are tested (a confirmatory family; scope and readings say so).
     horizon:
         As in get_ab_test (needs the session's assignment table with assigned_at).
     correction:
@@ -1643,7 +1663,8 @@ def get_ab_transitions(
     -------
     diff, path_col, population, ci_level, correction, edge_weight, n_rows (edges
     seen), n_tested (the correction family), n_increase, n_decrease,
-    n_inconclusive, n_untested (below min_support: not tested), group sizes,
+    n_inconclusive, n_untested (insufficient_data: below min_support or without a
+    p-value, not tested; n_increase + n_decrease + n_inconclusive = n_tested), group sizes,
     unassigned_paths, immature_paths (with horizon), scope, warnings, and top — per
     edge: source, target, group1_edge_paths, group2_edge_paths (paths with the
     transition), group1_value, group2_value, delta, delta_ci_low, delta_ci_high,

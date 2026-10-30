@@ -214,6 +214,8 @@ class TestValues:
             stream.get_ab_transitions_table(DIFF, "count")
         with pytest.raises(InvalidParameterError, match="max_steps"):
             stream.get_ab_steps_table(DIFF, 0)
+        with pytest.raises(InvalidParameterError, match="path_pattern"):
+            stream.get_ab_steps_table(DIFF, path_pattern="cart")
 
     @pytest.mark.parametrize(
         ("table", "getter"),

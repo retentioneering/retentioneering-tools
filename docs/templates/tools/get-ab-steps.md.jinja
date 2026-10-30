@@ -30,8 +30,9 @@ metric of a new test.
 
 Steps count from each path's start. To compare the steps around an event, cut the
 paths first with [`truncate_paths`](/docs/data-processors/truncate-paths), on a
-pre-exposure event; there is no `path_pattern` or `anchor` here. Step 0 (the
-synthetic `path_start`) is not a cell.
+pre-exposure event: `path_pattern` and `anchor`, which centre
+`step_matrix_data` on the paths where they match, raise here, with that hint. Step 0
+(the synthetic `path_start`) is not a cell.
 
 On `load_ab_test()` with `max_steps=8`, 92 cells are tested and 14 differ; the
 strongest is `quick_add` at step 7 (`+4.62 pp`, an event the control arm does not

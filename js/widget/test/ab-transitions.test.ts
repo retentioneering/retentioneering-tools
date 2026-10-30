@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import React from 'react';
 import { createRequire } from 'node:module';
 import {
-  AB_BLUE, AB_MUTED, AB_RED, abEdgeClass, abEdgeIndex, abEdgeLook, abIsFiltered, abLegendText, abPayloadApplies,
+  AB_BLUE, AB_MUTED, AB_RED, abDrawsEdge, abEdgeClass, abEdgeIndex, abEdgeLabel, abEdgeLook, abIsFiltered,
+  abLegendText, abPayloadApplies,
   abTooltipLines, abTooltipValues, formatAbDelta, formatAbValue, formatP, parseAbTransitions,
   type AbTransitionsPayload,
 } from '../../viz-core/src/utils/ab-transitions';
@@ -84,6 +85,42 @@ test('significant edges are emphasised in their sign, others muted', () => {
   assert.ok(!absent.dashed && absent.edgeOpacity < untested.edgeOpacity && absent.baseColor === AB_MUTED);
 });
 
+test('a frame row on an edge of the graph is drawn even when the graph values tie', () => {
+  const stat = abEdgeIndex(payload).get('home|catalog');
+  // the plain diff mode (no row): a zero or undefined difference draws nothing
+  assert.equal(abDrawsEdge(0, undefined, 40, 40), false);
+  assert.equal(abDrawsEdge(Number.NaN, undefined, null, null), false);
+  assert.equal(abDrawsEdge(-20, undefined, 380, 400), true);
+  // under the overlay a tested edge whose path counts tie is still an edge
+  assert.equal(abDrawsEdge(0, stat, 40, 40), true);
+  assert.equal(abDrawsEdge(0, stat, 0, 7), true);
+  // ... but not one the graph has in neither arm
+  assert.equal(abDrawsEdge(0, stat, 0, 0), false);
+  assert.equal(abDrawsEdge(0, stat, null, null), false);
+});
+
+test('an overlaid edge is labelled with the frame delta, in the sign of its colour', () => {
+  const index = abEdgeIndex(payload);
+  for (const edge of payload.edges) {
+    const stat = index.get(`${edge.source}|${edge.target}`);
+    const label = abEdgeLabel(stat, payload);
+    assert.equal(label, formatAbDelta(edge.delta, payload));
+    const look = abEdgeLook(abEdgeClass(stat), base);
+    if (look.baseColor === AB_RED) assert.ok(label!.startsWith('+'), label!);
+    if (look.baseColor === AB_BLUE) assert.ok(label!.startsWith('-'), label!);
+  }
+  assert.equal(abEdgeLabel(index.get('product_view|add_to_cart'), payload), '-35.53 pp');
+  assert.equal(abEdgeLabel(index.get('cart|cart'), payload), '+4.91 pp');
+  // a delta the graph's path counts would show with the other sign keeps the frame's
+  const flipped = { source: 'checkout_start', target: 'payment', group1_value: 0.2883, group2_value: 0.2877,
+    delta: 0.0006, ci_low: -0.0171, ci_high: 0.0184, p_adjusted: 0.98, verdict: 'inconclusive' };
+  assert.equal(abEdgeLabel(flipped, payload), '+0.06 pp');
+  assert.equal(abEdgeLabel({ ...flipped, delta: 0.0006 }, { ...payload, edge_weight: 'avg_per_path' }), '+0.001');
+  assert.equal(abEdgeLabel({ ...flipped, delta: null }, payload), '-');
+  // no row: the graph keeps its own difference
+  assert.equal(abEdgeLabel(undefined, payload), null);
+});
+
 test('tooltip lines carry the delta, the interval, the adjusted p and the verdict', () => {
   const index = abEdgeIndex(payload);
   const lines = abTooltipLines(index.get('product_view|add_to_cart'), payload);
@@ -140,8 +177,14 @@ test('the diff legend names the overlay and the family size', () => {
   const text = abLegendText(payload);
   assert.ok(text.includes('bh') && text.includes('90 tested edges') && text.includes('0.05'));
   assert.ok(text.includes('faint not in the frame') && !text.includes('ITT') && !text.includes('filtered'));
+  // the labels are the frame's, in its units
+  assert.ok(text.includes("Labels: the test's delta in pp (faint edges: the graph's own difference)"));
+  assert.ok(abLegendText({ ...payload, edge_weight: 'avg_per_path' }).includes("the test's delta per path"));
   const itt = abLegendText({ ...payload, population: 'assignment', horizon: '28D' });
   assert.ok(itt.includes('ITT') && itt.includes('horizon 28D'));
+  // one tested edge is singular
+  const one = abLegendText({ ...payload, n_tested: 1 });
+  assert.ok(one.includes('(bh, 1 tested edge)') && !one.includes('1 tested edges'));
   const filtered = { ...payload, n_rows: 92 };
   assert.equal(abIsFiltered(filtered), true);
   assert.equal(abIsFiltered(payload), false);

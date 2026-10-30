@@ -298,17 +298,29 @@ def resolve_test(
         raise error(f"{label}: unknown test {test!r}; allowed: {list(TESTS)}")
     if test == "auto":
         test = _TEST_OF_KIND[kind]
-    if test == "z_test" and kind != "binary":
+    if test not in accepted_tests(kind):
+        # the hint names only tests this kind accepts
+        if kind == "ratio":
+            raise error(
+                f"{label}: a ratio of sums has no closed-form test here; use "
+                "test='bootstrap' (or 'auto')."
+            )
         raise error(
             f"{label}: 'z_test' is for 0/1 metrics; this one is a {kind} metric "
             "(use 'welch_t_test' or 'bootstrap')."
         )
-    if kind == "ratio" and test != "bootstrap":
-        raise error(
-            f"{label}: a ratio of sums has no closed-form test here; use "
-            "test='bootstrap' (or 'auto')."
-        )
     return test
+
+
+def accepted_tests(kind: str) -> tuple[str, ...]:
+    """The ``test`` values :func:`resolve_test` accepts for a ``kind`` of per-path
+    quantity: every test for a 0/1 one, ``bootstrap`` only for a ratio of sums
+    (``"auto"`` always)."""
+    if kind == "binary":
+        return TESTS
+    if kind == "ratio":
+        return ("auto", "bootstrap")
+    return ("auto", "welch_t_test", "bootstrap")
 
 
 def _kind_of(metric: str) -> str:
@@ -2785,13 +2797,14 @@ def row_reading(
         The clause of a ``conditional`` row, in place of the default "a value for
         ... paths" (a transition probability says which transitions it is a share
         of, and that they are post-treatment behaviour).
-    screen : tuple of (str, int), optional
-        ``(what, n_tested)`` for a row of an exploratory screen
-        (``get_ab_transitions``, ``get_ab_steps``): ``what`` names the rows
-        (``"edges"``, ``"cells"``). A tested row says the family size; an
-        ``increase`` / ``decrease`` row says it is a screen result to confirm
-        with a declared metric in a new test; an untested row says it is outside
-        the family.
+    screen : tuple of (str, int, bool), optional
+        ``(what, n_tested, declared)`` for a row of ``get_ab_transitions`` or
+        ``get_ab_steps``: ``what`` names one row (``"edge"``, ``"cell"``),
+        ``declared`` is True when the rows were declared before the test
+        (``edges=``). A tested row says the family size; an ``increase`` /
+        ``decrease`` row of a screen says it is a result to confirm with a
+        declared metric in a new test, one of a declared family that the family
+        is confirmatory; an untested row says it is outside the family.
     """
     pp = (kind == "binary") if in_pp is None else bool(in_pp)
     scale, unit = (100.0, " pp") if pp else (1.0, "")
@@ -2845,11 +2858,14 @@ def row_reading(
     elif verdict == "insufficient_data":
         if support_count < min_support:
             parts.append(f"pooled support {support_count} < min_support {min_support}")
-        else:
+        elif non_support_count is not None and non_support_count < min_support:
             parts.append(
                 f"pooled paths without the event {non_support_count} < "
                 f"min_support {min_support}"
             )
+        else:
+            # enough support but no p-value: a screen does not test the row
+            parts.append(_no_p_value_text(row, constant))
         parts.append("estimate shown descriptively")
     elif verdict in ("increase", "decrease"):
         if not has_ci:
@@ -2867,18 +2883,9 @@ def row_reading(
             parts.append(f"relative {_signed(pct, 1 if abs(pct) < 10 else 0)} %")
     else:  # inconclusive
         if not _finite(p_adj):
+            parts.append(_no_p_value_text(row, constant))
             if row.get("support_warning") == "invalid_replicates":
-                parts.append(
-                    "no interval or p-value: more than 1 % of bootstrap replicates "
-                    "had no value in an arm; estimate shown descriptively"
-                )
-            elif constant:
-                parts.append("no p-value: the metric is constant in both arms")
-            else:
-                parts.append(
-                    "no p-value: the spread cannot be estimated (an arm has fewer "
-                    "than two paths with a value)"
-                )
+                parts.append("estimate shown descriptively")
         elif not has_ci:
             parts.append(f"no interval; {p_part}")
         elif covers_zero:
@@ -2938,13 +2945,25 @@ def row_reading(
     if warning in _SUPPORT_WARNING_TEXT:
         parts.append(_SUPPORT_WARNING_TEXT[warning])
     if screen is not None:
-        what, n_tested = screen
+        what, n_tested, declared = screen
+        tested = f"{n_tested} tested {what}{'' if n_tested == 1 else 's'}"
         family = (
-            f"no correction over {n_tested} tested {what}"
+            f"no correction over {tested}"
             if correction == "none"
-            else f"{correction} over {n_tested} tested {what}"
+            else f"{correction} over {tested}"
         )
-        if verdict in ("increase", "decrease"):
+        if declared:
+            # rows named before the test: a confirmatory family, not a screen
+            if verdict in ("increase", "decrease"):
+                parts.append(
+                    f"declared family ({family}): confirmatory, if the {what}s were "
+                    "declared before the test"
+                )
+            elif verdict == "insufficient_data" or not _finite(p_adj):
+                parts.append(f"not tested: outside the declared family ({family})")
+            else:
+                parts.append(f"declared family: {family}")
+        elif verdict in ("increase", "decrease"):
             parts.append(
                 f"screen result ({family}): a hypothesis to confirm as the declared "
                 "metric of a new test, not a decision"
@@ -2962,6 +2981,21 @@ def row_reading(
             parts.append("corrected within this metric only; name one decision metric")
     text = "; ".join(parts)
     return f"{window}: {text}" if window else text
+
+
+def _no_p_value_text(row: dict, constant: bool) -> str:
+    """Why a row with enough support has no p-value."""
+    if row.get("support_warning") == "invalid_replicates":
+        return (
+            "no interval or p-value: more than 1 % of bootstrap replicates had no "
+            "value in an arm"
+        )
+    if constant:
+        return "no p-value: the metric is constant in both arms"
+    return (
+        "no p-value: the spread cannot be estimated (an arm has fewer than two "
+        "paths with a value)"
+    )
 
 
 def _validity_flagged(row: dict) -> bool:

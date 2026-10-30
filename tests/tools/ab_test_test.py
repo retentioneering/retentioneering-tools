@@ -177,6 +177,17 @@ class TestSpecs:
         with pytest.raises(InvalidMetricConfigError):
             parse_metrics([entry])
 
+    def test_a_refused_test_names_one_the_kind_accepts(self) -> None:
+        ratio = dict(ORDERS, denominator={"metric": "length"})
+        for test in ("z_test", "welch_t_test"):
+            with pytest.raises(InvalidMetricConfigError) as info:
+                parse_metrics([dict(ratio, test=test)])
+            assert "use test='bootstrap' (or 'auto')" in str(info.value)
+            assert "use 'welch_t_test'" not in str(info.value)
+        with pytest.raises(InvalidMetricConfigError) as info:
+            parse_metrics([dict(ORDERS, test="z_test")])
+        assert "use 'welch_t_test' or 'bootstrap'" in str(info.value)
+
     def test_list_level_errors(self) -> None:
         with pytest.raises(InvalidMetricConfigError):
             parse_metrics([])

@@ -1134,8 +1134,9 @@ class Eventstream:
             The randomised unit; defaults to `schema.path_col`.
         edges : list of tuple, optional
             `[(source, target), ...]`: test only these edges, declared before the
-            test (a confirmatory family); rows for them only. Events must exist in
-            the stream (or be `path_start` / `path_end`).
+            test (a confirmatory family, which the readings name); rows for them
+            only. Events must exist in the stream (or be `path_start` /
+            `path_end`).
         test : {"auto", "z_test", "welch_t_test", "bootstrap"}, default "auto"
             `"auto"` is the test of the weight above; `"z_test"` fits only
             `"unique_paths"`, ratios take only `"bootstrap"`.
@@ -1192,8 +1193,12 @@ class Eventstream:
               `delta_ci_high` (per edge), `delta_ci_low_adj`*, `delta_ci_high_adj`*
               (Bonferroni), `rel_delta`.
             - `p_value`, `p_value_adjusted`, `correction_family`, `mde_alpha`,
-              `mde`, `rel_mde`, `verdict` (as in `get_ab_test`), `test`,
-              `ci_basis`, `p_basis`, `valid_replicates`, `support_warning`.
+              `mde`, `rel_mde`, `verdict` (as in `get_ab_test`, except that a
+              row without a p-value — a value constant in both arms, or more
+              than 1 % of bootstrap replicates without a value — is not tested
+              and reads `"insufficient_data"`, so `increase`, `decrease` and
+              `inconclusive` add up to `n_tested`), `test`, `ci_basis`,
+              `p_basis`, `valid_replicates`, `support_warning`.
             - `reading`: the row in one sentence, with the family size.
 
             `attrs` holds `n_tested` (the family size), `correction`, `ci_level`,
@@ -1253,6 +1258,8 @@ class Eventstream:
         ci_level: float = 0.95,
         power: float = 0.8,
         min_support: int = 10,
+        path_pattern: str | None = None,
+        anchor: str | dict | None = None,
     ) -> pd.DataFrame:
         """
         Test every step-matrix cell between two arms: which events at which step differ.
@@ -1266,7 +1273,7 @@ class Eventstream:
         diff=...)` for it on the stream's paths. An exploratory screen, read after
         the scorecard: a discovery is a hypothesis for a declared metric of a new
         test. Steps count from each path's start; to compare around an event, cut
-        the paths with `truncate_paths` first (no `path_pattern` or `anchor`).
+        the paths with `truncate_paths` first (`path_pattern` and `anchor` raise).
 
         Parameters
         ----------
@@ -1296,6 +1303,15 @@ class Eventstream:
         min_support : int, default 10
             Pooled paths with the event at the step (and pooled paths without it)
             below which a cell is `"insufficient_data"`: reported, not tested.
+        path_pattern : None
+            Not in this release: any value raises `InvalidParameterError`. Steps
+            count from each path's start; a pattern (as in `step_matrix_data`)
+            would keep and centre the paths where it matches, a selection by
+            behaviour the treatment may change. To compare the steps from an
+            event, cut the paths first with `truncate_paths(start_anchor=...,
+            end_anchor="path_end")` on an event before exposure.
+        anchor : None
+            Not in this release, as `path_pattern`.
 
         Returns
         -------
@@ -1309,8 +1325,8 @@ class Eventstream:
         Raises
         ------
         DiffConfigError, InvalidParameterError, EmptyEventstreamError
-            As in `get_ab_test`; `max_steps` below 1 raises
-            `InvalidParameterError`.
+            As in `get_ab_test`; `max_steps` below 1, a `path_pattern` or an
+            `anchor` raises `InvalidParameterError`.
 
         Examples
         --------
@@ -1330,6 +1346,8 @@ class Eventstream:
             ci_level=ci_level,
             power=power,
             min_support=min_support,
+            path_pattern=path_pattern,
+            anchor=anchor,
         )
 
     @_tracked("get_ab_transitions_table")
@@ -1388,6 +1406,8 @@ class Eventstream:
         ci_level: float = 0.95,
         power: float = 0.8,
         min_support: int = 10,
+        path_pattern: str | None = None,
+        anchor: str | dict | None = None,
         values=("delta", "delta_ci_low", "delta_ci_high", "p_value_adjusted"),
         styled: bool = False,
     ):
@@ -1404,6 +1424,8 @@ class Eventstream:
             ci_level=ci_level,
             power=power,
             min_support=min_support,
+            path_pattern=path_pattern,
+            anchor=anchor,
         )
         table = ab_table(frame, values)
         return style_table(table, frame) if styled else table
@@ -3308,11 +3330,14 @@ ab_steps : The same frame drawn as an interactive matrix.""",
             diff mode: significant edges in the colour of their sign and never
             hidden by the edge filter, inconclusive edges grey, untested edges
             grey and dashed, edges the frame has no row for (a filtered frame,
-            or outside its window) faint; under the overlay the edge tooltip
-            shows the test's values (for `unique_paths` the arms' shares, not
-            the graph's path counts), the delta, its interval, the adjusted
-            p-value and the verdict, and the legend names the correction, the
-            family size and the population. Needs the frame's `diff` (the same
+            or outside its window) faint. Every row of the frame on an edge of
+            the graph is drawn, also where the graph's two values tie, and its
+            label is the frame's delta (in pp for shares), the number its
+            colour reads; under the overlay the edge tooltip shows the test's
+            values (for `unique_paths` the arms' shares, not the graph's path
+            counts), the delta, its interval, the adjusted p-value and the
+            verdict, and the legend names the correction, the family size and
+            the population. Needs the frame's `diff` (the same
             groups in the same order; a frame computed on `("arm", ...)` with
             an assignment table matches the arm segment), its `edge_weight`
             (the default when `edge_weight` is not given) and its `path_col`;
@@ -4157,6 +4182,8 @@ get_ab_bootstrap : Joint bootstrap replicates, for contrasts between periods."""
         ci_level: float | None = None,
         power: float | None = None,
         min_support: int | None = None,
+        path_pattern: str | None = None,
+        anchor: str | dict | None = None,
         height: int | None = None,
         sidebar_open: bool | None = None,
         state_file: str | None = None,
@@ -4174,6 +4201,8 @@ get_ab_bootstrap : Joint bootstrap replicates, for contrasts between periods."""
             "ci_level": ci_level,
             "power": power,
             "min_support": min_support,
+            "path_pattern": path_pattern,
+            "anchor": anchor,
             "height": height,
             "sidebar_open": sidebar_open,
         }
@@ -4198,6 +4227,8 @@ get_ab_bootstrap : Joint bootstrap replicates, for contrasts between periods."""
         ci_level: float = 0.95,
         power: float = 0.8,
         min_support: int = 10,
+        path_pattern: str | None = None,
+        anchor: str | dict | None = None,
     ) -> pd.DataFrame:
         # The docstring is get_ab_steps' with an alias note, assembled below.
         return self.get_ab_steps(
@@ -4210,6 +4241,8 @@ get_ab_bootstrap : Joint bootstrap replicates, for contrasts between periods."""
             ci_level=ci_level,
             power=power,
             min_support=min_support,
+            path_pattern=path_pattern,
+            anchor=anchor,
         )
 
     _tr_title, _, _tr_rest = _tr_summary.partition("\n\n")

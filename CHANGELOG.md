@@ -177,13 +177,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   arm's value, the delta and its per-edge interval, a p-value adjusted over the
   tested edges (Benjamini–Hochberg by default), a verdict and a `reading`. The
   arms, population (`assignment=` for ITT), unit guard, `horizon`, support rule
-  and verdict are the scorecard's. `unique_paths` (share of paths with the
+  and verdict are the scorecard's, except that a row without a p-value (a value
+  constant in both arms, too many invalid bootstrap replicates) is not tested and
+  reads `insufficient_data`, so `increase`, `decrease` and `inconclusive` add up
+  to `n_tested` (and so do the MCP counts). `unique_paths` (share of paths with the
   transition, z-test) and `avg_per_path` (count per path, Welch) are effects of
   the assignment; `proba_out`, `proba_in` and `share_of_total` are ratios tested
   with the joint path bootstrap and flagged `conditional=True`, because their
   denominators are post-treatment behaviour. `count` raises (use
   `avg_per_path`); the time weights are not tested. `edges=[(source, target),
-  ...]` declared before the test makes a confirmatory family. An arm's value
+  ...]` declared before the test makes a confirmatory family, and its readings
+  say so instead of calling a discovery a screen result. An arm's value
   equals `transition_graph_data` for that arm on the stream's paths. An
   exploratory screen: a discovery's reading calls it a hypothesis for a declared
   metric of a new test. With `correction="bonferroni"` the simultaneous
@@ -194,15 +198,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   the same for the step matrix: per cell `(event, step)`, the share of each arm's
   paths whose k-th event is the event (`path_end` for a shorter path), pooled
   z-test, Benjamini–Hochberg over the tested cells. Values equal
-  `step_matrix_data` per arm on the stream's paths.
+  `step_matrix_data` per arm on the stream's paths. Steps count from each
+  path's start: `path_pattern` and `anchor` raise `InvalidParameterError`,
+  which says to cut the paths with `truncate_paths` on a pre-exposure event
+  first.
 - `transition_graph(diff=..., ab_transitions=frame)` highlights the frame of
   `get_ab_transitions` on the diff graph: significant edges in their sign's
   colour (and kept whatever the edge filter), inconclusive ones grey, untested
-  ones dashed, edges without a row in the frame faint; under the overlay the edge
+  ones dashed, edges without a row in the frame faint. Every row of the frame on
+  an edge of the graph is drawn, also where the graph's path counts tie, and is
+  labelled with the frame's delta (in pp for shares), so label, colour and
+  tooltip read the same number; under the overlay the edge
   tooltip shows the test's values (for `unique_paths` the arms' shares, not the
   graph's path counts), the delta's interval, the adjusted p-value and the
   verdict, and the legend names the correction, the family size, ITT, the
-  horizon and a filtered frame. The frame must match the graph's `diff`
+  horizon, what the labels show and a filtered frame. The plain diff graph is
+  unchanged. The frame must match the graph's `diff`
   (segment form or id lists), `edge_weight` and `path_col`; `path_pattern` is
   refused. It is carried by the static HTML export (legend open) and not stored
   in `state_file`.
@@ -245,7 +256,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   estimate and joint interval) return numbers only; `add_ab_test` registers the
   `ab_test` widget as a report tab (`[label:metric]` links focus a metric's
   row). Every row carries `population`, the supports, `conditional`, the raw and
-  adjusted p-values, `mde`, `mde_alpha`, `correction_family`, `reading`, `unit`
+  adjusted p-values (to three significant digits in every MCP tool, so a small
+  one keeps its magnitude instead of rounding to 0), `mde`, `mde_alpha`, `correction_family`, `reading`, `unit`
   (`"pp"` or `"value"`) and a `scope` sentence, plus the strata's
   pre-exposure flags and the call's `warnings`. `serve(stream, assignment=...)`
   attaches an assignment table: the A/B tools then count every assigned user

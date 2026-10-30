@@ -8,6 +8,7 @@ correction. See `widgets/_ab_matrix.py` for the payload.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pandas as pd
@@ -23,6 +24,10 @@ _DEFAULTS: dict[str, Any] = {
     "ci_level": 0.95,
     "power": 0.8,
     "min_support": 10,
+    # get_ab_steps refuses both in this release; kept so that the widget's data
+    # parameters are its twin's signature (ADR-0006)
+    "path_pattern": "",
+    "anchor": "",
 }
 
 
@@ -31,11 +36,27 @@ class ABStepsWidget(ABMatrixWidget):
 
     # ── data parameters (the arguments of ab_steps_data) ───────────────────────
     max_steps = traitlets.Int(10).tag(sync=True)
+    path_pattern = traitlets.Unicode("").tag(sync=True)
+    # "" | the anchor as text, a dict anchor as JSON
+    anchor = traitlets.Unicode("").tag(sync=True)
 
     _defaults = _DEFAULTS
     _editable = ("max_steps", "correction", "ci_level", "min_support")
     _tool = "get_ab_steps"
     _export_label = "A/B Steps"
+
+    def _to_trait(self, name: str, value: Any) -> Any:
+        if name in ("path_pattern", "anchor"):
+            if isinstance(value, dict):
+                return json.dumps(value, default=str)
+            return value or ""
+        return super()._to_trait(name, value)
+
+    def _params(self, overrides: dict | None = None) -> dict:
+        params = super()._params(overrides)
+        params["path_pattern"] = params["path_pattern"] or None
+        params["anchor"] = params["anchor"] or None
+        return params
 
     def _twin(self, params: dict) -> pd.DataFrame:
         return self._eventstream.ab_steps_data(self._diff, **params)

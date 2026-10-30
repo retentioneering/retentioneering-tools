@@ -491,6 +491,8 @@ class TestErrors:
             {"correction": "sidak"},
             {"ci_level": 0},
             {"min_support": -1},
+            {"path_pattern": "cart"},
+            {"anchor": {"event": "cart"}},
         ],
     )
     def test__steps(self, stream, kwargs) -> None:

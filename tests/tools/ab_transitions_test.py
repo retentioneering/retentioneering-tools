@@ -183,6 +183,38 @@ class TestTinyStream:
         assert frame.attrs["edges"] == "declared"
         assert (frame["correction_family"] == "edges=declared/unique_paths").all()
 
+    def test_declared_edges_read_as_a_confirmatory_family(self) -> None:
+        stream = _tiny()
+        one = stream.get_ab_transitions(
+            ("arm", "A", "B"), edges=[("a", "b")], min_support=1
+        )
+        reading = one["reading"].iloc[0]
+        assert one.attrs["n_tested"] == 1
+        assert "declared family: bh over 1 tested edge" in reading
+        assert "screen" not in reading and "tested edges" not in reading
+        two = stream.get_ab_transitions(
+            ("arm", "A", "B"), edges=[("a", "b"), ("b", "c")], min_support=1
+        )
+        assert (
+            "outside the declared family (bh over 1 tested edge)"
+            in (_row(two, "b", "c")["reading"])
+        )
+        # the whole graph is a screen
+        screen = stream.get_ab_transitions(("arm", "A", "B"), min_support=1)
+        assert (
+            screen["reading"]
+            .str.contains(f"screen: bh over {screen.attrs['n_tested']} tested edges")
+            .any()
+        )
+
+    def test_one_tested_cell_is_singular(self) -> None:
+        # step 1: a in 4 paths (2 without), b and c in one each
+        frame = _tiny().get_ab_steps(("arm", "A", "B"), max_steps=1, min_support=2)
+        assert frame.attrs["n_tested"] == 1
+        cell = frame[(frame["event"] == "a") & (frame["step"] == 1)].iloc[0]
+        assert cell["reading"].endswith("; screen: bh over 1 tested cell")
+        assert not frame["reading"].str.contains("1 tested cells").any()
+
     def test_steps_are_shares_of_paths_at_each_step(self) -> None:
         frame = _tiny().get_ab_steps(("arm", "A", "B"), max_steps=3, min_support=1)
         cell = frame[(frame["event"] == "c") & (frame["step"] == 2)].iloc[0]
@@ -193,6 +225,49 @@ class TestTinyStream:
         # A: u3 has one event; B: u6 has one event
         assert ended["group1_value"] == pytest.approx(1 / 3)
         assert ended["group2_value"] == pytest.approx(1 / 3)
+
+
+# ---------------------------------------------------------------- the family
+class TestFamily:
+    def test_a_row_without_a_p_value_is_not_tested(self, stream, assignment) -> None:
+        # every transition into payment comes from checkout_start (and so on):
+        # proba_in is 1 in both arms, every replicate gives the same delta and
+        # there is no p-value, so the row is outside the family
+        frame = stream.get_ab_transitions(ARM_DIFF, "proba_in", assignment=assignment)
+        constant = frame[frame["reading"].str.contains("constant in both arms")]
+        assert set(zip(constant["source"], constant["target"])) >= {
+            ("checkout_start", "payment"),
+            ("payment", "order_success"),
+        }
+        assert (constant["group1_value"] == 1).all()
+        assert (constant["group2_value"] == 1).all()
+        assert (constant["verdict"] == "insufficient_data").all()
+        assert constant["p_value"].isna().all()
+        assert (
+            constant["reading"]
+            .str.contains(
+                "no p-value: the metric is constant in both arms; estimate shown "
+                "descriptively"
+            )
+            .all()
+        )
+        assert constant["reading"].str.contains("not tested").all()
+        assert not constant["reading"].str.contains("min_support").any()
+
+    @pytest.mark.parametrize("weight", EDGE_WEIGHTS)
+    def test_tested_verdicts_add_up_to_n_tested(self, stream, assignment, weight):
+        ratio = weight in ("proba_out", "proba_in", "share_of_total")
+        options = {"n_bootstrap": 200} if ratio else {}
+        frame = stream.get_ab_transitions(
+            ARM_DIFF, weight, assignment=assignment, **options
+        )
+        tested = frame["verdict"].isin(["increase", "decrease", "inconclusive"])
+        assert tested.sum() == frame.attrs["n_tested"]
+        assert frame.loc[tested, "p_value_adjusted"].notna().all()
+        assert (frame.loc[~tested, "verdict"] == "insufficient_data").all()
+        steps = stream.get_ab_steps(ARM_DIFF, assignment=assignment)
+        tested = steps["verdict"].isin(["increase", "decrease", "inconclusive"])
+        assert tested.sum() == steps.attrs["n_tested"]
 
 
 # ---------------------------------------------------------------- equality with the graph
@@ -308,6 +383,19 @@ class TestNorthwindPlantedTruth:
         assert loop["verdict"] == "increase" and loop["group2_edge_paths"] == 0
         assert frame.attrs["n_tested"] > 50
         assert "screen result" in quick["reading"]
+
+    def test_a_declared_discovery_is_confirmatory(self, stream, assignment) -> None:
+        frame = stream.get_ab_transitions(
+            ARM_DIFF, assignment=assignment, edges=[("cart", "cart")]
+        )
+        row = frame.iloc[0]
+        assert row["verdict"] == "increase"
+        assert (
+            "declared family (bh over 1 tested edge): confirmatory, if the edges "
+            "were declared before the test"
+        ) in row["reading"]
+        assert "not a decision" not in row["reading"]
+        assert "1 tested edges" not in row["reading"]
 
     def test_the_checkout_shortcut_shows_as_a_conditional_drop(self, stream) -> None:
         frame = stream.get_ab_transitions(DIFF, "proba_out")
@@ -482,15 +570,55 @@ class TestErrors:
         with pytest.raises(InvalidParameterError, match="max_steps"):
             stream.get_ab_steps(DIFF, max_steps=0)
 
+    @pytest.mark.parametrize("test", ["z_test", "welch_t_test"])
+    def test_a_ratio_weight_names_only_the_tests_it_accepts(self, stream, test) -> None:
+        with pytest.raises(InvalidParameterError) as info:
+            stream.get_ab_transitions(DIFF, "proba_out", test=test)
+        message = str(info.value)
+        assert "use test='bootstrap' (or 'auto')." in message
+        assert "use 'welch_t_test'" not in message
+        assert ".." not in message
+        assert message.endswith("Allowed values: ['auto', 'bootstrap']")
+
+    def test_a_count_weight_names_welch_and_the_bootstrap(self, stream) -> None:
+        with pytest.raises(InvalidParameterError) as info:
+            stream.get_ab_transitions(DIFF, "avg_per_path", test="z_test")
+        message = str(info.value)
+        assert "(use 'welch_t_test' or 'bootstrap')." in message
+        assert ".." not in message
+        assert message.endswith("Allowed values: ['auto', 'welch_t_test', 'bootstrap']")
+
     def test_bootstrap_options_without_a_bootstrap_warn(self, stream) -> None:
-        with pytest.warns(UserWarning, match="n_bootstrap, random_state apply only"):
+        with pytest.warns(
+            UserWarning, match="n_bootstrap and random_state apply only"
+        ) as record:
             stream.get_ab_transitions(DIFF, n_bootstrap=200, random_state=1)
+        assert "so they are ignored" in str(record[0].message)
+        # at the caller's line, not inside the library's tracking decorator
+        assert {w.filename for w in record} == {__file__}
+        with pytest.warns(
+            UserWarning, match="n_bootstrap applies only to the bootstrapped"
+        ) as record:
+            stream.get_ab_transitions(DIFF, n_bootstrap=200)
+        assert "so it is ignored" in str(record[0].message)
+        assert {w.filename for w in record} == {__file__}
         import warnings
 
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             stream.get_ab_transitions(DIFF, "proba_out", n_bootstrap=200)
             stream.get_ab_transitions(DIFF)
+
+    @pytest.mark.parametrize(
+        "name, value", [("path_pattern", "cart"), ("anchor", {"pattern": "cart"})]
+    )
+    def test_steps_refuse_a_pattern_or_an_anchor(self, stream, name, value) -> None:
+        with pytest.raises(InvalidParameterError) as info:
+            stream.get_ab_steps(DIFF, **{name: value})
+        message = str(info.value)
+        assert f"parameter '{name}'" in message
+        assert "counts steps from each path's start in this release" in message
+        assert "truncate_paths(start_anchor=" in message
 
     def test_edges_must_name_events(self, stream) -> None:
         with pytest.raises(InvalidParameterError, match="edges"):

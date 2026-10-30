@@ -31,7 +31,6 @@ Design (ADR-0017, amendment "Transitions and steps")
 from __future__ import annotations
 
 import hashlib
-import warnings
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -43,7 +42,7 @@ from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.exceptions import InvalidParameterError
 from retentioneering.tools import _bootstrap as bs
 from retentioneering.tools import _stats
-from retentioneering.tools._diff import resolve_diff
+from retentioneering.tools._diff import resolve_diff, warn_user
 from retentioneering.tools.ab_test import (
     BOOTSTRAP_WEIGHTS,
     CORRECTIONS,
@@ -51,6 +50,7 @@ from retentioneering.tools.ab_test import (
     TESTS,
     AnalysedWindow,
     _is_segment_diff,
+    accepted_tests,
     adjust_p,
     analysed_window,
     check_choice,
@@ -118,6 +118,14 @@ _REFUSED_WEIGHTS = {
         "descriptively with transition_graph_data(edge_weight='time_q95', diff=...)"
     ),
 }
+#: Why ``get_ab_steps`` refuses ``step_matrix_data``'s ``path_pattern`` and ``anchor``.
+_STEPS_FROM_START = (
+    "get_ab_steps counts steps from each path's start in this release; a pattern "
+    "or an anchor would centre the cells on the paths where it matches, a "
+    "selection by behaviour the treatment may change. To compare the steps from "
+    "an event, cut the paths first with truncate_paths(start_anchor=<event>, "
+    "end_anchor='path_end') on an event before exposure, and screen the result"
+)
 
 #: Column order shared by both tables after their key columns.
 _STAT_COLUMNS: tuple[str, ...] = (
@@ -413,7 +421,9 @@ def _compare(
         mde_alpha=mde_alpha,
         mde=mde,
         rel_mde=rel_mde,
-        verdict=verdicts(p_adjusted, delta, alpha, support=support),
+        # a row without a p-value (constant in both arms, invalid replicates) is
+        # not tested: insufficient_data, so the other verdicts count n_tested
+        verdict=verdicts(p_adjusted, delta, alpha, support=tested),
         test=test,
         ci_basis=_CI_BASIS[test],
         p_basis=_P_BASIS[test],
@@ -503,6 +513,7 @@ def _readings(
     horizon,
     what: str,
     conditional_text,
+    declared: bool = False,
 ) -> list[str]:
     alpha = helpers["alpha"]
     window = window_text(horizon)
@@ -526,7 +537,7 @@ def _readings(
                 conditional_text=(
                     conditional_text(row) if conditional_text is not None else None
                 ),
-                screen=(what, helpers["n_tested"]),
+                screen=(what, helpers["n_tested"], declared),
             )
         )
     return texts
@@ -591,7 +602,10 @@ def _resolve_edge_test(kind: str, test: Any, edge_weight: str) -> str:
     check_choice("test", test, TESTS)
 
     def error(message: str) -> InvalidParameterError:
-        return InvalidParameterError("test", test, list(TESTS), reason=message)
+        # the allowed values are the weight's; the exception adds its own period
+        return InvalidParameterError(
+            "test", test, list(accepted_tests(kind)), reason=message.rstrip(".")
+        )
 
     return resolve_test(kind, test, f"edge_weight {edge_weight!r}", error)
 
@@ -663,12 +677,16 @@ def ab_transitions(
             if value != default
         ]
         if ignored:
-            warnings.warn(
-                f"{', '.join(ignored)} apply only to the bootstrapped edge weights "
-                "(proba_out, proba_in, share_of_total, or test='bootstrap'); "
-                f"edge_weight={edge_weight!r} uses {test}, so they are ignored",
-                UserWarning,
-                stacklevel=3,
+            one = len(ignored) == 1
+            names = (
+                ignored[0] if one else f"{', '.join(ignored[:-1])} and {ignored[-1]}"
+            )
+            # at the caller's line: the tracking decorator adds frames
+            warn_user(
+                f"{names} {'applies' if one else 'apply'} only to the bootstrapped "
+                "edge weights (proba_out, proba_in, share_of_total, or "
+                f"test='bootstrap'); edge_weight={edge_weight!r} uses {test}, so "
+                f"{'it is' if one else 'they are'} ignored"
             )
     declared = None
     if edges is not None:
@@ -772,12 +790,13 @@ def ab_transitions(
         correction=correction,
         min_support=min_support,
         horizon=None if horizon is None else pop.window.horizon_length,
-        what="edges",
+        what="edge",
         conditional_text=(
             (lambda row: _conditional_text(edge_weight, row))
             if kind == "ratio"
             else None
         ),
+        declared=declared is not None,
     )
     present = [c for c in TRANSITION_COLUMNS if c in frame.columns]
     out = _order(frame[present])
@@ -836,8 +855,13 @@ def ab_steps(
     ci_level: float = 0.95,
     power: float = 0.8,
     min_support: int = 10,
+    path_pattern: Any = None,
+    anchor: Any = None,
 ) -> pd.DataFrame:
     """The table of ``Eventstream.get_ab_steps`` (see its docstring)."""
+    for name, value in (("path_pattern", path_pattern), ("anchor", anchor)):
+        if value is not None:
+            raise InvalidParameterError(name, value, ["None"], reason=_STEPS_FROM_START)
     if (
         isinstance(max_steps, bool)
         or not isinstance(max_steps, (int, np.integer))
@@ -917,7 +941,7 @@ def ab_steps(
         correction=correction,
         min_support=min_support,
         horizon=None if horizon is None else pop.window.horizon_length,
-        what="cells",
+        what="cell",
         conditional_text=None,
     )
     present = [c for c in STEP_COLUMNS if c in frame.columns]

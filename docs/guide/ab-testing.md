@@ -352,7 +352,9 @@ edges.attrs["n_tested"], edges["verdict"].value_counts().to_dict()
 | checkout_start | home | 0.0190 | 0.0060 | +1.30 pp | [+0.87, +1.75] | 2.6e-8 | increase |
 | checkout_start | payment | 0.2883 | 0.2877 | +0.06 pp | [−1.71, +1.84] | 0.98 | inconclusive |
 
-With the default `edge_weight="unique_paths"` a row is the share of assigned users
+A row that is not tested — below `min_support`, or without a p-value because its
+value is constant in both arms — is `insufficient_data`, so the other verdicts add
+up to `n_tested`. With the default `edge_weight="unique_paths"` a row is the share of assigned users
 whose path has the transition. Most discoveries restate the treatment itself
 (`quick_add` replaces `add_to_cart`); two are new. The `cart -> cart` self-loop
 exists in the treatment arm only — the curators' reopened carts of the strata above.
@@ -362,7 +364,9 @@ are abandoned, it does not stop anyone paying.
 
 Pass the frame to the graph to see it: `stream.transition_graph(diff=diff,
 ab_transitions=edges)` draws significant edges in their sign's colour, inconclusive
-ones grey, untested ones dashed and edges without a row in the frame faint, and its
+ones grey, untested ones dashed and edges without a row in the frame faint; it
+labels each edge with the frame's delta in pp and draws every row of the frame,
+also where the arms' path counts tie, and its
 tooltip shows the test's values (the arms' shares, not the graph's path counts),
 the interval and the adjusted p-value. `get_ab_steps(diff, max_steps=8, assignment=assignment)`
 does the same per step: 93 cells tested, `quick_add` higher and `add_to_cart` lower

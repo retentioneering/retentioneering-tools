@@ -394,7 +394,15 @@ def _compare(
         "delta_ci_high": np.asarray(dh, dtype=float),
     }
     if correction == "bonferroni":
-        low_adj, high_adj = ci_at(1 - mde_alpha)
+        if test == "bootstrap":
+            # a percentile at 1 - alpha / m needs far more than n_bootstrap
+            # replicates for a screen's m (it is the sample's min or max): the
+            # simultaneous interval is normal on the bootstrap SE, the basis of
+            # the p-value, so it excludes 0 exactly when p_value_adjusted < alpha
+            z = stats.norm.ppf(1 - mde_alpha / 2)
+            low_adj, high_adj = delta - z * se, delta + z * se
+        else:
+            low_adj, high_adj = ci_at(1 - mde_alpha)
         out["delta_ci_low_adj"] = np.asarray(low_adj, dtype=float)
         out["delta_ci_high_adj"] = np.asarray(high_adj, dtype=float)
     out.update(

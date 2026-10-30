@@ -1144,7 +1144,12 @@ class Eventstream:
 
             - `"bh"` — Benjamini-Hochberg (false discovery rate), for a screen.
             - `"holm"` — Holm step-down (family-wise error).
-            - `"bonferroni"` — Bonferroni; adds simultaneous intervals.
+            - `"bonferroni"` — Bonferroni; adds simultaneous intervals
+              (`delta_ci_low_adj`, `delta_ci_high_adj`) at `1 - alpha / n_tested`:
+              Newcombe or Welch for the per-path weights, `delta ± z · delta_se`
+              for the bootstrapped ratios (a percentile that far in the tail is
+              beyond what `n_bootstrap` replicates resolve), so they exclude 0
+              exactly when `p_value_adjusted < alpha`.
             - `"none"` — no correction.
         ci_level : float, default 0.95
             Level of the per-edge intervals (not simultaneous); `1 - ci_level` is

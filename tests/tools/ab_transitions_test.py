@@ -352,6 +352,29 @@ class TestNorthwindPlantedTruth:
             assert len(frame) > 6000 and frame.attrs["n_tested"] > 2000
 
 
+class TestBonferroni:
+    @pytest.mark.parametrize("weight", ["unique_paths", "proba_out"])
+    def test_simultaneous_intervals_agree_with_the_adjusted_p(
+        self, stream, weight
+    ) -> None:
+        frame = stream.get_ab_transitions(
+            DIFF, weight, correction="bonferroni", n_bootstrap=300
+        )
+        tested = frame[frame["p_value_adjusted"].notna()]
+        excludes = (tested["delta_ci_low_adj"] > 0) | (tested["delta_ci_high_adj"] < 0)
+        assert excludes.tolist() == (tested["p_value_adjusted"] < 0.05).tolist()
+        assert (tested["delta_ci_low_adj"] <= tested["delta_ci_low"]).all()
+        if weight == "proba_out":
+            from scipy import stats
+
+            z = stats.norm.ppf(1 - 0.05 / tested.attrs["n_tested"] / 2)
+            np.testing.assert_allclose(
+                tested["delta_ci_high_adj"] - tested["delta"],
+                z * tested["delta_se"],
+                rtol=1e-9,
+            )
+
+
 class TestRatioBootstrap:
     """A ratio row's replicates are those of its own numerator and denominator."""
 

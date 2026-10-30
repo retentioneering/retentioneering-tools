@@ -459,4 +459,3 @@ R=1000; B=1999; seed=214202611; gamma=0.7.
 | money_reversed_effect | welch | 1000/1000 | 79.70 [77.07, 82.15] | 5.30 [3.99, 6.88] | 49.6 / 505 |
 
 Rejection is false-positive rate only for `_null` and deterministic zero/one boundary scenarios; under `_effect` it is power.
-

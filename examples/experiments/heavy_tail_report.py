@@ -117,7 +117,7 @@ def render(paths):
             lines.append(
                 f"| {s['scenario']['name']} | {name} | {percentage(test['availability'])} | {percentage(test['rejection_all'])} |"
             )
-    return "\n".join(lines) + "\n"
+    return "\n".join(lines).rstrip() + "\n"
 
 
 if __name__ == "__main__":

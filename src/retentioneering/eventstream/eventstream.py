@@ -1070,6 +1070,259 @@ class Eventstream:
             path_col=path_col,
         )
 
+    @_tracked("get_ab_transitions")
+    def get_ab_transitions(
+        self,
+        diff: T_Diff,
+        edge_weight: str = "unique_paths",
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
+        path_col: str | None = None,
+        edges: list | None = None,
+        test: str = "auto",
+        correction: str = "bh",
+        ci_level: float = 0.95,
+        power: float = 0.8,
+        n_bootstrap: int = 1000,
+        bootstrap_weights: str = "multinomial",
+        min_support: int = 10,
+        random_state: int = 42,
+    ) -> pd.DataFrame:
+        """
+        Test every transition-graph edge between two arms: which transitions differ.
+
+        One row per edge `source -> target` (the synthetic `path_start` / `path_end`
+        included) with each arm's value of `edge_weight`, the delta with its
+        interval, a p-value adjusted over the tested edges (Benjamini-Hochberg by
+        default), a verdict and a `reading`. Arms, population, unit guard and
+        `horizon` are `get_ab_test`'s; an arm's value equals the matrix
+        `transition_graph_data(edge_weight, diff=...)` draws for it on the stream's
+        paths (for `unique_paths` the graph counts paths, the row gives their
+        share). An exploratory screen, read after the scorecard: a discovery is a
+        hypothesis for a declared metric of a new test. Pass the frame to
+        `transition_graph(diff=..., ab_transitions=...)` to highlight it.
+
+        Parameters
+        ----------
+        diff : tuple
+            As in `get_ab_test`: `("segment_col", group1, group2)` or `(ids1,
+            ids2)`, resolved per path; `delta = group1 - group2`.
+        edge_weight : {"unique_paths", "avg_per_path", "proba_out", "proba_in", "share_of_total"}, default "unique_paths"
+            The per-path quantity compared.
+
+            - `"unique_paths"` — 0/1: the path has the transition; the share of
+              paths, pooled z-test with a Newcombe interval.
+            - `"avg_per_path"` — the transition's count per path; Welch's t-test.
+            - `"proba_out"` — transitions `source -> target` over all transitions
+              out of `source`; a ratio of sums, joint path bootstrap.
+            - `"proba_in"` — over all transitions into `target`; bootstrap.
+            - `"share_of_total"` — over all transitions; bootstrap.
+
+            The last three are conditional on post-treatment behaviour (their
+            denominators are behaviour the treatment may change; `conditional=True`).
+            `"count"` raises (it grows with the arm's size: use `"avg_per_path"`);
+            `"time_median"` and `"time_q95"` are not tested in this release.
+        assignment : pandas.Series or pandas.DataFrame, optional
+            As in `get_ab_test`: the intention-to-treat population. Silent assigned
+            paths count with no transition, so per-path weights have the table's
+            denominators, not the graph's.
+        horizon : str or pandas.Timedelta, optional
+            As in `get_ab_test`: events in `[assigned_at, assigned_at + horizon)`
+            only, paths with an open window left out (`immature_paths`).
+        path_col : str, optional
+            The randomised unit; defaults to `schema.path_col`.
+        edges : list of tuple, optional
+            `[(source, target), ...]`: test only these edges, declared before the
+            test (a confirmatory family); rows for them only. Events must exist in
+            the stream (or be `path_start` / `path_end`).
+        test : {"auto", "z_test", "welch_t_test", "bootstrap"}, default "auto"
+            `"auto"` is the test of the weight above; `"z_test"` fits only
+            `"unique_paths"`, ratios take only `"bootstrap"`.
+        correction : {"bh", "holm", "bonferroni", "none"}, default "bh"
+            Over the tested edges, one family.
+
+            - `"bh"` — Benjamini-Hochberg (false discovery rate), for a screen.
+            - `"holm"` — Holm step-down (family-wise error).
+            - `"bonferroni"` — Bonferroni; adds simultaneous intervals.
+            - `"none"` — no correction.
+        ci_level : float, default 0.95
+            Level of the per-edge intervals (not simultaneous); `1 - ci_level` is
+            the verdict's alpha.
+        power : float, default 0.8
+            Power used for `mde`.
+        n_bootstrap : int, default 1000
+            Replicates for the bootstrap weights, at least 100.
+        bootstrap_weights : {"multinomial", "poisson"}, default "multinomial"
+            Resampling scheme of the bootstrap.
+
+            - `"multinomial"` — resample each arm's paths with replacement.
+            - `"poisson"` — a Poisson(1) weight per path.
+        min_support : int, default 10
+            Pooled paths with the transition below which an edge is
+            `"insufficient_data"`: reported, not tested, not in the family (for
+            `unique_paths` the pooled paths without it too).
+        random_state : int, default 42
+            Seed of the bootstrap.
+
+        Returns
+        -------
+        pandas.DataFrame
+            One row per edge seen in a compared path (per declared edge with
+            `edges`), sorted by `p_value_adjusted` (untested last), then `|delta|`;
+            * marks optional columns.
+
+            - `source`, `target`, `edge_weight`; `group1_edge_paths`,
+              `group2_edge_paths` (paths with the transition).
+            - `population` (`"assignment"` or `"stream"`), `group1_paths`,
+              `group2_paths`, `group1_support`, `group2_support` (paths with a
+              value: for a probability, paths with a transition out of `source`
+              or into `target`), `conditional`, `group1_silent_paths`*,
+              `group2_silent_paths`*, `unassigned_paths`, `immature_paths`*.
+            - `group1_value`, `group2_value`, `delta`, `delta_se`, `delta_ci_low`,
+              `delta_ci_high` (per edge), `delta_ci_low_adj`*, `delta_ci_high_adj`*
+              (Bonferroni), `rel_delta`.
+            - `p_value`, `p_value_adjusted`, `correction_family`, `mde_alpha`,
+              `mde`, `rel_mde`, `verdict` (as in `get_ab_test`), `test`,
+              `ci_basis`, `p_basis`, `valid_replicates`, `support_warning`.
+            - `reading`: the row in one sentence, with the family size.
+
+            `attrs` holds `n_tested` (the family size), `correction`, `ci_level`,
+            `edge_weight`, the arms and `diff`. An absent estimate is NaN, never 0.
+
+        Raises
+        ------
+        DiffConfigError, InvalidParameterError, EmptyEventstreamError
+            As in `get_ab_test`; an `edge_weight`, `test` or `edges` it does not
+            take raises `InvalidParameterError`.
+
+        Examples
+        --------
+            edges = stream.get_ab_transitions(("exp_group", "treatment", "control"))
+            edges[edges["verdict"] != "inconclusive"][
+                ["source", "target", "delta", "delta_ci_low", "delta_ci_high",
+                 "p_value_adjusted", "verdict"]]
+
+            # ITT, each user's first 28 days, transition probabilities
+            stream.get_ab_transitions(("arm", "treatment", "control"), "proba_out",
+                                      assignment=assignment, horizon="28D")
+
+            # highlight the significant edges in the diff graph
+            stream.transition_graph(diff=("exp_group", "treatment", "control"),
+                                    ab_transitions=edges)
+        """
+        from retentioneering.tools.ab_transitions import ab_transitions
+
+        return ab_transitions(
+            self,
+            diff,
+            edge_weight,
+            assignment=assignment,
+            horizon=horizon,
+            path_col=path_col,
+            edges=edges,
+            test=test,
+            correction=correction,
+            ci_level=ci_level,
+            power=power,
+            n_bootstrap=n_bootstrap,
+            bootstrap_weights=bootstrap_weights,
+            min_support=min_support,
+            random_state=random_state,
+        )
+
+    @_tracked("get_ab_steps")
+    def get_ab_steps(
+        self,
+        diff: T_Diff,
+        max_steps: int = 10,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
+        path_col: str | None = None,
+        correction: str = "bh",
+        ci_level: float = 0.95,
+        power: float = 0.8,
+        min_support: int = 10,
+    ) -> pd.DataFrame:
+        """
+        Test every step-matrix cell between two arms: which events at which step differ.
+
+        One row per cell `(event, step)`: the share of each arm's paths whose
+        `step`-th event is `event` (`path_end`: the path has fewer events, as the
+        step matrix's last row), the delta with its Newcombe interval, a pooled
+        z-test adjusted over the tested cells (Benjamini-Hochberg by default), a
+        verdict and a `reading`. Arms, population, unit guard and `horizon` are
+        `get_ab_test`'s; an arm's value equals `step_matrix_data(max_steps,
+        diff=...)` for it on the stream's paths. An exploratory screen, read after
+        the scorecard: a discovery is a hypothesis for a declared metric of a new
+        test. Steps count from each path's start; to compare around an event, cut
+        the paths with `truncate_paths` first (no `path_pattern` or `anchor`).
+
+        Parameters
+        ----------
+        diff : tuple
+            As in `get_ab_test`; `delta = group1 - group2`.
+        max_steps : int, default 10
+            Steps compared, from 1 (the first event) to `max_steps`.
+        assignment : pandas.Series or pandas.DataFrame, optional
+            As in `get_ab_test`. A silent assigned path is in the denominators and
+            has ended at step 1 (`path_end`).
+        horizon : str or pandas.Timedelta, optional
+            As in `get_ab_test`.
+        path_col : str, optional
+            The randomised unit; defaults to `schema.path_col`.
+        correction : {"bh", "holm", "bonferroni", "none"}, default "bh"
+            Over the tested cells, one family.
+
+            - `"bh"` — Benjamini-Hochberg (false discovery rate), for a screen.
+            - `"holm"` — Holm step-down (family-wise error).
+            - `"bonferroni"` — Bonferroni; adds simultaneous intervals.
+            - `"none"` — no correction.
+        ci_level : float, default 0.95
+            Level of the per-cell intervals (not simultaneous); `1 - ci_level` is
+            the verdict's alpha.
+        power : float, default 0.8
+            Power used for `mde`.
+        min_support : int, default 10
+            Pooled paths with the event at the step (and pooled paths without it)
+            below which a cell is `"insufficient_data"`: reported, not tested.
+
+        Returns
+        -------
+        pandas.DataFrame
+            One row per cell seen in a compared path, sorted by
+            `p_value_adjusted` (untested last), then `|delta|`. Columns `event`,
+            `step` and the statistic columns of `get_ab_transitions` (without its
+            edge columns; `conditional` is False). `attrs` holds `n_tested`,
+            `correction`, `ci_level`, `max_steps`, the arms and `diff`.
+
+        Raises
+        ------
+        DiffConfigError, InvalidParameterError, EmptyEventstreamError
+            As in `get_ab_test`; `max_steps` below 1 raises
+            `InvalidParameterError`.
+
+        Examples
+        --------
+            cells = stream.get_ab_steps(("exp_group", "treatment", "control"), max_steps=8)
+            cells[cells["verdict"].isin(["increase", "decrease"])]
+        """
+        from retentioneering.tools.ab_transitions import ab_steps
+
+        return ab_steps(
+            self,
+            diff,
+            max_steps,
+            assignment=assignment,
+            horizon=horizon,
+            path_col=path_col,
+            correction=correction,
+            ci_level=ci_level,
+            power=power,
+            min_support=min_support,
+        )
+
     @_tracked("headless_describe")
     def describe(
         self,

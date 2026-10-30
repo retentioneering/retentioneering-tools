@@ -3035,6 +3035,7 @@ class Eventstream:
         label_scale=None,
         views=None,
         view=None,
+        ab_transitions=None,
         state_file=None,
     ):
         """
@@ -3083,6 +3084,17 @@ class Eventstream:
             View applied once after the graph is built: a view dict (`name`
             not required), or the name of an entry in `views`. See the
             [Views](/docs/widgets/transition-graph#views) section.
+        ab_transitions : pandas.DataFrame, optional
+            A `get_ab_transitions` frame (rows may be filtered) to highlight in
+            diff mode: significant edges in the colour of their sign and never
+            hidden by the edge filter, inconclusive edges grey, untested edges
+            grey and dashed; the edge tooltip adds the delta, its interval, the
+            adjusted p-value and the verdict. Needs the frame's `diff` (the same
+            groups in the same order; a frame computed on `("arm", ...)` with an
+            assignment table matches the arm segment) and its `edge_weight`
+            (the default when `edge_weight` is not given). The frame is the
+            data: there is no `_data` twin. Changing the weight or the diff in
+            the sidebar hides the overlay until they match again.
         state_file : str, optional
             JSON file the widget state is bound to; see
             [Saving widget state](/docs/widgets#saving-widget-state).
@@ -3097,6 +3109,9 @@ class Eventstream:
                 views=[{"name": "Checkout", "focus": {"type": "node", "event": "cart"}}],
                 view="Checkout",
             )
+            edges = stream.get_ab_transitions(("exp_group", "treatment", "control"))
+            stream.transition_graph(diff=("exp_group", "treatment", "control"),
+                                    ab_transitions=edges)
         """
         from retentioneering.widgets.transition_graph import (
             TransitionGraphWidget,
@@ -3122,6 +3137,7 @@ class Eventstream:
             label_scale=label_scale if label_scale is not None else _UNSET,
             views=views if views is not None else _UNSET,
             view=view if view is not None else _UNSET,
+            ab_transitions=ab_transitions if ab_transitions is not None else _UNSET,
             state_file=state_file,
         )
 

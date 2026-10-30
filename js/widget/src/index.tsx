@@ -14,6 +14,8 @@ import {
   parseGraphView,
   decodeGraphView,
   DEFAULT_VALUE_TYPE,
+  parseAbTransitions,
+  abPayloadApplies,
 } from "@retentioneering/viz-core";
 
 function SidebarToggle({ onClick }: { onClick: () => void }) {
@@ -99,6 +101,13 @@ export function render({ host, el, isStatic = false }: RenderContext) {
     const [isLoading, setIsLoading]     = React.useState<boolean>(() => (host.get("is_loading") as boolean) ?? false);
     const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(() => (host.get("sidebar_open") as boolean) ?? true);
     const fitRef = React.useRef<(() => void) | undefined>(undefined);
+    // get_ab_transitions overlay: drawn only while the graph shows the edge
+    // weight and the diff it was computed for (the sidebar can change both)
+    const [abPayload, setAbPayload] = React.useState(() => parseAbTransitions(host.get("ab_transitions")));
+    const currentDiff = diffSegment != null && diffValue1 != null && diffValue2 != null
+      ? [diffSegment, diffValue1, diffValue2]
+      : null;
+    const abApplies = abPayloadApplies(abPayload, valuesType, currentDiff);
 
     // Sync event visibility (hidden/pinned) to Python whenever store changes
     React.useEffect(() => {
@@ -161,6 +170,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
         const p = parseJson<Record<string, StoredPosition>>(host.get("node_positions"), {});
         if (Object.keys(p).length > 0) setInitPos(p);
       }],
+      ["ab_transitions", () => setAbPayload(parseAbTransitions(host.get("ab_transitions")))],
       ["diff", () => {
         const d = parseJson<string[]>(host.get("diff") || "[]", []);
         setDiffSegment(d[0] ?? null); setDiffValue1(d[1] ?? null); setDiffValue2(d[2] ?? null);
@@ -290,7 +300,18 @@ export function render({ host, el, isStatic = false }: RenderContext) {
           views={graphViews}
           initialView={initialGraphView}
           applyViewRef={applyViewRef}
+          abTransitions={abApplies ? abPayload : null}
         />
+        {abPayload && !abApplies && (
+          <div data-testid="ab-inactive" style={{
+            position: "absolute", top: 10, left: 12, zIndex: 20, maxWidth: 360,
+            padding: "4px 8px", borderRadius: 6, fontSize: 11, color: "#6b7280",
+            background: "rgba(243,244,246,0.92)", border: "1px solid #e5e7eb",
+          }}>
+            Significance (ab_transitions) is for edge weight {abPayload.edge_weight} and the
+            diff it was computed with; switch back to see it.
+          </div>
+        )}
         <SidebarToggle onClick={handleToggleSidebar} />
         {isLoading && <ComputingSpinner opacity={0.55} />}
       </div>

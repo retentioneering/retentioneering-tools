@@ -1050,6 +1050,7 @@ def transitions_payload(frame: Any, diff: Any, edge_weight: str | None) -> dict:
         "ci_level": meta.get("ci_level"),
         "n_tested": meta.get("n_tested"),
         "population": meta.get("population"),
+        "path_col": meta.get("path_col"),
         "group1_label": meta.get("group1_label"),
         "group2_label": meta.get("group2_label"),
         "edges": edges,

@@ -13,9 +13,11 @@ interface Props {
   diffValue: number | null;
   isDark?: boolean;
   isTime?: boolean;
+  /** Extra label/value rows below the diff (the A/B significance overlay). */
+  extraLines?: { label: string; value: string }[];
 }
 
-export function DiffBreakdownTooltip({ title, subtitle, segmentName, value1Label, value2Label, group1Value, group2Value, diffValue, isDark = true, isTime = false }: Props) {
+export function DiffBreakdownTooltip({ title, subtitle, segmentName, value1Label, value2Label, group1Value, group2Value, diffValue, isDark = true, isTime = false, extraLines }: Props) {
   const formatDuration = (value: number | null) =>
     value === null || !Number.isFinite(value) ? "-" : value === 0 ? "0ms" : formatTime(value);
   const format = isTime ? formatDuration : formatExactNumber;
@@ -41,6 +43,17 @@ export function DiffBreakdownTooltip({ title, subtitle, segmentName, value1Label
           <span style={{ fontWeight: 500, color: text }}>diff ({value1Label} − {value2Label})</span>
           <span style={{ fontFamily: "monospace", fontWeight: 600, color: diffColor }}>{signed(resolved)}</span>
         </div>
+        {extraLines && extraLines.length > 0 && (
+          <>
+            <div style={{ borderTop: `1px solid ${border}`, margin: "2px 0" }} />
+            {extraLines.map((line) => (
+              <div key={line.label} data-testid="ab-tooltip-line" style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
+                <span style={{ color: muted }}>{line.label}</span>
+                <span style={{ fontFamily: "monospace", color: text }}>{line.value}</span>
+              </div>
+            ))}
+          </>
+        )}
       </div>
     </div>
   );

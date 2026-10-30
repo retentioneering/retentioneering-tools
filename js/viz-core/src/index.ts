@@ -30,3 +30,13 @@ export { MATRIX_VALUE_TYPES, DEFAULT_VALUE_TYPE, isTimeValueType, isProbabilityV
 export type { MatrixValueType } from "./utils/value-types";
 export { resolveDiffLabels } from "./utils/diff-tooltip";
 export type { DiffLabels } from "./utils/diff-tooltip";
+export {
+  parseAbTransitions,
+  abPayloadApplies,
+  abEdgeIndex,
+  abEdgeClass,
+  abEdgeLook,
+  abTooltipLines,
+  abLegendText,
+} from "./utils/ab-transitions";
+export type { AbTransitionsPayload, AbEdgeStat, AbEdgeClass } from "./utils/ab-transitions";

@@ -9,6 +9,7 @@ is absent; CI runs it with Chromium on Python 3.12.
 import os
 import re
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -154,6 +155,92 @@ def test_millisecond_diff_hover_and_ego_keep_units(tmp_path, path_groups):
                         has_text=re.compile(r"^" + re.escape(value) + r"$")
                     )
                 ).to_be_visible()
+            assert not errors
+        finally:
+            browser.close()
+
+
+def test_ab_transitions_overlay_styles_edges_and_tooltip(tmp_path):
+    rng = np.random.default_rng(0)
+    rows = []
+    for user in range(200):
+        arm = "A" if user % 2 else "B"
+        events = ["home", "catalog"]
+        if arm == "A" and rng.random() < 0.6:
+            events += ["quick_add", "cart"]
+        elif rng.random() < 0.3:
+            events += ["add_to_cart", "cart"]
+        for i, event in enumerate(events):
+            rows.append(
+                (user, event, pd.Timestamp("2024-01-01") + pd.Timedelta(i, "min"), arm)
+            )
+    stream = Eventstream(
+        pd.DataFrame(rows, columns=["user_id", "event", "timestamp", "arm"]),
+        schema={"segment_cols": ["arm"]},
+    )
+    diff = ("arm", "A", "B")
+    frame = stream.get_ab_transitions(diff)
+    export = tmp_path / "ab.html"
+    stream.transition_graph(diff=diff, ab_transitions=frame, height=600).export_html(
+        str(export)
+    )
+    with playwright.sync_playwright() as runtime:
+        browser = runtime.chromium.launch(
+            executable_path=os.environ.get("RETENTIONEERING_TEST_CHROME")
+        )
+        try:
+            page = browser.new_page(viewport={"width": 1280, "height": 850})
+            errors = []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.goto(export.as_uri())
+            page.locator("#retentioneering-root canvas").first.wait_for(state="visible")
+            _drain_frames(page)
+            looks = page.evaluate(
+                """() => {
+                    const cy = [...document.querySelectorAll('*')].find(e => e.__cy).__cy;
+                    const out = {};
+                    cy.edges().forEach(e => {
+                        out[e.data('source') + '>' + e.data('target')] = {
+                            color: e.data('baseColor'), dashed: !!e.data('abDashed'),
+                            size: e.data('edgeSize'), filtered: e.hasClass('filtered'),
+                        };
+                    });
+                    return out;
+                }"""
+            )
+            verdicts = {
+                f"{s}>{t}": v
+                for s, t, v in zip(frame["source"], frame["target"], frame["verdict"])
+            }
+            assert verdicts["catalog>quick_add"] == "increase"
+            assert looks["catalog>quick_add"]["color"] == "239, 68, 68"
+            assert not looks["catalog>quick_add"]["filtered"]
+            assert verdicts["catalog>path_end"] == "decrease"
+            assert looks["catalog>path_end"]["color"] == "59, 130, 246"
+            for key, look in looks.items():
+                if verdicts.get(key) in ("insufficient_data", None):
+                    assert look["dashed"], key
+                elif verdicts[key] == "inconclusive":
+                    assert look["color"] == "156, 163, 175" and not look["dashed"]
+            point = page.evaluate(
+                """() => {
+                    const cy = [...document.querySelectorAll('*')].find(e => e.__cy).__cy;
+                    const edge = cy.edges().filter(e => e.data('source') === 'catalog' && e.data('target') === 'quick_add');
+                    const p = edge.renderedMidpoint(), r = cy.container().getBoundingClientRect();
+                    return {x: r.x + p.x, y: r.y + p.y};
+                }"""
+            )
+            page.mouse.move(point["x"], point["y"])
+            playwright.expect(
+                page.locator('[data-testid="ab-tooltip-line"]').filter(
+                    has_text="verdict"
+                )
+            ).to_contain_text("increase")
+            playwright.expect(
+                page.locator('[data-testid="ab-tooltip-line"]').filter(
+                    has_text="adjusted p"
+                )
+            ).to_be_visible()
             assert not errors
         finally:
             browser.close()

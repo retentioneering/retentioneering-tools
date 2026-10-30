@@ -83,6 +83,14 @@ See also [Agent Skills](/docs/agent-skills) — instruction packages for coding 
 | `check_analysis(analysis)` | Validate analysis text before export. |
 | `export_report(title, analysis, path)` | Generate a self-contained HTML report. |
 
+The same list is available from Python without starting a server, as the agent would read it:
+
+```python
+from retentioneering.mcp import list_tools
+
+list_tools()  # [{"name": "load_data", "description": "...", "parameters": [...]}, ...]
+```
+
 ## Documentation MCP server
 
 Everything above describes the server that runs **on your machine, over your

@@ -154,13 +154,16 @@ def reset_base_stream(session: Any) -> dict:
     }
 
 
-def playbook(scenario: str = "") -> dict:
+def playbook(scenario: str = "") -> str | dict:
     """
     Return the canonical recipe for a named analysis scenario.
     Call this when you recognise a pattern in the user's question but need
     the step-by-step procedure. Do NOT improvise — look it up here first.
 
     Pass "" (empty) to list all available scenarios.
+
+    Returns the scenario's recipe as markdown text, or, for "" or an unknown
+    scenario, the index: {"usage": ..., "scenarios": [...]}.
     """
     return _PLAYBOOK.get(scenario.strip(), _playbook_index())
 

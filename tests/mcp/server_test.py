@@ -1,8 +1,11 @@
 """Tests for module-level MCP server helpers."""
 
+import asyncio
+
 import pandas as pd
 
 from retentioneering.eventstream.eventstream import Eventstream
+from retentioneering.mcp import list_tools, tools
 from retentioneering.mcp.server import _apply_preprocessors, _find_unlinked_numbers
 
 
@@ -96,3 +99,33 @@ class TestFindUnlinkedNumbers:
         )
 
         assert issues == []
+
+
+class TestListTools:
+    def test__lists_every_registered_tool_with_its_arguments(self) -> None:
+        rows = list_tools()
+        names = [row["name"] for row in rows]
+        assert names[0] == "load_data" and "export_report" in names
+        assert len(names) == len(set(names))
+        by_name = {row["name"]: row for row in rows}
+        assert by_name["playbook"]["parameters"] == ["scenario"]
+        assert by_name["reset_base_stream"]["parameters"] == []
+        # required arguments come first
+        assert by_name["export_report"]["parameters"][:2] == ["title", "analysis"]
+        assert all(row["description"] for row in rows)
+        assert all("\n" not in row["description"] for row in rows)
+
+    def test__works_under_a_running_event_loop(self) -> None:
+        async def from_a_notebook() -> list[dict]:
+            return list_tools()
+
+        assert asyncio.run(from_a_notebook()) == list_tools()
+
+
+class TestPlaybook:
+    def test__a_scenario_is_text_and_the_index_is_a_dict(self) -> None:
+        index = tools.playbook("")
+        assert isinstance(index, dict) and index["scenarios"]
+        recipe = tools.playbook(index["scenarios"][0])
+        assert isinstance(recipe, str) and recipe
+        assert tools.playbook("no such scenario") == index

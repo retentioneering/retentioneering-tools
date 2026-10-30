@@ -1,0 +1,81 @@
+{
+  "total": 11,
+  "failures": [
+    {
+      "name": "constant_ratio_has_no_inferential_p",
+      "passed": false,
+      "detail": {
+        "p_value": 0.0,
+        "delta_se": 2.77694638204588e-17,
+        "expected": "non-finite p; identical exact bootstrap contrasts"
+      }
+    }
+  ],
+  "checks": [
+    {
+      "name": "constant_ratio_has_no_inferential_p",
+      "passed": false,
+      "detail": {
+        "p_value": 0.0,
+        "delta_se": 2.77694638204588e-17,
+        "expected": "non-finite p; identical exact bootstrap contrasts"
+      }
+    },
+    {
+      "name": "welch_independent_se",
+      "passed": true,
+      "detail": {
+        "actual": 1.346291201783626,
+        "expected": 1.346291201783626
+      }
+    },
+    {
+      "name": "welch_independent_p",
+      "passed": true,
+      "detail": {
+        "actual": 0.05882047485441337,
+        "expected": 0.05882047485441337
+      }
+    },
+    {
+      "name": "unit_guard/get_ab_transitions/table=False",
+      "passed": true,
+      "detail": "Invalid value 'session_id' for parameter 'path_col': 'arm' is constant within every user_id (24 of them hold several session_id paths), so user_id is the randomised unit; per-session_id intervals would treat correlated paths of one user_id as independent and come out too narrow (Deng et al. 2018). If session_ids were randomised one by one, pass the assignment table indexed by 'session_id'. Allowed values: [\"'user_id'\", \"an assignment table indexed by 'session_id'\"]"
+    },
+    {
+      "name": "unit_guard/get_ab_transitions/table=True",
+      "passed": true,
+      "detail": "Invalid value 'session_id' for parameter 'path_col'. Allowed values: [\"'user_id' \u2014 the assignment table lists user_id ids, so user_id is the randomised unit; per-session_id intervals would treat correlated paths of one user_id as independent and come out too narrow (Deng et al. 2018)\"]"
+    },
+    {
+      "name": "unit_guard/get_ab_steps/table=False",
+      "passed": true,
+      "detail": "Invalid value 'session_id' for parameter 'path_col': 'arm' is constant within every user_id (24 of them hold several session_id paths), so user_id is the randomised unit; per-session_id intervals would treat correlated paths of one user_id as independent and come out too narrow (Deng et al. 2018). If session_ids were randomised one by one, pass the assignment table indexed by 'session_id'. Allowed values: [\"'user_id'\", \"an assignment table indexed by 'session_id'\"]"
+    },
+    {
+      "name": "unit_guard/get_ab_steps/table=True",
+      "passed": true,
+      "detail": "Invalid value 'session_id' for parameter 'path_col'. Allowed values: [\"'user_id' \u2014 the assignment table lists user_id ids, so user_id is the randomised unit; per-session_id intervals would treat correlated paths of one user_id as independent and come out too narrow (Deng et al. 2018)\"]"
+    },
+    {
+      "name": "filtered_frame_preserves_family",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "overlay_mismatch/{'diff': ('arm', 'control', 'treatment')}",
+      "passed": true,
+      "detail": "Invalid value '('arm', 'control', 'treatment')' for parameter 'diff': ab_transitions was computed for group1='treatment', group2='control'; the graph's groups must be the same, in the same order (the delta's sign depends on it). Allowed values: [('arm', 'treatment', 'control')]"
+    },
+    {
+      "name": "overlay_mismatch/{'diff': ('arm', 'treatment', 'control'), 'edge_weight': 'proba_out'}",
+      "passed": true,
+      "detail": "Invalid value 'proba_out' for parameter 'edge_weight': ab_transitions tests edge_weight='unique_paths'; the graph must draw the same weight. Allowed values: ['unique_paths']"
+    },
+    {
+      "name": "overlay_mismatch/{'diff': ('arm', 'treatment', 'control'), 'path_pattern': 'A'}",
+      "passed": true,
+      "detail": "Invalid value 'A' for parameter 'path_pattern': ab_transitions was computed on every path of the arms; a graph of the paths matching a pattern draws other numbers, and selecting paths by post-exposure behaviour breaks the randomisation. Cut the paths before both calls instead. Allowed values: ['None with ab_transitions']"
+    }
+  ]
+}

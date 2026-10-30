@@ -1,0 +1,26 @@
+[
+  {
+    "stratum":"a",
+    "test":"fisher_exact",
+    "p_basis":"fisher_exact_two_sided",
+    "p_value":0.2015968064,
+    "delta":0.8,
+    "delta_se":0.0178885438,
+    "stratum_vs_rest_p_value":0.0,
+    "heterogeneity_p_value":null,
+    "balance_p_value":1.0,
+    "verdict":"inconclusive"
+  },
+  {
+    "stratum":"b",
+    "test":"fisher_exact",
+    "p_basis":"fisher_exact_two_sided",
+    "p_value":1.0,
+    "delta":-0.2,
+    "delta_se":0.0178885438,
+    "stratum_vs_rest_p_value":0.0,
+    "heterogeneity_p_value":null,
+    "balance_p_value":1.0,
+    "verdict":"inconclusive"
+  }
+]

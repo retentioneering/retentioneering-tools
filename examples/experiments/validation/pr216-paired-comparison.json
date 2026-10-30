@@ -1,0 +1,8 @@
+{
+  "old_implementation_sha256": "01c7188b5fb70aad08b882005c83c7892e1f173c4b8b5f985d362837ced29678",
+  "new_implementation_sha256": "4c2aa0df35d61db1f5685477deea7916efa7a6db2df7a23bad1b74392130802e",
+  "trials_per_scenario": 100,
+  "resamples": 999,
+  "scenario_count": 15,
+  "changed_rows": []
+}

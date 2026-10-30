@@ -1,0 +1,174 @@
+{% extends "_tool_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+The two arms are sets of paths: `diff` is resolved per path, and a path that
+would fall in both arms raises an error instead of being counted twice. With an
+`assignment` table the population is intention-to-treat — every assigned path,
+including those with no events (they count as zeros), with events before
+`assigned_at` dropped. Without it the population is the stream's paths, each
+with at least one event. The `population` column says which (`"assignment"` or
+`"stream"`; `"active"` on `period_population="active"` rows, which compare the
+survivors of a period), so a funnel's rate on the stream can be told apart from
+the ITT rate. A metric that has a value only for some paths (`time_between`,
+`column_mean`, a ratio such as order value) compares those paths, not the whole
+arms: `group1_support` / `group2_support` count them and `conditional` flags
+the row.
+
+The path grain must be an independent analysis unit compatible with randomisation. The
+scorecard, bootstrap, per-path table and sample-ratio check require the coarsest declared
+path grain for every diff form, even with an assignment table or a small sample. Funnel
+and conversion intervals use the same rule. A finer-grain assignment table cannot establish
+independence between nested paths. For genuinely independent session-level designs, declare
+sessions as the primary schema grain; changing schema order alone cannot repair dependence.
+Ordinary metrics and point-only funnels remain available at finer grains.
+
+Known binary outcomes default to Fisher exact inference, with Clopper–Pearson
+arm intervals and a conservative difference formed by splitting alpha across the
+arms. That difference is not a Fisher-test inversion. Nonbinary outcomes default
+to descriptive estimates, without p-values, intervals or MDE. Approximate Welch
+and whole-unit bootstrap require explicit nonbinary requests; known-binary Welch
+and scorecard bootstrap reject. Explicit binary z inference requires at least
+five pooled-null expected successes and failures per arm and remains approximate.
+Relative intervals are withheld on the exact Fisher path.
+
+The verdict reads the adjusted p-value; intervals are per comparison unless an
+available Bonferroni interval is requested. Holm includes all declared rows,
+including unavailable hypotheses. BH requires independence or PRDS. Separate
+calls and repeated looks are not automatically corrected. MDE, when available,
+is labeled `normal_approximation`, not actual Fisher-test power. See the
+[supported inference boundary](/docs/ab-testing#supported-inference).
+
+### Assignment ids and time
+
+Table ids are matched to `path_col` as they are, or by their string form when
+none matches as is (ids read from JSON or CSV). An unnamed table with no matches raises
+`InvalidParameterError`. A table explicitly indexed by `path_col` may validly
+contain only silent assigned units; it warns, preserves them and returns no-data
+rows. Check id spelling before interpreting this as silence; fewer than half of the table's ids matched gives a
+`UserWarning` with the counts — right when most assigned paths never produced an
+event, wrong when the ids are spelled differently. A table whose index is named
+after a coarser path column (user ids, with `path_col="session_id"`) or after a
+finer one (`session_id` read per user) raises; an unnamed index whose ids are
+more often ids of a finer column warns.
+
+A naive `assigned_at` on a tz-aware stream is read in the stream's timezone: a
+wall time skipped by a daylight-saving change moves forward, and one that occurs
+twice (the hour the clocks go back) raises — pass a tz-aware `assigned_at`. A
+tz-aware one is converted to the stream's timezone; on a naive stream it raises.
+
+### Periods and windows
+
+Calendar periods (`period_basis="calendar"`) are bins of the event timestamp in
+the stream's timezone: `"D"`, `"W"`, `"M"`, `"Q"`, `"Y"` (`"W-MON"` etc. pick the
+week's end; `"ME"`, `"MS"`, `"QE"`, `"QS"`, `"YE"`, `"YS"` and
+`pd.offsets.MonthEnd()` mean the same as their unit), a multiple of weeks,
+months, quarters or years (`"2W"`, `"3M"`, counted from the unit that holds the
+stream's first day; another unit with a multiple raises), or a fixed length
+(`"7D"`, `"12h"`) whose bins start at midnight of the first day. A period's
+population is every path assigned before its end (`assigned_at`, or the path's
+first event without it; silent paths with no `assigned_at` are in every
+period). `period_complete` is False when the observation window cuts the period. With an
+explicit cutoff that window ends at `observation_end`; otherwise the observed
+event span supplies only descriptive calendar coverage.
+
+Since-assignment bins (`period_basis="since_assignment"`, a fixed length:
+`"7D"`, `"14D"`, `"W"` = 7 days) are labelled `"0-6"`, `"7-13"` (days) or
+`"0-11h"` (hours). A path is in a bin's population only when the bin's window
+closes by the explicit `observation_end`; the others are counted in `immature_paths`, and a bin
+with no such path in either arm is left out. A bin that `horizon` cuts
+(`horizon="10D"` with `period="7D"`: `"7-13"` holds days 7 to 9) keeps its label
+with `period_complete=False`. A bare number (`14`) has no unit and raises for
+`period` and `horizon` alike. Both `horizon` and since-assignment periods require
+`observation_end`, an exclusive timestamp asserting complete logging through that
+time. Events at or after the cutoff are excluded. Do not substitute the last
+observed event: inactivity does not establish when observation ended. Rows report
+`observation_end` and `observation_basis` so the window is auditable.
+
+### Support and coverage
+
+`min_support` is pooled over the two arms and counted in paths: paths with the
+event for 0/1 metrics (and, separately, the paths without it), paths with a
+non-zero total for totals (every path has a total, so "a value" would be every
+path), paths with a non-zero numerator for ratios, and paths with a value for
+values. Below it a row is `insufficient_data`: the estimates stay, the test does
+not run. Because support is pooled, a behaviour present in one arm only — a new
+feature's event, 0 paths in control — is tested and flagged `one_arm_only`. A
+value or ratio metric with no value in an arm has no estimate there and is
+`insufficient_data` with `support_warning="no_data"`, as is a row where no path
+of either arm has the behaviour.
+
+Percentile bootstrap intervals under-cover with few supporting paths. Simulated
+under a true null with 300 paths per arm, the 95 % interval covered about 0.93
+at 60 supporting paths per arm; at about 6 per arm (2 % of paths with an order)
+a ratio row rejected 6 % of the time and covered 0.91. Bootstrap rows below 30
+supporting paths in an arm keep their verdict and are flagged `low_support`.
+Any replicate without a value in an arm (a ratio's denominator at
+0) gives `invalid_replicates`: no interval, p-value, `delta_se` or `mde`. Undefined draws are not discarded before computing
+quantiles, since that would condition the interval on the statistic being defined.
+Degenerate bootstrap distributions also cannot provide an inferential verdict.
+
+An absent estimate is NaN, never 0. `p_value` is unavailable for degenerate approximate inference (equal
+constant nonempty binary arms instead have Fisher p=1), when an arm has fewer than two paths with a value (totals and values),
+and on `insufficient_data`, `descriptive` and `invalid_replicates` rows (a
+`low_support` row keeps it); `delta_se` and `mde` are NaN when the metric has no
+spread; `rel_delta*` are NaN when `group2_value <= 0`; an arm with no path has
+NaN estimates; `heterogeneity_*` are NaN with fewer than two strata that pass
+the support guard (>= 5 events and >= 5 non-events per arm for 0/1 metrics, >= 10
+supporting paths per arm otherwise).
+
+Strata without an explicit pre-treatment declaration are descriptive: they retain estimates and
+intervals, but no p-values, MDE, balance or heterogeneity test. An exploratory flag
+is not permission to interpret post-treatment selection causally.
+
+### Reading a row
+
+`reading` reports the window, population, effect, method, availability and
+correction from that row. It does not verify randomization, complete logging or
+the analyst's causal declarations. Inspect SRM status and design independently.
+An inconclusive test does not prove no effect; a confidence interval is not a
+posterior probability statement. `mde_basis="normal_approximation"` identifies a
+planning approximation, not actual power for Fisher's test.
+
+Default Fisher/descriptive strata have `strata_diagnostics_basis="not_requested"`
+and no balance, heterogeneity or stratum-versus-rest p-values. Explicit supported
+approximate methods expose guarded `"asymptotic_exploratory"` diagnostics outside
+the primary corrected family. Truncation or transferred metadata never certifies
+pre-treatment labels; reassert the analyst declaration explicitly.
+
+Bootstrap requests stop at 1,000,000 replicates and 10,000,000
+replicate-by-contribution entries. For Bonferroni intervals, fewer than ten expected
+replicates per adjusted tail (`B * (alpha / m) / 2 < 10`) produces
+`delta_ci_adjusted_status="insufficient_tail_resamples"`; no normal-SE interval replaces
+it. Numeric overflow raises with a request to rescale. These computational guards
+do not certify coverage for heavy-tailed or dependent data.
+
+{% endblock %}
+
+{% block extra_params %}
+### test
+
+{{ bullets(doc.parameters, "test") }}
+
+### correction
+
+{{ bullets(doc.parameters, "correction") }}
+
+### correction_scope
+
+{{ bullets(doc.parameters, "correction_scope") }}
+
+### period_basis
+
+{{ bullets(doc.parameters, "period_basis") }}
+
+### period_population
+
+{{ bullets(doc.parameters, "period_population") }}
+
+### bootstrap_weights
+
+{{ bullets(doc.parameters, "bootstrap_weights") }}
+
+{% endblock %}

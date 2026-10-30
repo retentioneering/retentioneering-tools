@@ -1,0 +1,9 @@
+# Post-unblinding adaptations
+
+The frozen oracle is unchanged. Public docstrings explicitly define synthetic `path_start`/`path_end` edges, a one-based step index, and `path_end` occupancy after a path ends. The runner independently adds those boundary labels to nonempty paths before passing them through the frozen oracle, and derives ended step cells from oracle paths. `unique_paths` in the API means per-edge binary reach, not the oracle's additional complete-path distinctness statistic.
+
+The source has no explicit data cutoff parameter: it uses the maximum event timestamp across the whole stream. Tests therefore provide a timestamp-only unassigned sentinel when an independent data cutoff must be represented, and separately test sensitivity to that choice. This is a contract restriction.
+
+After source inspection and before running simulations, I added a complete-null imbalanced-arm stress test: independent uniform single-event paths over 50 event types, 2 treatment versus 1000 control units, 200 independently seeded experiments, default pooled `min_support=10`, default BH. A valid broad null-screen claim at 0.05 should not yield discoveries almost every run. This intentionally probes the pooled-only support rule's lack of an expected-count/per-arm guard, not a typical balanced A/B design. A second balanced null configuration provides context. Simulation uncertainty will be binomial Wilson intervals and count/runs, not just one seed.
+
+For bootstrap numeric verification the runner uses the documented within-arm path bootstrap, independent plain loops for weighted numerator/denominator arithmetic, and the implementation's exposed seed convention (NumPy `SeedSequence(seed).spawn(2)`) to compare exact summaries. The seed convention was learned after unblinding; it is not part of the frozen independent oracle. Invalid denominator replicates are checked separately.

@@ -1,0 +1,144 @@
+{
+  "cases": {
+    "A_positive": {
+      "control_n": 4,
+      "control_success": 2,
+      "treatment_n": 5,
+      "treatment_success": 3,
+      "control_rate": 0.5,
+      "treatment_rate": 0.6,
+      "control_percent": 50.0,
+      "treatment_percent": 60.0,
+      "absolute_delta": 0.1,
+      "delta_percentage_points": 10.0,
+      "relative_lift": 0.2,
+      "relative_lift_percent": 20.0,
+      "comparison_available": true
+    },
+    "B_zero_control": {
+      "control_n": 3,
+      "control_success": 0,
+      "treatment_n": 3,
+      "treatment_success": 1,
+      "control_rate": 0.0,
+      "treatment_rate": 0.3333333333333333,
+      "control_percent": 0.0,
+      "treatment_percent": 33.333333333333336,
+      "absolute_delta": 0.3333333333333333,
+      "delta_percentage_points": 33.333333333333336,
+      "relative_lift": null,
+      "relative_lift_percent": null,
+      "comparison_available": true
+    },
+    "C_empty_treatment": {
+      "control_n": 3,
+      "control_success": 1,
+      "treatment_n": 0,
+      "treatment_success": 0,
+      "control_rate": 0.3333333333333333,
+      "treatment_rate": null,
+      "control_percent": 33.333333333333336,
+      "treatment_percent": null,
+      "absolute_delta": null,
+      "delta_percentage_points": null,
+      "relative_lift": null,
+      "relative_lift_percent": null,
+      "comparison_available": false
+    },
+    "D_cutoff_binding": {
+      "control_n": 3,
+      "control_success": 1,
+      "treatment_n": 2,
+      "treatment_success": 2,
+      "control_rate": 0.3333333333333333,
+      "treatment_rate": 1.0,
+      "control_percent": 33.333333333333336,
+      "treatment_percent": 100.0,
+      "absolute_delta": 0.6666666666666666,
+      "delta_percentage_points": 66.66666666666667,
+      "relative_lift": 2.0,
+      "relative_lift_percent": 200.0,
+      "comparison_available": true
+    },
+    "E_negative": {
+      "control_n": 4,
+      "control_success": 3,
+      "treatment_n": 4,
+      "treatment_success": 1,
+      "control_rate": 0.75,
+      "treatment_rate": 0.25,
+      "control_percent": 75.0,
+      "treatment_percent": 25.0,
+      "absolute_delta": -0.5,
+      "delta_percentage_points": -50.0,
+      "relative_lift": -0.6666666666666666,
+      "relative_lift_percent": -66.66666666666667,
+      "comparison_available": true
+    }
+  },
+  "cutoff_fixture": {
+    "cutoff": "2026-01-03T00:00:00Z",
+    "assignments": [
+      {
+        "subject": "t3",
+        "arm": "treatment",
+        "assigned_at": "2026-01-04T00:00:00Z"
+      },
+      {
+        "subject": "c2",
+        "arm": "control",
+        "assigned_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "subject": "t1",
+        "arm": "treatment",
+        "assigned_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "subject": "c3",
+        "arm": "control",
+        "assigned_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "subject": "t2",
+        "arm": "treatment",
+        "assigned_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "subject": "c1",
+        "arm": "control",
+        "assigned_at": "2026-01-01T00:00:00Z"
+      }
+    ],
+    "success_events": [
+      {
+        "subject": "t1",
+        "time": "2026-01-02T00:00:00Z"
+      },
+      {
+        "subject": "c3",
+        "time": "2026-01-04T00:00:00Z"
+      },
+      {
+        "subject": "c1",
+        "time": "2026-01-02T00:00:00Z"
+      },
+      {
+        "subject": "t1",
+        "time": "2026-01-02T00:00:00Z"
+      },
+      {
+        "subject": "c2",
+        "time": "2026-01-01T00:00:00Z"
+      },
+      {
+        "subject": "t2",
+        "time": "2026-01-03T00:00:00Z"
+      },
+      {
+        "subject": "u1",
+        "time": "2026-01-02T00:00:00Z"
+      }
+    ]
+  }
+}

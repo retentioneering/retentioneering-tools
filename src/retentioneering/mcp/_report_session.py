@@ -20,8 +20,17 @@ from retentioneering.mcp._agent_logic import _apply_preprocessors, _build_data_n
 
 
 class ReportSession:
-    def __init__(self, base_stream: Any | None, context: dict | None = None):
+    def __init__(
+        self,
+        base_stream: Any | None,
+        context: dict | None = None,
+        assignment: Any | None = None,
+    ):
         self._base_stream = base_stream  # original, until load_data() replaces it
+        # An experiment's assignment table (index path id, column arm, optionally
+        # assigned_at), from serve(stream, assignment=...): get_sample_ratio and
+        # get_ab_test read it (ITT population). A table, never sent to the agent.
+        self.assignment = assignment
         self.active_stream = base_stream
         self.context: dict = context or {}
         self.context_events: set = set(self.context.get("events", {}).keys())
@@ -44,6 +53,8 @@ class ReportSession:
         self.active_stream = stream
         self.base_preprocessors = []
         self.pending_tabs = []
+        # the assignment table belonged to the previous data
+        self.assignment = None
         if context is not None:
             self.context = context
             self.context_events = set(context.get("events", {}).keys())

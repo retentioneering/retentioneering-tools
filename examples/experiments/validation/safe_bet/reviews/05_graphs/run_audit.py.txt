@@ -1,0 +1,302 @@
+"""Reproduce role-5 checks. --source points to a repository root or its src/."""
+import argparse
+import hashlib
+import importlib.metadata
+import json
+import math
+import os
+from pathlib import Path
+import sys
+import traceback
+import warnings
+
+from oracle import fixture_rows, graph_oracle, jsonable
+
+P = argparse.ArgumentParser()
+P.add_argument("--source", required=True)
+P.add_argument("--output", default=str(Path(__file__).parent / "raw"))
+P.add_argument("--simulation-runs", type=int, default=200)
+args = P.parse_args()
+source = Path(args.source).resolve()
+if source.name != "src":
+    source = source / "src"
+sys.path.insert(0, str(source))
+import numpy as np
+import pandas as pd
+from scipy import stats
+from retentioneering.eventstream.eventstream import Eventstream
+
+OUT = Path(args.output).resolve()
+OUT.mkdir(parents=True, exist_ok=True)
+DIFF = ("arm", "treatment", "control")
+WEIGHTS = ["unique_paths", "avg_per_path", "proba_out", "proba_in", "share_of_total"]
+checks, failures, observations = [], [], []
+BASE = pd.Timestamp("2024-01-01")
+
+
+def plain(v):
+    if isinstance(v, dict):
+        return {str(k): plain(x) for k, x in v.items()}
+    if isinstance(v, (list, tuple, np.ndarray)):
+        return [plain(x) for x in v]
+    if v is pd.NA:
+        return None
+    if isinstance(v, (np.integer, np.bool_)):
+        return v.item()
+    if isinstance(v, (float, np.floating)):
+        return float(v) if math.isfinite(v) else None
+    if isinstance(v, (pd.Timestamp, pd.Timedelta)):
+        return str(v)
+    return v
+
+
+def save(name, value):
+    (OUT / (name + ".json")).write_text(json.dumps(plain(value), indent=2), encoding="utf-8")
+
+
+def frame_save(name, frame):
+    save(name, {"attrs": frame.attrs, "rows": frame.to_dict("records")})
+    frame.to_csv(OUT / (name + ".csv"), index=False)
+
+
+def record(name, passed, detail=None):
+    item = {"name": name, "passed": bool(passed), "detail": detail}
+    checks.append(item)
+    if not passed:
+        failures.append(item)
+
+
+def eq(name, actual, expected, tol=1e-11):
+    good = (pd.isna(actual) and expected is None) or (expected is not None and np.isclose(actual, expected, atol=tol, rtol=tol))
+    record(name, good, {"actual": plain(actual), "expected": expected})
+
+
+def stream_for(roster, rows, extra_schema=None):
+    arms = {r["unit"]: r["arm"] for r in roster}
+    data = pd.DataFrame([{"user_id": r["unit"], "event": r["event"], "timestamp": BASE + pd.Timedelta(r["time"], "s"), "arm": arms.get(r["unit"], "outside")} for r in rows], columns=["user_id", "event", "timestamp", "arm"])
+    if not len(data):
+        data = data.astype({"timestamp": "datetime64[ns]"})
+    return Eventstream(data, {"segment_cols": ["arm"], **(extra_schema or {})})
+
+
+def assignment_for(roster, dated=False):
+    a = pd.DataFrame({"user_id": [r["unit"] for r in roster], "arm": [r["arm"] for r in roster]}).set_index("user_id")
+    if dated:
+        a["assigned_at"] = [BASE + pd.Timedelta(r.get("assigned", 0), "s") for r in roster]
+    return a
+
+
+def expected_with_boundaries(roster, rows, **kw):
+    original = graph_oracle(roster, rows, **kw)
+    new_roster, boundary_rows = [], []
+    for unit, r in original["per_unit"].items():
+        new_roster.append({"unit": unit, "arm": r["arm"]})
+        labels = ("path_start",) + r["path"] + ("path_end",) if r["path"] else ()
+        boundary_rows.extend({"unit": unit, "event": e, "time": i + 1} for i, e in enumerate(labels))
+    return original, graph_oracle(new_roster, boundary_rows)
+
+
+def row(frame, edge):
+    return frame[(frame.source == edge[0]) & (frame.target == edge[1])].iloc[0]
+
+
+def compare_case(name, roster, rows, assigned=True, horizon=None, cutoff=None, max_steps=7):
+    save(name + "_input", {"roster": roster, "events": rows, "horizon": horizon, "cutoff": cutoff})
+    stream = stream_for(roster, rows)
+    selected_roster = roster if assigned else [r for r in roster if any(e["unit"] == r["unit"] for e in rows)]
+    ori, expected = expected_with_boundaries(selected_roster, rows, horizon=horizon, cutoff=cutoff, require_mature=horizon is not None)
+    save(name + "_oracle", {"original": jsonable(ori), "with_boundaries": jsonable(expected)})
+    opts = {"assignment": assignment_for(roster, dated=horizon is not None)} if assigned else {}
+    if horizon is not None:
+        opts["horizon"] = f"{horizon}s"
+    frames = {}
+    all_edges = set().union(*(set(v["edge_counts"]) for v in expected["arms"].values()))
+    for weight in WEIGHTS:
+        more = {"n_bootstrap": 1000} if weight in WEIGHTS[2:] else {}
+        actual = stream.get_ab_transitions(DIFF, weight, min_support=1, **opts, **more)
+        frame_save(f"{name}_{weight}", actual)
+        frames[weight] = actual
+        actual_edges = set(zip(actual.source, actual.target))
+        record(f"{name}/{weight}/edge_set", actual_edges == all_edges)
+        for r in actual.to_dict("records"):
+            edge = (r["source"], r["target"])
+            for group, arm in ((1, "treatment"), (2, "control")):
+                ex = expected["arms"][arm]
+                count = ex["edge_counts"][edge]
+                if weight == "unique_paths":
+                    value = ex["edge_users"][edge] / ex["n_units"]
+                elif weight == "avg_per_path":
+                    value = count / ex["n_units"]
+                else:
+                    den = {"proba_out": ex["source_counts"][edge[0]], "proba_in": ex["target_counts"][edge[1]], "share_of_total": ex["total"]}[weight]
+                    value = count / den if den else None
+                eq(f"{name}/{weight}/{edge}/{group}", r[f"group{group}_value"], value)
+                eq(f"{name}/{weight}/{edge}/{group}_edge_paths", r[f"group{group}_edge_paths"], ex["edge_users"][edge])
+                eq(f"{name}/{weight}/{edge}/{group}_paths", r[f"group{group}_paths"], ex["n_units"])
+    cells = stream.get_ab_steps(DIFF, max_steps=max_steps, min_support=1, **opts)
+    frame_save(name + "_steps", cells)
+    for r in cells.to_dict("records"):
+        for group, arm in ((1, "treatment"), (2, "control")):
+            paths = [u["path"] for u in ori["per_unit"].values() if u["arm"] == arm]
+            k = r["step"] - 1
+            expected_n = sum((p[k] if k < len(p) else "path_end") == r["event"] for p in paths)
+            eq(f"{name}/steps/{r['event']}/{r['step']}/{group}", r[f"group{group}_value"], expected_n / len(paths))
+    for group in (1, 2):
+        for k, group_frame in cells.groupby("step"):
+            eq(f"{name}/steps/occupancy_sum/{k}/{group}", group_frame[f"group{group}_value"].sum(), 1)
+    return stream, frames, cells, ori, expected
+
+
+def wilson(hits, n):
+    z = 1.959963984540054
+    p = hits / n
+    den = 1 + z*z/n
+    center = (p + z*z/(2*n)) / den
+    half = z*math.sqrt(p*(1-p)/n + z*z/(4*n*n)) / den
+    return [center-half, center+half]
+
+
+def main():
+    roster, events = fixture_rows({"control": [("A", "B", "A", "B"), ("A", "C"), ("Z",), ()], "treatment": [("A", "B"), ("C", "C", "C"), ("A",), ()]})
+    stream, frames, cells, ori, expected = compare_case("loops_silent", roster, events)
+    compare_case("loops_observed", roster, events, assigned=False)
+    # A high-frequency unit must contribute all occurrences to ratios, one unit to reach.
+    r, e = fixture_rows({"control": [("A", "B") * 12, ("A", "C"), ("A", "C"), ()], "treatment": [("A", "B"), ("A", "C"), ("A", "C"), ()]}, repeats=4)
+    long_roster = r
+    long_stream, long_frames, _, long_ori, long_expected = compare_case("unequal_lengths", r, e)
+    # Half-open boundary; pre-assignment events; immature paths; unrelated cutoff marker.
+    r, e = fixture_rows({"control": [("A", "B", "C", "D"), ()], "treatment": [("A", "C", "B", "D"), ()]})
+    for arm in ("control", "treatment"):
+        r.append({"unit": arm+"-immature", "arm": arm, "assigned": 19})
+        e.append({"unit": arm+"-immature", "event": "X", "time": 19.5})
+    e += [{"unit": "control-0-0", "event": "PRE", "time": -1}, {"unit": "cutoff-marker", "event": "CUT", "time": 20}]
+    compare_case("horizon", r, e, horizon=3, cutoff=20, max_steps=5)
+    # All analyzed events absent while the raw stream is nonempty.
+    silent_roster = [{"unit": f"{a}{i}", "arm": a, "assigned": 5} for a in ("control", "treatment") for i in range(12)]
+    silent_events = [{"unit": x["unit"], "time": 1, "event": "PRE"} for x in silent_roster] + [{"unit": "clock", "time": 20, "event": "CLOCK"}]
+    try:
+        compare_case("all_silent_window", silent_roster, silent_events, horizon=3, cutoff=20, max_steps=3)
+        observations.append({"all_silent_window": "succeeded"})
+    except Exception as exc:
+        observations.append({"all_silent_window": type(exc).__name__, "message": str(exc), "traceback": traceback.format_exc()})
+    # One arm lacking a source is NaN for a conditional probability, not a zero.
+    r, e = fixture_rows({"control": [("C", "D")] * 12, "treatment": [("A", "B")] * 12})
+    compare_case("one_arm_edges", r, e, max_steps=3)
+    # Same seed public sparse bootstrap, arithmetic independently performed by loop.
+    for weights in ("multinomial", "poisson"):
+        seed, B = 17, 1200
+        frame = long_stream.get_ab_transitions(DIFF, "proba_out", assignment=assignment_for(long_roster), edges=[("A", "B"), ("A", "C")], min_support=1, n_bootstrap=B, bootstrap_weights=weights, random_state=seed)
+        frame_save("bootstrap_" + weights, frame)
+        reps = []
+        children = np.random.SeedSequence(seed).spawn(2)
+        for arm, child in zip(("treatment", "control"), children):
+            ids = sorted(u for u, val in long_expected["per_unit"].items() if val["arm"] == arm)
+            num = [long_expected["per_unit"][u]["edges"][("A", "B")] for u in ids]
+            den = [long_expected["per_unit"][u]["source"]["A"] for u in ids]
+            rng = np.random.default_rng(child)
+            vals = []
+            for b in range(B):
+                if weights == "multinomial":
+                    ix = rng.integers(0, len(ids), size=len(ids))
+                    top, bottom = sum(num[i] for i in ix), sum(den[i] for i in ix)
+                else:
+                    w = rng.poisson(1, size=len(ids))
+                    top, bottom = sum(int(x)*y for x, y in zip(w, num)), sum(int(x)*y for x, y in zip(w, den))
+                vals.append(top/bottom if bottom else np.nan)
+            reps.append(vals)
+        delta_reps = np.array(reps[0]) - reps[1]
+        rr = row(frame, ("A", "B"))
+        eq(weights + "/bootstrap_se", rr.delta_se, float(np.nanstd(delta_reps, ddof=1)))
+        lo, hi = np.nanquantile(delta_reps, [.025, .975])
+        eq(weights + "/bootstrap_lo", rr.delta_ci_low, lo)
+        eq(weights + "/bootstrap_hi", rr.delta_ci_high, hi)
+        eq(weights + "/valid_replicates", rr.valid_replicates, int(np.isfinite(delta_reps).sum()))
+        save("bootstrap_" + weights + "_independent_replicates", {"delta": delta_reps})
+    # Sparse source denominator: invalid replicates must prevent a decisive finding.
+    r, e = fixture_rows({"control": [("A", "B")] + [("Z",)] * 19, "treatment": [("A", "C")] + [("Z",)] * 19})
+    ss = stream_for(r, e)
+    for weights in ("multinomial", "poisson"):
+        out = ss.get_ab_transitions(DIFF, "proba_out", edges=[("A", "B")], min_support=1, bootstrap_weights=weights)
+        frame_save("sparse_invalid_" + weights, out)
+        record("sparse_invalid_" + weights, out.iloc[0].support_warning == "invalid_replicates" and pd.isna(out.iloc[0].p_value))
+    # Declared absent edges survive the table, support filtering defines tested family.
+    declared = stream.get_ab_transitions(DIFF, edges=[("A", "B"), ("Z", "C"), ("A", "B")], assignment=assignment_for(roster), min_support=1)
+    frame_save("declared_family", declared)
+    record("declared_absent_zero", row(declared, ("Z", "C")).group1_value == 0 and row(declared, ("Z", "C")).support_warning == "no_data")
+    record("declared_absent_family", declared.attrs["n_tested"] == 1 and len(declared) == 2)
+    # Truly empty Eventstream and explicit populated assignment.
+    for api in ("get_ab_transitions", "get_ab_steps"):
+        try:
+            result = getattr(stream_for(roster, []), api)(DIFF, assignment=assignment_for(roster))
+            frame_save("empty_" + api, result)
+            observations.append({"empty_api": api, "result": "succeeded", "rows": len(result)})
+        except Exception as exc:
+            observations.append({"empty_api": api, "result": type(exc).__name__, "message": str(exc)})
+    # Unit guard is checked through both public APIs.
+    df = stream.to_dataframe()
+    df["session_id"] = df["user_id"].astype(str) + "-s" + (df.groupby("user_id").cumcount() // 2).astype(str)
+    nested = Eventstream(df, {"path_cols": ["user_id", "session_id"], "segment_cols": ["arm"]})
+    for api in ("get_ab_transitions", "get_ab_steps"):
+        try:
+            getattr(nested, api)(DIFF, path_col="session_id")
+            record("unit_guard/" + api, False)
+        except Exception as exc:
+            record("unit_guard/" + api, "randomised unit" in str(exc), str(exc))
+    # Public widget construction: local wheel's JS bundle only if required by target.
+    try:
+        frame = frames["unique_paths"]
+        widget = stream.transition_graph(diff=DIFF, ab_transitions=frame.head(2))
+        payload = json.loads(widget.ab_transitions)
+        save("filtered_frame_overlay", payload)
+        record("filtered_frame_preserves_family", payload["n_tested"] == frame.attrs["n_tested"] and payload["n_rows"] == len(frame) and len(payload["edges"]) == 2)
+        # Same schema/labels, reversed behavioral evidence; any accepted overlay is stale.
+        changed_rows = [{**x, "event": "C" if x["event"] == "B" else "B" if x["event"] == "C" else x["event"]} for x in events]
+        changed = stream_for(roster, changed_rows)
+        wrong = changed.transition_graph(diff=DIFF, ab_transitions=frame)
+        save("changed_stream_overlay", {"error": wrong.error, "payload": json.loads(wrong.ab_transitions)})
+        observations.append({"changed_stream_overlay": "accepted", "error": wrong.error})
+    except Exception as exc:
+        observations.append({"widget": type(exc).__name__, "message": str(exc), "traceback": traceback.format_exc()})
+    # Complete null: both arms independently sampled from the identical 50-category law.
+    simulation = []
+    for label, n1, n2 in (("imbalanced", 2, 1000), ("balanced", 250, 250)):
+        for seed in range(args.simulation_runs):
+            rng = np.random.default_rng(51000 + seed)
+            paths = {"treatment": [(f"E{x:02d}",) for x in rng.integers(0, 50, n1)], "control": [(f"E{x:02d}",) for x in rng.integers(0, 50, n2)]}
+            r, e = fixture_rows(paths)
+            ss = stream_for(r, e)
+            for api in ("get_ab_transitions", "get_ab_steps"):
+                options = {"max_steps": 1} if api == "get_ab_steps" else {}
+                out = getattr(ss, api)(DIFF, **options)
+                discoveries = int(out.verdict.isin(["increase", "decrease"]).sum())
+                simulation.append({"scenario": label, "seed": seed, "n1": n1, "n2": n2, "api": api, "discoveries": discoveries, "n_tested": out.attrs["n_tested"]})
+                if seed == 0:
+                    save(label + "_null_input", {"roster": r, "events": e})
+                    frame_save(label + "_null_" + api, out)
+            if seed % 25 == 0:
+                print(f"simulation {label}: {seed}/{args.simulation_runs}", flush=True)
+    save("simulation_runs", simulation)
+    pd.DataFrame(simulation).to_csv(OUT / "simulation_runs.csv", index=False)
+    summaries = []
+    for (label, api), g in pd.DataFrame(simulation).groupby(["scenario", "api"]):
+        hits = int((g.discoveries > 0).sum())
+        summaries.append({"scenario": label, "api": api, "runs": len(g), "any_discovery": hits, "rate": hits/len(g), "wilson95": wilson(hits, len(g)), "total_discoveries": int(g.discoveries.sum())})
+    save("simulation_summary", summaries)
+    print(json.dumps(summaries, indent=2), flush=True)
+
+
+if __name__ == "__main__":
+    manifest = {"argv": sys.argv, "python": sys.version, "executable": sys.executable, "source": str(source), "versions": {x: importlib.metadata.version(x) for x in ("numpy", "pandas", "scipy", "duckdb", "retentioneering")}, "source_hashes": {}}
+    files = ["retentioneering/eventstream/eventstream.py", "retentioneering/tools/ab_transitions.py", "retentioneering/tools/ab_test.py", "retentioneering/tools/_bootstrap.py", "retentioneering/tools/_stats.py", "retentioneering/tools/transition_matrix.py", "retentioneering/tools/step_matrix.py", "retentioneering/widgets/transition_graph.py"]
+    for f in files:
+        manifest["source_hashes"][f] = hashlib.sha256((source/f).read_bytes()).hexdigest()
+    save("manifest", manifest)
+    try:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            main()
+        save("warnings", [{"category": x.category.__name__, "message": str(x.message), "filename": x.filename, "lineno": x.lineno} for x in caught])
+    finally:
+        save("checks", {"total": len(checks), "failures": failures, "checks": checks})
+        save("observations", observations)
+        print(f"Checks: {len(checks)}; failures: {len(failures)}", flush=True)

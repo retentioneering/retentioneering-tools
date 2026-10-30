@@ -1,0 +1,302 @@
+{
+  "binary": {
+    "metric": "success",
+    "population": "assignment",
+    "observation_end": null,
+    "observation_basis": "observed_event_span",
+    "analysis_unit": "user_id",
+    "group1_paths": 13,
+    "group2_paths": 17,
+    "group1_support": 13,
+    "group2_support": 17,
+    "conditional": false,
+    "group1_silent_paths": 0,
+    "group2_silent_paths": 0,
+    "unassigned_paths": 0,
+    "group1_value": 0.5384615384615384,
+    "group1_ci_low": 0.29143795714506004,
+    "group1_ci_high": 0.7679393219046169,
+    "group2_value": 0.35294117647058826,
+    "group2_ci_low": 0.17309720397243744,
+    "group2_ci_high": 0.5869963651478132,
+    "delta": 0.18552036199095018,
+    "delta_se": 0.18041819447650512,
+    "delta_ci_low": -0.15477727401780933,
+    "delta_ci_high": 0.4770746580283505,
+    "rel_delta": 0.5256410256410255,
+    "rel_delta_ci_low": -0.32606899636634085,
+    "rel_delta_ci_high": 2.4537371430744344,
+    "p_value": 0.30956421305629855,
+    "p_value_adjusted": 0.30956421305629855,
+    "correction_family": "all_metrics",
+    "mde_alpha": 0.05,
+    "mde": 0.5114971402445012,
+    "rel_mde": 1.44924189735942,
+    "verdict": "inconclusive",
+    "test": "z_test",
+    "ci_basis": "wilson",
+    "p_basis": "pooled_z",
+    "valid_replicates": null,
+    "support_warning": "",
+    "reading": "over the whole observation period: interval [-15.48, +47.71] pp includes 0 (p 0.31); effects outside it are unlikely; the design detects 51.15 pp at alpha 0.05 \u2014 to detect 20 pp, about 6.5\u00d7 the paths are needed in a new test sized before it starts"
+  },
+  "binary_expected": {
+    "fisher": 0.46008835181406793,
+    "difference_ci": [
+      -0.4268667287091964,
+      0.7113841013903893
+    ]
+  },
+  "mean": {
+    "error": "implicit bootstrap allocation"
+  },
+  "ratio": {
+    "error": "implicit bootstrap allocation"
+  },
+  "role04_srm": {
+    "actual": [
+      7.84,
+      0.01984109474437029,
+      2
+    ],
+    "expected": [
+      7.84,
+      0.005110260660855862,
+      1
+    ]
+  },
+  "role04_holm": [
+    0.03,
+    null,
+    0.08
+  ],
+  "checks": {
+    "binary_default_method": false,
+    "binary_p_matches_own_combinatorics": false,
+    "binary_interval_matches_own_tail_inversion": false,
+    "mean_no_implicit_resampling": false,
+    "ratio_no_implicit_resampling": false,
+    "role04_zero_share_srm_df": false,
+    "role04_zero_share_srm_stat_p": false,
+    "role04_declared_missing_holm": true
+  },
+  "passed": 1,
+  "total": 8,
+  "source": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220",
+  "modules": {
+    "retentioneering.datasets.ab_cases": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/datasets/ab_cases/__init__.py",
+      "sha256": "09ce4d44a23675301b79be10c22ed58573c610e02e5862bdb922f2193beacb0f"
+    },
+    "retentioneering.exceptions": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/exceptions.py",
+      "sha256": "da10816d63b7d2aee5e53f7fca3625e6753eff3275025a8cb0f5ee03603b459c"
+    },
+    "retentioneering.datasets.ab_cases._sim": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/datasets/ab_cases/_sim.py",
+      "sha256": "21ee0001cc5cb2ac0a742a31570fba4f7574f55fe6ed60728edb83e14f912374"
+    },
+    "retentioneering.datasets.ab_cases.aa_calibration": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/datasets/ab_cases/aa_calibration.py",
+      "sha256": "1e30edb55fbf28ed103fe5420a9527ffbc5bac315d017c6664876c08c3381b38"
+    },
+    "retentioneering.datasets.ab_cases.push_campaign": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/datasets/ab_cases/push_campaign.py",
+      "sha256": "6c4283163fe4ebb845ce4e5f78845576328fd07d41cbc3972b015206dda56d67"
+    },
+    "retentioneering.datasets.ab_cases.session_assignment": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/datasets/ab_cases/session_assignment.py",
+      "sha256": "5afeb630c8af831db47623f041fba6350aa45b16f732e80bd40ae6bf259980db"
+    },
+    "retentioneering.datasets.ab_cases.srm_platform_bug": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/datasets/ab_cases/srm_platform_bug.py",
+      "sha256": "c8aff38a1821ae7740d33afc1e5e8f3063590f9a70e2b3e98168c367381779ab"
+    },
+    "retentioneering.datasets.ab_cases.trial_conversion": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/datasets/ab_cases/trial_conversion.py",
+      "sha256": "20710fe55892452f46773c53e8de91c4cad1f0a38c21cb9ddad296cb054035a2"
+    },
+    "retentioneering.datasets.ab_test": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/datasets/ab_test.py",
+      "sha256": "1eeb829a3a2a5de0beb8863a3358ee0c410a7bb15616a047003ee935864224d4"
+    },
+    "retentioneering.datasets.ecom": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/datasets/ecom.py",
+      "sha256": "07a7ac7e091525ed1672751ce5d38d2347216ceda99be22111ec6ec7b113331b"
+    },
+    "retentioneering.datasets": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/datasets/__init__.py",
+      "sha256": "7fd43dc02c71e47c4b1ddde7b1b67496d38355fac0854dce02ab24c9c6eb3f73"
+    },
+    "retentioneering.stats": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/stats/__init__.py",
+      "sha256": "0a613efaaf26259963501bf4d978be4952e3fcbe86716da5ae163f692119ab95"
+    },
+    "retentioneering.stats.resampling": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/stats/resampling.py",
+      "sha256": "d7671d3d43870eaabbec2fa92af90fb312d6a9d8b4357b710de52361b9e7204e"
+    },
+    "retentioneering.engine": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/engine/__init__.py",
+      "sha256": "8e4430e64949275108ae46ff7da7d7c6b3eb8b00340a5e5580892977963da5a6"
+    },
+    "retentioneering.eventstream.event_type": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/eventstream/event_type.py",
+      "sha256": "60d79fd82018d32dcc176d7ed6b9720bc29e296e63ab50092fa078ceedf6f541"
+    },
+    "retentioneering.eventstream.schema": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/eventstream/schema.py",
+      "sha256": "3d9ddf8b9a63c8c6a2e124dc6133c4c3201de6664821a609d3cfc69975a44b8d"
+    },
+    "retentioneering.ops": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/ops.py",
+      "sha256": "7e58cea12b2702ab6cbe6ba44c8d349eaf8170c2988632033b7f117c172e0510"
+    },
+    "retentioneering.engine.dialect": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/engine/dialect.py",
+      "sha256": "e155f8fd7d13bb2bdd6156ad270d9e15e806fd606ef07fec080997b4d72db7c2"
+    },
+    "retentioneering.tools.types": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/tools/types.py",
+      "sha256": "3d5120e8e4a6baadbc4b45f93945da06923cb0350264f2f98ae31da4fdceef1d"
+    },
+    "retentioneering.tools.transition_matrix": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/tools/transition_matrix.py",
+      "sha256": "2507226afef603357a4ea1fa6d9ce244160045a35a0a8f54b5653fc7bf6041ef"
+    },
+    "retentioneering.paths": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/paths/__init__.py",
+      "sha256": "1b08b953579c6d4dca76416ddbae433cee32f90be6ef023808713c4455ce2c4f"
+    },
+    "retentioneering.utils": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/utils/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retentioneering.utils.sequences": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/utils/sequences.py",
+      "sha256": "7efe60d157edd1a89a933f1db48667a9b7fc0f9b51aca35b84529d77d9ed59bc"
+    },
+    "retentioneering.utils.sql_quoting": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/utils/sql_quoting.py",
+      "sha256": "497cf808f3932146b29dbec2ecb03dffb8170f49debe4acb17552576b2c98e9a"
+    },
+    "retentioneering.paths.tokens": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/paths/tokens.py",
+      "sha256": "8c5a6e778e02d4d3dd501790bf5f8c3e7c64a05cf0440541b8c7ad6e14d64821"
+    },
+    "retentioneering.utils.durations": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/utils/durations.py",
+      "sha256": "f3c29480e080c45505ae2b73e35678ffdce88e003567d09b6017b64b7d0873b2"
+    },
+    "retentioneering.paths.anchors": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/paths/anchors.py",
+      "sha256": "f243ba407fef2db7c8de87bf153ae2e73471eb5d5fb8f176a03a5900904e9528"
+    },
+    "retentioneering.tools.step_matrix": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/tools/step_matrix.py",
+      "sha256": "409aeee7067b1962e95740445a15c36d335f18eb6a70bf5ee989dadb20d8bd0d"
+    },
+    "retentioneering.stats.primitives": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/stats/primitives.py",
+      "sha256": "40e33d1b2f9ea11310d8cebee23e9e0b3cd785b27a0156da86727e769097d4d9"
+    },
+    "retentioneering.tools._stats": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/tools/_stats.py",
+      "sha256": "2f9fbeab43419827c9c6204eff64d6604093073b9e589f90504060c6cbc2152c"
+    },
+    "retentioneering.tools._diff": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/tools/_diff.py",
+      "sha256": "abebced2a8092a419c036d121106e85350e5b03fcff9d5fb3b1ec1f8a3d912e7"
+    },
+    "retentioneering.tools.conversion": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/tools/conversion.py",
+      "sha256": "1305bf4fea02a026ef47294908e3c1610ecd4aebfcee39fb8a53753294e9016c"
+    },
+    "retentioneering.tools.funnel": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/tools/funnel.py",
+      "sha256": "d82eb7710f6628be6d6b80afa196fcce8bcb3c9bd1e7f254a617622ce03ea1d7"
+    },
+    "retentioneering.metrics": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/metrics/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retentioneering.metrics.composite": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/metrics/composite.py",
+      "sha256": "a7581b80ccb256a39febf8d86c4e787421242f5559b226e52b06ed4e4f693f47"
+    },
+    "retentioneering.metrics.metric_builder": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/metrics/metric_builder.py",
+      "sha256": "11055d0169a944cfe91f11044f236af29ed38243a36a0fe769beb381f8ac4480"
+    },
+    "retentioneering.utils.sentinels": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/utils/sentinels.py",
+      "sha256": "ddd47b14f0705c683df34e5073ebbfcf265d535bb3a128ff41d783d17c635632"
+    },
+    "retentioneering.tools.segment_overview": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/tools/segment_overview.py",
+      "sha256": "c1e65b377a60750993ce98561a9e94b4c8798a0f203a3af9d1120712fe478d55"
+    },
+    "retentioneering.utils.clustering_methods": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/utils/clustering_methods.py",
+      "sha256": "a6de2e7d40312e40fc880618d82aa094a37ee5a2502d8529423d90d0d4614592"
+    },
+    "retentioneering.tools.cluster_analysis": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/tools/cluster_analysis.py",
+      "sha256": "83d49a46177140e86c8450cfbe98769cdb0caeee5bd36f3569d688074e3c5109"
+    },
+    "retentioneering.tools": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/tools/__init__.py",
+      "sha256": "5f9ef7fa3f8eb4b166e3a26356c5a08011aa088d367a27b831ba4b2c49fb5d41"
+    },
+    "retentioneering._tracking": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/_tracking.py",
+      "sha256": "45edbedb5a40f71af5ab07be27224b588f2a390c56264ddb60c0470d53b953ff"
+    },
+    "retentioneering.eventstream.eventstream": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/eventstream/eventstream.py",
+      "sha256": "6011c80391773248d3e0bae12fd2e2e2d975737934e5c0e7dcb01cdffbd68ffd"
+    },
+    "retentioneering.eventstream": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/eventstream/__init__.py",
+      "sha256": "fedc95a76041ab6a5ecc58a5d1ec2078466ce1e4466cf6056ad554389be278f0"
+    },
+    "retentioneering.mcp._agent_logic": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/mcp/_agent_logic.py",
+      "sha256": "db90c9f5cf4d5aae297a5ea416b30f1931d18382263dc9abf8eeaee7ffb775a8"
+    },
+    "retentioneering.mcp._prompts": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/mcp/_prompts.py",
+      "sha256": "24ab40d31a801397ef5c555dfad1f00ceafc6c52a30ffda175bf970a84d8a981"
+    },
+    "retentioneering.mcp._report_session": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/mcp/_report_session.py",
+      "sha256": "9c11cc7fd460fa4dd970229a0fc231eb3ca3392608bc4de56b052e6d319db762"
+    },
+    "retentioneering.mcp.tools": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/mcp/tools.py",
+      "sha256": "09667565a8c12584ae2952c412b5e26b0294415341d35d8673eb9d547a00b521"
+    },
+    "retentioneering.mcp.server": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/mcp/server.py",
+      "sha256": "6874768c6e41bc3b1040a64b7d5aff1e87b272e219d118bcc401b460a6b1af4f"
+    },
+    "retentioneering.mcp": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/mcp/__init__.py",
+      "sha256": "2d668d168fb69ff27c7ad7a2bc5523ef08be36c8c1d1889baca606b3e7932e26"
+    },
+    "retentioneering": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/__init__.py",
+      "sha256": "d74b439552cfc9c21a008e1a34b80078976c40d13f29f38d84d9180810ade1ae"
+    },
+    "retentioneering.tools._bootstrap": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/tools/_bootstrap.py",
+      "sha256": "d175fa4fc288260dc879380b2cb6f74e25ca65a0eb77545a3f8a2fd7c62a16a8"
+    },
+    "retentioneering.tools.ab_test": {
+      "path": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/baseline220/src/retentioneering/tools/ab_test.py",
+      "sha256": "0aa93cdcedc6e86cb4235a538ebdb24f87c72467e76a03a798452ab04a0d6c98"
+    }
+  },
+  "frozen_oracle_sha256": "9c8d514b45e2ced9b5276c3cda4465c9b1e866a01f6901dd5d200fdefd0c9ac9",
+  "runner_sha256": "43e89e3c4bf50242dffa2f3bbf9761aed0bd8323febcb8943d2e6166524a4f84"
+}

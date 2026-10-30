@@ -157,6 +157,156 @@ times counts once. For a per-visit figure, carve out the subpopulation with
 `filter_paths` and read a transition matrix instead.
 
 
+## ab_test
+
+**Scenario:** Did the treatment of an A/B test work?
+
+**Trigger:** User has an experiment arm column and asks whether a variant won, lost or
+"did nothing", or asks for an experiment scorecard.
+
+**Steps:**
+
+1. `get_sample_ratio(segment_col="<arm col>")` — before any metric. Quote its
+   `reading`. `mismatch=true` (arms off the planned split, or paths carrying two arms)
+   is an allocation diagnostic alarm; investigate assignment, exclusions and logging
+   before interpreting outcomes. It does not identify a particular failure.
+   `mismatch=null` or an unavailable `inference_status` is not balanced allocation.
+   Report the method, sampling assumption and support reason; do not pass the gate.
+   Two arms use exact binomial inference under independent Bernoulli assignment;
+   multiarm Pearson inference is approximate and withheld for sparse expected counts. With
+   `period="D"` or `strata_col="<segment fixed at assignment>"` the `reading` also
+   names the days or strata that mismatch — an alarm in one platform or day also requires investigation
+   even when the overall split looks fine.
+2. Before the first `get_ab_test` call, ask which metric decides and which metrics
+   are guardrails, each with the largest harm it may do (e.g. revenue per user must
+   not drop by more than 5 %). If the user names no decision metric, report every
+   row as supporting evidence and say that no decision metric was declared. Then
+   `get_ab_test(diff=["<arm col>", "treatment", "control"], metrics=[...])` with
+   those metrics, each with a `name` (arguments under `metric_args`;
+   `describe_tool("metrics")` lists the registry, `describe()` the arm names in
+   `segment_levels` and the money columns in `value_columns`):
+   ```json
+   [{"name": "conversion", "metric": "has_event", "metric_args": {"event": "purchase"}},
+    {"name": "revenue", "metric": "column_sum", "metric_args": {"column": "amount"}},
+    {"name": "aov", "metric": "column_sum", "metric_args": {"column": "amount"},
+     "denominator": {"metric": "event_count", "metric_args": {"event": "purchase"}}}]
+   ```
+   Auto uses Fisher exact with conservative exact binary difference intervals.
+   Nonbinary outcomes are descriptive by default. Explicit Welch/bootstrap are
+   approximate advanced methods for nonbinary outcomes; explicit z is guarded
+   and approximate. Never equate absent inference with no effect.
+3. Report per metric: `delta` with `[delta_ci_low, delta_ci_high]`, the `verdict` and
+   the `mde`. Quote in backticks (no tab is registered). Every row has a `reading`:
+   one sentence built from its numbers. For an `inconclusive` row, quote its `reading`
+   verbatim (in backticks) — it says what the interval includes, the p-value after
+   the correction, the normal MDE planning approximation and approximate paths a new test needs for a
+   smaller effect — and then, if useful, propose a next step (below). The `reading`
+   reads the row's numbers only: it does not check the sample ratio, the unit or
+   whether strata are pre-exposure, which is why step 1 comes first. It starts with
+   the window it covers ("over the whole observation period", "calendar week 2026-03-09",
+   "days 14-27 since assignment"): a period row is not the test's result, so
+   always name the window when you quote a number. The default
+   `correction_scope="all"` adjusts every declared row of every metric in each
+   call, retaining unavailable hypotheses in the family size. Separate calls
+   (overall, strata, periods) remain separate families; this does not correct
+   arbitrary exploration or peeking. `correction_scope="metric"` is an explicit
+   opt-in for predeclared families. A guardrail passes only when its interval
+   clears a declared harm margin; an inconclusive result is not evidence of safety.
+   MDE is not exact power for the selected test; read `mde_basis`. Tests and
+   intervals have different constructions and need not agree. Fisher relative
+   intervals are unavailable; only the relative point remains when defined.
+   Bonferroni bootstrap endpoints are withheld for `insufficient_tail_resamples`.
+   Every row's `scope` labels the family. `unit` is percentage points (`pp`) for
+   binary outcomes whose numeric delta fields are shares, otherwise `value`.
+4. Optional: `strata_col=` for a segment fixed before exposure (platform at signup),
+   `period="W"` for stability over time. Strata rows are adjusted with `correction`
+   (`strata_correction_family`); `exploratory=true` (or `strata_pre_exposure` not
+   true) means the strata may be post-exposure: their rows are descriptive, with
+   no confirmatory p-values or heterogeneity/balance tests.
+5. Time: declare `observation_end` from the logging contract (an exclusive
+   timestamp, not the last event). With the assignment table, `horizon="28D"`
+   reads each user's first 28 days
+   (choose the window before reading: different horizons answer different
+   questions), and `period="14D", period_basis="since_assignment"` gives rows by
+   days since assignment. `get_ab_bootstrap(..., contrast={"novelty": [["0-13"],
+   ["28-41"]]})` puts one interval on "the early effect minus the late one".
+6. Finish: `export_report` needs at least one tab, and the numbers-only tools
+   register none. Add the scorecard as a tab with `add_ab_test(label=..., same
+   arguments)` (or an `add_segment_overview` by arm) before `check_analysis` and
+   `export_report`.
+
+Population (`population` on every row): with an assignment table in the session
+(`serve(stream, assignment=...)`; `describe()` shows `assignment`) every assigned
+user, silent ones included (intention to treat, `"assignment"`), and `horizon` /
+since-assignment periods work with an explicit `observation_end`. Without one, the stream's paths (users with at least
+one event) split by the arm segment, over the whole window: silent assigned users
+are not counted, there is no horizon, and the funnel and the scorecard can differ
+from an ITT read. Say which population a number is about. Quote `warnings` if the
+call returns any.
+
+**A treatment that renames an event:** when the treatment logs a new event instead of
+an old one (`quick_add` instead of `add_to_cart`), a metric on the old event alone
+shows a huge, meaningless drop (`support_warning="one_arm_only"` on the new one).
+Compare the union: `{"metric": "has_any_event", "metric_args": {"events":
+["add_to_cart", "quick_add"]}}`.
+
+**Who does it help** (in this order): (1) SRM gate (`get_sample_ratio`, also by
+`period="D"` and by a signup stratum); (2) the scorecard on the decision metric;
+(3) strata declared before looking — segments fixed at signup
+(`segments_constant_per_path` in `describe()`) with `strata_pre_exposure=true`, and
+read `heterogeneity_p_value` before any single stratum; (4) only then descriptive
+looks at loops and conditional steps (`add_transition_graph` with `diff`,
+`get_conversion_rate`), labelled descriptive. A stratum found by looking is a
+hypothesis for a targeted follow-up test, not a result.
+
+**Reading the verdict:** `increase` / `decrease` come from the multiplicity-adjusted
+p-value: `p_value_adjusted` below `1 - ci_level` (`mde_alpha` is only the level the
+`mde` is computed at; do not compare p-values with it).
+`inconclusive` is not "no effect": report the interval as the range of effects the
+data still allow, by quoting the row's `reading`. The `mde` is the effect the test detects with 80 % power at
+`mde_alpha`, a design quantity: never say the effect is smaller than the `mde`.
+`insufficient_data`: pooled support (paths, not events) below `min_support`; report its estimates
+descriptively. `support_warning="no_data"`: no path of either arm has the
+behaviour — say "no data in either arm", not "one arm only" — or a value / ratio
+metric has no value in one arm (the reading says which). `conditional=true`: the
+metric exists only for some paths (`time_between`, `column_mean`, order value), so
+the row compares those paths (`group1_support` of `group1_paths`), not the arms —
+never report it as the treatment's effect on everyone. `support_warning="one_arm_only"`: the behaviour exists in one arm only;
+the test stands, say so next to it. `support_warning="invalid_replicates"`: a
+bootstrap row with no interval or p-value; report its estimate descriptively.
+`support_warning="low_support"`: a bootstrap row under 30 supporting paths per arm;
+its interval covers less than nominal, so call it tentative. `descriptive`: rows of
+`period_population="active"` (survivors), no p-value. Strata are the top 3 by |delta|
+(`strata_selection`): exploratory unless `strata_pre_exposure` is true.
+
+**Next step after an inconclusive row** — always a NEW test, designed before it
+starts; never this test run longer, re-read at another horizon or re-sliced until a
+row flips (that is peeking):
+
+- **More paths for the next test** — the `reading` says how many times the paths a
+  smaller effect needs ("to detect 1 pp, about 5.7× the paths are needed in a new test
+  sized before it starts"): size the next test for the effect that matters to the
+  business, with its horizon and read date fixed up front.
+- **A horizon declared for the next test** — when the metric arrives late (a trial
+  that converts after 14 days, `period_complete=false` on the last periods, "window not
+  complete" in the `reading`), the next test declares its observation window
+  (`horizon=`) before it starts. A horizon tried on this test after seeing the result
+  does not count.
+- **A pre-declared stratum** — when the effect plausibly lives in one segment fixed
+  before exposure (a platform at signup), a test targeted at it, with the stratum
+  declared before it starts; a stratum picked because its delta looked large is
+  exploratory and needs its own test.
+- **A cheaper metric** — when the outcome is rare (a low base rate gives a large `mde`),
+  the next test can decide on a more frequent behaviour closer to the change (adds to
+  cart instead of orders) as a leading indicator, declared up front.
+
+Never turn an inconclusive row into "no effect", and never rerun until a row flips.
+
+**Do not:** filter on post-exposure behaviour ("users who reached checkout") before
+the test, or stratify by it — that compares selected groups, not the randomised arms.
+Use the randomised unit as `path_col` (per-user experiment → user paths).
+
+
 ## comparable_windows
 
 **Scenario:** Why did one group convert and another not, given both got as far as B?
@@ -213,3 +363,13 @@ Confirm with the user, then call `update_base_stream` with one or more of:
 {"type": "filter_paths", "op": ">", "metric": "length", "value": 3}
 {"type": "filter_events", "drop": {"event": ["noise_event"]}}
 ```
+
+
+## Experiments (Python source API)
+
+The development Python API provides `Eventstream.experiment_data` and
+`Eventstream.experiment`. It requires a separate complete assignment dataframe;
+the current MCP report session does not register this second source. Do not
+synthesize a roster from observed paths or claim an experiment tool is available
+in MCP. Use the Python workflow documented in /docs/experiments; keep a
+behavioral segment diff descriptive until a valid assignment design is supplied.

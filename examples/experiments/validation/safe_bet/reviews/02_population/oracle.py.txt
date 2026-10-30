@@ -1,0 +1,97 @@
+"""Independent design-based population oracle. Frozen before source inspection.
+Records use integer timestamps; no tested package imports or dependencies.
+"""
+from collections import defaultdict
+import math
+
+def canonical_assignments(assignments):
+    result = {}
+    for a in assignments:
+        unit = a['unit']; arm = a['arm']; assigned = a['assigned']
+        if unit is None or arm is None or assigned is None:
+            raise ValueError('null assignment key, arm, or time')
+        if unit in result:
+            raise ValueError('assignment table must have one row per unit')
+        result[unit] = dict(a)
+    return result
+
+def population(assignments, cutoff, horizon=None):
+    if horizon is not None and (not math.isfinite(horizon) or horizon <= 0):
+        raise ValueError('horizon must be finite and positive')
+    aa = canonical_assignments(assignments)
+    return {u: a for u, a in aa.items()
+            if a['assigned'] < cutoff and
+            (horizon is None or a['assigned'] + horizon <= cutoff)}
+
+def analyze(assignments, events, cutoff, horizon=None, target='buy', start=None):
+    all_a = canonical_assignments(assignments)
+    aa = population(assignments, cutoff, horizon)
+    by_unit = {u: {'arm': a['arm'], 'converted': 0, 'target_count': 0,
+                   'event_count': 0} for u, a in aa.items()}
+    for e in events:
+        u = e['unit']
+        if u not in all_a:
+            raise ValueError('event lacks randomized assignment')
+        a = all_a[u]
+        if 'arm' in e and e['arm'] != a['arm']:
+            raise ValueError('event arm contradicts randomized assignment')
+        if u not in aa:
+            continue
+        lo = a['assigned'] if start is None else max(a['assigned'], start)
+        hi = cutoff if horizon is None else min(cutoff, a['assigned'] + horizon)
+        if lo <= e['time'] < hi:
+            by_unit[u]['event_count'] += 1
+            if e['event'] == target:
+                by_unit[u]['converted'] = 1
+                by_unit[u]['target_count'] += 1
+    arms = {}
+    for v in by_unit.values():
+        dest = arms.setdefault(v['arm'], {'n': 0, 'converted': 0,
+                                          'target_count': 0, 'event_count': 0})
+        dest['n'] += 1
+        for k in ('converted', 'target_count', 'event_count'):
+            dest[k] += v[k]
+    return {'arms': arms, 'units': by_unit}
+
+def event_bins(assignments, events, cutoff, width, mode='since_assignment', origin=0):
+    if not math.isfinite(width) or width <= 0:
+        raise ValueError('bin width must be positive and finite')
+    if mode not in ('since_assignment', 'calendar'):
+        raise ValueError('invalid bin mode')
+    aa = canonical_assignments(assignments)
+    result = defaultdict(lambda: defaultdict(int))
+    for e in events:
+        if e['unit'] not in aa:
+            raise ValueError('event lacks randomized assignment')
+        a = aa[e['unit']]
+        if not a['assigned'] <= e['time'] < cutoff:
+            continue
+        origin_here = a['assigned'] if mode == 'since_assignment' else origin
+        bucket = math.floor((e['time'] - origin_here) / width)
+        result[a['arm']][bucket] += 1
+    return {arm: dict(bins) for arm, bins in result.items()}
+
+def independent_clusters(assignments, sessions):
+    aa = canonical_assignments(assignments)
+    nested = defaultdict(set)
+    for row in sessions:
+        if row['unit'] not in aa:
+            raise ValueError('session lacks randomized unit')
+        nested[row['unit']].add((row['unit'], row['session']))
+    return {'independent_n': len(aa),
+            'nested_session_n': sum(len(s) for s in nested.values())}
+
+if __name__ == '__main__':
+    a = [{'unit':'a','arm':'A','assigned':0}, {'unit':'b','arm':'B','assigned':5},
+         {'unit':'silent','arm':'A','assigned':0}]
+    e = [{'unit':'a','time':-1,'event':'buy'}, {'unit':'a','time':0,'event':'view'},
+         {'unit':'a','time':10,'event':'buy'}, {'unit':'b','time':9,'event':'buy'},
+         {'unit':'b','time':10,'event':'buy'}]
+    r = analyze(a,e,cutoff=10,horizon=10)
+    assert r['arms']['A'] == {'n':2,'converted':0,'target_count':0,'event_count':1}
+    assert 'B' not in r['arms']
+    assert event_bins(a,e,cutoff=10,width=5)['A'] == {0:1}
+    assert independent_clusters(a,[{'unit':'a','session':'same'},
+                                  {'unit':'b','session':'same'}]) == {
+                                      'independent_n':3,'nested_session_n':2}
+    print('Independent oracle self-tests passed')

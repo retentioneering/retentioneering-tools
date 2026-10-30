@@ -1,0 +1,235 @@
+{% extends "_widget_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+The A/B Test widget draws the scorecard of
+[`get_ab_test`](/docs/tools/get-ab-test): it computes nothing of its own. Its
+headless twin, `ab_test_data`, is an alias of `get_ab_test` — same arguments,
+same result — and the widget makes up to three calls to it:
+
+| Tab | Call | Rows |
+|---|---|---|
+| **Scorecard** | `ab_test_data(diff, metrics, ...)` without `strata_col` and `period` | one per metric |
+| **Strata** (when `strata_col` is set) | the same call with `strata_col` and `strata_pre_exposure` | one per metric × stratum |
+| **Periods** (when `period` is set) | the same call with `period`, `period_basis` and `period_population` | one per metric × period |
+
+Every other argument — `assignment`, `horizon`, `observation_end`, `test`, `correction`,
+`correction_scope`, `ci_level`, `path_col`, ... — applies to all three
+(the sidebar shows `correction_scope` as "Corrected together"). Each tab therefore holds
+exactly the rows `get_ab_test` returns for that call, so any number in the
+widget can be reproduced, and quoted, from code.
+
+The sidebar edits the arms, the metrics (the same editor as Segment Overview,
+with a row label and an optional ratio-of-sums denominator), `ci_level`
+(90 / 95 / 99 %), `correction` and its family (`correction_scope`), `test`, the
+strata column and whether it was fixed before exposure, `period` (day / week /
+month) and its basis, `horizon` and the exclusive complete-logging cutoff
+`observation_end`. Horizons and since-assignment periods require this cutoff;
+the last event cannot establish complete follow-up. Every change recomputes. Changing the
+horizon or the metrics after seeing a result is peeking: declare the read first,
+then look. The `assignment` table is passed in code only (with it, the arm column
+list also offers the table's own `arm`, for `diff=("arm", ...)`); a `state_file`
+keeps everything else, and the table must be passed again when the widget is
+reopened.
+
+### Reading the scorecard and the forest plot
+
+Each scorecard row shows the two arms' values, the delta `group1 − group2` with
+its interval, the relative delta, the adjusted p-value, the MDE and the verdict.
+Below the table, a forest plot puts every delta on one line:
+
+- **the dot** is the delta, **the whisker** its interval at `ci_level`, and
+  **the vertical line** is 0. Metrics are in different units, so each row has
+  its own scale, symmetric around 0: read *where the interval lies relative to
+  0*, not how long it is next to another row's;
+- **the colour is the verdict**: red for `increase`, blue for `decrease` (the
+  library's diff colours: group 1 higher is red), grey for `inconclusive`;
+  a **hollow** dot is `insufficient_data` — too little support for a test, the
+  estimate shown descriptively;
+- **units**: 0/1 metrics (`has_event`, `matches_pattern`, ...) as shares, their
+  deltas in **percentage points**; totals, values and ratios in their own unit;
+  `duration` and `time_between` in one time unit per row. Hover a row for the
+  relative delta and its interval.
+
+The interval is **per comparison and never adjusted**; the verdict reads the
+**adjusted** p-value (`correction` within the rows of one metric, or across every
+row of every metric with `correction_scope="all"`; the note under the plot says
+which). So a row can have an interval that excludes 0 and still be
+`inconclusive`. The default `correction_scope="all"` corrects every declared row
+of every metric within the current tab's call, including unavailable tests.
+Tabs are separate analyses; the library does not adjust for all exploratory
+calls a reader might make. Use `correction_scope="metric"` only with explicitly
+predeclared separate families. A guardrail needs a declared harm margin; a grey
+verdict does not establish non-inferiority. Use `correction="bonferroni"` when a
+simultaneous interval is needed (`delta_ci_low_adj` / `delta_ci_high_adj` in the
+headless result).
+
+**An inconclusive row is not "no effect".** Its interval says which effects the
+data still allow; the normal-approximation MDE describes a planning approximation, not actual Fisher power
+with the requested power — a property of the design, not a bound on the true
+effect. The scorecard shows each row's `reading` in a **Reading** column (hover
+for the whole sentence, click to expand); it spells out the method and
+availability. Any sample-size multiplier is a normal planning approximation
+that requires verification with the chosen test. It reads the row's numbers only: it does not check the
+sample ratio or the unit.
+
+A **support** badge (hover for its meaning) flags a row's support:
+
+- `no data` — no path of either arm has the behaviour, or an arm has no
+  estimate: nothing to compare, the row is `insufficient_data`;
+- `invalid replicates` — at least one requested bootstrap replicate had no value in an
+  arm: no interval or p-value, the estimate is descriptive;
+- `one arm only` — the behaviour exists in one arm only (a loop the treatment
+  created): the test ran;
+- `low support` — a bootstrap interval over fewer than 30 supporting paths in an
+  arm, where percentile intervals under-cover: the verdict stays.
+
+### Strata
+
+One section per metric: a forest plot of the strata deltas and a table with the
+stratum's share in each arm, its delta, the adjusted p-value and the
+stratum-vs-rest p-value. Default Fisher/descriptive rows suppress secondary p-values. Explicit supported
+approximate methods expose guarded exploratory diagnostics, outside the primary
+corrected family, that answer different questions:
+
+- **heterogeneity p** (Cochran's Q over the strata with enough support): do the
+  strata deltas differ from each other? A low value is the evidence for "it
+  works for some users and not for others"; strata deltas that merely look
+  different are not.
+- **balance p** (chi-square of the stratum × arm table): do the arms hold the
+  same share of each stratum? A balanced stratum is not therefore a fair one —
+  a stratum computed after exposure can be balanced and still selected by the
+  treatment.
+
+A stratum is a randomised comparison only if the treatment could not change who
+is in it. Rows without an explicit declaration (`strata_pre_exposure=True`, a local
+`add_segment(pre_exposure=True)`, or the sidebar declaration) are **descriptive and exploratory**: marked `*`, in italics, under a
+banner. Truncation and transferred/legacy flags never certify timing. Their p-values, balance tests, heterogeneity tests and confirmatory
+verdicts are suppressed; descriptive estimates and intervals remain visible.
+
+### Periods
+
+A line through the period deltas over a band of their intervals, a dashed zero
+line, and a table. Periods are intention-to-treat by default: a period compares
+every path assigned before its end, active or not. A **hollow** point is a
+period that is not complete — the data ends inside it, or the `horizon` cuts it
+— and reads low for that reason alone. With `period_population="active"` the
+rows compare only the paths active in the period: survivors, not randomised
+groups; they are `descriptive`, carry no p-value and are drawn as **squares**.
+By default the correction family includes every metric and period returned
+by the period call. A coloured period has survived that correction. Calendar
+periods mix users at different times since their assignment; for an effect
+that changes with exposure age (novelty), bin by
+`period_basis="since_assignment"` (it needs an `assignment` table with
+`assigned_at` and an explicit `observation_end`), as the guide's
+[periods section](/docs/ab-testing#periods-horizon-and-novelty) does.
+
+### What the numbers assume
+
+- **The path is the declared randomised unit.** Intervals treat paths as
+  independent. A grain finer than the coarsest declared path grain is refused
+  for inference, including small samples and explicit-ID splits. For a genuine
+  session-randomized design, declare sessions as the primary independent unit
+  in a separate schema and justify that design. A schema cannot prove randomization.
+- **The population.** Without `assignment`, the arms are the paths of the
+  stream — users with at least one event, split by the `diff` segment. With an
+  assignment table the comparison is intention-to-treat: every assigned path,
+  silent ones counting as zeros, events before `assigned_at` dropped.
+- **Metrics chosen before looking.** The default corrects all rows in the
+  call; it cannot account for outcomes or windows selected after inspecting data.
+- **Strata fixed before exposure**, as above, and no filter on post-exposure
+  behaviour (users who reached checkout) before the test.
+- **The arms have the planned sizes.** Check with
+  [`get_sample_ratio`](/docs/tools/get-sample-ratio) first; a sample ratio
+  mismatch requires investigation before interpreting the comparison causally.
+
+The [A/B Testing guide](/docs/ab-testing) walks through all of this on the
+bundled experiment, `rete.datasets.load_ab_test()`, with the numbers read out.
+
+{% endblock %}
+{% block demo_examples %}
+## Examples
+
+The examples run on the bundled synthetic experiment, `load_ab_test()`, with its
+assignment table, `load_ab_test_assignment()`, as `assignment`.
+
+### Scorecard
+
+<DemoWidget cmd={`stream.ab_test(
+    ("exp_group", "treatment", "control"),
+    metrics=[
+        {"name": "conversion", "metric": "has_event", "metric_args": {"event": "order_success"}},
+        {"name": "adders", "metric": "has_any_event", "metric_args": {"events": ["add_to_cart", "quick_add"]}},
+        {"name": "orders_per_user", "metric": "event_count", "metric_args": {"event": "order_success"}},
+        {"name": "revenue_per_user", "metric": "column_sum", "metric_args": {"column": "order_value"}},
+        {"name": "aov", "metric": "column_sum", "metric_args": {"column": "order_value"},
+         "denominator": {"metric": "event_count", "metric_args": {"event": "order_success"}}},
+    ],
+    assignment=assignment,
+)`} path="/docs-demos/widgets/ab-test/scorecard.html" height={620} />
+
+Every row is grey: the top line is inconclusive. Read conversion's interval, not
+its dot: effects from about −1 pp to about +2.3 pp remain possible.
+
+### Strata and periods
+
+`platform` is fixed at signup, so it is declared pre-exposure. The weekly rows
+drift from positive in the first weeks to below zero later. Calendar weeks mix
+users of every exposure age, so this does not measure how the effect changes
+with exposure; the
+[A/B Testing guide](/docs/ab-testing#periods-horizon-and-novelty) does that by
+time since assignment.
+
+<DemoWidget cmd={`stream.ab_test(
+    ("exp_group", "treatment", "control"),
+    metrics=[
+        {"name": "conversion", "metric": "has_event", "metric_args": {"event": "order_success"}},
+        {"name": "revenue_per_user", "metric": "column_sum", "metric_args": {"column": "order_value"}},
+    ],
+    assignment=assignment,
+    strata_col="platform",
+    strata_pre_exposure=True,
+    period="W",
+)`} path="/docs-demos/widgets/ab-test/strata-periods.html" height={720} />
+{% endblock %}
+{% block extra %}
+### test
+
+{{ bullets(doc.parameters, "test") }}
+
+### correction
+
+{{ bullets(doc.parameters, "correction") }}
+
+### correction_scope
+
+{{ bullets(doc.parameters, "correction_scope") }}
+
+### period_basis
+
+{{ bullets(doc.parameters, "period_basis") }}
+
+### period_population
+
+{{ bullets(doc.parameters, "period_population") }}
+
+### bootstrap_weights
+
+{{ bullets(doc.parameters, "bootstrap_weights") }}
+
+## `ab_test_data` and `get_ab_test`
+
+`ab_test_data` and `get_ab_test` are the same method under two names. The
+library's docs and tutorial use `get_ab_test`, the name of the analysis tools
+(`get_ab_bootstrap`, `get_sample_ratio`, `get_conversion_rate`);
+`ab_test_data` exists so that every widget has a `<widget>_data` twin. The
+full parameter and column reference is on the
+[A/B Test Scorecard](/docs/tools/get-ab-test) page.
+
+See also the two A/B tools that have no widget:
+[`get_sample_ratio`](/docs/tools/get-sample-ratio), the sample ratio check to run
+before reading any metric, and [`get_ab_bootstrap`](/docs/tools/get-ab-bootstrap),
+the joint bootstrap replicates behind contrasts between periods.
+
+{% endblock %}

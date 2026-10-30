@@ -120,6 +120,29 @@ stream = rete.Eventstream(df, schema={
 })
 ```
 
+### A/B test datasets
+
+For experiments, `load_ab_test(name)` generates one of six synthetic randomised tests, each with stories planted in it, and `load_ab_test_assignment(name)` returns its assignment table (the population for [`get_ab_test(assignment=...)`](/docs/tools/get-ab-test)). Nothing is downloaded: every dataset is a deterministic generator that runs in about a second, with `seed=` and `n_users=` to vary it. Some datasets hide an effect in a segment, some are broken tests whose right answer is "do not read this test" — finding out which is the exercise.
+
+```python
+import retentioneering as rete
+
+rete.datasets.list_ab_tests()                    # name -> one-line description
+stream = rete.datasets.load_ab_test("srm_platform_bug")
+assignment = rete.datasets.load_ab_test_assignment("srm_platform_bug")
+```
+
+| name | size | what it practises | solutions |
+|---|---|---|---|
+| `northwind_home` (default) | 10,000 users, 8 weeks | the full readout: sample ratio, scorecard, funnel intervals, novelty, pre-exposure strata, loops; the [A/B tutorial](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_tutorial.ipynb)'s dataset | [`ab_test.py`](https://github.com/retentioneering/retentioneering-tools/blob/master/src/retentioneering/datasets/ab_test.py) |
+| `srm_platform_bug` | 10,000 users, 5 weeks | validity checks before any metric; `get_sample_ratio(strata_col=..., period=...)` | [`srm_platform_bug.py`](https://github.com/retentioneering/retentioneering-tools/blob/master/src/retentioneering/datasets/ab_cases/srm_platform_bug.py) |
+| `session_assignment` | 8,000 users, 4 weeks | the unit of randomisation versus the unit of analysis | [`session_assignment.py`](https://github.com/retentioneering/retentioneering-tools/blob/master/src/retentioneering/datasets/ab_cases/session_assignment.py) |
+| `aa_calibration` | 10,000 users, 4 weeks | what an A/A test should show; daily rows; revenue metrics | [`aa_calibration.py`](https://github.com/retentioneering/retentioneering-tools/blob/master/src/retentioneering/datasets/ab_cases/aa_calibration.py) |
+| `trial_conversion` | 10,000 users, 6 weeks | outcomes that arrive late; `horizon` and since-assignment periods | [`trial_conversion.py`](https://github.com/retentioneering/retentioneering-tools/blob/master/src/retentioneering/datasets/ab_cases/trial_conversion.py) |
+| `push_campaign` | 20,000 assigned users, 2 weeks | assignment from outside the product; ITT versus the users who showed up | [`push_campaign.py`](https://github.com/retentioneering/retentioneering-tools/blob/master/src/retentioneering/datasets/ab_cases/push_campaign.py) |
+
+Each generator's docstring (`help(rete.datasets.ab_cases.push_campaign)`) describes the experiment — where the treatment sits, which segments are fixed at assignment and can be declared pre-exposure, what the assignment table is — and ends with a "Solutions (spoilers)" section: the planted stories and the correct conclusion. Every dataset has the path columns `user_id` and `session_id` and the arm segment `exp_group`; user ids do not overlap between datasets, so a table loaded for one never matches another's stream. `with_truth=True` adds the planted truth column for checking an analysis at the end.
+
 ## Inspecting your data
 
 `stream.describe()` is a quick sanity check on what got loaded: dataset shape, schema, date range, event frequency, and path length/duration statistics.
@@ -221,6 +244,145 @@ stream.get_conversion_rate(
 
 **The unit is the path, not the occurrence.** A path where the start event happened three times counts once in the denominator, so "of 23,000 visits to this page, how many were entrances" is a different question this method does not answer — the per-visit figure can differ from the per-path one by several points. `path_col="session_id"` is usually the right lever: at session grain "added to cart" and "purchased" describe the same visit rather than the same person, and the lift stops being washed out by everything a user ever did.
 
+**Intervals and two-group comparisons.** `ci_level` adds a Clopper–Pearson
+rate interval at the coarsest declared independent grain:
+
+```python
+rates = stream.get_conversion_rate("path_start", "payment", ci_level=0.95)
+rates.attrs  # method, confidence level, observed-path population and independence
+```
+
+A valid `diff` compares disjoint groups constant at that grain. The result includes
+a conservative CP-based difference and a two-sided Fisher exact p-value for
+unconditional comparisons. The difference is not a Fisher-test inversion.
+Conditional starts such as `add_to_cart` select who reached that event and carry
+no confirmatory p-value. Their intervals remain descriptive. Method and population
+metadata live in `DataFrame.attrs`; a serializer exporting only rows must preserve
+those attrs separately.
+
+On `load_ecom()`, users can switch platform across sessions, so a platform diff
+at user grain can reject. Session point estimates remain descriptive; changing
+the grain does not justify independent-session intervals. For an ITT outcome
+including silent assignments, use the [roster scorecard](/docs/ab-testing) or
+[strict fixed-window report](/docs/experiments).
+
+### Path-level labels
+
+`get_path_segments(segment_col)` returns one value of a segment column per path, `<MULTI>` where it changes inside the path and `<MISSING>` where it is empty throughout:
+
+```python
+stream.get_path_segments("platform").value_counts()
+# desktop 229, <MULTI> 180, mobile 146, tablet 45
+stream.get_path_segments("platform", path_col="session_id").value_counts()   # no <MULTI>
+```
+
+It is the inverse of [`add_segment(name, path_values=...)`](/docs/data-processors/add-segment), which broadcasts one value per path onto every event — together they carry an assignment table onto the event log, or clusters found on a truncated stream back onto the full one. `<MULTI>` paths are what the inferential methods (`get_ab_test`, `get_ab_bootstrap`, `get_conversion_rate(diff=...)`, `funnel(ci_level=...)`) refuse to split, with `DiffConfigError`; `get_sample_ratio` counts them as `multi_valued_paths` and reports a mismatch, because for a sample ratio check a path with two arms is the finding.
+
+### Sample ratio mismatch
+
+`get_sample_ratio` counts assignment units against the declared allocation.
+Two-arm p-values are exact binomial checks under independent Bernoulli allocation.
+Multiarm Pearson inference is approximate and unavailable when any expected count
+is below five. Explicit expected-share keys include planned but absent arms.
+
+```python
+check = stream.get_sample_ratio(assignment=groups)  # authoritative indexed roster
+check["inference_status"], check["p_value_method"], check["mismatch"]
+```
+
+Require `inference_status="ok"` before interpreting the p-value. `mismatch` is
+`True`, `False`, or `None`; unavailable inference is not a pass. Conflicting
+assignments independently alarm. The retained `chi2` and `dof` are descriptive
+Pearson fields, not the source of a two-arm exact p-value. Fixed-total and blocked
+allocation require a compatible diagnostic. `period` and `strata_col` provide
+split checks with their own full planned Holm family. See
+[allocation assumptions and statuses](/docs/ab-testing#sample-ratio-mismatch).
+
+### A/B test scorecard
+
+`ab_test_data` / `get_ab_test` compares declared independent paths. Known binary
+outcomes default to Fisher exact tests with Clopper–Pearson arm intervals and a
+conservative difference; nonbinary means, counts and ratios default to descriptive
+estimates. Explicit nonbinary Welch/bootstrap remain approximate advanced options.
+Known-binary Welch and scorecard bootstrap reject. Explicit binary z inference
+is approximate and requires at least five pooled-null expected successes and
+failures per arm.
+
+```python
+from retentioneering.datasets import load_ab_test, load_ab_test_assignment
+
+stream = load_ab_test()
+assignment = load_ab_test_assignment()
+metrics = [
+    {"name": "conversion", "metric": "has_event",
+     "metric_args": {"event": "order_success"}},
+    {"name": "orders_per_user", "metric": "event_count",
+     "metric_args": {"event": "order_success"}},
+]
+scorecard = stream.get_ab_test(
+    ("exp_group", "treatment", "control"), metrics,
+    assignment=assignment, observation_end="2026-04-27")
+scorecard[["metric", "delta", "test", "ci_basis", "verdict"]]
+```
+
+`delta` is group1 minus group2. The roster includes silent users as zero for
+supported binary outcomes/totals and excludes pre-assignment events. A ratio of
+sums is not an average of individual ratios. Undefined values remain missing.
+The conservative difference interval is not a Fisher-test inversion; exact-path
+relative intervals are withheld. Available MDE is a normal planning approximation,
+not actual Fisher power or a bound on the true effect.
+
+The default Holm family includes all declared rows and unavailable tests.
+Separate calls are separate families; BH requires independence or PRDS.
+`strata_pre_exposure=True` or local `pre_exposure=True` explicitly declares
+pre-treatment membership. Truncation, transferred metadata and legacy inferred
+recipes cannot prove it. Fisher/descriptive strata suppress asymptotic secondary
+p-values; explicitly requested supported approximations label guarded diagnostics
+`strata_diagnostics_basis="asymptotic_exploratory"` outside the primary family.
+
+Calendar ITT periods include assignments before each bin end. Exposure-age bins
+and fixed horizons require an explicit exclusive `observation_end`; the last
+recorded event never determines maturity. Active-population periods are
+descriptive. Read the full [A/B contract](/docs/ab-testing#supported-inference).
+
+### Joint bootstrap replicates
+
+`get_ab_bootstrap` draws whole independent units jointly across metrics and
+periods. It is an explicit approximate diagnostic. The fraction of positive
+draws is not a posterior probability or a p-value. Contrasts require both a
+common population and common measurement eligibility across periods; changing
+missingness rejects.
+
+```python
+reps = stream.get_ab_bootstrap(
+    ("exp_group", "treatment", "control"), metrics[:1], assignment=assignment,
+    period="14D", period_basis="since_assignment", horizon="42D",
+    observation_end="2026-04-27",
+    contrast={"early_minus_late": (["0-13"], ["28-41"])})
+contrast = reps.loc[reps["contrast"] == "early_minus_late", "delta"]
+```
+
+Requests are capped at 1,000,000 draws and 10,000,000
+replicate-by-contribution entries. Undefined/degenerate draws and insufficient
+adjusted-tail resolution retain unavailable statuses. Numeric overflow raises;
+more draws cannot repair heavy tails or dependence.
+
+### Per-path table behind the scorecard
+
+`get_ab_paths` exports one row per compared assignment with its arm, assignment
+time, silent/mature flags and metric contributions. Ratios export separate
+numerator and denominator columns. Aggregating those contributions over the
+appropriate population reproduces scorecard point estimates.
+
+```python
+paths = stream.get_ab_paths(
+    ("exp_group", "treatment", "control"), metrics, assignment=assignment)
+paths.groupby("arm")["conversion"].mean()
+```
+
+Use this table for independent audits and explicitly designed analyses outside
+the scorecard. See [every exported column](/docs/tools/get-ab-paths).
+
 ### Reproducing an eventstream
 
 Every processor call is recorded, so a derived eventstream can describe how it was built:
@@ -235,3 +397,24 @@ prepared.recipe()
 ```
 
 `Eventstream.from_recipe(df, recipe)` replays that list onto a base DataFrame, rebuilding an identical eventstream — useful for moving a prepared pipeline between notebooks, storing it next to a report, or handing it to the [MCP server](/docs/mcp-server), whose preprocessor steps use exactly this format. `stream.fingerprint` (a property) is a content hash for checking two eventstreams really are the same, and `stream.equals(other)` compares them directly.
+
+## Identity and persistent recipes
+
+Nonmissing values in each path-ID column must use a homogeneous scalar family.
+Derived nested session IDs may remain missing; that does not authorize mixing
+nonmissing ID types. Mixed integer/string or
+boolean/integer IDs reject before SQL can merge them. Integer object columns are
+normalized exactly to signed64 or uint64; arbitrary-precision integers outside
+those ranges, or a column mixing negative integers with values above signed64
+maximum, reject. IDs rounded before construction cannot be recovered.
+
+`add_segment(path_values=...)` accepts persistent labels that are strings,
+booleans, finite numbers or missing. NumPy scalars normalize to native values;
+timestamps/custom objects/infinite labels require explicit conversion. Mapping
+keys with colliding serialized forms reject. Numeric/boolean keys retain typed
+replay metadata. Recorded arguments and exported recipes are deep copies, so
+mutating a caller's mapping or a returned recipe does not rewrite stream lineage.
+
+A recipe's truncation or inherited pre-exposure flag cannot certify treatment
+timing. Reassert the declaration when transferring labels; see
+[A/B exposure provenance](/docs/ab-testing#segments-and-exposure-provenance).

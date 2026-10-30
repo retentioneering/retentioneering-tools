@@ -1,0 +1,122 @@
+{
+  "checked_at": "2026-10-30T20:26:00Z",
+  "prs": [
+    {
+      "url": "https://github.com/retentioneering/retentioneering-tools/pull/214",
+      "number": 214,
+      "state": "open",
+      "merged": false,
+      "title": "Add assignment-aware experiments with unit bootstrap and native views",
+      "base": "master",
+      "base_sha": "e597bfbdb63ad5a5fb517894f4f68eda9ca84e36",
+      "head": "codex/experiment-inference-v1",
+      "head_sha": "aa17374b20407158c687b33abed0fcc3376dbc12",
+      "created_at": "2026-10-29T17:15:17Z",
+      "updated_at": "2026-10-29T17:25:09Z"
+    },
+    {
+      "url": "https://github.com/retentioneering/retentioneering-tools/pull/215",
+      "number": 215,
+      "state": "open",
+      "merged": false,
+      "title": "Validate PR #214 coverage and fix exact Wilson boundary intervals",
+      "base": "codex/experiment-inference-v1",
+      "base_sha": "aa17374b20407158c687b33abed0fcc3376dbc12",
+      "head": "codex/pr214-statistical-validation",
+      "head_sha": "047039a2be9605b791ecfc6df47bec9b2cb51b7f",
+      "created_at": "2026-10-29T19:37:32Z",
+      "updated_at": "2026-10-29T19:37:32Z"
+    },
+    {
+      "url": "https://github.com/retentioneering/retentioneering-tools/pull/216",
+      "number": 216,
+      "state": "open",
+      "merged": false,
+      "title": "Add assignment-aware A/B analysis with validated inference and tutorials",
+      "base": "master",
+      "base_sha": "e597bfbdb63ad5a5fb517894f4f68eda9ca84e36",
+      "head": "codex/experiment-reviewed",
+      "head_sha": "52615dd93476ef8532487792f26d023e944dfe77",
+      "created_at": "2026-10-29T19:45:23Z",
+      "updated_at": "2026-10-29T20:00:50Z"
+    },
+    {
+      "url": "https://github.com/retentioneering/retentioneering-tools/pull/217",
+      "number": 217,
+      "state": "open",
+      "merged": false,
+      "title": "A/B testing tools: scorecard, bootstrap, sample ratio, funnel intervals, widget, datasets, guide and tutorial",
+      "base": "master",
+      "base_sha": "e597bfbdb63ad5a5fb517894f4f68eda9ca84e36",
+      "head": "feature/ab-testing-tools",
+      "head_sha": "7e61d997bcbd9bae9f1571ba3521a85fcb59f751",
+      "created_at": "2026-10-29T22:42:50Z",
+      "updated_at": "2026-10-30T18:05:27Z"
+    },
+    {
+      "url": "https://github.com/retentioneering/retentioneering-tools/pull/218",
+      "number": 218,
+      "state": "open",
+      "merged": false,
+      "title": "Audit heavy-tail interval alternatives without changing the mean estimand",
+      "base": "codex/experiment-reviewed",
+      "base_sha": "52615dd93476ef8532487792f26d023e944dfe77",
+      "head": "codex/heavy-tail-inference-audit",
+      "head_sha": "ac08a721b98ce017c44d818ec7a6f81a74f65421",
+      "created_at": "2026-10-30T00:15:22Z",
+      "updated_at": "2026-10-30T00:21:08Z"
+    },
+    {
+      "url": "https://github.com/retentioneering/retentioneering-tools/pull/219",
+      "number": 219,
+      "state": "open",
+      "merged": false,
+      "title": "mcp: add list_tools(); annotate playbook as str | dict",
+      "base": "master",
+      "base_sha": "e597bfbdb63ad5a5fb517894f4f68eda9ca84e36",
+      "head": "fix/mcp-tools-listing",
+      "head_sha": "8a6ae976a8c93e23d450af401289ef3e0227c145",
+      "created_at": "2026-10-30T10:20:59Z",
+      "updated_at": "2026-10-30T10:21:46Z"
+    },
+    {
+      "url": "https://github.com/retentioneering/retentioneering-tools/pull/220",
+      "number": 220,
+      "state": "open",
+      "merged": false,
+      "title": "Integrate A/B experiment analysis from #216 and #217",
+      "base": "master",
+      "base_sha": "e597bfbdb63ad5a5fb517894f4f68eda9ca84e36",
+      "head": "codex/ab-integrated",
+      "head_sha": "38cbe91d5b315584575b132a596890e69eb210aa",
+      "created_at": "2026-10-30T11:05:31Z",
+      "updated_at": "2026-10-30T11:12:13Z"
+    },
+    {
+      "url": "https://github.com/retentioneering/retentioneering-tools/pull/221",
+      "number": 221,
+      "state": "open",
+      "merged": false,
+      "title": "A/B: screen transition-graph edges and step-matrix cells between arms (get_ab_transitions, get_ab_steps)",
+      "base": "feature/ab-testing-tools",
+      "base_sha": "7e61d997bcbd9bae9f1571ba3521a85fcb59f751",
+      "head": "feature/ab-transitions",
+      "head_sha": "2e9649395dda3ce647b4818c1ec013aba152ecdd",
+      "created_at": "2026-10-30T12:15:23Z",
+      "updated_at": "2026-10-30T20:06:23Z"
+    },
+    {
+      "url": "https://github.com/retentioneering/retentioneering-tools/pull/222",
+      "number": 222,
+      "state": "open",
+      "merged": false,
+      "title": "A/B: difference matrices for the transition and step screens (ab_transitions, ab_steps widgets; exportable tables)",
+      "base": "feature/ab-transitions",
+      "base_sha": "2e9649395dda3ce647b4818c1ec013aba152ecdd",
+      "head": "feature/ab-matrix-widgets",
+      "head_sha": "0bddd49a9de3d5f5a695ead7282062bf606fdf8b",
+      "created_at": "2026-10-30T20:10:50Z",
+      "updated_at": "2026-10-30T20:10:59Z"
+    }
+  ]
+}

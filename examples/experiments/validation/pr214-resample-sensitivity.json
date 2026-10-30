@@ -1,0 +1,660 @@
+{
+  "original_pr": "https://github.com/retentioneering/retentioneering-tools/pull/214",
+  "original_sha": "aa17374b20407158c687b33abed0fcc3376dbc12",
+  "implementation_sha256": "01c7188b5fb70aad08b882005c83c7892e1f173c4b8b5f985d362837ced29678",
+  "checkout_sha": "aa17374b20407158c687b33abed0fcc3376dbc12",
+  "python": "3.12.14",
+  "numpy": "2.4.6",
+  "pandas": "3.0.3",
+  "scipy": "1.18.0",
+  "config": {
+    "trials": 1000,
+    "resamples": 9999,
+    "seed": 214202610,
+    "workers": 2,
+    "scenarios": [
+      "money_null",
+      "money_unequal_null",
+      "ratio_effect"
+    ],
+    "stats_file": "/workspace/scratch/df14b46cef61/rete-validation/src/retentioneering/stats/experiments.py",
+    "output": "examples/experiments/validation/pr214-resample-sensitivity.json"
+  },
+  "thread_settings": {
+    "OPENBLAS_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1"
+  },
+  "results": [
+    {
+      "scenario": {
+        "name": "money_null",
+        "kind": "money",
+        "nc": 250,
+        "nt": 250,
+        "pc": 0.0,
+        "pt": 0.0
+      },
+      "results": [
+        {
+          "method": "percentile",
+          "estimand": "control",
+          "statuses": {
+            "ok": 1000
+          },
+          "availability": {
+            "count": 1000,
+            "n": 1000,
+            "rate": 1.0,
+            "mc95": [
+              0.9963179161031341,
+              1.0
+            ]
+          },
+          "truth": 20.0,
+          "coverage_all": {
+            "count": 731,
+            "n": 1000,
+            "rate": 0.731,
+            "mc95": [
+              0.7023620968228451,
+              0.7582707605480967
+            ]
+          },
+          "coverage_available": {
+            "count": 731,
+            "n": 1000,
+            "rate": 0.731,
+            "mc95": [
+              0.7023620968228451,
+              0.7582707605480967
+            ]
+          }
+        },
+        {
+          "method": "percentile",
+          "estimand": "treatment",
+          "statuses": {
+            "ok": 1000
+          },
+          "availability": {
+            "count": 1000,
+            "n": 1000,
+            "rate": 1.0,
+            "mc95": [
+              0.9963179161031341,
+              1.0
+            ]
+          },
+          "truth": 20.0,
+          "coverage_all": {
+            "count": 718,
+            "n": 1000,
+            "rate": 0.718,
+            "mc95": [
+              0.6889969272907507,
+              0.7457133006590745
+            ]
+          },
+          "coverage_available": {
+            "count": 718,
+            "n": 1000,
+            "rate": 0.718,
+            "mc95": [
+              0.6889969272907507,
+              0.7457133006590745
+            ]
+          }
+        },
+        {
+          "method": "percentile",
+          "estimand": "absolute_effect",
+          "statuses": {
+            "ok": 1000
+          },
+          "availability": {
+            "count": 1000,
+            "n": 1000,
+            "rate": 1.0,
+            "mc95": [
+              0.9963179161031341,
+              1.0
+            ]
+          },
+          "truth": 0.0,
+          "coverage_all": {
+            "count": 907,
+            "n": 1000,
+            "rate": 0.907,
+            "mc95": [
+              0.887280582298844,
+              0.9242815973931354
+            ]
+          },
+          "coverage_available": {
+            "count": 907,
+            "n": 1000,
+            "rate": 0.907,
+            "mc95": [
+              0.887280582298844,
+              0.9242815973931354
+            ]
+          },
+          "ci_false_positive_all": {
+            "count": 93,
+            "n": 1000,
+            "rate": 0.093,
+            "mc95": [
+              0.07571840260686478,
+              0.11271941770115598
+            ]
+          },
+          "ci_false_positive_available": {
+            "count": 93,
+            "n": 1000,
+            "rate": 0.093,
+            "mc95": [
+              0.07571840260686478,
+              0.11271941770115598
+            ]
+          }
+        },
+        {
+          "method": "percentile",
+          "estimand": "relative_effect",
+          "statuses": {
+            "ok": 1000
+          },
+          "availability": {
+            "count": 1000,
+            "n": 1000,
+            "rate": 1.0,
+            "mc95": [
+              0.9963179161031341,
+              1.0
+            ]
+          },
+          "truth": 0.0,
+          "coverage_all": {
+            "count": 907,
+            "n": 1000,
+            "rate": 0.907,
+            "mc95": [
+              0.887280582298844,
+              0.9242815973931354
+            ]
+          },
+          "coverage_available": {
+            "count": 907,
+            "n": 1000,
+            "rate": 0.907,
+            "mc95": [
+              0.887280582298844,
+              0.9242815973931354
+            ]
+          },
+          "ci_false_positive_all": {
+            "count": 93,
+            "n": 1000,
+            "rate": 0.093,
+            "mc95": [
+              0.07571840260686478,
+              0.11271941770115598
+            ]
+          },
+          "ci_false_positive_available": {
+            "count": 93,
+            "n": 1000,
+            "rate": 0.093,
+            "mc95": [
+              0.07571840260686478,
+              0.11271941770115598
+            ]
+          }
+        },
+        {
+          "method": "percentile",
+          "estimand": "test",
+          "statuses": {},
+          "availability": {
+            "count": 1000,
+            "n": 1000,
+            "rate": 1.0,
+            "mc95": [
+              0.9963179161031341,
+              1.0
+            ]
+          },
+          "rejection_all": {
+            "count": 24,
+            "n": 1000,
+            "rate": 0.024,
+            "mc95": [
+              0.015436383233508483,
+              0.035500638531359256
+            ]
+          },
+          "rejection_available": {
+            "count": 24,
+            "n": 1000,
+            "rate": 0.024,
+            "mc95": [
+              0.015436383233508483,
+              0.035500638531359256
+            ]
+          },
+          "is_type1_error": true
+        }
+      ],
+      "mean_finite_effect": -1.5712933437923888,
+      "elapsed_seconds": 378.4396931500087
+    },
+    {
+      "scenario": {
+        "name": "money_unequal_null",
+        "kind": "money",
+        "nc": 100,
+        "nt": 500,
+        "pc": 0.0,
+        "pt": 0.0
+      },
+      "results": [
+        {
+          "method": "percentile",
+          "estimand": "control",
+          "statuses": {
+            "ok": 1000
+          },
+          "availability": {
+            "count": 1000,
+            "n": 1000,
+            "rate": 1.0,
+            "mc95": [
+              0.9963179161031341,
+              1.0
+            ]
+          },
+          "truth": 20.0,
+          "coverage_all": {
+            "count": 640,
+            "n": 1000,
+            "rate": 0.64,
+            "mc95": [
+              0.6093720676205965,
+              0.6698008169557812
+            ]
+          },
+          "coverage_available": {
+            "count": 640,
+            "n": 1000,
+            "rate": 0.64,
+            "mc95": [
+              0.6093720676205965,
+              0.6698008169557812
+            ]
+          }
+        },
+        {
+          "method": "percentile",
+          "estimand": "treatment",
+          "statuses": {
+            "ok": 1000
+          },
+          "availability": {
+            "count": 1000,
+            "n": 1000,
+            "rate": 1.0,
+            "mc95": [
+              0.9963179161031341,
+              1.0
+            ]
+          },
+          "truth": 20.0,
+          "coverage_all": {
+            "count": 766,
+            "n": 1000,
+            "rate": 0.766,
+            "mc95": [
+              0.7384980761844332,
+              0.7919259196245901
+            ]
+          },
+          "coverage_available": {
+            "count": 766,
+            "n": 1000,
+            "rate": 0.766,
+            "mc95": [
+              0.7384980761844332,
+              0.7919259196245901
+            ]
+          }
+        },
+        {
+          "method": "percentile",
+          "estimand": "absolute_effect",
+          "statuses": {
+            "ok": 1000
+          },
+          "availability": {
+            "count": 1000,
+            "n": 1000,
+            "rate": 1.0,
+            "mc95": [
+              0.9963179161031341,
+              1.0
+            ]
+          },
+          "truth": 0.0,
+          "coverage_all": {
+            "count": 817,
+            "n": 1000,
+            "rate": 0.817,
+            "mc95": [
+              0.7916133754558675,
+              0.8405041656691045
+            ]
+          },
+          "coverage_available": {
+            "count": 817,
+            "n": 1000,
+            "rate": 0.817,
+            "mc95": [
+              0.7916133754558675,
+              0.8405041656691045
+            ]
+          },
+          "ci_false_positive_all": {
+            "count": 183,
+            "n": 1000,
+            "rate": 0.183,
+            "mc95": [
+              0.1594958343308956,
+              0.20838662454413245
+            ]
+          },
+          "ci_false_positive_available": {
+            "count": 183,
+            "n": 1000,
+            "rate": 0.183,
+            "mc95": [
+              0.1594958343308956,
+              0.20838662454413245
+            ]
+          }
+        },
+        {
+          "method": "percentile",
+          "estimand": "relative_effect",
+          "statuses": {
+            "ok": 991,
+            "unstable_denominator": 9
+          },
+          "availability": {
+            "count": 991,
+            "n": 1000,
+            "rate": 0.991,
+            "mc95": [
+              0.9829842169301056,
+              0.9958766043396575
+            ]
+          },
+          "truth": 0.0,
+          "coverage_all": {
+            "count": 816,
+            "n": 1000,
+            "rate": 0.816,
+            "mc95": [
+              0.7905658665854713,
+              0.8395577168152119
+            ]
+          },
+          "coverage_available": {
+            "count": 816,
+            "n": 991,
+            "rate": 0.8234106962663976,
+            "mc95": [
+              0.7982148540811933,
+              0.8466676478409971
+            ]
+          },
+          "ci_false_positive_all": {
+            "count": 175,
+            "n": 1000,
+            "rate": 0.175,
+            "mc95": [
+              0.15193403290953067,
+              0.1999968255693369
+            ]
+          },
+          "ci_false_positive_available": {
+            "count": 175,
+            "n": 991,
+            "rate": 0.17658930373360243,
+            "mc95": [
+              0.15333235215900287,
+              0.20178514591880672
+            ]
+          }
+        },
+        {
+          "method": "percentile",
+          "estimand": "test",
+          "statuses": {},
+          "availability": {
+            "count": 1000,
+            "n": 1000,
+            "rate": 1.0,
+            "mc95": [
+              0.9963179161031341,
+              1.0
+            ]
+          },
+          "rejection_all": {
+            "count": 112,
+            "n": 1000,
+            "rate": 0.112,
+            "mc95": [
+              0.09311853992161027,
+              0.13319916556924022
+            ]
+          },
+          "rejection_available": {
+            "count": 112,
+            "n": 1000,
+            "rate": 0.112,
+            "mc95": [
+              0.09311853992161027,
+              0.13319916556924022
+            ]
+          },
+          "is_type1_error": true
+        }
+      ],
+      "mean_finite_effect": 0.8825472018632008,
+      "elapsed_seconds": 335.6151460629917
+    },
+    {
+      "scenario": {
+        "name": "ratio_effect",
+        "kind": "ratio",
+        "nc": 250,
+        "nt": 250,
+        "pc": 0.0,
+        "pt": 8.0
+      },
+      "results": [
+        {
+          "method": "percentile",
+          "estimand": "control",
+          "statuses": {
+            "ok": 1000
+          },
+          "availability": {
+            "count": 1000,
+            "n": 1000,
+            "rate": 1.0,
+            "mc95": [
+              0.9963179161031341,
+              1.0
+            ]
+          },
+          "truth": 83.33333333333333,
+          "coverage_all": {
+            "count": 953,
+            "n": 1000,
+            "rate": 0.953,
+            "mc95": [
+              0.9379873693066948,
+              0.965264937733204
+            ]
+          },
+          "coverage_available": {
+            "count": 953,
+            "n": 1000,
+            "rate": 0.953,
+            "mc95": [
+              0.9379873693066948,
+              0.965264937733204
+            ]
+          }
+        },
+        {
+          "method": "percentile",
+          "estimand": "treatment",
+          "statuses": {
+            "ok": 1000
+          },
+          "availability": {
+            "count": 1000,
+            "n": 1000,
+            "rate": 1.0,
+            "mc95": [
+              0.9963179161031341,
+              1.0
+            ]
+          },
+          "truth": 91.33333333333333,
+          "coverage_all": {
+            "count": 940,
+            "n": 1000,
+            "rate": 0.94,
+            "mc95": [
+              0.9234395095960652,
+              0.9539049645775157
+            ]
+          },
+          "coverage_available": {
+            "count": 940,
+            "n": 1000,
+            "rate": 0.94,
+            "mc95": [
+              0.9234395095960652,
+              0.9539049645775157
+            ]
+          }
+        },
+        {
+          "method": "percentile",
+          "estimand": "absolute_effect",
+          "statuses": {
+            "ok": 1000
+          },
+          "availability": {
+            "count": 1000,
+            "n": 1000,
+            "rate": 1.0,
+            "mc95": [
+              0.9963179161031341,
+              1.0
+            ]
+          },
+          "truth": 8.0,
+          "coverage_all": {
+            "count": 949,
+            "n": 1000,
+            "rate": 0.949,
+            "mc95": [
+              0.9334865384050651,
+              0.9617947632253139
+            ]
+          },
+          "coverage_available": {
+            "count": 949,
+            "n": 1000,
+            "rate": 0.949,
+            "mc95": [
+              0.9334865384050651,
+              0.9617947632253139
+            ]
+          }
+        },
+        {
+          "method": "percentile",
+          "estimand": "relative_effect",
+          "statuses": {
+            "ok": 1000
+          },
+          "availability": {
+            "count": 1000,
+            "n": 1000,
+            "rate": 1.0,
+            "mc95": [
+              0.9963179161031341,
+              1.0
+            ]
+          },
+          "truth": 0.09600000000000009,
+          "coverage_all": {
+            "count": 949,
+            "n": 1000,
+            "rate": 0.949,
+            "mc95": [
+              0.9334865384050651,
+              0.9617947632253139
+            ]
+          },
+          "coverage_available": {
+            "count": 949,
+            "n": 1000,
+            "rate": 0.949,
+            "mc95": [
+              0.9334865384050651,
+              0.9617947632253139
+            ]
+          }
+        },
+        {
+          "method": "percentile",
+          "estimand": "test",
+          "statuses": {},
+          "availability": {
+            "count": 0,
+            "n": 1000,
+            "rate": 0.0,
+            "mc95": [
+              0.0,
+              0.003682083896865671
+            ]
+          },
+          "rejection_all": {
+            "count": 0,
+            "n": 1000,
+            "rate": 0.0,
+            "mc95": [
+              0.0,
+              0.003682083896865671
+            ]
+          },
+          "rejection_available": {
+            "count": 0,
+            "n": 0,
+            "rate": null,
+            "mc95": null
+          },
+          "is_type1_error": false
+        }
+      ],
+      "mean_finite_effect": 8.139591899122037,
+      "elapsed_seconds": 242.76437814200472
+    }
+  ]
+}

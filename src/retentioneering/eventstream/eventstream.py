@@ -1,8 +1,10 @@
 import inspect
 import json
+from copy import deepcopy
 from dataclasses import asdict
 from functools import cached_property
 
+import numpy as np
 import pandas as pd
 
 from retentioneering import engine
@@ -17,6 +19,46 @@ from retentioneering.utils.sequences import find_delimiter_collisions
 #: `diff`/`get_segment_levels` sentinel standing in for a missing (None/NaN)
 #: segment level, since it can't be a real dict/query value the way `<REST>` can.
 SEGMENT_MISSING = "<MISSING>"
+
+
+def _validate_path_id_types(df: pd.DataFrame, path_cols: list[str]) -> pd.DataFrame:
+    """Validate identities and normalize object integers without floating casts."""
+    copied = False
+    for column in path_cols:
+        kinds = {
+            type(value.item() if isinstance(value, np.generic) else value)
+            for value in df[column].dropna()
+        }
+        if len(kinds) > 1:
+            raise SchemaConfigError(
+                f"Path column '{column}' must contain homogeneous scalar types; "
+                f"got {sorted(kind.__name__ for kind in kinds)}. Normalize IDs "
+                "explicitly before constructing the Eventstream, preserving "
+                "distinct identities (for example, integer 1 and string '1')."
+            )
+        if kinds == {int}:
+            smallest, largest = int(df[column].min()), int(df[column].max())
+            if (
+                smallest < -(2**63)
+                or largest > 2**64 - 1
+                or (smallest < 0 and largest > 2**63 - 1)
+            ):
+                raise SchemaConfigError(
+                    f"Path column '{column}' must fit one signed or unsigned "
+                    "64-bit integer dtype. Convert larger IDs explicitly to "
+                    "distinct strings before constructing the Eventstream."
+                )
+            # DuckDB may scan object integers as doubles, losing identity even
+            # inside uint64. A native integer column preserves every bit.
+            if not pd.api.types.is_integer_dtype(df[column]):
+                if not copied:
+                    df = df.copy()
+                    copied = True
+                dtype = "uint64" if largest > 2**63 - 1 else "int64"
+                if df[column].isna().any():
+                    dtype = "UInt64" if largest > 2**63 - 1 else "Int64"
+                df[column] = df[column].astype(dtype)
+    return df
 
 
 def _to_datetime_auto(series: pd.Series) -> pd.Series:
@@ -78,6 +120,38 @@ def _infer_caller_var_name(
         del frame
 
 
+def _numpydoc_split(doc: str) -> tuple[str, dict[str, str]]:
+    """Split a numpy-style docstring into its summary and ``{section: body}``.
+
+    Used to build the docstrings of `ab_test` and `ab_test_data` from the one of
+    `get_ab_test`, so the widget, its headless twin and the getter can never
+    document the same parameter differently.
+    """
+    lines = inspect.cleandoc(doc).splitlines()
+    summary: list[str] = []
+    sections: dict[str, list[str]] = {}
+    current = summary
+    i = 0
+    while i < len(lines):
+        nxt = lines[i + 1] if i + 1 < len(lines) else ""
+        if lines[i].strip() and nxt.strip() and set(nxt.strip()) == {"-"}:
+            current = sections.setdefault(lines[i].strip(), [])
+            i += 2
+            continue
+        current.append(lines[i])
+        i += 1
+    return "\n".join(summary).strip(), {
+        name: "\n".join(body).strip("\n") for name, body in sections.items()
+    }
+
+
+def _numpydoc_join(summary: str, sections: list[tuple[str, str]]) -> str:
+    parts = [summary.strip()]
+    for name, body in sections:
+        parts.append(f"{name}\n{'-' * len(name)}\n{body.strip(chr(10))}")
+    return "\n\n".join(parts) + "\n"
+
+
 try:
     from retentioneering._tracking import tracked as _tracked
 except Exception:
@@ -90,6 +164,14 @@ except Exception:
 
 
 class Eventstream:
+    """An event log whose path columns use homogeneous scalar ID types.
+
+    Normalize heterogeneous IDs explicitly before construction. Distinct IDs such
+    as integer 1 and string '1' must not be merged by an implicit SQL conversion.
+    Integer IDs must fit a single signed or unsigned 64-bit dtype per column;
+    object integer columns are normalized losslessly to that dtype.
+    """
+
     def __init__(
         self,
         df: "pd.DataFrame | str",
@@ -124,6 +206,7 @@ class Eventstream:
         if self.preprocess:
             self._preprocess()
         else:
+            self._df = _validate_path_id_types(self._df, self.schema.path_cols)
             for col in [self.schema.event_col] + self.schema.segment_cols:
                 self._df[col] = self._df[col].astype("category")
 
@@ -173,6 +256,8 @@ class Eventstream:
                     f"Every event must belong to a path; drop or fill the missing "
                     f"values in '{col}' before creating the Eventstream."
                 )
+
+        df = _validate_path_id_types(df, schema.path_cols)
 
         if len(schema.path_cols) > 1:
             _validate_path_cols_nesting(df, schema.path_cols)
@@ -232,13 +317,16 @@ class Eventstream:
 
         Round-trips with `Eventstream.from_recipe`:
         `Eventstream.from_recipe(df, s.recipe()).fingerprint == s.fingerprint`.
+        Nested parameters are independent snapshots. Path-label mappings retain
+        typed numeric keys through JSON; timestamps and custom-object labels must
+        be converted explicitly to supported scalars before `add_segment`.
 
         Examples
         --------
             stream.filter_paths(...).add_segment(...).recipe()
             # [{"type": "filter_paths", "condition": {...}}, {"type": "add_segment", ...}]
         """
-        return [dict(o) for o in self._lineage]
+        return deepcopy(self._lineage)
 
     @classmethod
     def from_recipe(
@@ -366,6 +454,741 @@ class Eventstream:
                 cats = cats + [SEGMENT_MISSING]
             levels[col] = cats
         return levels
+
+    @_tracked("get_path_segments")
+    def get_path_segments(
+        self, segment_col: str, path_col: str | None = None
+    ) -> pd.Series:
+        """
+        Return one segment value per path.
+
+        The per-path view of a segment column: use it to carry labels computed on
+        one stream onto another (`add_segment(name, path_values=...)`), to check
+        that an experiment arm is constant per path, or to join path labels to
+        your own tables.
+
+        Parameters
+        ----------
+        segment_col : str
+            A column in `schema.segment_cols`.
+        path_col : str, optional
+            Path grain; defaults to `schema.path_col`.
+
+        Returns
+        -------
+        pandas.Series
+            Index = path id (sorted, named after `path_col`), name = `segment_col`,
+            values = the segment value; `"<MULTI>"` when the value is not constant
+            within the path (a missing value on some events counts as a second
+            value), `"<MISSING>"` when it is null throughout. When this stream's
+            recipe shows how the column was made, `attrs["pre_exposure"]` records it:
+            True only for an explicit `add_segment(pre_exposure=True)` declaration;
+            undeclared behavioral labels are False. When transferring labels to
+            another stream, explicitly reassert `pre_exposure=True` if justified:
+            an inherited boolean can come from an older inferred recipe.
+
+        Raises
+        ------
+        InvalidParameterError
+            `segment_col` is not a segment column, or `path_col` is not a path column.
+
+        Examples
+        --------
+            arms = stream.get_path_segments("exp_group")
+            arms.value_counts()          # paths per arm, <MULTI> = assignment bug
+
+            # clusters found on the first week, carried onto the whole history
+            clusters = first_week.add_clusters(...).get_path_segments("cluster")
+            stream.add_segment("cluster", path_values=clusters)
+        """
+        from retentioneering.exceptions import InvalidParameterError
+        from retentioneering.tools._diff import per_path_label
+
+        if segment_col not in self.schema.segment_cols:
+            raise InvalidParameterError(
+                "segment_col", segment_col, list(self.schema.segment_cols)
+            )
+        path_col = path_col or self.schema.path_col
+        if path_col not in self.schema.path_cols:
+            raise InvalidParameterError(
+                "path_col", path_col, list(self.schema.path_cols)
+            )
+        from retentioneering.tools.ab_test import _strata_provenance
+
+        labels = per_path_label(self._df, segment_col, path_col)
+        labels.name = segment_col
+        pre_exposure = _strata_provenance(self, segment_col)
+        if pre_exposure is not None:
+            labels.attrs["pre_exposure"] = pre_exposure
+        return labels
+
+    @_tracked("get_sample_ratio")
+    def get_sample_ratio(
+        self,
+        segment_col: str | None = None,
+        expected_shares: dict | None = None,
+        alpha: float = 0.001,
+        path_col: str | None = None,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        strata_col: str | None = None,
+        period: str | None = None,
+    ) -> dict:
+        """
+        Check an experiment's arm sizes against the expected split (sample ratio mismatch).
+
+        Counts paths per arm against the expected shares. Two arms use an exact
+        binomial check under independent Bernoulli allocation; multiple arms use
+        guarded approximate Pearson inference under independent multinomial
+        allocation. An alarm calls for investigation of assignment, logging and
+        exclusions; it is not proof of a particular defect. Paths whose arm changes
+        within the path independently raise the alarm.
+
+        Run it on the assignment table (`assignment=`) or on the full stream before
+        any filter that depends on behaviour. On a post-exposure subset (users who
+        reached the cart) the shares differ whenever the treatment works: that is an
+        effect, not a bug, and this check does not apply there.
+
+        Parameters
+        ----------
+        segment_col : str, optional
+            Segment column holding the arm (`schema.segment_cols`); required without
+            `assignment`. With `assignment` it is optional: `None` or `"arm"` (the
+            table's column) checks the table alone; a segment column of the stream
+            adds the check that every path's arm on the stream agrees with the
+            table. Any other value raises `InvalidParameterError`.
+        expected_shares : dict, optional
+            `{level: share}`, shares summing to 1 (within 1e-9), at least two levels.
+            Default: an equal split over the column's levels (or the table's arms).
+            Levels not named here are not arms; their paths are counted in
+            `unassigned_paths`.
+        alpha : float, default 0.001
+            Threshold of `mismatch`. SRM alarms are set stricter than 0.05 because
+            they gate every other result.
+        path_col : str, optional
+            Path grain; defaults to `schema.path_col`.
+        assignment : pandas.Series or pandas.DataFrame, optional
+            Per-path arm table: a Series `path_id -> arm`, or a DataFrame indexed by
+            path id with a column `arm` (and optionally `assigned_at`). The counts are
+            the table's rows, including paths with no events in the stream. Ids are
+            matched to `path_col` as in `get_ab_test` (by string form when none
+            matches as is; none matching raises, fewer than half warns), and a table
+            of a coarser unit than `path_col` (user ids with session paths) raises
+            `InvalidParameterError`.
+        strata_col : str, optional
+            Repeat the check within strata, as `get_ab_test(strata_col=)` names
+            them: a column of the `assignment` DataFrame (used first) or a segment
+            column constant per path. Valid only for a variable fixed at assignment
+            (signup platform): on a variable the treatment can change, per-stratum
+            shares measure an effect. Raises `InvalidParameterError` for a segment
+            that changes within a path.
+        period : str, optional
+            Repeat the check per calendar unit of `assigned_at` (or of the path's
+            first event without a table), spelled as `get_ab_test(period=)`: `"D"`
+            (day), `"W"` (week; `"W-MON"` etc. pick the week's end), `"M"`, `"Q"`,
+            `"Y"`. A multiple (`"2W"`) or another fixed length raises
+            `InvalidParameterError`; so does `period` together with `strata_col`.
+
+        Returns
+        -------
+        dict
+            - `levels` (DataFrame): one row per arm — `level`, `paths`, `share`,
+              `expected_share`, `expected_paths`. With `strata_col` (`period`), a
+              leading `stratum` (`period`) column; the overall rows carry
+              `"<ALL>"` there, followed by the rows of every stratum (period).
+            - `chi2` (float), `dof` (int), `p_value` (float): the overall test; NaN
+              when no path is counted.
+            - `alpha` (float): the threshold used.
+            - `mismatch` (bool or None): `p_value < alpha` or `multi_valued_paths > 0`.
+            - `multi_valued_paths` (int): paths with more than one arm value (on the
+              stream, or disagreeing with the assignment table).
+            - `silent_paths` (int): assignment rows with no events in the stream (0
+              without `assignment`).
+            - `unassigned_paths` (int): paths not counted in the test: stream paths
+              the assignment table does not list, paths with no arm (a missing
+              segment value or table arm), and paths of an arm outside
+              `expected_shares`.
+            - `basis` (str): what was counted.
+            - `reading` (str): the check in one sentence, built from the numbers
+              above: `"expected 50/50, observed 5040/4960 (control/treatment),
+              p 0.43: no mismatch"`, or `"mismatch: ... — investigate allocation
+              and logging before interpreting outcomes"` when the split is off or paths carry two
+              arms; paths not counted and the strata or periods that mismatch
+              (`"by platform: ..."`, `"by day: ..."`) are added.
+            - `strata_col` (str) and `strata` (DataFrame), with `strata_col` only:
+              one row per stratum — `stratum`, `paths`, `chi2`, `dof` (descriptive Pearson discrepancy), `p_value`,
+              `p_value_adjusted` (Holm over the strata) and `mismatch`
+              (`p_value_adjusted < alpha`).
+            - `period` (str) and `periods` (DataFrame), with `period` only: the same
+              per period, with a `period` column (`"2024-03-01"` for days,
+              `"2024-03-04/2024-03-10"` for weeks, `"2024-03"` for months).
+            - `p_value_method`: `"exact_binomial_two_sided"` for two arms
+              (`sampling_assumption="independent_bernoulli"`); guarded
+              `"pearson_chi_square_asymptotic"` for multiple arms
+              (`"independent_multinomial"`). Every multiarm expected count
+              must be at least five. `chi2`/`dof` do not set the two-arm p-value.
+            - `inference_status`: `"ok"`, `"no_data"`, or
+              `"insufficient_expected_counts"`; `support_warning` and
+              `expected_count_min` explain availability, overall and per split.
+              Unavailable `mismatch` is None unless conflicting assignments
+              independently alarm. Require status `"ok"` before interpreting p.
+            The overall `mismatch` does not include the strata or periods.
+            Explicit expected-share keys include planned but absent arms.
+            Fixed-total/blocked allocation needs a design-specific check.
+
+        Raises
+        ------
+        InvalidParameterError
+            `segment_col` missing or not a segment column (without `assignment`),
+            or neither `None`, `"arm"` nor a segment column (with it); fewer than
+            two planned arms; `expected_shares` not summing to 1;
+            `alpha` outside (0, 1); `strata_col` not a per-path segment or table
+            column; `period` not one calendar unit, or given with `strata_col`;
+            `path_col` finer than the assignment table's unit; `assignment`
+            malformed (no `arm` column, empty, index not unique) or no id of it
+            matching a path id.
+
+        Examples
+        --------
+            check = stream.get_sample_ratio("exp_group")
+            check["mismatch"], check["p_value"]
+            check["levels"]
+
+            # an unequal design, and the assignment table as the population
+            stream.get_sample_ratio(
+                "exp_group",
+                expected_shares={"control": 0.8, "treatment": 0.2},
+                assignment=groups,          # index user_id, columns arm, assigned_at
+            )
+
+            # did the split hold on every day of the rollout, and on every platform?
+            stream.get_sample_ratio("exp_group", period="D")["periods"]
+            stream.get_sample_ratio(assignment=groups, strata_col="platform")["strata"]
+        """
+        from retentioneering.tools.sample_ratio import SampleRatio
+
+        return SampleRatio(self).fit(
+            segment_col,
+            expected_shares=expected_shares,
+            alpha=alpha,
+            path_col=path_col,
+            assignment=assignment,
+            strata_col=strata_col,
+            period=period,
+        )
+
+    @_tracked("get_ab_test")
+    def get_ab_test(
+        self,
+        diff: T_Diff,
+        metrics: list,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        strata_col: str | None = None,
+        period=None,
+        period_basis: str = "calendar",
+        period_population: str = "itt",
+        horizon=None,
+        observation_end=None,
+        test: str = "auto",
+        correction: str = "holm",
+        correction_scope: str = "all",
+        ci_level: float = 0.95,
+        power: float = 0.8,
+        n_bootstrap: "int | str" = 1000,
+        bootstrap_weights: str = "multinomial",
+        min_support: int = 10,
+        random_state: int = 42,
+        path_col: str | None = None,
+        strata_pre_exposure: bool | None = None,
+    ) -> pd.DataFrame:
+        """
+        Compare two arms of an experiment on path metrics: a scorecard.
+
+        One row per metric (and per stratum and period when requested): each arm's
+        estimate, the delta with its interval, the p-value and its adjusted value, the
+        minimum detectable effect, a verdict and a `reading` sentence. The path
+        (`path_col`) must be the randomised unit. An inconclusive row is not "no
+        effect": its interval shows the effects the data still allow. Choose the window
+        and one decision metric before reading. No variance reduction, sequential tests
+        or equivalence verdicts: `get_ab_paths` returns the per-path table behind the
+        scorecard; the [A/B Testing guide](/docs/ab-testing) lists what is deferred.
+
+        Parameters
+        ----------
+        diff : tuple
+            `("segment_col", group1, group2)` or `(ids1, ids2)`, resolved per path;
+            `delta = group1 - group2`. A path in both groups, or two strings, raise
+            `DiffConfigError`. Inference requires the coarsest declared path grain:
+            a finer `path_col` raises `InvalidParameterError`, including explicit
+            ID splits and small samples. A schema declares independence; it does
+            not verify the randomization mechanism.
+        metrics : list of dict
+            Registry configs (as for `get_metrics`, one column per path) with optional
+            `name`, `denominator` (a config: a ratio of sums, e.g. revenue / orders)
+            and `test`. `*_bulk`, `first_event_time` and a `denominator` on a 0/1
+            metric are rejected. A path with no events counts 0 for 0/1 metrics
+            (`has_event`, `has_any_event`, `has_all_events`, `matches_pattern`,
+            `in_segment`) and totals (`event_count`, `length`, `active_days`,
+            `column_sum`, `event_value_sum`); values (`duration`, `time_between`, `column_mean`,
+            `column_last`) leave it out.
+        assignment : pandas.Series or pandas.DataFrame, optional
+            Per-path arm table, the intention-to-treat population: a Series `path_id ->
+            arm` or a DataFrame with `arm` and optionally `assigned_at`. Silent assigned
+            paths count; events before `assigned_at` are dropped; paths absent from the
+            table are `unassigned_paths`. `diff[0]` is `"arm"` or a segment that must
+            agree with the table. Ids matching no path raise, fewer than half warn. A
+            naive `assigned_at` is read in the stream's timezone (a wall time that
+            occurs twice raises). A table of another unit than `path_col` raises
+            `InvalidParameterError`.
+        strata_col : str, optional
+            A segment constant per path, or an `assignment` column (used first, so
+            silent paths keep their stratum). Adds per-stratum rows with balance,
+            descriptive secondary columns. Fisher/descriptive defaults suppress
+            balance, heterogeneity and stratum-versus-rest p-values. Explicit
+            approximate methods enable guarded exploratory diagnostics separately
+            from the primary correction family.
+        strata_pre_exposure : bool, optional
+            Whether the strata were fixed before exposure. `None` reads an
+            `add_segment(..., pre_exposure=...)` declaration, else False with a
+            warning. A truncation alone never establishes exposure timing;
+            `True` / `False` declare it. Needs `strata_col`.
+        period : str or pandas offset, optional
+            Rows per period: a calendar unit (`"D"`, `"W"`, `"M"`, `"Q"`, `"Y"`;
+            `"W-MON"` etc. pick the week's end, `"ME"` / `"MS"` mean `"M"`; multiples
+            like `"2W"`) or a fixed length (`"7D"`, `"12h"`), in the stream's
+            timezone. A bare number raises. Needs the primary path column.
+        period_basis : {"calendar", "since_assignment"}, default "calendar"
+            What `period` bins.
+
+            - `"calendar"` — calendar bins of the event time; a period holds every
+              path assigned before its end.
+            - `"since_assignment"` — bins of time since `assigned_at` (`"0-6"`,
+              `"7-13"`); a path counts once its window closes (else
+              `immature_paths`).
+        period_population : {"itt", "active"}, default "itt"
+            Which paths a period row compares.
+
+            - `"itt"` — every path assigned by the period's end, 0 when silent.
+            - `"active"` — paths active in the period: survivors, so
+              `verdict="descriptive"`, no p-value.
+        observation_end : timestamp-like, optional
+            Exclusive cutoff through which event logging is asserted complete.
+            Required for horizon and since-assignment periods; never inferred
+            from the last observed event.
+        horizon : str or pandas.Timedelta, optional
+            Window per path from `assigned_at`, e.g. `"28D"`; paths whose window is not
+            closed by `observation_end` are `immature_paths`. Needs `assigned_at`.
+        test : {"auto", "fisher_exact", "descriptive", "z_test", "welch_t_test", "bootstrap"}, default "auto"
+            The test of every metric without its own `test`.
+
+            - `"auto"` — `"fisher_exact"` for known binary outcomes;
+              `"descriptive"` for nonbinary outcomes.
+            - `"fisher_exact"` — two-sided exact Fisher test, Clopper–Pearson
+              arm intervals and a conservative CP-based difference (binary only).
+              The difference is not a Fisher-test inversion; relative intervals
+              are withheld.
+            - `"descriptive"` — point estimates without tests, intervals or MDE.
+            - `"z_test"` — explicit approximate pooled z/Wilson/Newcombe
+              (binary only); at least five pooled-null expected successes and
+              failures per arm, else unavailable.
+            - `"welch_t_test"` — explicit approximate Welch for nonbinary means.
+            - `"bootstrap"` — explicit approximate whole-path percentile inference
+              for nonbinary metrics. Known-binary Welch/scorecard bootstrap reject.
+              Heavy tails and dependent units are not repaired by more resamples.
+        correction : {"holm", "bonferroni", "bh", "none"}, default "holm"
+            Correction of the p-values within each family; intervals stay per
+            comparison.
+
+            - `"holm"` — Holm step-down (family-wise error).
+            - `"bonferroni"` — Bonferroni; adds simultaneous `delta_ci_low_adj` /
+              `delta_ci_high_adj`.
+            - `"bh"` — Benjamini-Hochberg (FDR under independence or PRDS).
+            - `"none"` — no correction.
+        correction_scope : {"all", "metric"}, default "all"
+            What one correction family holds.
+
+            - `"metric"` — one metric's rows (strata, periods). Name one decision metric
+              before the test; read each guardrail on its own against a declared harm
+              margin.
+            - `"all"` — every row of every metric, for a scorecard read without one
+              decision metric.
+        ci_level : float, default 0.95
+            Level of every interval, in `[0.5, 1)`; `1 - ci_level` is the verdict's
+            alpha.
+        power : float, default 0.8
+            Requested power in `[0.5, 1)` for the normal-approximation `mde`;
+            not actual Fisher-test power or a bound on the true effect.
+        n_bootstrap : int or "auto", default 1000
+            Bootstrap replicates, at least 100; `"auto"` = `max(1000, ceil(20 * m /
+            alpha))`, `m` the largest family. At most 1,000,000 replicates
+            and 10,000,000 replicate-by-contribution entries. Bonferroni bootstrap
+            intervals need at least ten expected draws per adjusted tail; otherwise
+            `delta_ci_adjusted_status="insufficient_tail_resamples"`, without a
+            normal-SE replacement. Numeric overflow raises; rescale measurements.
+        bootstrap_weights : {"multinomial", "poisson"}, default "multinomial"
+            Resampling scheme of the bootstrap.
+
+            - `"multinomial"` — resample each arm's paths with replacement.
+            - `"poisson"` — a Poisson(1) weight per path.
+        min_support : int, default 10
+            Pooled paths below which a row is `"insufficient_data"` (no p-value):
+            paths with the event (0/1; the paths without it too), a non-zero total
+            (totals), a non-zero numerator (ratios) or a value (values). A behaviour
+            of one arm only is tested and flagged `"one_arm_only"`.
+        random_state : int, default 42
+            Seed of the bootstrap.
+        path_col : str, optional
+            Path grain; defaults to `schema.path_col`.
+
+        Returns
+        -------
+        pandas.DataFrame
+            One row per metric × stratum × period; * marks columns that only some
+            arguments produce.
+
+            - `metric`; `stratum`*; `period`*, `period_start`*, `period_end`*,
+              `period_complete`* (False when the data or `horizon` cuts the window).
+            - `population`: `"assignment"`, `"stream"` or `"active"`.
+            - `observation_end`: the exclusive logging cutoff, or None;
+              `observation_basis`: `"declared_logging_cutoff"` or `"observed_event_span"`;
+              `analysis_unit`: the independent path identifier declared by the schema.
+            - `group1_paths`, `group2_paths`; `group1_support`, `group2_support`
+              (paths with a value); `conditional` (a support below its arm's paths:
+              the row compares the paths with a value).
+            - `group1_silent_paths`*, `group2_silent_paths`*, `unassigned_paths`,
+              `immature_paths`*.
+            - `group1_value`, `group1_ci_low`, `group1_ci_high`, `group2_value`,
+              `group2_ci_low`, `group2_ci_high`.
+            - `delta`, `delta_se`, `delta_ci_low`, `delta_ci_high` (per comparison);
+              `delta_ci_low_adj`*, `delta_ci_high_adj`* (Bonferroni, simultaneous);
+              `delta_ci_adjusted_basis`*, `delta_ci_adjusted_status`*
+              (`"ok"`, `"unavailable"`, or `"insufficient_tail_resamples"`);
+              `rel_delta`, `rel_delta_ci_low`, `rel_delta_ci_high`.
+            - `p_value`, `p_value_adjusted`, `correction_family`.
+            - `mde`, `rel_mde` at `mde_alpha` (`alpha / m` under a correction of `m`
+              p-values; not the verdict's threshold); `mde_basis` is
+              `"normal_approximation"` or `"unavailable"`.
+            - `verdict`: `"increase"` / `"decrease"` when `p_value_adjusted < 1 -
+              ci_level`, else `"inconclusive"`; `"descriptive"`;
+              `"insufficient_data"`.
+            - `test`, `ci_basis` (`"clopper_pearson_bonferroni"`,
+              `"newcombe_approximate"`, `"welch_approximate"`,
+              `"path_bootstrap_approximate"`, or `"not_requested"`),
+              `p_basis` (`"fisher_exact_two_sided"`, `"pooled_z_asymptotic"`,
+              `"welch_asymptotic"`, `"bootstrap_se_asymptotic"`, or `"not_requested"`),
+              `valid_replicates`.
+            - `support_warning`: `"no_data"` (nothing to compare), `"invalid_replicates"`
+              (no interval), `"one_arm_only"` (tested), `"low_support"` (bootstrap
+              coverage may be below nominal), `"insufficient_expected_cells"`
+              (explicit z guard), or `""`.
+            - `group1_share`*, `group2_share`*, `balance_p_value`*,
+              `heterogeneity_p_value`*, `heterogeneity_dof`*,
+              `heterogeneity_strata_used`*, `stratum_vs_rest_p_value`*,
+              `strata_pre_exposure`*, `strata_pre_exposure_source`*, `exploratory`*;
+              `strata_diagnostics_basis`*: `"not_requested"` for default exact/
+              descriptive rows, `"asymptotic_exploratory"` for explicit guarded
+              approximate secondary diagnostics outside the primary family.
+            - `reading`: the row in one sentence from its own numbers; it does not
+              check the sample ratio or the unit (see the
+              [tool page](/docs/tools/get-ab-test#reading-a-row)).
+
+            An absent estimate is NaN, never 0.
+
+        Raises
+        ------
+        DiffConfigError
+            Overlapping groups, the same level twice, or a `diff` that disagrees with
+            the `assignment` table.
+        SegmentLevelNotFoundError
+            A `diff` value that is not a level of the segment or an arm of the table.
+        InvalidMetricConfigError
+            A bad metric entry or a `test` that does not fit the metric.
+        InvalidParameterError
+            A value outside its range or list; a path grain finer than the randomised
+            unit; `horizon` or `"since_assignment"` without `assigned_at`.
+        EmptyEventstreamError
+            Either group is empty.
+
+        Examples
+        --------
+            scorecard = stream.get_ab_test(
+                ("exp_group", "treatment", "control"),
+                metrics=[
+                    {"name": "conversion", "metric": "has_event",
+                     "metric_args": {"event": "order_success"}},
+                    {"name": "revenue_per_user", "metric": "column_sum",
+                     "metric_args": {"column": "order_value"}},
+                    {"name": "aov", "metric": "column_sum",
+                     "metric_args": {"column": "order_value"},
+                     "denominator": {"metric": "event_count",
+                                     "metric_args": {"event": "order_success"}}},
+                ],
+                assignment=assignment,          # index user_id, columns arm, assigned_at
+            )
+            scorecard[["metric", "delta", "delta_ci_low", "delta_ci_high", "mde", "verdict"]]
+
+            # pre-exposure strata, Holm within each metric: cluster the paths cut
+            # before the exposure event, carry the labels back, declare them
+            before = stream.truncate_paths(
+                "path_start", [{"pattern": "product_view", "offset": -1}, "path_end"])
+            labels = before.add_clusters(...).get_path_segments("cluster")
+            stream = stream.add_segment("entry", path_values=labels, pre_exposure=True)
+            stream.get_ab_test(diff, metrics, assignment=assignment, strata_col="entry")
+
+            # one family over every metric: a scorecard read without one decision metric
+            stream.get_ab_test(diff, metrics, correction_scope="all")
+
+            # weekly ITT rows, and a fixed 28-day window per user
+            stream.get_ab_test(diff, metrics, assignment=assignment, period="W")
+            stream.get_ab_test(diff, metrics, assignment=assignment, horizon="28D",
+                               observation_end="2026-04-27")
+        """
+        from retentioneering.tools.ab_test import ABTest
+
+        return ABTest.from_stream(
+            self,
+            diff,
+            metrics,
+            assignment=assignment,
+            strata_col=strata_col,
+            period=period,
+            period_basis=period_basis,
+            period_population=period_population,
+            horizon=horizon,
+            observation_end=observation_end,
+            test=test,
+            correction=correction,
+            correction_scope=correction_scope,
+            ci_level=ci_level,
+            power=power,
+            n_bootstrap=n_bootstrap,
+            bootstrap_weights=bootstrap_weights,
+            min_support=min_support,
+            random_state=random_state,
+            path_col=path_col,
+            strata_pre_exposure=strata_pre_exposure,
+        ).fit()
+
+    @_tracked("get_ab_bootstrap")
+    def get_ab_bootstrap(
+        self,
+        diff: T_Diff,
+        metrics: list,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        strata_col: str | None = None,
+        period=None,
+        period_basis: str = "calendar",
+        period_population: str = "itt",
+        horizon=None,
+        observation_end=None,
+        contrast: dict | None = None,
+        correction_scope: str = "all",
+        n_bootstrap: "int | str" = 1000,
+        bootstrap_weights: str = "multinomial",
+        random_state: int = 42,
+        path_col: str | None = None,
+        strata_pre_exposure: bool | None = None,
+    ) -> pd.DataFrame:
+        """
+        Return joint path-bootstrap replicates of every metric of an experiment.
+
+        All metrics, strata and periods are evaluated on the same resampled paths, so
+        the replicates can be combined freely: ratios of metrics, differences between
+        periods, custom empirical summaries such as the fraction of draws above zero.
+        That fraction is neither a posterior probability nor a p-value. The
+        replicates are the ones `get_ab_test` uses for its bootstrap rows (same seed,
+        same engine). `contrast` adds rows for named period contrasts, the way to
+        measure a novelty effect with a joint interval.
+
+        Parameters
+        ----------
+        diff, metrics, assignment, strata_col, period, period_basis : see get_ab_test
+            As in `get_ab_test`.
+        period_population, horizon, observation_end, bootstrap_weights, random_state, path_col : see get_ab_test
+            As in `get_ab_test`.
+        strata_pre_exposure : bool, optional
+            As in `get_ab_test` (here it only decides the `UserWarning`).
+        contrast : dict, optional
+            `{"name": (periods_a, periods_b)}` (period labels): for each metric (and
+            stratum), rows with `group*_value = value(a) - value(b)` within each arm
+            and `delta = group1_value - group2_value`, where each side pools the listed
+            periods (summed numerators over summed denominators). Both sides run on
+            the same paths: those in the population of every contrasted period (with
+            since-assignment bins, the paths whose windows of all contrasted bins
+            close by `observation_end`), so the contrast is a change within the
+            same paths, not a change of cohort mix between early and late bins; a
+            `horizon` is a choice of window, not a requirement. Measurement
+            eligibility must also be common across contrasted periods; changing
+            missingness rejects. Needs `period`.
+            Example: `{"novelty": (["0-13"], ["28-41"])}` with `period="14D",
+            period_basis="since_assignment"`.
+        correction_scope : {"all", "metric"}, default "all"
+            As in `get_ab_test`; here it only sets the family size `m` of
+            `n_bootstrap="auto"`, so the replicates match the scorecard's.
+        n_bootstrap : int or "auto", default 1000
+            Number of replicates, at least 100; `"auto"` as in `get_ab_test` (the
+            replicates `get_ab_test` would draw at `ci_level=0.95`). Limited to
+            1,000,000 draws and 10,000,000 replicate-by-contribution entries.
+            More draws do not establish nominal coverage or fix heavy tails.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Long table, one row per replicate × metric × stratum × period (and per
+            replicate × metric × stratum × contrast):
+
+            - `replicate` (int): replicate number, 0 to `n_bootstrap - 1`.
+            - `metric` (str): metric name.
+            - `stratum`* (str): with `strata_col`.
+            - `period`* (str): with `period`; NaN on contrast rows.
+            - `contrast`* (str): with `contrast`; NaN on plain rows.
+            - `group1_value`, `group2_value` (float): the metric in each arm in this
+              replicate (ratio of weighted sums; the mean for 0/1, totals and values).
+            - `delta` (float): `group1_value - group2_value`.
+
+            NaN where a replicate has no support in a cell (no path with a value or a
+            zero weighted denominator). Replicate rows carry no `reading`; the
+            sentence that reads each metric is on its `get_ab_test` row.
+
+        Raises
+        ------
+        DiffConfigError, InvalidMetricConfigError, InvalidParameterError, EmptyEventstreamError
+            As in `get_ab_test`; `contrast` without `period` or naming an unknown period
+            raises `InvalidParameterError`.
+
+        Examples
+        --------
+            reps = stream.get_ab_bootstrap(
+                ("exp_group", "treatment", "control"),
+                metrics=[{"name": "conversion", "metric": "has_event",
+                          "metric_args": {"event": "order_success"}}],
+                assignment=assignment,
+                period="14D",
+                period_basis="since_assignment",
+                contrast={"novelty": (["0-13"], ["28-41"])},
+            )
+            novelty = reps[reps["contrast"] == "novelty"]["delta"]
+            novelty.quantile([0.025, 0.975])
+        """
+        from retentioneering.tools.ab_test import ABTest
+
+        return ABTest.from_stream(
+            self,
+            diff,
+            metrics,
+            assignment=assignment,
+            strata_col=strata_col,
+            period=period,
+            period_basis=period_basis,
+            period_population=period_population,
+            horizon=horizon,
+            observation_end=observation_end,
+            correction_scope=correction_scope,
+            n_bootstrap=n_bootstrap,
+            bootstrap_weights=bootstrap_weights,
+            random_state=random_state,
+            path_col=path_col,
+            strata_pre_exposure=strata_pre_exposure,
+        ).bootstrap(contrast)
+
+    @_tracked("get_ab_paths")
+    def get_ab_paths(
+        self,
+        diff: T_Diff,
+        metrics: list,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
+        observation_end=None,
+        path_col: str | None = None,
+    ) -> pd.DataFrame:
+        """
+        Return the per-path table behind an A/B scorecard: one row per compared path.
+
+        Each row holds the path's arm and the value of every metric in the window
+        `get_ab_test` reads, computed the same way: silent paths count 0 for 0/1
+        metrics and totals, values are NaN where undefined, ratio metrics come as
+        numerator and denominator. Aggregating it per arm gives the scorecard's
+        `group1_value` / `group2_value` (the mean of a 0/1 metric, a total or a
+        value over the paths with one; the summed numerator over the summed
+        denominator of a ratio). Use it for what the scorecard does not do:
+        variance reduction (CUPED, regression on pre-period covariates), quantile
+        or rank tests, custom plots and power calculations from history.
+
+        Parameters
+        ----------
+        diff, metrics : see get_ab_test
+            As in `get_ab_test`: the arms and the metric configs (with `name` and
+            `denominator`).
+        assignment : pandas.Series or pandas.DataFrame, optional
+            As in `get_ab_test`: the intention-to-treat population (silent paths
+            included, events before `assigned_at` dropped).
+        observation_end : timestamp-like, optional
+            Exclusive cutoff through which event logging is asserted complete.
+            Required for horizon and since-assignment periods; never inferred
+            from the last observed event.
+        horizon : str or pandas.Timedelta, optional
+            As in `get_ab_test`: only events in `[assigned_at, assigned_at +
+            horizon)` count; paths whose window is not closed by `observation_end` stay in the table with `mature=False` and NaN metric values.
+        path_col : str, optional
+            Path grain; defaults to `schema.path_col` (the unit guard of
+            `get_ab_test` applies).
+
+        Returns
+        -------
+        pandas.DataFrame
+            Index: path id (named after `path_col`), sorted; both arms. Columns:
+
+            - `arm` (scalar): the original typed arm label, `diff[1]` or
+              `diff[2]` (`"group1"` / `"group2"` for id lists). Integer `1`
+              and string `"1"` remain distinct.
+            - `assigned_at` (Timestamp): with an `assignment` DataFrame that has
+              it, in the stream's timezone.
+            - `silent` (boolean): no event in the analysed window (`<NA>` for an
+              immature path).
+            - `mature` (bool): the path is in the analysed population (always True
+              without `horizon`).
+            - one column per metric, named by its `name`: the per-path value
+              (float); for a ratio metric two columns, `<name>_numerator` and
+              `<name>_denominator`. NaN on immature paths and where a value metric
+              is undefined.
+
+        Raises
+        ------
+        DiffConfigError, InvalidMetricConfigError, InvalidParameterError, EmptyEventstreamError
+            As in `get_ab_test`.
+
+        Examples
+        --------
+            paths = stream.get_ab_paths(
+                ("exp_group", "treatment", "control"),
+                metrics=[{"name": "conversion", "metric": "has_event",
+                          "metric_args": {"event": "order_success"}}],
+                assignment=assignment,
+                horizon="28D",
+                observation_end="2026-04-27",
+            )
+            paths[paths["mature"]].groupby("arm")["conversion"].mean()
+
+            # CUPED with a pre-period covariate x (a Series indexed by user_id)
+            mature = paths[paths["mature"]].join(x)
+            theta = mature[["conversion", "x"]].cov().iloc[0, 1] / mature["x"].var()
+            mature["adjusted"] = mature["conversion"] - theta * (
+                mature["x"] - mature["x"].mean())
+            mature.groupby("arm")["adjusted"].mean()
+        """
+        from retentioneering.tools.ab_test import ab_paths
+
+        return ab_paths(
+            self,
+            diff,
+            metrics,
+            assignment=assignment,
+            horizon=horizon,
+            observation_end=observation_end,
+            path_col=path_col,
+        )
 
     @_tracked("headless_describe")
     def describe(
@@ -503,7 +1326,8 @@ class Eventstream:
             `"has_event"`, `"event_count_bulk"`, `"has_event_bulk"`,
             `"has_all_events"`, `"has_any_event"`, `"time_between"`,
             `"first_event_time"`, `"active_days"`, `"matches_pattern"`,
-            `"in_segment"`, `"in_segment_bulk"`. See the [Path Metrics](/docs/path-metrics)
+            `"in_segment"`, `"in_segment_bulk"`, `"column_sum"`, `"column_mean"`,
+            `"column_last"`. See the [Path Metrics](/docs/path-metrics)
             documentation page for the full metric reference.
         method : str, default "kmeans"
             Clustering algorithm. One of `"kmeans"` or `"hdbscan"`.
@@ -749,6 +1573,10 @@ class Eventstream:
             Metric configs, each with a `metric` name and optional `metric_args`.
             No `agg` field here — these are per-path values, not aggregates. See
             the [Path Metrics](/docs/path-metrics) documentation page for the full metric reference.
+            An optional `name` labels the column, as in `get_ab_test` (a metric
+            that expands into several columns, a `*_bulk` one, takes no `name`;
+            names must be unique and must not repeat another metric's column
+            name, or `InvalidMetricConfigError` is raised).
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
 
@@ -767,10 +1595,45 @@ class Eventstream:
                 {"metric": "event_count", "metric_args": {"event": "purchase"}},
             ])
         """
-        from retentioneering.metrics.metric_builder import MetricBuilder
+        from retentioneering.exceptions import InvalidMetricConfigError
+        from retentioneering.metrics.metric_builder import MetricBuilder, MetricConfig
 
-        builder = MetricBuilder(self)
-        return builder.build_metrics(metrics, path_col)
+        names = [
+            entry.get("name") if isinstance(entry, dict) else None
+            for entry in (metrics or [])
+        ]
+        if not any(name is not None for name in names):
+            return MetricBuilder(self).build_metrics(metrics, path_col)
+        configs = [{k: v for k, v in entry.items() if k != "name"} for entry in metrics]
+        given = [n for n in names if n is not None]
+        bad = [n for n in given if not isinstance(n, str) or not n]
+        if bad:
+            raise InvalidMetricConfigError(f"'name' must be a non-empty str, got {bad}")
+        dup = sorted({n for n in given if given.count(n) > 1})
+        if dup:
+            raise InvalidMetricConfigError(f"duplicate metric name(s) {dup}")
+        frame = MetricBuilder(self).build_metrics(configs, path_col)
+        parsed = MetricConfig(configs).parsed_configs
+        rename = {}
+        for name, entry, info in zip(names, configs, parsed):
+            if name is None:
+                continue
+            columns = info.get("metric_names") or []
+            if len(columns) != 1:
+                raise InvalidMetricConfigError(
+                    f"metric {name!r}: '{entry.get('metric')}' produces "
+                    f"{len(columns) or 'one per level'} columns; 'name' labels a "
+                    "single column"
+                )
+            rename[columns[0]] = name
+        frame = frame.rename(columns=rename)
+        clash = sorted({c for c in frame.columns if list(frame.columns).count(c) > 1})
+        if clash:
+            raise InvalidMetricConfigError(
+                f"duplicate output column(s) {clash}: a 'name' repeats the column "
+                "name of another metric; choose another name"
+            )
+        return frame
 
     @_tracked("dp_add_events")
     @_op
@@ -875,12 +1738,14 @@ class Eventstream:
         time_range=None,
         metric_bins=None,
         path_col=None,
+        path_values=None,
+        pre_exposure: bool | None = None,
     ) -> "Eventstream":
         """
         Add a new categorical segment column to the eventstream.
 
-        Exactly one of `rules`, `func`, `sql`, `funnel_events`, `time_range`, or
-        `metric_bins` must be provided — unless `name` is already listed in
+        Exactly one of `rules`, `func`, `sql`, `funnel_events`, `time_range`,
+        `metric_bins`, or `path_values` must be provided — unless `name` is already listed in
         `schema.custom_cols`, in which case passing none of them promotes that
         existing column to a segment in place, without recomputing its values.
 
@@ -947,9 +1812,38 @@ class Eventstream:
             - `segment_levels` — one name per bin, so `len(segment_levels)` is
               always the number of bins. Omit for auto names: `"[5, 15)"` for
               `edges`, `q1`..`qN` for `quantiles`.
+        path_values : pandas.Series or dict, optional
+            One value per path, indexed by path id — an assignment table read from
+            a file, or labels computed on another stream (clusters found on a
+            truncated stream, carried back onto the full one with
+            `truncated.get_path_segments("cluster")`). Broadcast to every event of
+            the path, so the segment is constant per path. Keys and labels must
+            be finite string, boolean or numeric scalars (NumPy scalars work);
+            labels may also be missing. Convert timestamps and custom objects
+            explicitly. Keys whose string/JSON forms collide raise instead of
+            losing an entry in a recipe. Paths the mapping does
+            not hold get no value, which `diff` and `get_path_segments` show as
+            `<MISSING>`; ids in the mapping that are not in the eventstream are
+            ignored, with a `UserWarning` when fewer than half of them match a path
+            id, and `InvalidParameterError` when none does (a mapping keyed by
+            another column or grain). A categorical Series keeps its category
+            order. Keys that are strings match non-string path ids by their string
+            form (a dict that went through JSON). A non-unique index raises
+            `InvalidParameterError`.
         path_col : str, optional
-            Path ID column override for `funnel_events` and `metric_bins` modes;
-            defaults to `schema.path_col`.
+            Path ID column override for `funnel_events`, `metric_bins` and
+            `path_values` modes; defaults to `schema.path_col`.
+        pre_exposure : bool, optional
+            Declare whether the segment was fixed before the experiment's
+            exposure (a platform at signup, clusters found on paths cut before the
+            exposure event). The declaration is recorded in the recipe, so every
+            later `get_ab_test(strata_col=name)` (and the widget, and MCP) reads
+            it as `strata_pre_exposure_source="declared"` without a warning; it
+            also lands in `get_path_segments(name).attrs["pre_exposure"]`. `None`
+            (default) leaves behavioral or unknown labels descriptive. Truncation
+            and inherited metadata do not establish pretreatment timing. Reassert
+            this declaration when transferring labels through `path_values`.
+            The library cannot verify the actual exposure mechanism.
 
         Examples
         --------
@@ -984,8 +1878,21 @@ class Eventstream:
 
             # promote a column that is already in the eventstream, keeping its values
             stream.add_segment("returned")
+
+            # one value per path, e.g. the experiment arm from an assignment table
+            groups = pd.read_csv("ab_groups.csv", index_col="user_id")
+            stream.add_segment("exp_group", path_values=groups["exp_group"])
+
+            # labels fixed before exposure, declared for get_ab_test(strata_col=)
+            stream.add_segment("entry", path_values=entry_labels, pre_exposure=True)
         """
         from retentioneering.data_processors.add_segment import AddSegment
+        from retentioneering.exceptions import InvalidParameterError
+
+        if pre_exposure is not None and not isinstance(pre_exposure, bool):
+            raise InvalidParameterError(
+                "pre_exposure", pre_exposure, ["None", "True", "False"]
+            )
 
         new_df, new_schema = AddSegment(
             name,
@@ -997,6 +1904,7 @@ class Eventstream:
             metric_bins=metric_bins,
             path_col=path_col,
             eventstream=self,
+            path_values=path_values,
         ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
@@ -1521,82 +2429,35 @@ class Eventstream:
         )
 
     def _split_two(self, split, path_col: str | None = None):
-        from retentioneering.exceptions import (
-            EmptyEventstreamError,
-            DiffConfigError,
-            SegmentLevelNotFoundError,
-            PathIdNotFoundError,
-        )
+        """Event-level split used by the existing widgets' `diff`.
 
+        Validation and level resolution are delegated to
+        `tools._diff.resolve_diff(require_constant=False)`, so every `diff` reports
+        the same errors. The split itself stays event-level for the segment form
+        (a path whose segment changes contributes its events to both groups);
+        inferential methods call `resolve_diff` directly and refuse such paths.
+        """
+        from retentioneering.exceptions import DiffConfigError
+        from retentioneering.tools._diff import coerce_level, resolve_diff
+
+        if split is None or isinstance(split, (str, bytes)):
+            raise DiffConfigError("diff must be (seg, v1, v2) or (ids1, ids2)")
         if len(split) == 3:
+            resolve_diff(self, split, require_constant=False)
             segment_col, v1, v2 = split[0], split[1], split[2]
-            if segment_col not in self.schema.segment_cols:
-                raise DiffConfigError(f"'{segment_col}' is not a segment column")
             all_vals = set(self.get_segment_levels().get(segment_col, []))
-
-            def _coerce(value):
-                """Match a value that arrived as a string (the JS widget, MCP
-                and any JSON round-trip stringify everything) back to the
-                actual typed segment level: 'false' -> False, '5' -> 5.
-                Returns the value unchanged when there is no unambiguous
-                match — the caller then raises its normal error."""
-                if value in all_vals or not isinstance(value, str):
-                    return value
-                matches = []
-                for candidate in all_vals:
-                    if isinstance(candidate, str):
-                        continue
-                    try:
-                        candidate_json = json.dumps(candidate)
-                    except (TypeError, ValueError):
-                        candidate_json = None
-                    if value in (candidate_json, str(candidate)):
-                        matches.append(candidate)
-                return matches[0] if len(matches) == 1 else value
-
-            v1 = _coerce(v1)
-            if v1 not in all_vals:
-                raise SegmentLevelNotFoundError(
-                    segment_level=v1,
-                    segment_col=segment_col,
-                    available_levels=sorted(all_vals),
-                )
-            s1 = self._filter_by_segment_levels(segment_col, [v1])
+            v1 = coerce_level(v1, all_vals)
             if v2 == "<REST>":
                 v2_vals = list(all_vals - {v1})
-                if not v2_vals:
-                    raise DiffConfigError(
-                        f"'{segment_col}' has no other levels besides '{v1}'; "
-                        "'<REST>' requires at least one complementary level."
-                    )
             else:
-                v2 = _coerce(v2)
-                if v2 not in all_vals:
-                    raise SegmentLevelNotFoundError(
-                        segment_level=v2,
-                        segment_col=segment_col,
-                        available_levels=sorted(all_vals),
-                    )
-                v2_vals = [v2]
+                v2_vals = [coerce_level(v2, all_vals)]
+            s1 = self._filter_by_segment_levels(segment_col, [v1])
             s2 = self._filter_by_segment_levels(segment_col, v2_vals)
-        elif len(split) == 2:
-            ids1, ids2 = split[0], split[1]
-            path_col = path_col or self.schema.path_col
-            available_ids = set(self._df[path_col].unique().tolist())
-            missing1 = [i for i in ids1 if i not in available_ids]
-            missing2 = [i for i in ids2 if i not in available_ids]
-            if missing1 or missing2:
-                raise PathIdNotFoundError(
-                    sorted(set(missing1 + missing2), key=str), path_col
-                )
-            s1 = self.filter_events(keep={path_col: list(ids1)})
-            s2 = self.filter_events(keep={path_col: list(ids2)})
         else:
-            raise DiffConfigError("diff must be (seg, v1, v2) or (ids1, ids2)")
-        if s1.is_empty():
-            raise EmptyEventstreamError("first diff group is empty")
-        if s2.is_empty():
-            raise EmptyEventstreamError("second diff group is empty")
+            path_col = path_col or self.schema.path_col
+            groups = resolve_diff(self, split, path_col, require_constant=False)
+            s1 = self.filter_events(keep={path_col: list(groups.ids1)})
+            s2 = self.filter_events(keep={path_col: list(groups.ids2)})
         return s1, s2
 
     def _restrict_to_pattern(
@@ -2135,12 +2996,166 @@ class Eventstream:
             state_file=state_file,
         )
 
+    @_tracked("headless_experiment")
+    def experiment_data(
+        self,
+        *,
+        assignments,
+        metrics,
+        observation,
+        variant_col="exp_group",
+        control="control",
+        treatment="treatment",
+        unit_col=None,
+        bootstrap=None,
+        funnel_steps=None,
+        expected_allocation=None,
+        tests=None,
+        event_catalog=None,
+        binary_intervals=None,
+    ) -> dict:
+        """Estimate fixed-window experiment outcomes from a complete assignment roster.
+
+        Assignments define the population, including units without events.
+        Supported outcomes are unit-level means and explicit ratios; bootstrap
+        draws whole independent units within each assigned arm. Source history
+        before assignment is allowed; only events in [start, end) contribute.
+
+        Parameters
+        ----------
+        assignments : pandas.DataFrame
+            One row per independent unit, with its ID, variant and assignment time.
+        metrics : list of dict
+            Named scalar path metric configurations with explicit aggregation:
+            mean, ratio_of_sums, or mean_of_ratios with eligibility. Optional
+            display metadata labels measurement units without changing estimates;
+            effect_unit labels absolute differences separately (percent uses pp).
+        observation : dict
+            start, end, assignment_time_col and complete=True. All assignments
+            must precede or equal start. Complete logging is an explicit input
+            assertion, not inferred from each unit's last event.
+        variant_col : str, default 'exp_group'
+            Assignment variant column.
+        control, treatment : scalar
+            Distinct assigned variants; effects are treatment minus control.
+        unit_col : str, optional
+            Independent assignment/resampling unit; must be the coarsest declared
+            schema path grain. For genuine session randomization, declare sessions
+            as the primary schema grain.
+        bootstrap : dict, optional
+            Percentile method, n_resamples, confidence_level, random_state and
+            batch_size. None disables bootstrap; the resolved seed is exported.
+        funnel_steps : list of str, optional
+            Ordered within-window steps. Cumulative reach uses all assignments;
+            conditional transitions use the preceding reached-step population.
+        expected_allocation : float, optional
+            Expected treatment probability for an independent-Bernoulli SRM check.
+        tests : dict, optional
+            Explicit methods mapping outcome names to fisher_exact or welch,
+            with adjustment='holm'. Tests and intervals are separate procedures.
+            Known-binary Welch rejects; nonbinary Welch is explicitly approximate.
+        event_catalog : dict, optional
+            Declared event names per column, supplementing observed values, for
+            known outcomes that have zero occurrences in the complete source.
+        binary_intervals : dict, optional
+            Explicit method='exact' for Clopper–Pearson arm intervals and a
+            conservative CP-based difference, or method='newcombe' for approximate
+            Wilson/Newcombe intervals; confidence_level is explicit. The exact
+            difference is not a Fisher-test inversion and has no relative interval.
+            None requests no binary interval; bootstrap=None and tests=None also
+            preserve the no-inference contract.
+
+        Returns
+        -------
+        dict
+            Versioned aggregate summary, population diagnostics and resolved
+            metadata. Intervals are pointwise. Unavailable results carry explicit
+            statuses. User IDs and raw bootstrap draws are not exported.
+        """
+        from retentioneering.tools.experiment import experiment_data
+
+        return experiment_data(
+            self,
+            assignments=assignments,
+            metrics=metrics,
+            observation=observation,
+            variant_col=variant_col,
+            control=control,
+            treatment=treatment,
+            unit_col=unit_col,
+            bootstrap=bootstrap,
+            funnel_steps=funnel_steps,
+            expected_allocation=expected_allocation,
+            tests=tests,
+            event_catalog=event_catalog,
+            binary_intervals=binary_intervals,
+        ).to_dict()
+
+    @_tracked("widget_experiment")
+    def experiment(
+        self,
+        *,
+        assignments,
+        metrics,
+        observation,
+        variant_col="exp_group",
+        control="control",
+        treatment="treatment",
+        unit_col=None,
+        bootstrap=None,
+        funnel_steps=None,
+        expected_allocation=None,
+        tests=None,
+        event_catalog=None,
+        binary_intervals=None,
+        height=650,
+        sidebar_open=True,
+    ):
+        """Display a calculated experiment scorecard and funnel in Jupyter.
+
+        All data parameters match experiment_data; see that method for population,
+        outcome and inference semantics. This first view shows a fixed computed
+        result. It does not restore an assignment roster from a saved widget state.
+
+        Parameters
+        ----------
+        assignments, metrics, observation, variant_col, control, treatment, unit_col,
+        bootstrap, funnel_steps, expected_allocation, tests, event_catalog, binary_intervals
+            Identical to experiment_data.
+        height : int, default 650
+            Display height in pixels.
+        sidebar_open : bool, default True
+            Whether diagnostic details start expanded.
+        """
+        from retentioneering.widgets.experiment import ExperimentWidget
+
+        return ExperimentWidget(
+            self,
+            assignments=assignments,
+            metrics=metrics,
+            observation=observation,
+            variant_col=variant_col,
+            control=control,
+            treatment=treatment,
+            unit_col=unit_col,
+            bootstrap=bootstrap,
+            funnel_steps=funnel_steps,
+            expected_allocation=expected_allocation,
+            tests=tests,
+            event_catalog=event_catalog,
+            binary_intervals=binary_intervals,
+            height=height,
+            sidebar_open=sidebar_open,
+        )
+
     @_tracked("widget_funnel")
     def funnel(
         self,
         steps: list[str] | None = None,
         diff=None,
         path_col: str | None = None,
+        ci_level: float | None = None,
+        correction: str | None = None,
         height: int | None = None,
         sidebar_open: bool | None = None,
         state_file: str | None = None,
@@ -2163,6 +3178,16 @@ class Eventstream:
             `(path_ids1, path_ids2)`; `value2` may be `<REST>`.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
+        ci_level : float, optional
+            Two-sided confidence level in [0.5, 1), e.g. `0.95`: draws an interval
+            whisker on every bar and adds the delta's interval and p-value to the
+            table. Also switchable in the sidebar (Off / 90% / 95% / 99%). In diff
+            mode the groups are then resolved per path and a path in both groups
+            raises `DiffConfigError`; see `funnel_data` for every number shown.
+        correction : {"none", "holm", "bonferroni", "bh"}, default "none"
+            Multiple-comparison correction over the overall-step p-values; see
+            `funnel_data`. A value other than `"none"` needs `ci_level`
+            (`InvalidParameterError` otherwise).
         height : int, default 420
             Widget height in pixels.
         sidebar_open : bool, default True
@@ -2175,14 +3200,30 @@ class Eventstream:
         --------
             stream.funnel(steps=["catalog", "add_to_cart", "purchase"])
             stream.funnel(steps=["add_to_cart", "purchase"], diff=("user_lifecycle", "loyal", "new"))
+
+            # A/B test: per-arm intervals, the delta's interval and Holm-adjusted p
+            stream.funnel(
+                steps=["catalog", "add_to_cart", "purchase"],
+                diff=("exp_group", "treatment", "control"),
+                ci_level=0.95,
+                correction="holm",
+            )
         """
         from retentioneering.widgets.funnel import FunnelWidget, _UNSET
 
+        if correction not in (None, "none") and ci_level is None:
+            from retentioneering.exceptions import InvalidParameterError
+
+            raise InvalidParameterError(
+                "correction", correction, ["'none' without ci_level", "a ci_level="]
+            )
         return FunnelWidget(
             eventstream=self,
             steps=steps if steps is not None else _UNSET,
             diff=diff if diff is not None else _UNSET,
             path_col=path_col if path_col is not None else _UNSET,
+            ci_level=ci_level if ci_level is not None else _UNSET,
+            correction=correction if correction is not None else _UNSET,
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
             state_file=state_file,
@@ -2194,6 +3235,8 @@ class Eventstream:
         steps: list[str] | None = None,
         diff=None,
         path_col: str | None = None,
+        ci_level: float | None = None,
+        correction: str = "none",
     ) -> dict:
         """
         Compute funnel conversion metrics and return a dict (headless).
@@ -2208,6 +3251,29 @@ class Eventstream:
             `(path_ids1, path_ids2)`; `value2` may be `<REST>`.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
+        ci_level : float, optional
+            Two-sided confidence level in [0.5, 1), e.g. `0.95`. Adds a Clopper-Pearson exact
+            interval to every rate and, with `diff`, a conservative Bonferroni Clopper-Pearson difference
+            interval to every delta and a two-sided Fisher exact test p-value to
+            every **overall** delta (see Returns). In diff mode the groups are then
+            resolved per path: a path that falls in both groups (a segment that
+            changes within the path, overlapping id lists) raises
+            `DiffConfigError` — compare at a finer `path_col` or carry a per-path
+            label with `add_segment(path_values=...)`. Intervals require the
+            coarsest declared path grain, including explicit ID splits and small
+            samples; finer `path_col` raises `InvalidParameterError`. The schema
+            declares independence and cannot prove it.
+            Without `ci_level` the diff keeps the widgets' event-level split and
+            no guard applies.
+        correction : {"none", "holm", "bonferroni", "bh"}, default "none"
+            Multiple-comparison correction applied across the funnel's steps to the
+            overall-delta p-values (`delta_conversion_rate_p_value_adjusted`); used
+            only with `ci_level` and `diff`, and a value other than `"none"` without
+            `ci_level` raises `InvalidParameterError`. `"none"` copies the raw p-values;
+            `"holm"` (Holm step-down) and `"bonferroni"` control the family-wise
+            error rate; `"bh"` (Benjamini–Hochberg) controls the false discovery
+            rate. Steps whose p-value is undefined (`NaN`) retain an unavailable
+            result and remain in the declared correction family.
 
         Returns
         -------
@@ -2220,17 +3286,110 @@ class Eventstream:
         - `step_conversion_rate` — `unique_paths` as a share of the
           **previous step's** `unique_paths`, i.e. the step-to-step
           conversion. Equals `conversion_rate` for the first step, since
-          there is no previous step to divide by.
+          there is no previous step to divide by; 0.0 when the previous step
+          has no paths.
 
         When `diff` is given, each of the four keys above is split into
         `funnel1_*` / `funnel2_*` (one per segment) and `delta_*`
         (`funnel1_* - funnel2_*`) instead.
+
+        Top-level keys besides `"steps"` (when `steps` is not empty):
+
+        - `total_paths` — paths in the eventstream, the denominator of
+          `conversion_rate`; with `diff`, `funnel1_total_paths` and
+          `funnel2_total_paths` instead (the paths of each group).
+
+        With `ci_level`, per step (no `diff`):
+
+        - `conversion_rate_ci_low`, `conversion_rate_ci_high` — Clopper-Pearson interval
+          of `conversion_rate`.
+        - `step_conversion_rate_ci_low`, `step_conversion_rate_ci_high` — Clopper-Pearson
+          interval of `step_conversion_rate`; `NaN` when the previous step has
+          no paths (the rate itself stays 0.0 for compatibility).
+
+        With `ci_level` and `diff`, per step:
+
+        - `funnel1_conversion_rate_ci_low`, `funnel1_conversion_rate_ci_high`,
+          `funnel1_step_conversion_rate_ci_low`,
+          `funnel1_step_conversion_rate_ci_high` and the same `funnel2_*` keys —
+          Clopper-Pearson intervals of each group's rates.
+        - `delta_conversion_rate_ci_low`, `delta_conversion_rate_ci_high` —
+          conservative Bonferroni Clopper-Pearson difference interval of `delta_conversion_rate`.
+        - `delta_conversion_rate_p_value` — two-sided Fisher exact test of equal
+          overall rates; 1 for equal constant nonempty arms; `NaN` for an empty arm.
+        - `delta_conversion_rate_p_value_adjusted` — the same p-value after
+          `correction` across the steps; `NaN` where the raw p-value is `NaN`.
+        - `delta_step_conversion_rate_ci_low`,
+          `delta_step_conversion_rate_ci_high` — conservative Bonferroni Clopper-Pearson difference interval of
+          `delta_step_conversion_rate`. **No p-value**: see `step_conditional`.
+        - `step_conditional` — `False` for the first step, `True` after it. A
+          step-to-step rate conditions on reaching the previous step, and the
+          treatment itself changes who reaches it, so a step delta compares
+          different populations: it is descriptive, never a treatment effect,
+          and carries an interval but no p-value.
+
+        With `ci_level`, top level:
+
+        - `ci_level` — the level used.
+        - `ci_basis` — how each number is computed: `{"rate": "clopper_pearson"}`
+          without `diff`; with it, `rate="clopper_pearson"`,
+          `delta="clopper_pearson_bonferroni"`, and
+          `p_value="fisher_exact_two_sided"`.
+        - with `diff` only: `correction`; `correction_family` — the p-values
+          corrected together, spelled as in `get_ab_test`:
+          `"metric=delta_conversion_rate/steps"` (all declared overall steps),
+          `"none"` without correction.
+
+        `NaN` marks an absent estimate (never 0); widgets send it as `null`.
+
+        Notes
+        -----
+        Population: the unconditional denominator is the paths **with at least
+        one event** in the eventstream (per group with `diff`), what
+        `get_ab_test` calls `population="stream"`: users assigned to an arm who
+        never produced an event are not counted, so a funnel's first-step rate
+        can differ from the scorecard's (`get_ab_test(assignment=...)` counts
+        every assigned user, silent ones as 0, `population="assignment"`). Use
+        `get_ab_test` with an assignment table for the effect on the arms; the
+        funnel shows where the paths go. The intervals and p-values
+        treat every path as an independent unit, so they assume `path_col` is
+        the unit that was assigned to a group: session paths of a user-level
+        experiment give intervals that are too narrow. p-values are per
+        comparison unless `correction` is set; intervals are pointwise across
+        steps. The difference interval combines Bonferroni-adjusted exact arm
+        bounds; it is conservative and is not the inversion of the Fisher test.
+
+        Reading an interval that includes 0: the data are compatible with no
+        difference *and* with every difference inside the interval, so the step
+        is not shown to differ — it is not shown to be equal either. Read the
+        bounds as the range of effects still allowed (`[-1.07, +2.28]` pp: a
+        drop larger than about 1 pp or a gain larger than about 2.3 pp is
+        unlikely); a narrow interval around 0 rules out effects that matter, a
+        wide one says the test is too small to tell. `get_ab_test` gives the
+        same step as a scorecard row with `mde` and a `reading` that says how
+        many more paths a smaller effect would need.
+
+        Examples
+        --------
+            stream.funnel_data(["catalog", "add_to_cart", "purchase"])
+            stream.funnel_data(
+                ["catalog", "add_to_cart", "purchase"],
+                diff=("exp_group", "treatment", "control"),
+                ci_level=0.95,
+                correction="holm",
+            )
         """
         from retentioneering.tools.funnel import Funnel
 
         if not steps:
             return {"steps": []}
-        return Funnel(self).fit(steps=steps, diff=diff, path_col=path_col)
+        return Funnel(self).fit(
+            steps=steps,
+            diff=diff,
+            path_col=path_col,
+            ci_level=ci_level,
+            correction=correction,
+        )
 
     @_tracked("get_conversion_rate")
     def get_conversion_rate(
@@ -2239,9 +3398,18 @@ class Eventstream:
         end_anchor,
         within=None,
         path_col: str | None = None,
+        ci_level: float | None = None,
+        diff: T_Diff = None,
     ) -> pd.DataFrame:
         """
         Given that `start_anchor` happened, how often does `end_anchor` follow?
+
+        Inference uses exact Clopper-Pearson arm intervals, conservative
+        Bonferroni Clopper-Pearson difference intervals and two-sided Fisher
+        tests. The interval and test are separate procedures, not duals.
+        DataFrame ``attrs`` records ``ci_basis``, ``ci_level``,
+        ``population_basis`` and ``independence_assumption`` when inference is
+        requested. Serializers must preserve this metadata explicitly.
 
         One row per (`start_anchor`, `end_anchor`) pair, counted over **paths**:
         a path where the start anchor occurred contributes one to the
@@ -2264,7 +3432,9 @@ class Eventstream:
             without `within` it gives the same result as `"first"`.
         end_anchor : str or dict or list
             The target(s) looked for after it. The whole pattern has to fall
-            after the start anchor, lead-in included.
+            after the start anchor, lead-in included. With multiple starts and
+            a finite window, end occurrence selection is evaluated separately
+            after each start before successful paths are counted.
         within : int or str or pd.Timedelta, optional
             Window size, measured from the start anchor and inclusive of its far
             edge: an int counts events (`10` — "within 10 events"), a duration
@@ -2272,6 +3442,26 @@ class Eventstream:
             end of the path.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
+        ci_level : float, optional
+            Two-sided confidence level in [0.5, 1), e.g. `0.95`. Adds Clopper-Pearson exact
+            intervals of the conversion rate (`conversion_rate_ci_low` /
+            `conversion_rate_ci_high`). `None` (default) means no interval without
+            `diff`, and `0.95` with `diff`: diff mode always reports the intervals
+            and the p-value, at this level.
+        diff : tuple, optional
+            Compare two groups of paths: `("segment_col", value1, value2)` (`value2`
+            may be `<REST>`, either value `<MISSING>`) or `(path_ids1, path_ids2)`.
+            Groups are resolved at path level: a path that falls in both groups (a
+            segment that changes within the path, overlapping id lists) raises
+            `DiffConfigError` — compare at a finer `path_col` or carry a per-path
+            label with `add_segment(path_values=...)`. Replaces the columns below
+            with the diff columns. The intervals and the p-value treat every path as
+            an independent unit, so they assume `path_col` is the unit that was
+            assigned to a group: session paths of a user-level experiment give
+            intervals that are too narrow. A finer-than-coarsest declared path grain
+            raises `InvalidParameterError` for any diff form and sample size.
+            Pass the declared randomised unit; the schema does not prove that
+            observations are independent. See Notes on conditional rows.
 
         Returns
         -------
@@ -2287,7 +3477,42 @@ class Eventstream:
             - `base_rate` — share of *all* paths containing the end anchor
               anywhere, the baseline the rate has to beat.
             - `lift` — `conversion_rate / base_rate`; `NaN` if `base_rate` is 0.
-              Below 1 means the start event makes the outcome *less* likely.
+              Below 1 means the start-selected rate is below the overall
+              observed-path baseline; this is not a causal effect.
+            - `conversion_rate_ci_low`, `conversion_rate_ci_high` — with
+              `ci_level` only, right after `conversion_rate`: the Clopper-Pearson interval;
+              `NaN` when `paths_with_start` is 0.
+
+            With `diff`, one row per pair with `start_anchor`, `end_anchor` and:
+
+            - `group1_paths_with_start`, `group1_converted`,
+              `group1_conversion_rate`, `group1_conversion_rate_ci_low`,
+              `group1_conversion_rate_ci_high` (Clopper-Pearson), `group1_base_rate`,
+              `group1_lift` — the columns above computed within group 1's paths
+              (the base rate over group 1's paths); the same `group2_*` columns.
+            - `delta` — `group1_conversion_rate - group2_conversion_rate`.
+            - `delta_ci_low`, `delta_ci_high` — conservative Bonferroni Clopper-Pearson difference interval of the
+              delta.
+            - `p_value` — two-sided Fisher exact test of equal rates; `NaN` when
+              a group has no start paths or the row is conditional; 1 for
+              equal constant nonempty arms.
+            - `conditional` — True unless the start anchor is `"path_start"` (with
+              no offset): the denominator is then the paths that reached the start
+              anchor, and no p-value is reported for that selected comparison
+              (see Notes).
+
+        Notes
+        -----
+        With `diff`, the denominator is the paths that reached `start_anchor`.
+        When the treatment can change who reaches it (a cart, a loop, a feature's
+        event), the two groups are selected after exposure, not randomised: the
+        same conditional comparison that `funnel_data(ci_level=...)` reports with
+        `step_conditional=True` and no p-value. Such rows carry
+        `conditional=True`; their delta and p-value describe the selected paths,
+        they do not test the treatment. For the treatment's effect, compare the
+        share of all assigned paths with `get_ab_test` and a `matches_pattern`
+        metric (`{"metric": "matches_pattern", "metric_args": {"pattern":
+        "cart->order_success"}}`), or start from `"path_start"`.
 
         Examples
         --------
@@ -2311,6 +3536,13 @@ class Eventstream:
             stream.get_conversion_rate(
                 {"pattern": "path_start->catalog", "at": -1}, "purchase"
             )
+
+            # with a 95% interval, and treatment vs control with the delta's
+            # interval and p-value, from the path start (an unconditional share)
+            stream.get_conversion_rate("add_to_cart", "purchase", ci_level=0.95)
+            stream.get_conversion_rate(
+                "path_start", "purchase", diff=("exp_group", "treatment", "control")
+            )
         """
         from retentioneering.tools.conversion import ConversionRate
 
@@ -2319,6 +3551,8 @@ class Eventstream:
             end_anchor=end_anchor,
             within=within,
             path_col=path_col,
+            ci_level=ci_level,
+            diff=diff,
         )
 
     @_tracked("widget_segment_overview")
@@ -2425,6 +3659,185 @@ class Eventstream:
             metrics=metrics or [],
             path_col=path_col,
         )
+
+    @_tracked("widget_ab_test")
+    def ab_test(
+        self,
+        diff: T_Diff = None,
+        metrics: list | None = None,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        strata_col: str | None = None,
+        period=None,
+        period_basis: str | None = None,
+        period_population: str | None = None,
+        horizon=None,
+        observation_end=None,
+        test: str | None = None,
+        correction: str | None = None,
+        correction_scope: str | None = None,
+        ci_level: float | None = None,
+        power: float | None = None,
+        n_bootstrap: "int | str | None" = None,
+        bootstrap_weights: str | None = None,
+        min_support: int | None = None,
+        random_state: int | None = None,
+        path_col: str | None = None,
+        strata_pre_exposure: bool | None = None,
+        height: int | None = None,
+        sidebar_open: bool | None = None,
+        state_file: str | None = None,
+    ):
+        # The docstring is assembled below from get_ab_test's: one text per parameter.
+        from retentioneering.widgets.ab_test import ABTestWidget, _UNSET
+
+        args = {
+            "diff": diff,
+            "metrics": metrics,
+            "strata_col": strata_col,
+            "period": period,
+            "period_basis": period_basis,
+            "period_population": period_population,
+            "horizon": horizon,
+            "observation_end": observation_end,
+            "test": test,
+            "correction": correction,
+            "correction_scope": correction_scope,
+            "ci_level": ci_level,
+            "power": power,
+            "n_bootstrap": n_bootstrap,
+            "bootstrap_weights": bootstrap_weights,
+            "min_support": min_support,
+            "random_state": random_state,
+            "path_col": path_col,
+            "strata_pre_exposure": strata_pre_exposure,
+            "height": height,
+            "sidebar_open": sidebar_open,
+        }
+        return ABTestWidget(
+            eventstream=self,
+            assignment=assignment,
+            state_file=state_file,
+            **{k: v if v is not None else _UNSET for k, v in args.items()},
+        )
+
+    @_tracked("headless_ab_test")
+    def ab_test_data(
+        self,
+        diff: T_Diff,
+        metrics: list,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        strata_col: str | None = None,
+        period=None,
+        period_basis: str = "calendar",
+        period_population: str = "itt",
+        horizon=None,
+        observation_end=None,
+        test: str = "auto",
+        correction: str = "holm",
+        correction_scope: str = "all",
+        ci_level: float = 0.95,
+        power: float = 0.8,
+        n_bootstrap: "int | str" = 1000,
+        bootstrap_weights: str = "multinomial",
+        min_support: int = 10,
+        random_state: int = 42,
+        path_col: str | None = None,
+        strata_pre_exposure: bool | None = None,
+    ) -> pd.DataFrame:
+        # The docstring is get_ab_test's with an alias note, assembled below.
+        return self.get_ab_test(
+            diff,
+            metrics,
+            assignment=assignment,
+            strata_col=strata_col,
+            period=period,
+            period_basis=period_basis,
+            period_population=period_population,
+            horizon=horizon,
+            observation_end=observation_end,
+            test=test,
+            correction=correction,
+            correction_scope=correction_scope,
+            ci_level=ci_level,
+            power=power,
+            n_bootstrap=n_bootstrap,
+            bootstrap_weights=bootstrap_weights,
+            min_support=min_support,
+            random_state=random_state,
+            path_col=path_col,
+            strata_pre_exposure=strata_pre_exposure,
+        )
+
+    _ab_summary, _ab_sections = _numpydoc_split(get_ab_test.__doc__ or "")
+    _ab_title, _, _ab_rest = _ab_summary.partition("\n\n")
+    ab_test_data.__doc__ = _numpydoc_join(
+        f"{_ab_title}\n\n"
+        "Documented alias of `get_ab_test`, under the name of the `ab_test`\n"
+        "widget's headless twin: the same computation, arguments and result.\n"
+        "The docs and the tutorial use `get_ab_test`; the widget calls this\n"
+        f"method, so its numbers are the getter's.\n\n{_ab_rest}",
+        list(_ab_sections.items()),
+    )
+    ab_test.__doc__ = _numpydoc_join(
+        """Interactive A/B test scorecard for Jupyter notebooks.
+
+The numbers of `get_ab_test`, drawn: a **Scorecard** tab with one row per metric
+(each arm's value, the delta with its interval, the adjusted p-value, the MDE, the
+verdict and any `support_warning`) and a forest plot of the deltas; a **Strata**
+tab when `strata_col` is set (one row per stratum, with the share-balance and
+heterogeneity p-values; exploratory rows marked); a **Periods** tab when `period`
+is set (the delta and its interval over time; incomplete periods drawn hollow,
+descriptive rows marked). An `inconclusive` verdict is not "no effect": its
+interval shows which effects the data still allow.
+
+The Scorecard is `ab_test_data(...)` without `strata_col` and `period`; the
+Strata tab adds `strata_col` and `strata_pre_exposure`; the Periods tab adds
+`period`, `period_basis` and `period_population`. Every other argument applies to
+all three. `ab_test_data` is the widget's headless twin, an alias of
+`get_ab_test`. The arms, the metrics, `ci_level`, `correction`, `test`,
+`strata_col`, `period`, `period_basis` and `horizon` are also editable in the
+sidebar; every change recomputes. `diff` and `metrics` may be left out and set
+there (or restored from `state_file`).""",
+        [
+            (
+                "Parameters",
+                _ab_sections.get("Parameters", "")
+                + """
+height : int, default 560
+    Widget height in pixels.
+sidebar_open : bool, default True
+    Whether the sidebar starts open.
+state_file : str, optional
+    JSON file the widget state is bound to; see
+    [Saving widget state](/docs/widgets#saving-widget-state). `assignment` is a
+    table, not state: pass it again when you reopen the widget.""",
+            ),
+            (
+                "Examples",
+                """    diff = ("exp_group", "treatment", "control")
+    metrics = [
+        {"name": "conversion", "metric": "has_event",
+         "metric_args": {"event": "order_success"}},
+        {"name": "revenue_per_user", "metric": "column_sum",
+         "metric_args": {"column": "order_value"}},
+    ]
+    stream.ab_test(diff, metrics, assignment=assignment)
+
+    # strata fixed at signup, and weekly ITT rows
+    stream.ab_test(diff, metrics, strata_col="platform",
+                   strata_pre_exposure=True, period="W")""",
+            ),
+            (
+                "See Also",
+                """get_ab_test : The scorecard as a DataFrame (`ab_test_data` is its alias).
+get_sample_ratio : The sample ratio check; run it before reading any metric.
+get_ab_bootstrap : Joint bootstrap replicates, for contrasts between periods.""",
+            ),
+        ],
+    )
+    del _ab_summary, _ab_sections, _ab_title, _ab_rest
 
     @_tracked("widget_cluster_analysis")
     def cluster_analysis(

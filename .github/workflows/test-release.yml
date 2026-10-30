@@ -56,13 +56,16 @@ jobs:
       - name: Build sdist and wheel
         run: uv build
 
-      - name: Verify the wheel embeds the JS bundle
-        run: |
-          set -e
-          WHEEL=$(ls dist/*.whl)
-          unzip -l "$WHEEL" | grep -q 'retentioneering/static/widget\.js' || {
-            echo "::error::widget.js is missing from the built wheel"; exit 1;
-          }
+      - name: Verify source parity and the installed wheel
+        run: uv run python scripts/verify_wheel.py dist/*.whl
+
+      - name: Upload installed-wheel provenance and exports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-verification-${{ github.sha }}
+          path: artifacts/wheel/
+          if-no-files-found: warn
 
       - name: Publish to TestPyPI
         run: uv publish --publish-url https://test.pypi.org/legacy/

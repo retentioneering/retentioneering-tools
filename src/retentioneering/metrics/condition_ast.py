@@ -14,7 +14,9 @@ from typing import Any, Dict, List, Set
 
 from retentioneering.exceptions import PreprocessingConfigError
 from retentioneering.metrics.metric_builder import (
+    COLUMN_METRICS,
     _prefix,
+    column_metric_name,
     combined_metric_name,
 )
 
@@ -187,6 +189,14 @@ def build_metric_names(
         return [
             combined_metric_name(metric, events, event_col=metric_args.get("event_col"))
         ]
+
+    elif metric in COLUMN_METRICS:
+        column = metric_args.get("column")
+        if not column:
+            raise PreprocessingConfigError(
+                processor_name, f"'{metric}' metric requires 'column' in metric_args"
+            )
+        return [column_metric_name(metric, column)]
 
     elif not metric_args:
         return [metric]

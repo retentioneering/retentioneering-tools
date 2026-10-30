@@ -1,0 +1,29 @@
+{
+  "baseline": {
+    "actual_model_dump_keys": [
+      "meta",
+      "content",
+      "structured_content",
+      "is_error",
+      "result_type"
+    ],
+    "structured_shape": "object containing result as a JSON string",
+    "text_equals_direct": true,
+    "structured_result_equals_direct": true,
+    "is_error": false
+  },
+  "candidate": {
+    "actual_model_dump_keys": [
+      "meta",
+      "content",
+      "structured_content",
+      "is_error",
+      "result_type"
+    ],
+    "structured_shape": "object containing result as a JSON string",
+    "text_equals_direct": true,
+    "structured_result_equals_direct": true,
+    "is_error": false
+  },
+  "erratum": "The frozen initial report incorrectly read camelCase structuredContent from a snake_case model_dump and described null. Actual structured_content wraps the JSON string under result. Original raw evidence was correct and is preserved; both routes decode to the same direct payload."
+}

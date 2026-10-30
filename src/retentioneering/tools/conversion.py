@@ -16,8 +16,9 @@ are a different shape of answer and are not expressible here — use a transitio
 matrix on a subpopulation for those.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
@@ -25,6 +26,8 @@ from retentioneering import engine
 from retentioneering.engine import dialect
 from retentioneering.exceptions import InvalidParameterError
 from retentioneering.paths import anchors
+from retentioneering.tools import _stats
+from retentioneering.tools._diff import _check_independent_path_grain
 from retentioneering.utils.durations import parse_duration
 
 if TYPE_CHECKING:
@@ -39,6 +42,53 @@ COLUMNS = [
     "base_rate",
     "lift",
 ]
+
+CI_COLUMNS = ["conversion_rate_ci_low", "conversion_rate_ci_high"]
+
+#: Per-group columns of the diff mode, each prefixed with ``group1_``/``group2_``.
+GROUP_COLUMNS = [
+    "paths_with_start",
+    "converted",
+    "conversion_rate",
+    "conversion_rate_ci_low",
+    "conversion_rate_ci_high",
+    "base_rate",
+    "lift",
+]
+
+DIFF_COLUMNS = (
+    ["start_anchor", "end_anchor"]
+    + [f"group1_{c}" for c in GROUP_COLUMNS]
+    + [f"group2_{c}" for c in GROUP_COLUMNS]
+    + [
+        "delta",
+        "delta_ci_low",
+        "delta_ci_high",
+        "p_value",
+        "conditional",
+    ]
+)
+
+#: Interval level used in diff mode when `ci_level` is not given.
+DEFAULT_CI_LEVEL = 0.95
+
+
+def _check_ci_level(ci_level) -> float | None:
+    """``None`` or a confidence level in [0.5, 1): a lower level would call an
+    interval narrower than the point's own coin flip a confidence interval."""
+    if ci_level is None:
+        return None
+    allowed = ["a float in [0.5, 1), e.g. 0.95"]
+    if isinstance(ci_level, bool) or not isinstance(ci_level, (int, float)):
+        raise InvalidParameterError("ci_level", ci_level, allowed)
+    if not 0.5 <= ci_level < 1:
+        raise InvalidParameterError("ci_level", ci_level, allowed)
+    return float(ci_level)
+
+
+def _is_path_start(spec) -> bool:
+    """An anchor that every path reaches: the path start, with no offset."""
+    return spec.pattern == "path_start" and not spec.offset
 
 
 def parse_within(within) -> tuple[str, float] | None:
@@ -75,12 +125,120 @@ class ConversionRate:
         end_anchor,
         within=None,
         path_col: str | None = None,
+        ci_level: float | None = None,
+        diff=None,
     ) -> pd.DataFrame:
         """
         Conversion from `start_anchor` to `end_anchor`, one row per pair.
 
         See `Eventstream.get_conversion_rate` for the parameters and the
         returned columns.
+        """
+        ci_level = _check_ci_level(ci_level)
+        if diff is not None:
+            return self._fit_diff(
+                start_anchor, end_anchor, within, path_col, ci_level, diff
+            )
+        if ci_level is not None:
+            _check_independent_path_grain(
+                self.eventstream, path_col or self.eventstream.schema.path_col
+            )
+        result = self._fit_single(start_anchor, end_anchor, within, path_col)
+        if ci_level is not None:
+            low, high = _stats.exact_binomial_ci(
+                result["converted"].to_numpy(),
+                result["paths_with_start"].to_numpy(),
+                ci_level,
+            )
+            position = COLUMNS.index("conversion_rate") + 1
+            result.insert(position, "conversion_rate_ci_low", low)
+            result.insert(position + 1, "conversion_rate_ci_high", high)
+        self._metadata(result, ci_level)
+        return result
+
+    @staticmethod
+    def _metadata(result, ci_level, *, diff=False):
+        """Keep method and population claims separate from the row schema."""
+        result.attrs["population_basis"] = "observed_paths"
+        if ci_level is not None:
+            result.attrs["ci_level"] = ci_level
+            result.attrs["independence_assumption"] = "independent_observed_paths"
+            result.attrs["ci_basis"] = {"rate": "clopper_pearson"}
+            if diff:
+                result.attrs["ci_basis"].update(
+                    delta="clopper_pearson_bonferroni",
+                    p_value="fisher_exact_two_sided",
+                )
+
+    def _fit_diff(self, start_anchor, end_anchor, within, path_col, ci_level, diff):
+        """Path-level comparison of two groups: per-group rates and the delta."""
+        from retentioneering.tools._diff import resolve_diff
+
+        es = self.eventstream
+        path_col = path_col or es.schema.path_col
+        if path_col not in es.schema.path_cols:
+            raise InvalidParameterError("path_col", path_col, es.schema.path_cols)
+        _check_independent_path_grain(es, path_col)
+        ci_level = ci_level if ci_level is not None else DEFAULT_CI_LEVEL
+        # Anchors are validated against the whole stream, so a typo is reported
+        # the same way as without diff, and an event absent from one group only
+        # counts as zero conversions there.
+        available = es.df[es.schema.event_col].unique().tolist()
+
+        groups = resolve_diff(es, diff, path_col, require_constant=True)
+        from retentioneering.tools.ab_test import _is_segment_diff, check_segment_unit
+
+        if _is_segment_diff(diff):
+            # intervals at a grain finer than the randomised unit are too narrow:
+            # the same guard as get_ab_test
+            check_segment_unit(es, path_col, diff[0])
+        frames = []
+        for ids in (groups.ids1, groups.ids2):
+            sub = es.filter_events(keep={path_col: list(ids)})
+            frame = ConversionRate(sub)._fit_single(
+                start_anchor, end_anchor, within, path_col, available=available
+            )
+            low, high = _stats.exact_binomial_ci(
+                frame["converted"].to_numpy(),
+                frame["paths_with_start"].to_numpy(),
+                ci_level,
+            )
+            frame["conversion_rate_ci_low"] = low
+            frame["conversion_rate_ci_high"] = high
+            frames.append(frame)
+        g1, g2 = frames
+        out = g1[["start_anchor", "end_anchor"]].copy()
+        for prefix, frame in (("group1_", g1), ("group2_", g2)):
+            for col in GROUP_COLUMNS:
+                out[prefix + col] = frame[col].to_numpy()
+        k1, n1 = g1["converted"].to_numpy(), g1["paths_with_start"].to_numpy()
+        k2, n2 = g2["converted"].to_numpy(), g2["paths_with_start"].to_numpy()
+        out["delta"] = out["group1_conversion_rate"] - out["group2_conversion_rate"]
+        low, high = _stats.exact_difference_ci(k1, n1, k2, n2, ci_level)
+        out["delta_ci_low"] = low
+        out["delta_ci_high"] = high
+        out["p_value"] = _stats.fisher_exact_p(k1, n1, k2, n2)
+        # A nontrivial start anchor selects a population after exposure. Keep
+        # descriptive intervals, but do not attach an unconditional A/B test to
+        # that selected contrast (the same rule as conditional funnel steps).
+        starts = anchors.parse_specs(start_anchor, param="start_anchor")
+        n_ends = len(anchors.parse_specs(end_anchor, param="end_anchor"))
+        out["conditional"] = [
+            not _is_path_start(spec) for spec in starts for _ in range(n_ends)
+        ]
+        out.loc[out["conditional"], "p_value"] = float("nan")
+        result = out[DIFF_COLUMNS].reset_index(drop=True)
+        self._metadata(result, ci_level, diff=True)
+        return result
+
+    def _fit_single(
+        self, start_anchor, end_anchor, within, path_col, available=None
+    ) -> pd.DataFrame:
+        """One row per pair over this eventstream's paths.
+
+        `available` overrides the event names the anchors are validated against:
+        a diff group is checked against the whole stream, so an event that only
+        one group lacks is a zero, not a typo.
         """
         es = self.eventstream
         schema = es.schema
@@ -90,7 +248,8 @@ class ConversionRate:
         if path_col not in schema.path_cols:
             raise InvalidParameterError("path_col", path_col, schema.path_cols)
 
-        available = df[schema.event_col].unique().tolist()
+        if available is None:
+            available = df[schema.event_col].unique().tolist()
         starts = self._parse_side(start_anchor, "start_anchor", available)
         ends = self._parse_side(end_anchor, "end_anchor", available)
         window = parse_within(within)
@@ -184,6 +343,28 @@ class ConversionRate:
         window: tuple[str, float] | None,
         path_col: str,
     ) -> int:
+        # The resolver selects the requested end occurrence per path. With
+        # several starts, keep each window separate until after that selection:
+        # otherwise an early end can hide a later success, or a pattern whose
+        # lead-in precedes a later start can be paired with that later window.
+        # Batch by occurrence rank so one resolver call handles many paths.
+        if window is not None and start_pos[path_col].duplicated().any():
+            ranks = start_pos.groupby(path_col, sort=False).cumcount()
+            converted = set()
+            for _, starts in start_pos.groupby(ranks, sort=False):
+                starts = starts.loc[~starts[path_col].isin(converted)]
+                if starts.empty:
+                    continue
+                bounds = starts[[path_col, "step"]].rename(
+                    columns={"step": "bound_step"}
+                )
+                converted.update(
+                    self._converted_paths(starts, bounds, end_spec, window, path_col)
+                )
+            return len(converted)
+        return len(self._converted_paths(start_pos, floor, end_spec, window, path_col))
+
+    def _converted_paths(self, start_pos, floor, end_spec, window, path_col) -> set:
         """Paths whose end anchor lands after the start one and inside `within`.
 
         `not_before_part=0` puts the *whole* end pattern after the start anchor,
@@ -201,9 +382,9 @@ class ConversionRate:
             not_before_part=0,
         )
         if end_pos.empty:
-            return 0
+            return set()
         if window is None:
-            return int(end_pos[path_col].nunique())
+            return set(end_pos[path_col])
 
         schema = self.eventstream.schema
         path_q = engine.quote_ident(path_col)
@@ -237,11 +418,11 @@ class ConversionRate:
                 SELECT x.{path_q} AS p, x.step AS step, b.ts AS ts
                 FROM ends x JOIN base b ON b.p = x.{path_q} AND b.idx = x.bound
             )
-            SELECT COUNT(DISTINCT s.p) AS converted
+            SELECT DISTINCT s.p AS converted
             FROM s JOIN e ON e.p = s.p
             WHERE e.step > s.step AND {condition}
         """
         result = engine.run(
             query, df=self.eventstream.df, starts=start_pos, ends=end_pos
         )
-        return int(result.iloc[0]["converted"])
+        return set(result["converted"])

@@ -13,11 +13,15 @@ export const AGG_LABELS: Record<string, string> = {
 };
 
 const METRIC_TIPS: Record<string, string> = {
+  column_sum:     "Sum of a custom column over the path's events.\nEmpty values count as 0.",
+  column_mean:    "Mean of a custom column over the path's non-empty values.\nEmpty if the path has no value.",
+  column_last:    "Last non-empty value of a custom column, by event order.\nEmpty if the path has no value.",
   active_days:    "Number of unique calendar days with at least one event.",
   in_segment:     "Path membership check for a segment value.\n• any: ≥1 event has the value\n• all: all events have the value\n• event_share: ≥ threshold share of events have the value\nIf multiple segment values are selected, a separate metric is created for each value.",
   in_segment_bulk: "Same membership check as in_segment, one column per segment level.\nLeave levels empty for every level of the selected segment column.\nLeave the segment column empty for every level of every segment column.",
   duration:       "Time (seconds) between the first and last event.",
   event_count:    "Number of times the selected event occurred.",
+  event_value_sum: "Sum of a numeric value on matching events. Missing matching values raise an error; other events contribute zero.",
   event_count_bulk: "Number of times each selected event occurred, one column per event.\nLeave events empty to count every event.",
   first_event_time: "Unix timestamp of the first event.",
   has_all_events: "1 if ALL of the selected events occurred at least once, 0 otherwise (AND).",
@@ -40,6 +44,17 @@ const AGG_TIPS: Record<string, string> = {
 };
 
 const IN_SEGMENT_MODES = ["any", "all", "event_share"];
+
+// Metrics over a custom column; sum and mean need a numeric one.
+export const COLUMN_METRICS = ["column_sum", "column_mean", "column_last"];
+const NUMERIC_COLUMN_METRICS = ["column_sum", "column_mean"];
+
+/** Custom columns a column_* metric may name: numeric ones for sum/mean, any for last. */
+export function columnOptions(metric: string, customCols: Record<string, boolean>): string[] {
+  const names = Object.keys(customCols ?? {});
+  const usable = NUMERIC_COLUMN_METRICS.includes(metric) ? names.filter(c => customCols[c]) : names;
+  return usable.sort();
+}
 
 const mkSel = (): React.CSSProperties => ({
   boxSizing: "border-box", border: "1px solid #d1d5db", borderRadius: 5,
@@ -223,9 +238,10 @@ export function validateMetricCfg(cfg: any): string | null {
   const m = cfg?.metric;
   const a = cfg?.metric_args ?? {};
   // event_count_bulk/has_event_bulk: leaving 'events' empty means "all events" (like active_days), no error.
-  if (m === "event_count" || m === "has_event") {
+  if (m === "event_count" || m === "has_event" || m === "event_value_sum") {
     if (!a.event) return "Select an event";
   }
+  if (m === "event_value_sum" && !a.value_col?.trim()) return "Enter a numeric value column";
   if (m === "has_all_events" || m === "has_any_event") {
     if (!Array.isArray(a.events) || a.events.length === 0) return "Select at least one event";
   }
@@ -236,6 +252,9 @@ export function validateMetricCfg(cfg: any): string | null {
   }
   if (m === "matches_pattern") {
     if (!a.pattern?.trim()) return "Enter a pattern, e.g. login->.*->purchase";
+  }
+  if (COLUMN_METRICS.includes(m)) {
+    if (!a.column) return "Select a column";
   }
   if (m === "in_segment") {
     if (!a.segment_name) return "Select segment column";
@@ -261,18 +280,22 @@ export function validateMetricCfg(cfg: any): string | null {
 // showAgg=true  → Configure Metrics (with aggregation dropdown)
 // showAgg=false → Configure Features (no aggregation dropdown)
 
-export function MetricRow({ cfg, events, segmentCols, segmentLevels, showErrors, showAgg = true, onChange, onRemove }: {
+export function MetricRow({ cfg, events, segmentCols, segmentLevels, customCols = {}, showErrors, showAgg = true, metricNames = METRIC_NAMES, onChange, onRemove }: {
   cfg: any;
   events: string[];
   segmentCols: string[];
   segmentLevels: Record<string, string[]>;
+  /** custom column → is numeric; feeds the column dropdown of column_* metrics */
+  customCols?: Record<string, boolean>;
   showErrors: boolean;
   showAgg?: boolean;
+  /** metrics offered in the dropdown; defaults to the whole registry */
+  metricNames?: readonly string[];
   onChange: (c: any) => void;
   onRemove: () => void;
 }) {
   const sel = mkSel();
-  const needsSingleEvent  = ["event_count", "has_event"].includes(cfg.metric);
+  const needsSingleEvent  = ["event_count", "has_event", "event_value_sum"].includes(cfg.metric);
   const needsEventsBulk   = ["event_count_bulk", "has_event_bulk"].includes(cfg.metric);
   const needsEventsRequired = ["has_all_events", "has_any_event"].includes(cfg.metric);
   const needsRange      = cfg.metric === "time_between";
@@ -280,7 +303,8 @@ export function MetricRow({ cfg, events, segmentCols, segmentLevels, showErrors,
   const needsInSegmentBulk = cfg.metric === "in_segment_bulk";
   const needsMatches    = cfg.metric === "matches_pattern";
   const needsActiveDays = cfg.metric === "active_days";
-  const hasSecondRow    = needsSingleEvent || needsEventsBulk || needsEventsRequired || needsRange || needsInSegment || needsInSegmentBulk || needsMatches || needsActiveDays;
+  const needsColumn     = COLUMN_METRICS.includes(cfg.metric);
+  const hasSecondRow    = needsSingleEvent || needsEventsBulk || needsEventsRequired || needsRange || needsInSegment || needsInSegmentBulk || needsMatches || needsActiveDays || needsColumn;
 
   const err = showErrors ? validateMetricCfg(cfg) : null;
 
@@ -291,7 +315,7 @@ export function MetricRow({ cfg, events, segmentCols, segmentLevels, showErrors,
           ? { metric: e.target.value, agg: cfg.agg, metric_args: undefined }
           : { metric: e.target.value, metric_args: undefined })}
           style={{ ...sel, flex: "0 0 130px" }}>
-          {METRIC_NAMES.map(m => <option key={m} value={m}>{m}</option>)}
+          {metricNames.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
         <InfoTip text={METRIC_TIPS[cfg.metric] ?? ""} />
         {showAgg && (
@@ -311,7 +335,12 @@ export function MetricRow({ cfg, events, segmentCols, segmentLevels, showErrors,
       {needsSingleEvent && (
         <div>
           <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 3 }}>Event</div>
-          <SingleSelect value={cfg.metric_args?.event ?? ""} options={events} placeholder="Event…" onChange={v => onChange({ ...cfg, metric_args: { event: v } })} />
+          <SingleSelect value={cfg.metric_args?.event ?? ""} options={events} placeholder="Event…" onChange={v => onChange({ ...cfg, metric_args: { ...cfg.metric_args, event: v } })} />
+          {cfg.metric === "event_value_sum" && <label style={{ display: "block", marginTop: 6, fontSize: 11 }}>
+            Numeric value column
+            <input value={cfg.metric_args?.value_col ?? ""} placeholder="order_value" style={{ ...sel, width: "100%", backgroundImage: "none" }}
+              onChange={e => onChange({ ...cfg, metric_args: { ...cfg.metric_args, value_col: e.target.value } })}/>
+          </label>}
         </div>
       )}
 
@@ -355,6 +384,23 @@ export function MetricRow({ cfg, events, segmentCols, segmentLevels, showErrors,
             <SingleSelect value={cfg.metric_args?.start_event ?? ""} options={tbEvents} placeholder="From…" onChange={v => onChange({ ...cfg, metric_args: { ...cfg.metric_args, start_event: v } })} />
             <span style={{ color: "#9ca3af", fontSize: 11, flexShrink: 0 }}>→</span>
             <SingleSelect value={cfg.metric_args?.end_event ?? ""} options={tbEvents} placeholder="To…" onChange={v => onChange({ ...cfg, metric_args: { ...cfg.metric_args, end_event: v } })} />
+          </div>
+        );
+      })()}
+
+      {needsColumn && (() => {
+        const cols = columnOptions(cfg.metric, customCols);
+        const numeric = NUMERIC_COLUMN_METRICS.includes(cfg.metric);
+        return (
+          <div>
+            <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 3 }}>{numeric ? "Numeric column" : "Column"}</div>
+            {cols.length > 0 ? (
+              <SingleSelect value={cfg.metric_args?.column ?? ""} options={cols} placeholder="Column…" onChange={v => onChange({ ...cfg, metric_args: { column: v } })} />
+            ) : (
+              <input value={cfg.metric_args?.column ?? ""} onChange={e => onChange({ ...cfg, metric_args: { column: e.target.value } })}
+                placeholder={numeric ? "No numeric custom columns — type a column name" : "No custom columns — type a column name"}
+                style={{ width: "100%", boxSizing: "border-box", border: "1px solid #d1d5db", borderRadius: 5, padding: "4px 7px", fontSize: 11, outline: "none" }} />
+            )}
           </div>
         );
       })()}

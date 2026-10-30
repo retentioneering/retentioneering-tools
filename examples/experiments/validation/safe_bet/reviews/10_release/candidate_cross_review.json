@@ -1,0 +1,1466 @@
+{
+  "source_requested": ".work/ab-safe-bet/repo",
+  "package_file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/__init__.py",
+  "checks": [
+    {
+      "name": "mixed_methods_no_secondary_False_",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "mixed_methods_basis_False_",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "exact_small_arm_False_left",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "exact_small_arm_False_right",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "mixed_methods_no_secondary_False__renamed",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "mixed_methods_basis_False__renamed",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "exact_small_arm_False_left_renamed",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "exact_small_arm_False_right_renamed",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "mixed_methods_no_secondary_True_",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "mixed_methods_basis_True_",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "exact_small_arm_True_left",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "exact_small_arm_True_right",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "mixed_methods_no_secondary_True__renamed",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "mixed_methods_basis_True__renamed",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "exact_small_arm_True_left_renamed",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "exact_small_arm_True_right_renamed",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "supported_primary_has_no_unsupported_rest",
+      "passed": true,
+      "detail": "{\"balance_p_value\":{\"0\":0.0,\"1\":0.0},\"heterogeneity_p_value\":{\"0\":null,\"1\":null},\"stratum_vs_rest_p_value\":{\"0\":null,\"1\":null},\"p_value\":{\"0\":0.1457936816,\"1\":null}}"
+    },
+    {
+      "name": "sparse_balance_unavailable",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "fisher_1_19_0_0",
+      "passed": true,
+      "detail": {
+        "p": null,
+        "expected_mathematical_fisher": 1.0,
+        "verdict": "insufficient_data",
+        "support_warning": "no_data",
+        "accepted_constant_withholding": true
+      }
+    },
+    {
+      "name": "exact_interval_finite_1_19_0_0",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "fisher_1_19_1_19",
+      "passed": true,
+      "detail": {
+        "p": null,
+        "expected_mathematical_fisher": 1.0,
+        "verdict": "insufficient_data",
+        "support_warning": "",
+        "accepted_constant_withholding": true
+      }
+    },
+    {
+      "name": "exact_interval_finite_1_19_1_19",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "fisher_1_19_1_0",
+      "passed": true,
+      "detail": {
+        "p": 0.05,
+        "expected_mathematical_fisher": 0.05,
+        "verdict": "increase",
+        "support_warning": "one_arm_only",
+        "accepted_constant_withholding": false
+      }
+    },
+    {
+      "name": "exact_interval_finite_1_19_1_0",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "fisher_1_19_0_19",
+      "passed": true,
+      "detail": {
+        "p": 0.05,
+        "expected_mathematical_fisher": 0.05,
+        "verdict": "decrease",
+        "support_warning": "one_arm_only",
+        "accepted_constant_withholding": false
+      }
+    },
+    {
+      "name": "exact_interval_finite_1_19_0_19",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "fisher_1_19_1_6",
+      "passed": true,
+      "detail": {
+        "p": 0.3500000000000001,
+        "expected_mathematical_fisher": 0.35,
+        "verdict": "inconclusive",
+        "support_warning": "",
+        "accepted_constant_withholding": false
+      }
+    },
+    {
+      "name": "exact_interval_finite_1_19_1_6",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "fisher_3_43_0_0",
+      "passed": true,
+      "detail": {
+        "p": null,
+        "expected_mathematical_fisher": 1.0,
+        "verdict": "insufficient_data",
+        "support_warning": "no_data",
+        "accepted_constant_withholding": true
+      }
+    },
+    {
+      "name": "exact_interval_finite_3_43_0_0",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "fisher_3_43_3_43",
+      "passed": true,
+      "detail": {
+        "p": null,
+        "expected_mathematical_fisher": 1.0,
+        "verdict": "insufficient_data",
+        "support_warning": "",
+        "accepted_constant_withholding": true
+      }
+    },
+    {
+      "name": "exact_interval_finite_3_43_3_43",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "fisher_3_43_3_0",
+      "passed": true,
+      "detail": {
+        "p": 6.587615283267455e-05,
+        "expected_mathematical_fisher": 6.587615283267457e-05,
+        "verdict": "increase",
+        "support_warning": "one_arm_only",
+        "accepted_constant_withholding": false
+      }
+    },
+    {
+      "name": "exact_interval_finite_3_43_3_0",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "fisher_3_43_0_43",
+      "passed": true,
+      "detail": {
+        "p": 6.587615283267457e-05,
+        "expected_mathematical_fisher": 6.587615283267457e-05,
+        "verdict": "decrease",
+        "support_warning": "one_arm_only",
+        "accepted_constant_withholding": false
+      }
+    },
+    {
+      "name": "exact_interval_finite_3_43_0_43",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "fisher_3_43_1_14",
+      "passed": true,
+      "detail": {
+        "p": 1.0,
+        "expected_mathematical_fisher": 1.0,
+        "verdict": "inconclusive",
+        "support_warning": "",
+        "accepted_constant_withholding": false
+      }
+    },
+    {
+      "name": "exact_interval_finite_3_43_1_14",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "fisher_7_11_0_0",
+      "passed": true,
+      "detail": {
+        "p": null,
+        "expected_mathematical_fisher": 1.0,
+        "verdict": "insufficient_data",
+        "support_warning": "no_data",
+        "accepted_constant_withholding": true
+      }
+    },
+    {
+      "name": "exact_interval_finite_7_11_0_0",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "fisher_7_11_7_11",
+      "passed": true,
+      "detail": {
+        "p": null,
+        "expected_mathematical_fisher": 1.0,
+        "verdict": "insufficient_data",
+        "support_warning": "",
+        "accepted_constant_withholding": true
+      }
+    },
+    {
+      "name": "exact_interval_finite_7_11_7_11",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "fisher_7_11_7_0",
+      "passed": true,
+      "detail": {
+        "p": 3.1422825540472596e-05,
+        "expected_mathematical_fisher": 3.1422825540472596e-05,
+        "verdict": "increase",
+        "support_warning": "one_arm_only",
+        "accepted_constant_withholding": false
+      }
+    },
+    {
+      "name": "exact_interval_finite_7_11_7_0",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "fisher_7_11_0_11",
+      "passed": true,
+      "detail": {
+        "p": 3.1422825540472596e-05,
+        "expected_mathematical_fisher": 3.1422825540472596e-05,
+        "verdict": "decrease",
+        "support_warning": "one_arm_only",
+        "accepted_constant_withholding": false
+      }
+    },
+    {
+      "name": "exact_interval_finite_7_11_0_11",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "fisher_7_11_3_3",
+      "passed": true,
+      "detail": {
+        "p": 0.6266968325791856,
+        "expected_mathematical_fisher": 0.6266968325791855,
+        "verdict": "inconclusive",
+        "support_warning": "",
+        "accepted_constant_withholding": false
+      }
+    },
+    {
+      "name": "exact_interval_finite_7_11_3_3",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "exact_srm_11_0_1/2",
+      "passed": true,
+      "detail": {
+        "actual": 0.0009765625,
+        "expected": 0.0009765625
+      }
+    },
+    {
+      "name": "exact_srm_basis_11_0",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "exact_srm_11_2_1/50",
+      "passed": true,
+      "detail": {
+        "actual": 0.019512631734943737,
+        "expected": 0.019512631734943733
+      }
+    },
+    {
+      "name": "exact_srm_basis_11_2",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "exact_srm_17_16_3/4",
+      "passed": true,
+      "detail": {
+        "actual": 0.0903497589752078,
+        "expected": 0.0903497589752078
+      }
+    },
+    {
+      "name": "exact_srm_basis_17_16",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "exact_srm_17_17_3/4",
+      "passed": true,
+      "detail": {
+        "actual": 0.010617725958582017,
+        "expected": 0.010617725958582014
+      }
+    },
+    {
+      "name": "exact_srm_basis_17_17",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "conversion_0_first_2",
+      "passed": true,
+      "detail": "AXAAAXXXB"
+    },
+    {
+      "name": "conversion_0_first_2s",
+      "passed": true,
+      "detail": "AXAAAXXXB"
+    },
+    {
+      "name": "conversion_0_last_2",
+      "passed": true,
+      "detail": "AXAAAXXXB"
+    },
+    {
+      "name": "conversion_0_last_2s",
+      "passed": true,
+      "detail": "AXAAAXXXB"
+    },
+    {
+      "name": "conversion_0_all_2",
+      "passed": true,
+      "detail": "AXAAAXXXB"
+    },
+    {
+      "name": "conversion_0_all_2s",
+      "passed": true,
+      "detail": "AXAAAXXXB"
+    },
+    {
+      "name": "conversion_1_first_2",
+      "passed": true,
+      "detail": "AXBXXBBBB"
+    },
+    {
+      "name": "conversion_1_first_2s",
+      "passed": true,
+      "detail": "AXBXXBBBB"
+    },
+    {
+      "name": "conversion_1_last_2",
+      "passed": true,
+      "detail": "AXBXXBBBB"
+    },
+    {
+      "name": "conversion_1_last_2s",
+      "passed": true,
+      "detail": "AXBXXBBBB"
+    },
+    {
+      "name": "conversion_1_all_2",
+      "passed": true,
+      "detail": "AXBXXBBBB"
+    },
+    {
+      "name": "conversion_1_all_2s",
+      "passed": true,
+      "detail": "AXBXXBBBB"
+    },
+    {
+      "name": "conversion_2_first_2",
+      "passed": true,
+      "detail": "AXXXBBABB"
+    },
+    {
+      "name": "conversion_2_first_2s",
+      "passed": true,
+      "detail": "AXXXBBABB"
+    },
+    {
+      "name": "conversion_2_last_2",
+      "passed": true,
+      "detail": "AXXXBBABB"
+    },
+    {
+      "name": "conversion_2_last_2s",
+      "passed": true,
+      "detail": "AXXXBBABB"
+    },
+    {
+      "name": "conversion_2_all_2",
+      "passed": true,
+      "detail": "AXXXBBABB"
+    },
+    {
+      "name": "conversion_2_all_2s",
+      "passed": true,
+      "detail": "AXXXBBABB"
+    },
+    {
+      "name": "conversion_3_first_2",
+      "passed": true,
+      "detail": "AAAXBXAXB"
+    },
+    {
+      "name": "conversion_3_first_2s",
+      "passed": true,
+      "detail": "AAAXBXAXB"
+    },
+    {
+      "name": "conversion_3_last_2",
+      "passed": true,
+      "detail": "AAAXBXAXB"
+    },
+    {
+      "name": "conversion_3_last_2s",
+      "passed": true,
+      "detail": "AAAXBXAXB"
+    },
+    {
+      "name": "conversion_3_all_2",
+      "passed": true,
+      "detail": "AAAXBXAXB"
+    },
+    {
+      "name": "conversion_3_all_2s",
+      "passed": true,
+      "detail": "AAAXBXAXB"
+    },
+    {
+      "name": "conversion_4_first_2",
+      "passed": true,
+      "detail": "AAXAXXXAB"
+    },
+    {
+      "name": "conversion_4_first_2s",
+      "passed": true,
+      "detail": "AAXAXXXAB"
+    },
+    {
+      "name": "conversion_4_last_2",
+      "passed": true,
+      "detail": "AAXAXXXAB"
+    },
+    {
+      "name": "conversion_4_last_2s",
+      "passed": true,
+      "detail": "AAXAXXXAB"
+    },
+    {
+      "name": "conversion_4_all_2",
+      "passed": true,
+      "detail": "AAXAXXXAB"
+    },
+    {
+      "name": "conversion_4_all_2s",
+      "passed": true,
+      "detail": "AAXAXXXAB"
+    },
+    {
+      "name": "conversion_5_first_2",
+      "passed": true,
+      "detail": "ABXXBXBXB"
+    },
+    {
+      "name": "conversion_5_first_2s",
+      "passed": true,
+      "detail": "ABXXBXBXB"
+    },
+    {
+      "name": "conversion_5_last_2",
+      "passed": true,
+      "detail": "ABXXBXBXB"
+    },
+    {
+      "name": "conversion_5_last_2s",
+      "passed": true,
+      "detail": "ABXXBXBXB"
+    },
+    {
+      "name": "conversion_5_all_2",
+      "passed": true,
+      "detail": "ABXXBXBXB"
+    },
+    {
+      "name": "conversion_5_all_2s",
+      "passed": true,
+      "detail": "ABXXBXBXB"
+    },
+    {
+      "name": "conversion_6_first_2",
+      "passed": true,
+      "detail": "ABBBXXBAB"
+    },
+    {
+      "name": "conversion_6_first_2s",
+      "passed": true,
+      "detail": "ABBBXXBAB"
+    },
+    {
+      "name": "conversion_6_last_2",
+      "passed": true,
+      "detail": "ABBBXXBAB"
+    },
+    {
+      "name": "conversion_6_last_2s",
+      "passed": true,
+      "detail": "ABBBXXBAB"
+    },
+    {
+      "name": "conversion_6_all_2",
+      "passed": true,
+      "detail": "ABBBXXBAB"
+    },
+    {
+      "name": "conversion_6_all_2s",
+      "passed": true,
+      "detail": "ABBBXXBAB"
+    },
+    {
+      "name": "conversion_7_first_2",
+      "passed": true,
+      "detail": "AAXABXABB"
+    },
+    {
+      "name": "conversion_7_first_2s",
+      "passed": true,
+      "detail": "AAXABXABB"
+    },
+    {
+      "name": "conversion_7_last_2",
+      "passed": true,
+      "detail": "AAXABXABB"
+    },
+    {
+      "name": "conversion_7_last_2s",
+      "passed": true,
+      "detail": "AAXABXABB"
+    },
+    {
+      "name": "conversion_7_all_2",
+      "passed": true,
+      "detail": "AAXABXABB"
+    },
+    {
+      "name": "conversion_7_all_2s",
+      "passed": true,
+      "detail": "AAXABXABB"
+    },
+    {
+      "name": "conversion_8_first_2",
+      "passed": true,
+      "detail": "ABXAABXBB"
+    },
+    {
+      "name": "conversion_8_first_2s",
+      "passed": true,
+      "detail": "ABXAABXBB"
+    },
+    {
+      "name": "conversion_8_last_2",
+      "passed": true,
+      "detail": "ABXAABXBB"
+    },
+    {
+      "name": "conversion_8_last_2s",
+      "passed": true,
+      "detail": "ABXAABXBB"
+    },
+    {
+      "name": "conversion_8_all_2",
+      "passed": true,
+      "detail": "ABXAABXBB"
+    },
+    {
+      "name": "conversion_8_all_2s",
+      "passed": true,
+      "detail": "ABXAABXBB"
+    },
+    {
+      "name": "conversion_9_first_2",
+      "passed": true,
+      "detail": "AXXBAXABB"
+    },
+    {
+      "name": "conversion_9_first_2s",
+      "passed": true,
+      "detail": "AXXBAXABB"
+    },
+    {
+      "name": "conversion_9_last_2",
+      "passed": true,
+      "detail": "AXXBAXABB"
+    },
+    {
+      "name": "conversion_9_last_2s",
+      "passed": true,
+      "detail": "AXXBAXABB"
+    },
+    {
+      "name": "conversion_9_all_2",
+      "passed": true,
+      "detail": "AXXBAXABB"
+    },
+    {
+      "name": "conversion_9_all_2s",
+      "passed": true,
+      "detail": "AXXBAXABB"
+    },
+    {
+      "name": "conversion_10_first_2",
+      "passed": true,
+      "detail": "AXBXXBXAB"
+    },
+    {
+      "name": "conversion_10_first_2s",
+      "passed": true,
+      "detail": "AXBXXBXAB"
+    },
+    {
+      "name": "conversion_10_last_2",
+      "passed": true,
+      "detail": "AXBXXBXAB"
+    },
+    {
+      "name": "conversion_10_last_2s",
+      "passed": true,
+      "detail": "AXBXXBXAB"
+    },
+    {
+      "name": "conversion_10_all_2",
+      "passed": true,
+      "detail": "AXBXXBXAB"
+    },
+    {
+      "name": "conversion_10_all_2s",
+      "passed": true,
+      "detail": "AXBXXBXAB"
+    },
+    {
+      "name": "conversion_11_first_2",
+      "passed": true,
+      "detail": "AAXXABXXB"
+    },
+    {
+      "name": "conversion_11_first_2s",
+      "passed": true,
+      "detail": "AAXXABXXB"
+    },
+    {
+      "name": "conversion_11_last_2",
+      "passed": true,
+      "detail": "AAXXABXXB"
+    },
+    {
+      "name": "conversion_11_last_2s",
+      "passed": true,
+      "detail": "AAXXABXXB"
+    },
+    {
+      "name": "conversion_11_all_2",
+      "passed": true,
+      "detail": "AAXXABXXB"
+    },
+    {
+      "name": "conversion_11_all_2s",
+      "passed": true,
+      "detail": "AAXXABXXB"
+    },
+    {
+      "name": "conversion_12_first_2",
+      "passed": true,
+      "detail": "AXBXAAXAB"
+    },
+    {
+      "name": "conversion_12_first_2s",
+      "passed": true,
+      "detail": "AXBXAAXAB"
+    },
+    {
+      "name": "conversion_12_last_2",
+      "passed": true,
+      "detail": "AXBXAAXAB"
+    },
+    {
+      "name": "conversion_12_last_2s",
+      "passed": true,
+      "detail": "AXBXAAXAB"
+    },
+    {
+      "name": "conversion_12_all_2",
+      "passed": true,
+      "detail": "AXBXAAXAB"
+    },
+    {
+      "name": "conversion_12_all_2s",
+      "passed": true,
+      "detail": "AXBXAAXAB"
+    },
+    {
+      "name": "conversion_13_first_2",
+      "passed": true,
+      "detail": "AABXXAABB"
+    },
+    {
+      "name": "conversion_13_first_2s",
+      "passed": true,
+      "detail": "AABXXAABB"
+    },
+    {
+      "name": "conversion_13_last_2",
+      "passed": true,
+      "detail": "AABXXAABB"
+    },
+    {
+      "name": "conversion_13_last_2s",
+      "passed": true,
+      "detail": "AABXXAABB"
+    },
+    {
+      "name": "conversion_13_all_2",
+      "passed": true,
+      "detail": "AABXXAABB"
+    },
+    {
+      "name": "conversion_13_all_2s",
+      "passed": true,
+      "detail": "AABXXAABB"
+    },
+    {
+      "name": "conversion_14_first_2",
+      "passed": true,
+      "detail": "AXBXABAAB"
+    },
+    {
+      "name": "conversion_14_first_2s",
+      "passed": true,
+      "detail": "AXBXABAAB"
+    },
+    {
+      "name": "conversion_14_last_2",
+      "passed": true,
+      "detail": "AXBXABAAB"
+    },
+    {
+      "name": "conversion_14_last_2s",
+      "passed": true,
+      "detail": "AXBXABAAB"
+    },
+    {
+      "name": "conversion_14_all_2",
+      "passed": true,
+      "detail": "AXBXABAAB"
+    },
+    {
+      "name": "conversion_14_all_2s",
+      "passed": true,
+      "detail": "AXBXABAAB"
+    },
+    {
+      "name": "conversion_15_first_2",
+      "passed": true,
+      "detail": "AXAABBXAB"
+    },
+    {
+      "name": "conversion_15_first_2s",
+      "passed": true,
+      "detail": "AXAABBXAB"
+    },
+    {
+      "name": "conversion_15_last_2",
+      "passed": true,
+      "detail": "AXAABBXAB"
+    },
+    {
+      "name": "conversion_15_last_2s",
+      "passed": true,
+      "detail": "AXAABBXAB"
+    },
+    {
+      "name": "conversion_15_all_2",
+      "passed": true,
+      "detail": "AXAABBXAB"
+    },
+    {
+      "name": "conversion_15_all_2s",
+      "passed": true,
+      "detail": "AXAABBXAB"
+    },
+    {
+      "name": "conversion_16_first_2",
+      "passed": true,
+      "detail": "AAAAXABBB"
+    },
+    {
+      "name": "conversion_16_first_2s",
+      "passed": true,
+      "detail": "AAAAXABBB"
+    },
+    {
+      "name": "conversion_16_last_2",
+      "passed": true,
+      "detail": "AAAAXABBB"
+    },
+    {
+      "name": "conversion_16_last_2s",
+      "passed": true,
+      "detail": "AAAAXABBB"
+    },
+    {
+      "name": "conversion_16_all_2",
+      "passed": true,
+      "detail": "AAAAXABBB"
+    },
+    {
+      "name": "conversion_16_all_2s",
+      "passed": true,
+      "detail": "AAAAXABBB"
+    },
+    {
+      "name": "conversion_17_first_2",
+      "passed": true,
+      "detail": "ABAAABABB"
+    },
+    {
+      "name": "conversion_17_first_2s",
+      "passed": true,
+      "detail": "ABAAABABB"
+    },
+    {
+      "name": "conversion_17_last_2",
+      "passed": true,
+      "detail": "ABAAABABB"
+    },
+    {
+      "name": "conversion_17_last_2s",
+      "passed": true,
+      "detail": "ABAAABABB"
+    },
+    {
+      "name": "conversion_17_all_2",
+      "passed": true,
+      "detail": "ABAAABABB"
+    },
+    {
+      "name": "conversion_17_all_2s",
+      "passed": true,
+      "detail": "ABAAABABB"
+    },
+    {
+      "name": "conversion_18_first_2",
+      "passed": true,
+      "detail": "AXBAXXBAB"
+    },
+    {
+      "name": "conversion_18_first_2s",
+      "passed": true,
+      "detail": "AXBAXXBAB"
+    },
+    {
+      "name": "conversion_18_last_2",
+      "passed": true,
+      "detail": "AXBAXXBAB"
+    },
+    {
+      "name": "conversion_18_last_2s",
+      "passed": true,
+      "detail": "AXBAXXBAB"
+    },
+    {
+      "name": "conversion_18_all_2",
+      "passed": true,
+      "detail": "AXBAXXBAB"
+    },
+    {
+      "name": "conversion_18_all_2s",
+      "passed": true,
+      "detail": "AXBAXXBAB"
+    },
+    {
+      "name": "conversion_19_first_2",
+      "passed": true,
+      "detail": "AXBBBXAXB"
+    },
+    {
+      "name": "conversion_19_first_2s",
+      "passed": true,
+      "detail": "AXBBBXAXB"
+    },
+    {
+      "name": "conversion_19_last_2",
+      "passed": true,
+      "detail": "AXBBBXAXB"
+    },
+    {
+      "name": "conversion_19_last_2s",
+      "passed": true,
+      "detail": "AXBBBXAXB"
+    },
+    {
+      "name": "conversion_19_all_2",
+      "passed": true,
+      "detail": "AXBBBXAXB"
+    },
+    {
+      "name": "conversion_19_all_2s",
+      "passed": true,
+      "detail": "AXBBBXAXB"
+    },
+    {
+      "name": "conversion_20_first_2",
+      "passed": true,
+      "detail": "ABBXXBAAB"
+    },
+    {
+      "name": "conversion_20_first_2s",
+      "passed": true,
+      "detail": "ABBXXBAAB"
+    },
+    {
+      "name": "conversion_20_last_2",
+      "passed": true,
+      "detail": "ABBXXBAAB"
+    },
+    {
+      "name": "conversion_20_last_2s",
+      "passed": true,
+      "detail": "ABBXXBAAB"
+    },
+    {
+      "name": "conversion_20_all_2",
+      "passed": true,
+      "detail": "ABBXXBAAB"
+    },
+    {
+      "name": "conversion_20_all_2s",
+      "passed": true,
+      "detail": "ABBXXBAAB"
+    },
+    {
+      "name": "conversion_21_first_2",
+      "passed": true,
+      "detail": "ABXXXBBXB"
+    },
+    {
+      "name": "conversion_21_first_2s",
+      "passed": true,
+      "detail": "ABXXXBBXB"
+    },
+    {
+      "name": "conversion_21_last_2",
+      "passed": true,
+      "detail": "ABXXXBBXB"
+    },
+    {
+      "name": "conversion_21_last_2s",
+      "passed": true,
+      "detail": "ABXXXBBXB"
+    },
+    {
+      "name": "conversion_21_all_2",
+      "passed": true,
+      "detail": "ABXXXBBXB"
+    },
+    {
+      "name": "conversion_21_all_2s",
+      "passed": true,
+      "detail": "ABXXXBBXB"
+    },
+    {
+      "name": "conversion_22_first_2",
+      "passed": true,
+      "detail": "ABXAXXBAB"
+    },
+    {
+      "name": "conversion_22_first_2s",
+      "passed": true,
+      "detail": "ABXAXXBAB"
+    },
+    {
+      "name": "conversion_22_last_2",
+      "passed": true,
+      "detail": "ABXAXXBAB"
+    },
+    {
+      "name": "conversion_22_last_2s",
+      "passed": true,
+      "detail": "ABXAXXBAB"
+    },
+    {
+      "name": "conversion_22_all_2",
+      "passed": true,
+      "detail": "ABXAXXBAB"
+    },
+    {
+      "name": "conversion_22_all_2s",
+      "passed": true,
+      "detail": "ABXAXXBAB"
+    },
+    {
+      "name": "conversion_23_first_2",
+      "passed": true,
+      "detail": "ABABAXBBB"
+    },
+    {
+      "name": "conversion_23_first_2s",
+      "passed": true,
+      "detail": "ABABAXBBB"
+    },
+    {
+      "name": "conversion_23_last_2",
+      "passed": true,
+      "detail": "ABABAXBBB"
+    },
+    {
+      "name": "conversion_23_last_2s",
+      "passed": true,
+      "detail": "ABABAXBBB"
+    },
+    {
+      "name": "conversion_23_all_2",
+      "passed": true,
+      "detail": "ABABAXBBB"
+    },
+    {
+      "name": "conversion_23_all_2s",
+      "passed": true,
+      "detail": "ABABAXBBB"
+    },
+    {
+      "name": "mixed_identity_rejected",
+      "passed": true,
+      "detail": {
+        "type": "SchemaConfigError",
+        "message": "Path column 'user_id' must contain homogeneous scalar types; got ['int', 'str']. Normalize IDs explicitly before constructing the Eventstream, preserving distinct identities (for example, integer 1 and string '1')."
+      }
+    },
+    {
+      "name": "recipe_snapshot_and_numeric_keys",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "legacy_provenance_carried",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "legacy_provenance_json_replay",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "raw_replicate_cap",
+      "passed": true,
+      "detail": {
+        "type": "ValueError",
+        "message": "Bootstrap resource limit exceeded: at most 1,000,000 replicates and 10,000,000 replicate-by-contribution values; reduce n_bootstrap/n_resamples or the requested metric family"
+      }
+    },
+    {
+      "name": "changing_pair_eligibility",
+      "passed": true,
+      "detail": {
+        "type": "InvalidParameterError",
+        "message": "Invalid value 'change' for parameter 'contrast'. Allowed values: ['common outcome eligibility across all contrasted periods; missing measurements cannot change the paired population']"
+      }
+    },
+    {
+      "name": "finite_sum_overflow",
+      "passed": true,
+      "detail": {
+        "type": "ValueError",
+        "message": "Numeric overflow or nonfinite aggregate in unit contributions; rescale the measurement before analysis"
+      }
+    },
+    {
+      "name": "graph_inference_deferred",
+      "passed": true,
+      "detail": null
+    }
+  ],
+  "passed": 208,
+  "failed": 0,
+  "modules": {
+    "retentioneering.datasets.ab_cases": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/datasets/ab_cases/__init__.py",
+      "sha256": "09ce4d44a23675301b79be10c22ed58573c610e02e5862bdb922f2193beacb0f"
+    },
+    "retentioneering.exceptions": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/exceptions.py",
+      "sha256": "da10816d63b7d2aee5e53f7fca3625e6753eff3275025a8cb0f5ee03603b459c"
+    },
+    "retentioneering.datasets.ab_cases._sim": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/datasets/ab_cases/_sim.py",
+      "sha256": "21ee0001cc5cb2ac0a742a31570fba4f7574f55fe6ed60728edb83e14f912374"
+    },
+    "retentioneering.datasets.ab_cases.aa_calibration": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/datasets/ab_cases/aa_calibration.py",
+      "sha256": "e6810447dd6ce00e73df183f563660537d26d5f4f5f41413a8d2ba48061b66ee"
+    },
+    "retentioneering.datasets.ab_cases.push_campaign": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/datasets/ab_cases/push_campaign.py",
+      "sha256": "6c4283163fe4ebb845ce4e5f78845576328fd07d41cbc3972b015206dda56d67"
+    },
+    "retentioneering.datasets.ab_cases.session_assignment": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/datasets/ab_cases/session_assignment.py",
+      "sha256": "5afeb630c8af831db47623f041fba6350aa45b16f732e80bd40ae6bf259980db"
+    },
+    "retentioneering.datasets.ab_cases.srm_platform_bug": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/datasets/ab_cases/srm_platform_bug.py",
+      "sha256": "c8aff38a1821ae7740d33afc1e5e8f3063590f9a70e2b3e98168c367381779ab"
+    },
+    "retentioneering.datasets.ab_cases.trial_conversion": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/datasets/ab_cases/trial_conversion.py",
+      "sha256": "20710fe55892452f46773c53e8de91c4cad1f0a38c21cb9ddad296cb054035a2"
+    },
+    "retentioneering.datasets.ab_test": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/datasets/ab_test.py",
+      "sha256": "b892b57e332d72fbdc938c208e5f3f99f5f9271c1002776f6bedbe4fd41399c6"
+    },
+    "retentioneering.datasets.ecom": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/datasets/ecom.py",
+      "sha256": "07a7ac7e091525ed1672751ce5d38d2347216ceda99be22111ec6ec7b113331b"
+    },
+    "retentioneering.datasets": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/datasets/__init__.py",
+      "sha256": "7fd43dc02c71e47c4b1ddde7b1b67496d38355fac0854dce02ab24c9c6eb3f73"
+    },
+    "retentioneering.stats": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/stats/__init__.py",
+      "sha256": "0a613efaaf26259963501bf4d978be4952e3fcbe86716da5ae163f692119ab95"
+    },
+    "retentioneering.stats.resampling": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/stats/resampling.py",
+      "sha256": "480ed8443e316fe2257fb174cf53cffd3cb04a45bc01b85088654237ad9f6795"
+    },
+    "retentioneering.engine": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/engine/__init__.py",
+      "sha256": "8e4430e64949275108ae46ff7da7d7c6b3eb8b00340a5e5580892977963da5a6"
+    },
+    "retentioneering.eventstream.event_type": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/eventstream/event_type.py",
+      "sha256": "60d79fd82018d32dcc176d7ed6b9720bc29e296e63ab50092fa078ceedf6f541"
+    },
+    "retentioneering.eventstream.schema": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/eventstream/schema.py",
+      "sha256": "3d9ddf8b9a63c8c6a2e124dc6133c4c3201de6664821a609d3cfc69975a44b8d"
+    },
+    "retentioneering.ops": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/ops.py",
+      "sha256": "a1015c591ca5164bc3dc63b5bf17cf5bcc8d04b2966a766822df016c49f374bf"
+    },
+    "retentioneering.engine.dialect": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/engine/dialect.py",
+      "sha256": "e155f8fd7d13bb2bdd6156ad270d9e15e806fd606ef07fec080997b4d72db7c2"
+    },
+    "retentioneering.tools.types": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/tools/types.py",
+      "sha256": "3d5120e8e4a6baadbc4b45f93945da06923cb0350264f2f98ae31da4fdceef1d"
+    },
+    "retentioneering.tools.transition_matrix": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/tools/transition_matrix.py",
+      "sha256": "2507226afef603357a4ea1fa6d9ce244160045a35a0a8f54b5653fc7bf6041ef"
+    },
+    "retentioneering.paths": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/paths/__init__.py",
+      "sha256": "1b08b953579c6d4dca76416ddbae433cee32f90be6ef023808713c4455ce2c4f"
+    },
+    "retentioneering.utils": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/utils/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retentioneering.utils.sequences": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/utils/sequences.py",
+      "sha256": "7efe60d157edd1a89a933f1db48667a9b7fc0f9b51aca35b84529d77d9ed59bc"
+    },
+    "retentioneering.utils.sql_quoting": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/utils/sql_quoting.py",
+      "sha256": "497cf808f3932146b29dbec2ecb03dffb8170f49debe4acb17552576b2c98e9a"
+    },
+    "retentioneering.paths.tokens": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/paths/tokens.py",
+      "sha256": "8c5a6e778e02d4d3dd501790bf5f8c3e7c64a05cf0440541b8c7ad6e14d64821"
+    },
+    "retentioneering.utils.durations": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/utils/durations.py",
+      "sha256": "f3c29480e080c45505ae2b73e35678ffdce88e003567d09b6017b64b7d0873b2"
+    },
+    "retentioneering.paths.anchors": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/paths/anchors.py",
+      "sha256": "f243ba407fef2db7c8de87bf153ae2e73471eb5d5fb8f176a03a5900904e9528"
+    },
+    "retentioneering.tools.step_matrix": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/tools/step_matrix.py",
+      "sha256": "409aeee7067b1962e95740445a15c36d335f18eb6a70bf5ee989dadb20d8bd0d"
+    },
+    "retentioneering.stats.primitives": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/stats/primitives.py",
+      "sha256": "c8df29b8ceeb45e72c437bdf4eeab1ab3d24463909ef31a841ac93503b667d1c"
+    },
+    "retentioneering.tools._stats": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/tools/_stats.py",
+      "sha256": "2f9fbeab43419827c9c6204eff64d6604093073b9e589f90504060c6cbc2152c"
+    },
+    "retentioneering.tools._diff": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/tools/_diff.py",
+      "sha256": "752dd8199359ec05dc8cebb36390b5d6a84a416914c8a2f53caab1fd035f929a"
+    },
+    "retentioneering.tools.conversion": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/tools/conversion.py",
+      "sha256": "757ce6bcb2638be6b88fa7b743d3bed632dc6b3d8b95b1f6c2d82cc4e4db872f"
+    },
+    "retentioneering.tools.funnel": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/tools/funnel.py",
+      "sha256": "8addcb698d422179dc207c62aebfd858bbb6370da60d164e5d060bb5a35367b6"
+    },
+    "retentioneering.metrics": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/metrics/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retentioneering.metrics.composite": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/metrics/composite.py",
+      "sha256": "a7581b80ccb256a39febf8d86c4e787421242f5559b226e52b06ed4e4f693f47"
+    },
+    "retentioneering.metrics.metric_builder": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/metrics/metric_builder.py",
+      "sha256": "11055d0169a944cfe91f11044f236af29ed38243a36a0fe769beb381f8ac4480"
+    },
+    "retentioneering.utils.sentinels": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/utils/sentinels.py",
+      "sha256": "ddd47b14f0705c683df34e5073ebbfcf265d535bb3a128ff41d783d17c635632"
+    },
+    "retentioneering.tools.segment_overview": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/tools/segment_overview.py",
+      "sha256": "c1e65b377a60750993ce98561a9e94b4c8798a0f203a3af9d1120712fe478d55"
+    },
+    "retentioneering.utils.clustering_methods": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/utils/clustering_methods.py",
+      "sha256": "a6de2e7d40312e40fc880618d82aa094a37ee5a2502d8529423d90d0d4614592"
+    },
+    "retentioneering.tools.cluster_analysis": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/tools/cluster_analysis.py",
+      "sha256": "83d49a46177140e86c8450cfbe98769cdb0caeee5bd36f3569d688074e3c5109"
+    },
+    "retentioneering.tools": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/tools/__init__.py",
+      "sha256": "5f9ef7fa3f8eb4b166e3a26356c5a08011aa088d367a27b831ba4b2c49fb5d41"
+    },
+    "retentioneering._tracking": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/_tracking.py",
+      "sha256": "45edbedb5a40f71af5ab07be27224b588f2a390c56264ddb60c0470d53b953ff"
+    },
+    "retentioneering.eventstream.eventstream": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/eventstream/eventstream.py",
+      "sha256": "346b746d99b1eea6a1a77fd94854f835df9089414aad38a764c348c5d76ac1b9"
+    },
+    "retentioneering.eventstream": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/eventstream/__init__.py",
+      "sha256": "fedc95a76041ab6a5ecc58a5d1ec2078466ce1e4466cf6056ad554389be278f0"
+    },
+    "retentioneering.mcp._agent_logic": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/mcp/_agent_logic.py",
+      "sha256": "db90c9f5cf4d5aae297a5ea416b30f1931d18382263dc9abf8eeaee7ffb775a8"
+    },
+    "retentioneering.mcp._prompts": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/mcp/_prompts.py",
+      "sha256": "cf0fe7ce39584dd74ff30497f82cecbeaf613267b57536e83d43a66442d0d817"
+    },
+    "retentioneering.mcp._report_session": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/mcp/_report_session.py",
+      "sha256": "9c11cc7fd460fa4dd970229a0fc231eb3ca3392608bc4de56b052e6d319db762"
+    },
+    "retentioneering.mcp.tools": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/mcp/tools.py",
+      "sha256": "e457116c8aa65388b566c2012d063dbad5bf46146a3fbd538c108a77cc227c56"
+    },
+    "retentioneering.mcp.server": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/mcp/server.py",
+      "sha256": "b95836faaafbb5aa4e81d9126a6e5fa398802c9cb72f055f116f18b783f212b2"
+    },
+    "retentioneering.mcp": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/mcp/__init__.py",
+      "sha256": "2d668d168fb69ff27c7ad7a2bc5523ef08be36c8c1d1889baca606b3e7932e26"
+    },
+    "retentioneering": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/__init__.py",
+      "sha256": "d74b439552cfc9c21a008e1a34b80078976c40d13f29f38d84d9180810ade1ae"
+    },
+    "retentioneering.tools._bootstrap": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/tools/_bootstrap.py",
+      "sha256": "71002a399533e9e37c7fe8959f40f7c9ff06563b0ec34b555fa2ceee6e794dad"
+    },
+    "retentioneering.tools.ab_test": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/tools/ab_test.py",
+      "sha256": "6937fbf6f486146945fada29beb34879e9df80fc7203f4b7325c467dd5459790"
+    },
+    "retentioneering.tools.sample_ratio": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/tools/sample_ratio.py",
+      "sha256": "f0963771a9a0f0eaeed8a9f588f13d9a923728796b42d54e4d85b9ef6e9e4102"
+    },
+    "retentioneering.data_processors.data_processor": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/data_processors/data_processor.py",
+      "sha256": "0ed8cd7b67b7a5a68ed424baa4dbe2800f07efee09b922b2e6368d121751307f"
+    },
+    "retentioneering.data_processors.add_clusters": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/data_processors/add_clusters.py",
+      "sha256": "fe0e28f1b578b51a629ed9d79c06c0c544f56f8ff9e9748a89a764ad2eb1b5bf"
+    },
+    "retentioneering.data_processors.add_events": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/data_processors/add_events.py",
+      "sha256": "0848aadb4afc6bf390046005f0f670e2a8cbfccf668ba24135835c638b8c0316"
+    },
+    "retentioneering.data_processors.add_segment": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/data_processors/add_segment.py",
+      "sha256": "e7ff65d26bbca97d3bcbf58a987fa8dc75f9a17d749b25890654e84516f3ffb9"
+    },
+    "retentioneering.data_processors.add_start_end_events": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/data_processors/add_start_end_events.py",
+      "sha256": "3daf730b4afbafd742f27cb7b4af78a37791ec234deab5699d9aed646a94e9f7"
+    },
+    "retentioneering.metrics.condition_ast": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/metrics/condition_ast.py",
+      "sha256": "6bc3a04bb2ed73895f45b2065c680bf31afc86a480b8b9d1fb645e5f6eed6c50"
+    },
+    "retentioneering.utils.session_detection": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/utils/session_detection.py",
+      "sha256": "09d870e8cd7f225c33e2dc04bd503a6afe9c04f7c636e4db681d0e5305e9cd38"
+    },
+    "retentioneering.data_processors.collapse_events": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/data_processors/collapse_events.py",
+      "sha256": "e7b48c31408d7b77f932362016b9901d1e926b816ab1cccb735a92d1cfda9a19"
+    },
+    "retentioneering.data_processors.drop_segment": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/data_processors/drop_segment.py",
+      "sha256": "f86c72f4dff6ee00fcb42b4f0f00473bb8ddc0d41da367c371b3576c8eed98dc"
+    },
+    "retentioneering.data_processors.filter_events": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/data_processors/filter_events.py",
+      "sha256": "81ba9093062e88b92e8a1b02e27fd570f79d2c037b8b5a338c313232f5cfe274"
+    },
+    "retentioneering.data_processors.rename_events": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/data_processors/rename_events.py",
+      "sha256": "8906f5f156e66f6a57177a46e5dc42d42ce40d71a4ab7dd8b1356616b3a5bf8b"
+    },
+    "retentioneering.data_processors.edit_events": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/data_processors/edit_events.py",
+      "sha256": "c33a0e2b6eaf6587b4001de387de126124a24b80fbaf2eab23ee2e71c4386412"
+    },
+    "retentioneering.data_processors.filter_paths": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/data_processors/filter_paths.py",
+      "sha256": "731084c7c2250cc5cb31c35590405032d89c02d6a886e1af58537a2619abf5bd"
+    },
+    "retentioneering.data_processors.rename_segment_levels": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/data_processors/rename_segment_levels.py",
+      "sha256": "3896dcf4272ad3c756e6ec3d569753c80b3d13af3d22f31caa2b971e4c826df8"
+    },
+    "retentioneering.data_processors.sample_paths": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/data_processors/sample_paths.py",
+      "sha256": "1eb7632ee75f9c43a275f44d6d85c4a1b29f1ca5f64f9790316cc40ba5ea3173"
+    },
+    "retentioneering.data_processors.split_sessions": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/data_processors/split_sessions.py",
+      "sha256": "20a1f46aa861e4f9682cf98a7e3f833c18d460547032bf25610b9e5ebc25826c"
+    },
+    "retentioneering.data_processors.truncate_paths": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/data_processors/truncate_paths.py",
+      "sha256": "0de951b3ad84a94c871135048262971c46e169eca4e9ce3e5fe4bd182919bd3c"
+    },
+    "retentioneering.data_processors.to_daily_states": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/data_processors/to_daily_states.py",
+      "sha256": "c78504cb3c6d48cfd5b027bd2159627bf40d664eb1cf30154bd207ca48c5e176"
+    },
+    "retentioneering.data_processors.urls_to_events": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/data_processors/urls_to_events.py",
+      "sha256": "75e5428d26ff18deb44c39d0ced71c0c35e79ac6386283afff3c95a4c1eb8e50"
+    },
+    "retentioneering.data_processors": {
+      "file": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo/src/retentioneering/data_processors/__init__.py",
+      "sha256": "689c856a61d41a115cdd6b6a91562dd42caae64fdcbbbca70dc311a5ecef705a"
+    }
+  },
+  "raw": {
+    "mixed_False_": "[{\"metric\":\"b\",\"stratum\":\"left\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":3,\"group2_paths\":83,\"group1_support\":3,\"group2_support\":83,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.6666666667,\"group1_ci_low\":0.0942993241,\"group1_ci_high\":0.9915962413,\"group2_value\":0.2289156627,\"group2_ci_low\":0.143803602,\"group2_ci_high\":0.3341699323,\"delta\":0.437751004,\"delta_se\":0.2760448154,\"delta_ci_low\":-0.2832136213,\"delta_ci_high\":0.8619238077,\"rel_delta\":1.9122807018,\"rel_delta_ci_low\":null,\"rel_delta_ci_high\":null,\"p_value\":0.146374829,\"p_value_adjusted\":0.878248974,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"normal_approximation\",\"mde\":0.8785803954,\"rel_mde\":3.8380090957,\"verdict\":\"inconclusive\",\"test\":\"fisher_exact\",\"ci_basis\":\"clopper_pearson_bonferroni\",\"p_basis\":\"fisher_exact_two_sided\",\"valid_replicates\":null,\"support_warning\":\"\",\"group1_share\":0.15,\"group2_share\":0.4770114943,\"strata_diagnostics_basis\":\"not_requested\",\"balance_p_value\":null,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: per-comparison interval [-28.32, +86.19] pp includes 0 (p 0.88 after holm); the interval does not exclude zero; normal-approximation MDE 87.86 pp at alpha 0.008333 \\u2014 to detect 20 pp, about 19.3\\u00d7 the paths is a planning approximation; verify power for the chosen test before it starts; Fisher exact test; conservative binomial interval, not an inversion of the test\"},{\"metric\":\"b\",\"stratum\":\"right\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":17,\"group2_paths\":91,\"group1_support\":17,\"group2_support\":91,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.4117647059,\"group1_ci_low\":0.1844369618,\"group1_ci_high\":0.6707528461,\"group2_value\":0.2417582418,\"group2_ci_low\":0.1581298139,\"group2_ci_high\":0.3428344015,\"delta\":0.1700064641,\"delta_se\":0.1275238112,\"delta_ci_low\":-0.1955235424,\"delta_ci_high\":0.5524289496,\"rel_delta\":0.7032085561,\"rel_delta_ci_low\":null,\"rel_delta_ci_high\":null,\"p_value\":0.2307645558,\"p_value_adjusted\":1.0,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"normal_approximation\",\"mde\":0.4074924736,\"rel_mde\":1.6855370498,\"verdict\":\"inconclusive\",\"test\":\"fisher_exact\",\"ci_basis\":\"clopper_pearson_bonferroni\",\"p_basis\":\"fisher_exact_two_sided\",\"valid_replicates\":null,\"support_warning\":\"\",\"group1_share\":0.85,\"group2_share\":0.5229885057,\"strata_diagnostics_basis\":\"not_requested\",\"balance_p_value\":null,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: per-comparison interval [-19.55, +55.24] pp includes 0 (p 1 after holm); the interval does not exclude zero; normal-approximation MDE 40.75 pp at alpha 0.008333 \\u2014 to detect 20 pp, about 4.2\\u00d7 the paths is a planning approximation; verify power for the chosen test before it starts; Fisher exact test; conservative binomial interval, not an inversion of the test\"},{\"metric\":\"n\",\"stratum\":\"left\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":3,\"group2_paths\":83,\"group1_support\":3,\"group2_support\":83,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.6666666667,\"group1_ci_low\":null,\"group1_ci_high\":null,\"group2_value\":0.2289156627,\"group2_ci_low\":null,\"group2_ci_high\":null,\"delta\":0.437751004,\"delta_se\":null,\"delta_ci_low\":null,\"delta_ci_high\":null,\"rel_delta\":1.9122807018,\"rel_delta_ci_low\":null,\"rel_delta_ci_high\":null,\"p_value\":null,\"p_value_adjusted\":null,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"unavailable\",\"mde\":null,\"rel_mde\":null,\"verdict\":\"descriptive\",\"test\":\"descriptive\",\"ci_basis\":\"not_requested\",\"p_basis\":\"not_requested\",\"valid_replicates\":null,\"support_warning\":\"\",\"group1_share\":0.15,\"group2_share\":0.4770114943,\"strata_diagnostics_basis\":\"not_requested\",\"balance_p_value\":null,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: descriptive estimate: no inferential method requested\"},{\"metric\":\"n\",\"stratum\":\"right\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":17,\"group2_paths\":91,\"group1_support\":17,\"group2_support\":91,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.4117647059,\"group1_ci_low\":null,\"group1_ci_high\":null,\"group2_value\":0.2417582418,\"group2_ci_low\":null,\"group2_ci_high\":null,\"delta\":0.1700064641,\"delta_se\":null,\"delta_ci_low\":null,\"delta_ci_high\":null,\"rel_delta\":0.7032085561,\"rel_delta_ci_low\":null,\"rel_delta_ci_high\":null,\"p_value\":null,\"p_value_adjusted\":null,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"unavailable\",\"mde\":null,\"rel_mde\":null,\"verdict\":\"descriptive\",\"test\":\"descriptive\",\"ci_basis\":\"not_requested\",\"p_basis\":\"not_requested\",\"valid_replicates\":null,\"support_warning\":\"\",\"group1_share\":0.85,\"group2_share\":0.5229885057,\"strata_diagnostics_basis\":\"not_requested\",\"balance_p_value\":null,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: descriptive estimate: no inferential method requested\"},{\"metric\":\"approx\",\"stratum\":\"left\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":3,\"group2_paths\":83,\"group1_support\":3,\"group2_support\":83,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.6666666667,\"group1_ci_low\":0.2076596008,\"group1_ci_high\":0.9385080553,\"group2_value\":0.2289156627,\"group2_ci_low\":0.1517336474,\"group2_ci_high\":0.3300806771,\"delta\":0.437751004,\"delta_se\":0.2760448154,\"delta_ci_low\":-0.0322722365,\"delta_ci_high\":0.7203369273,\"rel_delta\":1.9122807018,\"rel_delta_ci_low\":0.1932352539,\"rel_delta_ci_high\":6.1078849354,\"p_value\":null,\"p_value_adjusted\":null,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"normal_approximation\",\"mde\":0.8785803954,\"rel_mde\":3.8380090957,\"verdict\":\"insufficient_data\",\"test\":\"z_test\",\"ci_basis\":\"newcombe_approximate\",\"p_basis\":\"pooled_z_asymptotic\",\"valid_replicates\":null,\"support_warning\":\"insufficient_expected_cells\",\"group1_share\":0.15,\"group2_share\":0.4770114943,\"strata_diagnostics_basis\":\"asymptotic_exploratory\",\"balance_p_value\":0.005303493,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: the normal approximation is unsupported for these arm sizes; estimate shown descriptively; z-test unavailable: each arm needs at least five expected successes and failures under the pooled null; use fisher_exact; approximate inference; nominal error rates are not a finite-sample guarantee\"},{\"metric\":\"approx\",\"stratum\":\"right\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":17,\"group2_paths\":91,\"group1_support\":17,\"group2_support\":91,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.4117647059,\"group1_ci_low\":0.2161105679,\"group1_ci_high\":0.6399455736,\"group2_value\":0.2417582418,\"group2_ci_low\":0.1654180366,\"group2_ci_high\":0.3390180973,\"delta\":0.1700064641,\"delta_se\":0.1275238112,\"delta_ci_low\":-0.0484884356,\"delta_ci_high\":0.4106188813,\"rel_delta\":0.7032085561,\"rel_delta_ci_low\":-0.1325334836,\"rel_delta_ci_high\":2.344128368,\"p_value\":null,\"p_value_adjusted\":null,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"normal_approximation\",\"mde\":0.4074924736,\"rel_mde\":1.6855370498,\"verdict\":\"insufficient_data\",\"test\":\"z_test\",\"ci_basis\":\"newcombe_approximate\",\"p_basis\":\"pooled_z_asymptotic\",\"valid_replicates\":null,\"support_warning\":\"insufficient_expected_cells\",\"group1_share\":0.85,\"group2_share\":0.5229885057,\"strata_diagnostics_basis\":\"asymptotic_exploratory\",\"balance_p_value\":0.005303493,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: the normal approximation is unsupported for these arm sizes; estimate shown descriptively; z-test unavailable: each arm needs at least five expected successes and failures under the pooled null; use fisher_exact; approximate inference; nominal error rates are not a finite-sample guarantee\"}]",
+    "mixed_False__renamed": "[{\"metric\":\"b\",\"stratum\":\"left_renamed\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":3,\"group2_paths\":83,\"group1_support\":3,\"group2_support\":83,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.6666666667,\"group1_ci_low\":0.0942993241,\"group1_ci_high\":0.9915962413,\"group2_value\":0.2289156627,\"group2_ci_low\":0.143803602,\"group2_ci_high\":0.3341699323,\"delta\":0.437751004,\"delta_se\":0.2760448154,\"delta_ci_low\":-0.2832136213,\"delta_ci_high\":0.8619238077,\"rel_delta\":1.9122807018,\"rel_delta_ci_low\":null,\"rel_delta_ci_high\":null,\"p_value\":0.146374829,\"p_value_adjusted\":0.878248974,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"normal_approximation\",\"mde\":0.8785803954,\"rel_mde\":3.8380090957,\"verdict\":\"inconclusive\",\"test\":\"fisher_exact\",\"ci_basis\":\"clopper_pearson_bonferroni\",\"p_basis\":\"fisher_exact_two_sided\",\"valid_replicates\":null,\"support_warning\":\"\",\"group1_share\":0.15,\"group2_share\":0.4770114943,\"strata_diagnostics_basis\":\"not_requested\",\"balance_p_value\":null,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: per-comparison interval [-28.32, +86.19] pp includes 0 (p 0.88 after holm); the interval does not exclude zero; normal-approximation MDE 87.86 pp at alpha 0.008333 \\u2014 to detect 20 pp, about 19.3\\u00d7 the paths is a planning approximation; verify power for the chosen test before it starts; Fisher exact test; conservative binomial interval, not an inversion of the test\"},{\"metric\":\"b\",\"stratum\":\"right_renamed\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":17,\"group2_paths\":91,\"group1_support\":17,\"group2_support\":91,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.4117647059,\"group1_ci_low\":0.1844369618,\"group1_ci_high\":0.6707528461,\"group2_value\":0.2417582418,\"group2_ci_low\":0.1581298139,\"group2_ci_high\":0.3428344015,\"delta\":0.1700064641,\"delta_se\":0.1275238112,\"delta_ci_low\":-0.1955235424,\"delta_ci_high\":0.5524289496,\"rel_delta\":0.7032085561,\"rel_delta_ci_low\":null,\"rel_delta_ci_high\":null,\"p_value\":0.2307645558,\"p_value_adjusted\":1.0,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"normal_approximation\",\"mde\":0.4074924736,\"rel_mde\":1.6855370498,\"verdict\":\"inconclusive\",\"test\":\"fisher_exact\",\"ci_basis\":\"clopper_pearson_bonferroni\",\"p_basis\":\"fisher_exact_two_sided\",\"valid_replicates\":null,\"support_warning\":\"\",\"group1_share\":0.85,\"group2_share\":0.5229885057,\"strata_diagnostics_basis\":\"not_requested\",\"balance_p_value\":null,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: per-comparison interval [-19.55, +55.24] pp includes 0 (p 1 after holm); the interval does not exclude zero; normal-approximation MDE 40.75 pp at alpha 0.008333 \\u2014 to detect 20 pp, about 4.2\\u00d7 the paths is a planning approximation; verify power for the chosen test before it starts; Fisher exact test; conservative binomial interval, not an inversion of the test\"},{\"metric\":\"n\",\"stratum\":\"left_renamed\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":3,\"group2_paths\":83,\"group1_support\":3,\"group2_support\":83,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.6666666667,\"group1_ci_low\":null,\"group1_ci_high\":null,\"group2_value\":0.2289156627,\"group2_ci_low\":null,\"group2_ci_high\":null,\"delta\":0.437751004,\"delta_se\":null,\"delta_ci_low\":null,\"delta_ci_high\":null,\"rel_delta\":1.9122807018,\"rel_delta_ci_low\":null,\"rel_delta_ci_high\":null,\"p_value\":null,\"p_value_adjusted\":null,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"unavailable\",\"mde\":null,\"rel_mde\":null,\"verdict\":\"descriptive\",\"test\":\"descriptive\",\"ci_basis\":\"not_requested\",\"p_basis\":\"not_requested\",\"valid_replicates\":null,\"support_warning\":\"\",\"group1_share\":0.15,\"group2_share\":0.4770114943,\"strata_diagnostics_basis\":\"not_requested\",\"balance_p_value\":null,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: descriptive estimate: no inferential method requested\"},{\"metric\":\"n\",\"stratum\":\"right_renamed\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":17,\"group2_paths\":91,\"group1_support\":17,\"group2_support\":91,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.4117647059,\"group1_ci_low\":null,\"group1_ci_high\":null,\"group2_value\":0.2417582418,\"group2_ci_low\":null,\"group2_ci_high\":null,\"delta\":0.1700064641,\"delta_se\":null,\"delta_ci_low\":null,\"delta_ci_high\":null,\"rel_delta\":0.7032085561,\"rel_delta_ci_low\":null,\"rel_delta_ci_high\":null,\"p_value\":null,\"p_value_adjusted\":null,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"unavailable\",\"mde\":null,\"rel_mde\":null,\"verdict\":\"descriptive\",\"test\":\"descriptive\",\"ci_basis\":\"not_requested\",\"p_basis\":\"not_requested\",\"valid_replicates\":null,\"support_warning\":\"\",\"group1_share\":0.85,\"group2_share\":0.5229885057,\"strata_diagnostics_basis\":\"not_requested\",\"balance_p_value\":null,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: descriptive estimate: no inferential method requested\"},{\"metric\":\"approx\",\"stratum\":\"left_renamed\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":3,\"group2_paths\":83,\"group1_support\":3,\"group2_support\":83,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.6666666667,\"group1_ci_low\":0.2076596008,\"group1_ci_high\":0.9385080553,\"group2_value\":0.2289156627,\"group2_ci_low\":0.1517336474,\"group2_ci_high\":0.3300806771,\"delta\":0.437751004,\"delta_se\":0.2760448154,\"delta_ci_low\":-0.0322722365,\"delta_ci_high\":0.7203369273,\"rel_delta\":1.9122807018,\"rel_delta_ci_low\":0.1932352539,\"rel_delta_ci_high\":6.1078849354,\"p_value\":null,\"p_value_adjusted\":null,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"normal_approximation\",\"mde\":0.8785803954,\"rel_mde\":3.8380090957,\"verdict\":\"insufficient_data\",\"test\":\"z_test\",\"ci_basis\":\"newcombe_approximate\",\"p_basis\":\"pooled_z_asymptotic\",\"valid_replicates\":null,\"support_warning\":\"insufficient_expected_cells\",\"group1_share\":0.15,\"group2_share\":0.4770114943,\"strata_diagnostics_basis\":\"asymptotic_exploratory\",\"balance_p_value\":0.005303493,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: the normal approximation is unsupported for these arm sizes; estimate shown descriptively; z-test unavailable: each arm needs at least five expected successes and failures under the pooled null; use fisher_exact; approximate inference; nominal error rates are not a finite-sample guarantee\"},{\"metric\":\"approx\",\"stratum\":\"right_renamed\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":17,\"group2_paths\":91,\"group1_support\":17,\"group2_support\":91,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.4117647059,\"group1_ci_low\":0.2161105679,\"group1_ci_high\":0.6399455736,\"group2_value\":0.2417582418,\"group2_ci_low\":0.1654180366,\"group2_ci_high\":0.3390180973,\"delta\":0.1700064641,\"delta_se\":0.1275238112,\"delta_ci_low\":-0.0484884356,\"delta_ci_high\":0.4106188813,\"rel_delta\":0.7032085561,\"rel_delta_ci_low\":-0.1325334836,\"rel_delta_ci_high\":2.344128368,\"p_value\":null,\"p_value_adjusted\":null,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"normal_approximation\",\"mde\":0.4074924736,\"rel_mde\":1.6855370498,\"verdict\":\"insufficient_data\",\"test\":\"z_test\",\"ci_basis\":\"newcombe_approximate\",\"p_basis\":\"pooled_z_asymptotic\",\"valid_replicates\":null,\"support_warning\":\"insufficient_expected_cells\",\"group1_share\":0.85,\"group2_share\":0.5229885057,\"strata_diagnostics_basis\":\"asymptotic_exploratory\",\"balance_p_value\":0.005303493,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: the normal approximation is unsupported for these arm sizes; estimate shown descriptively; z-test unavailable: each arm needs at least five expected successes and failures under the pooled null; use fisher_exact; approximate inference; nominal error rates are not a finite-sample guarantee\"}]",
+    "mixed_True_": "[{\"metric\":\"b\",\"stratum\":\"left\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":3,\"group2_paths\":83,\"group1_support\":3,\"group2_support\":83,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.6666666667,\"group1_ci_low\":0.0942993241,\"group1_ci_high\":0.9915962413,\"group2_value\":0.2289156627,\"group2_ci_low\":0.143803602,\"group2_ci_high\":0.3341699323,\"delta\":0.437751004,\"delta_se\":0.2760448154,\"delta_ci_low\":-0.2832136213,\"delta_ci_high\":0.8619238077,\"rel_delta\":1.9122807018,\"rel_delta_ci_low\":null,\"rel_delta_ci_high\":null,\"p_value\":0.146374829,\"p_value_adjusted\":0.878248974,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"normal_approximation\",\"mde\":0.8785803954,\"rel_mde\":3.8380090957,\"verdict\":\"inconclusive\",\"test\":\"fisher_exact\",\"ci_basis\":\"clopper_pearson_bonferroni\",\"p_basis\":\"fisher_exact_two_sided\",\"valid_replicates\":null,\"support_warning\":\"\",\"group1_share\":0.15,\"group2_share\":0.4770114943,\"strata_diagnostics_basis\":\"not_requested\",\"balance_p_value\":null,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: per-comparison interval [-28.32, +86.19] pp includes 0 (p 0.88 after holm); the interval does not exclude zero; normal-approximation MDE 87.86 pp at alpha 0.008333 \\u2014 to detect 20 pp, about 19.3\\u00d7 the paths is a planning approximation; verify power for the chosen test before it starts; Fisher exact test; conservative binomial interval, not an inversion of the test\"},{\"metric\":\"b\",\"stratum\":\"right\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":17,\"group2_paths\":91,\"group1_support\":17,\"group2_support\":91,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.4117647059,\"group1_ci_low\":0.1844369618,\"group1_ci_high\":0.6707528461,\"group2_value\":0.2417582418,\"group2_ci_low\":0.1581298139,\"group2_ci_high\":0.3428344015,\"delta\":0.1700064641,\"delta_se\":0.1275238112,\"delta_ci_low\":-0.1955235424,\"delta_ci_high\":0.5524289496,\"rel_delta\":0.7032085561,\"rel_delta_ci_low\":null,\"rel_delta_ci_high\":null,\"p_value\":0.2307645558,\"p_value_adjusted\":1.0,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"normal_approximation\",\"mde\":0.4074924736,\"rel_mde\":1.6855370498,\"verdict\":\"inconclusive\",\"test\":\"fisher_exact\",\"ci_basis\":\"clopper_pearson_bonferroni\",\"p_basis\":\"fisher_exact_two_sided\",\"valid_replicates\":null,\"support_warning\":\"\",\"group1_share\":0.85,\"group2_share\":0.5229885057,\"strata_diagnostics_basis\":\"not_requested\",\"balance_p_value\":null,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: per-comparison interval [-19.55, +55.24] pp includes 0 (p 1 after holm); the interval does not exclude zero; normal-approximation MDE 40.75 pp at alpha 0.008333 \\u2014 to detect 20 pp, about 4.2\\u00d7 the paths is a planning approximation; verify power for the chosen test before it starts; Fisher exact test; conservative binomial interval, not an inversion of the test\"},{\"metric\":\"n\",\"stratum\":\"left\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":3,\"group2_paths\":83,\"group1_support\":3,\"group2_support\":83,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.6666666667,\"group1_ci_low\":null,\"group1_ci_high\":null,\"group2_value\":0.2289156627,\"group2_ci_low\":null,\"group2_ci_high\":null,\"delta\":0.437751004,\"delta_se\":null,\"delta_ci_low\":null,\"delta_ci_high\":null,\"rel_delta\":1.9122807018,\"rel_delta_ci_low\":null,\"rel_delta_ci_high\":null,\"p_value\":null,\"p_value_adjusted\":null,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"unavailable\",\"mde\":null,\"rel_mde\":null,\"verdict\":\"descriptive\",\"test\":\"descriptive\",\"ci_basis\":\"not_requested\",\"p_basis\":\"not_requested\",\"valid_replicates\":null,\"support_warning\":\"\",\"group1_share\":0.15,\"group2_share\":0.4770114943,\"strata_diagnostics_basis\":\"not_requested\",\"balance_p_value\":null,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: descriptive estimate: no inferential method requested\"},{\"metric\":\"n\",\"stratum\":\"right\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":17,\"group2_paths\":91,\"group1_support\":17,\"group2_support\":91,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.4117647059,\"group1_ci_low\":null,\"group1_ci_high\":null,\"group2_value\":0.2417582418,\"group2_ci_low\":null,\"group2_ci_high\":null,\"delta\":0.1700064641,\"delta_se\":null,\"delta_ci_low\":null,\"delta_ci_high\":null,\"rel_delta\":0.7032085561,\"rel_delta_ci_low\":null,\"rel_delta_ci_high\":null,\"p_value\":null,\"p_value_adjusted\":null,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"unavailable\",\"mde\":null,\"rel_mde\":null,\"verdict\":\"descriptive\",\"test\":\"descriptive\",\"ci_basis\":\"not_requested\",\"p_basis\":\"not_requested\",\"valid_replicates\":null,\"support_warning\":\"\",\"group1_share\":0.85,\"group2_share\":0.5229885057,\"strata_diagnostics_basis\":\"not_requested\",\"balance_p_value\":null,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: descriptive estimate: no inferential method requested\"},{\"metric\":\"approx\",\"stratum\":\"left\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":3,\"group2_paths\":83,\"group1_support\":3,\"group2_support\":83,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.6666666667,\"group1_ci_low\":0.2076596008,\"group1_ci_high\":0.9385080553,\"group2_value\":0.2289156627,\"group2_ci_low\":0.1517336474,\"group2_ci_high\":0.3300806771,\"delta\":0.437751004,\"delta_se\":0.2760448154,\"delta_ci_low\":-0.0322722365,\"delta_ci_high\":0.7203369273,\"rel_delta\":1.9122807018,\"rel_delta_ci_low\":0.1932352539,\"rel_delta_ci_high\":6.1078849354,\"p_value\":null,\"p_value_adjusted\":null,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"normal_approximation\",\"mde\":0.8785803954,\"rel_mde\":3.8380090957,\"verdict\":\"insufficient_data\",\"test\":\"z_test\",\"ci_basis\":\"newcombe_approximate\",\"p_basis\":\"pooled_z_asymptotic\",\"valid_replicates\":null,\"support_warning\":\"insufficient_expected_cells\",\"group1_share\":0.15,\"group2_share\":0.4770114943,\"strata_diagnostics_basis\":\"asymptotic_exploratory\",\"balance_p_value\":0.005303493,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: the normal approximation is unsupported for these arm sizes; estimate shown descriptively; z-test unavailable: each arm needs at least five expected successes and failures under the pooled null; use fisher_exact; approximate inference; nominal error rates are not a finite-sample guarantee\"},{\"metric\":\"approx\",\"stratum\":\"right\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":17,\"group2_paths\":91,\"group1_support\":17,\"group2_support\":91,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.4117647059,\"group1_ci_low\":0.2161105679,\"group1_ci_high\":0.6399455736,\"group2_value\":0.2417582418,\"group2_ci_low\":0.1654180366,\"group2_ci_high\":0.3390180973,\"delta\":0.1700064641,\"delta_se\":0.1275238112,\"delta_ci_low\":-0.0484884356,\"delta_ci_high\":0.4106188813,\"rel_delta\":0.7032085561,\"rel_delta_ci_low\":-0.1325334836,\"rel_delta_ci_high\":2.344128368,\"p_value\":null,\"p_value_adjusted\":null,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"normal_approximation\",\"mde\":0.4074924736,\"rel_mde\":1.6855370498,\"verdict\":\"insufficient_data\",\"test\":\"z_test\",\"ci_basis\":\"newcombe_approximate\",\"p_basis\":\"pooled_z_asymptotic\",\"valid_replicates\":null,\"support_warning\":\"insufficient_expected_cells\",\"group1_share\":0.85,\"group2_share\":0.5229885057,\"strata_diagnostics_basis\":\"asymptotic_exploratory\",\"balance_p_value\":0.005303493,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: the normal approximation is unsupported for these arm sizes; estimate shown descriptively; z-test unavailable: each arm needs at least five expected successes and failures under the pooled null; use fisher_exact; approximate inference; nominal error rates are not a finite-sample guarantee\"}]",
+    "mixed_True__renamed": "[{\"metric\":\"b\",\"stratum\":\"left_renamed\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":3,\"group2_paths\":83,\"group1_support\":3,\"group2_support\":83,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.6666666667,\"group1_ci_low\":0.0942993241,\"group1_ci_high\":0.9915962413,\"group2_value\":0.2289156627,\"group2_ci_low\":0.143803602,\"group2_ci_high\":0.3341699323,\"delta\":0.437751004,\"delta_se\":0.2760448154,\"delta_ci_low\":-0.2832136213,\"delta_ci_high\":0.8619238077,\"rel_delta\":1.9122807018,\"rel_delta_ci_low\":null,\"rel_delta_ci_high\":null,\"p_value\":0.146374829,\"p_value_adjusted\":0.878248974,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"normal_approximation\",\"mde\":0.8785803954,\"rel_mde\":3.8380090957,\"verdict\":\"inconclusive\",\"test\":\"fisher_exact\",\"ci_basis\":\"clopper_pearson_bonferroni\",\"p_basis\":\"fisher_exact_two_sided\",\"valid_replicates\":null,\"support_warning\":\"\",\"group1_share\":0.15,\"group2_share\":0.4770114943,\"strata_diagnostics_basis\":\"not_requested\",\"balance_p_value\":null,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: per-comparison interval [-28.32, +86.19] pp includes 0 (p 0.88 after holm); the interval does not exclude zero; normal-approximation MDE 87.86 pp at alpha 0.008333 \\u2014 to detect 20 pp, about 19.3\\u00d7 the paths is a planning approximation; verify power for the chosen test before it starts; Fisher exact test; conservative binomial interval, not an inversion of the test\"},{\"metric\":\"b\",\"stratum\":\"right_renamed\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":17,\"group2_paths\":91,\"group1_support\":17,\"group2_support\":91,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.4117647059,\"group1_ci_low\":0.1844369618,\"group1_ci_high\":0.6707528461,\"group2_value\":0.2417582418,\"group2_ci_low\":0.1581298139,\"group2_ci_high\":0.3428344015,\"delta\":0.1700064641,\"delta_se\":0.1275238112,\"delta_ci_low\":-0.1955235424,\"delta_ci_high\":0.5524289496,\"rel_delta\":0.7032085561,\"rel_delta_ci_low\":null,\"rel_delta_ci_high\":null,\"p_value\":0.2307645558,\"p_value_adjusted\":1.0,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"normal_approximation\",\"mde\":0.4074924736,\"rel_mde\":1.6855370498,\"verdict\":\"inconclusive\",\"test\":\"fisher_exact\",\"ci_basis\":\"clopper_pearson_bonferroni\",\"p_basis\":\"fisher_exact_two_sided\",\"valid_replicates\":null,\"support_warning\":\"\",\"group1_share\":0.85,\"group2_share\":0.5229885057,\"strata_diagnostics_basis\":\"not_requested\",\"balance_p_value\":null,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: per-comparison interval [-19.55, +55.24] pp includes 0 (p 1 after holm); the interval does not exclude zero; normal-approximation MDE 40.75 pp at alpha 0.008333 \\u2014 to detect 20 pp, about 4.2\\u00d7 the paths is a planning approximation; verify power for the chosen test before it starts; Fisher exact test; conservative binomial interval, not an inversion of the test\"},{\"metric\":\"n\",\"stratum\":\"left_renamed\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":3,\"group2_paths\":83,\"group1_support\":3,\"group2_support\":83,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.6666666667,\"group1_ci_low\":null,\"group1_ci_high\":null,\"group2_value\":0.2289156627,\"group2_ci_low\":null,\"group2_ci_high\":null,\"delta\":0.437751004,\"delta_se\":null,\"delta_ci_low\":null,\"delta_ci_high\":null,\"rel_delta\":1.9122807018,\"rel_delta_ci_low\":null,\"rel_delta_ci_high\":null,\"p_value\":null,\"p_value_adjusted\":null,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"unavailable\",\"mde\":null,\"rel_mde\":null,\"verdict\":\"descriptive\",\"test\":\"descriptive\",\"ci_basis\":\"not_requested\",\"p_basis\":\"not_requested\",\"valid_replicates\":null,\"support_warning\":\"\",\"group1_share\":0.15,\"group2_share\":0.4770114943,\"strata_diagnostics_basis\":\"not_requested\",\"balance_p_value\":null,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: descriptive estimate: no inferential method requested\"},{\"metric\":\"n\",\"stratum\":\"right_renamed\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":17,\"group2_paths\":91,\"group1_support\":17,\"group2_support\":91,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.4117647059,\"group1_ci_low\":null,\"group1_ci_high\":null,\"group2_value\":0.2417582418,\"group2_ci_low\":null,\"group2_ci_high\":null,\"delta\":0.1700064641,\"delta_se\":null,\"delta_ci_low\":null,\"delta_ci_high\":null,\"rel_delta\":0.7032085561,\"rel_delta_ci_low\":null,\"rel_delta_ci_high\":null,\"p_value\":null,\"p_value_adjusted\":null,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"unavailable\",\"mde\":null,\"rel_mde\":null,\"verdict\":\"descriptive\",\"test\":\"descriptive\",\"ci_basis\":\"not_requested\",\"p_basis\":\"not_requested\",\"valid_replicates\":null,\"support_warning\":\"\",\"group1_share\":0.85,\"group2_share\":0.5229885057,\"strata_diagnostics_basis\":\"not_requested\",\"balance_p_value\":null,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: descriptive estimate: no inferential method requested\"},{\"metric\":\"approx\",\"stratum\":\"left_renamed\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":3,\"group2_paths\":83,\"group1_support\":3,\"group2_support\":83,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.6666666667,\"group1_ci_low\":0.2076596008,\"group1_ci_high\":0.9385080553,\"group2_value\":0.2289156627,\"group2_ci_low\":0.1517336474,\"group2_ci_high\":0.3300806771,\"delta\":0.437751004,\"delta_se\":0.2760448154,\"delta_ci_low\":-0.0322722365,\"delta_ci_high\":0.7203369273,\"rel_delta\":1.9122807018,\"rel_delta_ci_low\":0.1932352539,\"rel_delta_ci_high\":6.1078849354,\"p_value\":null,\"p_value_adjusted\":null,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"normal_approximation\",\"mde\":0.8785803954,\"rel_mde\":3.8380090957,\"verdict\":\"insufficient_data\",\"test\":\"z_test\",\"ci_basis\":\"newcombe_approximate\",\"p_basis\":\"pooled_z_asymptotic\",\"valid_replicates\":null,\"support_warning\":\"insufficient_expected_cells\",\"group1_share\":0.15,\"group2_share\":0.4770114943,\"strata_diagnostics_basis\":\"asymptotic_exploratory\",\"balance_p_value\":0.005303493,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: the normal approximation is unsupported for these arm sizes; estimate shown descriptively; z-test unavailable: each arm needs at least five expected successes and failures under the pooled null; use fisher_exact; approximate inference; nominal error rates are not a finite-sample guarantee\"},{\"metric\":\"approx\",\"stratum\":\"right_renamed\",\"population\":\"assignment\",\"observation_end\":\"2026-01-05T00:00:00.000\",\"observation_basis\":\"declared_logging_cutoff\",\"analysis_unit\":\"user_id\",\"group1_paths\":17,\"group2_paths\":91,\"group1_support\":17,\"group2_support\":91,\"conditional\":false,\"group1_silent_paths\":0,\"group2_silent_paths\":0,\"unassigned_paths\":0,\"group1_value\":0.4117647059,\"group1_ci_low\":0.2161105679,\"group1_ci_high\":0.6399455736,\"group2_value\":0.2417582418,\"group2_ci_low\":0.1654180366,\"group2_ci_high\":0.3390180973,\"delta\":0.1700064641,\"delta_se\":0.1275238112,\"delta_ci_low\":-0.0484884356,\"delta_ci_high\":0.4106188813,\"rel_delta\":0.7032085561,\"rel_delta_ci_low\":-0.1325334836,\"rel_delta_ci_high\":2.344128368,\"p_value\":null,\"p_value_adjusted\":null,\"correction_family\":\"all_metrics\\/strata\",\"mde_alpha\":0.0083333333,\"mde_basis\":\"normal_approximation\",\"mde\":0.4074924736,\"rel_mde\":1.6855370498,\"verdict\":\"insufficient_data\",\"test\":\"z_test\",\"ci_basis\":\"newcombe_approximate\",\"p_basis\":\"pooled_z_asymptotic\",\"valid_replicates\":null,\"support_warning\":\"insufficient_expected_cells\",\"group1_share\":0.85,\"group2_share\":0.5229885057,\"strata_diagnostics_basis\":\"asymptotic_exploratory\",\"balance_p_value\":0.005303493,\"heterogeneity_p_value\":null,\"heterogeneity_dof\":0,\"heterogeneity_strata_used\":0,\"stratum_vs_rest_p_value\":null,\"strata_pre_exposure\":true,\"strata_pre_exposure_source\":\"declared\",\"exploratory\":false,\"reading\":\"over the whole observation period: the normal approximation is unsupported for these arm sizes; estimate shown descriptively; z-test unavailable: each arm needs at least five expected successes and failures under the pooled null; use fisher_exact; approximate inference; nominal error rates are not a finite-sample guarantee\"}]"
+  }
+}

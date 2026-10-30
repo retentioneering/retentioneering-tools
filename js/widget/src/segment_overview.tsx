@@ -68,11 +68,12 @@ function MetricsTriggerButton({ count, onClick, disabled }: { count: number; onC
 
 // Overlay rendered at App root — uses position:absolute to avoid
 // VS Code iframe transform issues with position:fixed
-function MetricsOverlay({ metrics, events, segmentCols, segmentLevels, onMetricsChange, onClose }: {
+function MetricsOverlay({ metrics, events, segmentCols, segmentLevels, customCols, onMetricsChange, onClose }: {
   metrics: any[];
   events: string[];
   segmentCols: string[];
   segmentLevels: Record<string,string[]>;
+  customCols: Record<string,boolean>;
   onMetricsChange: (m: any[]) => void;
   onClose: () => void;
 }) {
@@ -117,7 +118,7 @@ function MetricsOverlay({ metrics, events, segmentCols, segmentLevels, onMetrics
               No metrics added yet. Click "Add Metric" to start.
             </div>
           ) : metrics.map((m, i) => (
-            <MetricRow key={i} cfg={m} events={events} segmentCols={segmentCols} segmentLevels={segmentLevels} showErrors={submitted} showAgg={true} onChange={cfg => updateMetric(i, cfg)} onRemove={() => removeMetric(i)} />
+            <MetricRow key={i} cfg={m} events={events} segmentCols={segmentCols} segmentLevels={segmentLevels} customCols={customCols} showErrors={submitted} showAgg={true} onChange={cfg => updateMetric(i, cfg)} onRemove={() => removeMetric(i)} />
           ))}
         </div>
         <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
@@ -251,6 +252,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
     const pathCols  = parseJson<string[]>(host.get("path_cols"),    []);
     const events    = parseJson<string[]>(host.get("event_list"),   []);
     const segLevels = parseJson<Record<string,string[]>>(host.get("segment_levels"), {});
+    const customCols = parseJson<Record<string,boolean>>(host.get("custom_cols"), {});
 
     useHostSubscriptions(host, [
       ["result",     () => { const r = parseJson<any>(host.get("result"), null); setResult(r?.metrics ? r : null); }],
@@ -418,7 +420,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
         {/* Modals at root level — position:absolute avoids VS Code transform issues */}
         {!isStatic && metricsOpen && (
           <MetricsOverlay
-            metrics={metrics} events={events} segmentCols={segCols} segmentLevels={segLevels}
+            metrics={metrics} events={events} segmentCols={segCols} segmentLevels={segLevels} customCols={customCols}
             onMetricsChange={setMetrics}
             onClose={() => setMetricsOpen(false)}
           />

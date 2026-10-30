@@ -1,0 +1,123 @@
+"""Independent plain-Python graph/sequence oracle, frozen before source inspection."""
+from collections import Counter, defaultdict
+from math import fsum
+
+
+def graph_oracle(roster, events, horizon=None, cutoff=None, require_mature=False):
+    """Explicit unit population; timestamps are numeric; horizon is half-open."""
+    units = {}
+    for row in roster:
+        unit = row["unit"]
+        if unit in units:
+            raise ValueError("duplicate unit")
+        if require_mature and horizon is None:
+            raise ValueError("maturity requires horizon")
+        if require_mature and cutoff is not None and row.get("assigned", 0) + horizon > cutoff:
+            continue
+        units[unit] = dict(row)
+    sequences = {u: [] for u in units}
+    for i, row in enumerate(events):
+        u = row["unit"]
+        if u not in units:
+            continue
+        t = row["time"]
+        assigned = units[u].get("assigned", 0)
+        if t < assigned or (horizon is not None and t >= assigned + horizon):
+            continue
+        if cutoff is not None and t > cutoff:
+            continue
+        sequences[u].append((t, i, row["event"]))
+    per_unit = {}
+    for u, rows in sequences.items():
+        path = tuple(r[2] for r in sorted(rows))
+        edges = Counter(zip(path, path[1:]))
+        source = Counter()
+        target = Counter()
+        for (s, t), n in edges.items():
+            source[s] += n
+            target[t] += n
+        per_unit[u] = {"arm": units[u]["arm"], "path": path, "edges": edges,
+                       "source": source, "target": target, "total": sum(edges.values()),
+                       "steps": Counter(enumerate(path))}
+    arms = {}
+    for arm in sorted({r["arm"] for r in units.values()}):
+        chosen = [r for r in per_unit.values() if r["arm"] == arm]
+        edge_counts = Counter()
+        edge_users = Counter()
+        source_counts = Counter()
+        target_counts = Counter()
+        steps = Counter()
+        paths = Counter()
+        for r in chosen:
+            edge_counts.update(r["edges"])
+            edge_users.update(r["edges"].keys())
+            source_counts.update(r["source"])
+            target_counts.update(r["target"])
+            steps.update(r["steps"])
+            paths[r["path"]] += 1
+        total = sum(edge_counts.values())
+        normalized = {kind: {} for kind in ("source", "target", "total")}
+        equal_unit_normalized = {kind: {} for kind in ("source", "target", "total")}
+        for edge, count in edge_counts.items():
+            for kind, denominator in (("source", source_counts[edge[0]]),
+                                      ("target", target_counts[edge[1]]), ("total", total)):
+                normalized[kind][edge] = count / denominator if denominator else None
+                unit_ratios = []
+                for r in chosen:
+                    den = r["total"] if kind == "total" else r[kind][edge[0 if kind == "source" else 1]]
+                    if den:
+                        unit_ratios.append(r["edges"][edge] / den)
+                equal_unit_normalized[kind][edge] = fsum(unit_ratios) / len(unit_ratios) if unit_ratios else None
+        arms[arm] = {"n_units": len(chosen), "edge_counts": edge_counts,
+                     "edge_users": edge_users, "source_counts": source_counts,
+                     "target_counts": target_counts, "total": total,
+                     "mean_edges": {e: c / len(chosen) for e, c in edge_counts.items()},
+                     "edge_reach": {e: c / len(chosen) for e, c in edge_users.items()},
+                     "normalized": normalized, "equal_unit_normalized": equal_unit_normalized,
+                     "paths": paths, "unique_paths": len(paths), "steps": steps,
+                     "step_occupancy": {cell: n / len(chosen) for cell, n in steps.items()}}
+    return {"per_unit": per_unit, "arms": arms}
+
+
+def fixture_rows(paths_by_arm, repeats=1, assigned=0):
+    roster, events = [], []
+    for arm, paths in paths_by_arm.items():
+        for repeat in range(repeats):
+            for index, path in enumerate(paths):
+                unit = f"{arm}-{repeat}-{index}"
+                roster.append({"unit": unit, "arm": arm, "assigned": assigned})
+                for time, event in enumerate(path, 1):
+                    events.append({"unit": unit, "time": assigned + time, "event": event})
+    return roster, events
+
+
+def jsonable(value):
+    if isinstance(value, dict):
+        return {repr(k) if not isinstance(k, str) else k: jsonable(v) for k, v in value.items()}
+    if isinstance(value, (tuple, list)):
+        return [jsonable(v) for v in value]
+    return value
+
+
+def self_test():
+    roster, rows = fixture_rows({"control": [("A", "B", "A", "B"), ("A", "C"), ("Z",), ()],
+                                 "treatment": [("A", "B"), ()]})
+    result = graph_oracle(roster, rows)
+    c = result["arms"]["control"]
+    assert c["n_units"] == 4 and c["total"] == 4
+    assert c["edge_counts"][("A", "B")] == 2
+    assert c["edge_users"][("A", "B")] == 1
+    assert c["normalized"]["source"][("A", "B")] == 2 / 3
+    assert c["normalized"]["target"][("A", "B")] == 1
+    assert c["normalized"]["total"][("A", "B")] == 1 / 2
+    assert c["equal_unit_normalized"]["source"][("A", "B")] == 1 / 2
+    assert c["step_occupancy"][(0, "A")] == 1 / 2
+    assert c["unique_paths"] == 4
+    assert result["per_unit"]["control-0-0"]["edges"][("A", "B")] == 2
+    short = graph_oracle(roster, rows, horizon=2)
+    assert short["arms"]["control"]["total"] == 0
+    print("oracle self-test: PASS")
+
+
+if __name__ == "__main__":
+    self_test()

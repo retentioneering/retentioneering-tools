@@ -19,6 +19,8 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
     strategy:
       fail-fast: false
       matrix:
@@ -46,14 +48,30 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
-        with:
-          python-version: ${{ matrix.python-version }}
+
+      - name: Install matrix Python
+        run: uv python install "$UV_PYTHON"
 
       - name: Install Python dependencies
-        run: uv sync
+        run: |
+          uv sync --python "$UV_PYTHON"
+          uv run python -c 'import os, sys; assert sys.version_info[:2] == tuple(map(int, os.environ["UV_PYTHON"].split(".")))'
 
       - name: Run tests
         run: uv run pytest tests/ -v
+
+      - name: Build and verify the installed wheel
+        run: |
+          uv build --wheel
+          uv run python scripts/verify_wheel.py dist/*.whl
+
+      - name: Upload installed-wheel provenance and exports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-verification-${{ matrix.python-version }}-${{ github.sha }}
+          path: artifacts/wheel/
+          if-no-files-found: warn
 
       - name: Install Chromium for widget rendering tests
         if: matrix.python-version == '3.12'
@@ -62,3 +80,18 @@ jobs:
       - name: Run widget rendering tests
         if: matrix.python-version == '3.12'
         run: uv run --with playwright pytest tests/browser -v
+
+      - name: Execute experiment tutorials
+        if: matrix.python-version == '3.12'
+        run: |
+          uv run --with nbclient --with nbformat --with nbconvert --with ipykernel python examples/experiments/execute_tutorial.py
+          uv run --with nbclient --with nbformat --with nbconvert --with ipykernel python examples/experiments/execute_tutorial.py --lumeo
+          uv run --with nbclient --with nbformat --with ipykernel pytest tests/notebooks -v
+
+      - name: Upload executed experiment tutorials and diagnostics
+        if: always() && matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: experiment-tutorials-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: ignore

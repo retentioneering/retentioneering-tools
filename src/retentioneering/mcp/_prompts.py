@@ -36,6 +36,41 @@ _PLAYBOOK: dict[str, str] = _load_playbook()
 
 # Static reference topics that don't map to an Eventstream method
 _STATIC_TOOL_DOCS: dict[str, str] = {
+    "metrics": """\
+The metric registry: one number per path, used by get_ab_test (metrics=),
+add_segment_overview (metrics=), filter_paths and add_segment(metric_bins=).
+Write each as {"metric": <name>, "metric_args": {...}}; get_ab_test also takes
+"name" (row label), "denominator" (a second config: ratio of sums) and "test".
+Arguments always go under "metric_args".
+
+0/1 per path (A/B: Fisher exact by default, delta in percentage points; a silent path counts 0):
+  has_event        {"event": "purchase"}
+  has_any_event    {"events": ["add_to_cart", "quick_add"]}   (union of events)
+  has_all_events   {"events": ["cart", "checkout"]}
+  matches_pattern  {"pattern": "cart->.*->purchase"}
+  in_segment       {"segment_name": "platform", "segment_level": "ios"}
+                   (+ "mode": "any" | "all" | "event_share", "threshold")
+Totals per path (A/B: descriptive by default; explicit Welch/bootstrap approximate; a silent path counts 0):
+  event_count      {"event": "purchase"}
+  length           {}                        events per path
+  active_days      {} or {"active_events": ["purchase"]}   distinct days
+  column_sum       {"column": "amount"}      a value column, see describe()
+  event_value_sum  {"event": "purchase", "value_col": "amount"}
+                   sum matching finite values; matching missing/invalid values fail
+Values, undefined for some paths (A/B: descriptive by default over paths with a value;
+the row is conditional=true when a path has none):
+  duration         {}                        seconds, first to last event
+  time_between     {"start_event": "cart", "end_event": "purchase"}  seconds
+  column_mean      {"column": "amount"}
+  column_last      {"column": "plan"}
+Not one number per path (rejected by get_ab_test):
+  event_count_bulk {"events": [...]}  has_event_bulk {"events": [...]}
+  in_segment_bulk  {"segment_name": "platform"}     one column per event/level
+  first_event_time {}                               a timestamp
+
+Ratio of sums, e.g. average order value (A/B: descriptive by default; explicit approximate joint bootstrap; conditional):
+  {"name": "aov", "metric": "column_sum", "metric_args": {"column": "amount"},
+   "denominator": {"metric": "event_count", "metric_args": {"event": "purchase"}}}""",
     "report_links": """\
 Anchor link syntax for the analysis text passed to export_report().
 
@@ -72,7 +107,9 @@ def _playbook_index() -> dict:
 # preprocessors — they compute an answer instead of returning a new stream, so
 # they are called as their own MCP tool rather than as a step in a
 # preprocessors list, and the index has to say so.
-_ANALYSIS_METHODS = frozenset({"get_conversion_rate"})
+_ANALYSIS_METHODS = frozenset(
+    {"get_conversion_rate", "get_sample_ratio", "get_ab_test", "get_ab_bootstrap"}
+)
 
 
 def _tool_docs_index() -> dict:
@@ -247,6 +284,22 @@ def _static_instructions(tail: str = "") -> str:
         "  visit rather than a person — per-user rates are diluted by everything else",
         "  that user ever did. See playbook('conversion_rate').",
         "",
+        "### A/B test (did the treatment work?)",
+        "Call get_sample_ratio(arm_col) FIRST and quote its reading; a mismatch",
+        "is a diagnostic alarm to investigate. Null mismatch or unavailable inference",
+        "is not evidence of balance. Read p_value_method and sampling_assumption.",
+        "Ask for ONE decision metric and any guardrails (each with the harm it may",
+        "  do) BEFORE the first get_ab_test call. All declared rows are corrected",
+        "  together by default; a guardrail needs its declared harm margin.",
+        "Then get_ab_test(diff=[arm_col, 'treatment', 'control'], metrics=[...]):",
+        "  Binary defaults use Fisher exact; nonbinary defaults are descriptive.",
+        "  Explicit nonbinary Welch/bootstrap and guarded z remain approximate.",
+        "  Report delta, available intervals, normal-approximation mde and verdict. 'inconclusive' is",
+        "  NOT 'no effect': quote the row's reading. Never propose running the test",
+        "  longer or re-reading it at another horizon (peeking): a next step is a",
+        "  NEW test, sized and with its horizon fixed before it starts.",
+        "  Strata only on segments fixed before exposure. See playbook('ab_test').",
+        "",
         "### Conversion drop-off analysis (why is conversion from A to B dropping?)",
         "Use add_segment with funnel_events to create an N+1 level funnel segment.",
         "Each level is named after the LAST funnel event reached (in sequential order).",
@@ -274,7 +327,10 @@ def _static_instructions(tail: str = "") -> str:
 
 
 def _system_instructions(
-    stream: "Eventstream | None", context: dict, notebook_dir: str = ""
+    stream: "Eventstream | None",
+    context: dict,
+    notebook_dir: str = "",
+    assignment=None,
 ) -> str:
     """Full system prompt for the notebook `serve()` flow: a small per-stream
     header (stats, business context) computed fresh at server-start, followed
@@ -304,6 +360,13 @@ def _system_instructions(
             f"The stream contains {n_paths} unique paths and {len(events)} distinct events.",
             f"Event column: '{s.event_col}'. Path column: '{s.path_col}'.",
         ]
+    if assignment is not None:
+        header.append(
+            "An experiment assignment table is attached (see describe()['assignment']): "
+            "get_sample_ratio, get_ab_test, add_ab_test and get_ab_bootstrap count every "
+            "assigned user, silent ones included (intention to treat); horizon= and "
+            "period_basis='since_assignment' use its assigned_at."
+        )
     if context.get("description"):
         header.append(f"Business context: {context['description']}")
     if context.get("event_groups"):

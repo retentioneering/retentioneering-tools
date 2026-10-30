@@ -1,0 +1,185 @@
+"""Source-selectable independent UI/MCP evidence producer, no candidate edits."""
+import argparse
+import asyncio
+import hashlib
+import importlib.metadata
+import json
+import math
+import os
+from pathlib import Path
+import platform
+import sys
+import warnings
+
+p = argparse.ArgumentParser()
+p.add_argument("--source", required=True)
+p.add_argument("--out", required=True)
+a = p.parse_args()
+source = Path(a.source).resolve()
+out = Path(a.out).resolve()
+out.mkdir(parents=True, exist_ok=True)
+sys.path.insert(0, str(source / "src"))
+import pandas as pd
+import retentioneering
+from retentioneering import Eventstream
+from retentioneering.mcp import tools
+from retentioneering.mcp._report_session import ReportSession
+from retentioneering.widgets.ab_test import scorecard_records
+
+expected = json.loads(Path(__file__).with_name("oracle_expected.json").read_text())["cases"]
+records = {}
+checks = []
+
+def dump(name, value):
+    (out / name).write_text(json.dumps(value, indent=2, allow_nan=False, default=str) + "\n")
+
+def check(name, actual, wanted, tol=1e-6):
+    ok = (actual is None and wanted is None) or (actual == wanted)
+    if isinstance(actual, (int, float)) and isinstance(wanted, (int, float)):
+        ok = math.isclose(actual, wanted, rel_tol=tol, abs_tol=tol)
+    checks.append({"check": name, "pass": bool(ok), "actual": actual, "expected": wanted})
+
+def capture(fn):
+    with warnings.catch_warnings(record=True) as ws:
+        warnings.simplefilter("always")
+        try:
+            value = fn()
+            return {"value": value, "warnings": list(dict.fromkeys(str(w.message) for w in ws))}
+        except Exception as e:
+            return {"exception": type(e).__name__, "message": str(e), "warnings": list(dict.fromkeys(str(w.message) for w in ws))}
+
+def make_case(name):
+    e = expected[name]
+    rows, assignments = [], []
+    for arm, prefix in [("control", "c"), ("treatment", "t")]:
+        for i in range(e[arm + "_n"]):
+            uid = prefix + str(i + 1)
+            assignments.append({"user_id": uid, "arm": arm, "assigned_at": pd.Timestamp("2026-01-01"), "platform": "x" if i % 2 else "y"})
+            # Last failure in each arm is silent. All successful subjects retain open then buy.
+            if i < e[arm + "_success"] or i < e[arm + "_n"] - 1:
+                rows.append([uid, "open", pd.Timestamp("2026-01-02"), arm, float(i + 1)])
+            if i < e[arm + "_success"]:
+                rows.append([uid, "buy", pd.Timestamp("2026-01-02 01:00"), arm, float(i + 1)])
+    frame = pd.DataFrame(rows, columns=["user_id", "event", "timestamp", "arm", "amount"])
+    roster = pd.DataFrame(assignments)
+    return Eventstream(frame, {"segment_cols": ["arm"]}), roster
+
+metric = [{"name": "conversion", "metric": "has_event", "metric_args": {"event": "buy"}}]
+diff = ("arm", "treatment", "control")
+observation = {"start": "2026-01-01", "end": "2026-01-03", "assignment_time_col": "assigned_at", "complete": True}
+
+for name in ["A_positive", "B_zero_control", "C_empty_treatment", "E_negative"]:
+    stream, roster = make_case(name)
+    assignment = roster.set_index("user_id")
+    stream.df.to_csv(out / (name + "_events.csv"), index=False)
+    roster.to_csv(out / (name + "_assignments.csv"), index=False)
+    e = expected[name]
+    r = {"oracle": e}
+    head = capture(lambda: stream.get_ab_test(diff, metric, assignment=assignment, observation_end="2026-01-03"))
+    if "value" in head:
+        head["value"] = scorecard_records(head["value"])
+        row = head["value"][0]
+        for target, key in [("group1_paths", "treatment_n"), ("group2_paths", "control_n"), ("group1_value", "treatment_rate"), ("group2_value", "control_rate"), ("delta", "absolute_delta"), ("rel_delta", "relative_lift")]:
+            check(name + ".headless." + target, row[target], e[key])
+    r["headless"] = head
+    widget_capture = capture(lambda: stream.ab_test(diff, metric, assignment=assignment, observation_end="2026-01-03"))
+    if "value" in widget_capture:
+        widget = widget_capture.pop("value")
+        r["widget"] = {"result": json.loads(widget.result), "error": widget.error, "export": widget._export_data()}
+        json.dumps(r["widget"], allow_nan=False)
+        check(name + ".widget_cells", r["widget"]["result"].get("overall"), head.get("value"))
+        check(name + ".compute_repeat", widget.dispatch_compute("ab_test_data", {}), r["widget"]["result"])
+        widget.export_html(str(out / (name + "_ab.html")))
+    else:
+        r["widget"] = widget_capture
+    session = ReportSession(stream, assignment=assignment)
+    r["mcp"] = tools.get_ab_test(session, list(diff), metric, observation_end="2026-01-03")
+    r["mcp_add"] = tools.add_ab_test(session, name, list(diff), metric, observation_end="2026-01-03")
+    json.dumps(r["mcp"], allow_nan=False)
+    check(name + ".mcp_repeat", tools.get_ab_test(session, list(diff), metric, observation_end="2026-01-03"), r["mcp"])
+    if "metrics" in r["mcp"]:
+        m = r["mcp"]["metrics"][0]
+        for target, key in [("group1_paths", "treatment_n"), ("group2_paths", "control_n"), ("group1_value", "treatment_rate"), ("group2_value", "control_rate"), ("delta", "absolute_delta"), ("rel_delta", "relative_lift")]:
+            check(name + ".mcp." + target, m[target], e[key])
+    if session.pending_tabs:
+        check(name + ".report_tab_cells", session.pending_tabs[0]["data"]["result"]["overall"], head.get("value"))
+        r["report_export"] = session.export(name, "See [" + name + ":conversion].", str(out / (name + "_report.html")))
+        check(name + ".export_clears_tabs", session.pending_tabs, [])
+    exp_kw = {"assignments": roster, "variant_col": "arm", "control": "control", "treatment": "treatment", "observation": observation,
+        "metrics": [{**metric[0], "agg": "mean", "display": {"label": "Purchase conversion", "scale": 100, "unit": "%"}}],
+        "binary_intervals": {"method": "newcombe"}, "funnel_steps": ["open", "buy"]}
+    r["experiment"] = capture(lambda: stream.experiment_data(**exp_kw))
+    if "value" in r["experiment"]:
+        ex = r["experiment"]["value"]
+        er = next(x for x in ex["summary"] if x["metric"] == "conversion")
+        for target, key in [("control_units", "control_n"), ("treatment_units", "treatment_n"), ("control", "control_rate"), ("treatment", "treatment_rate"), ("absolute_effect", "absolute_delta"), ("relative_effect", "relative_lift")]:
+            check(name + ".experiment." + target, er[target], e[key])
+        ew = stream.experiment(**exp_kw)
+        check(name + ".experiment_widget_same", json.loads(ew.result), ex)
+        check(name + ".experiment_repeat", stream.experiment_data(**exp_kw), ex)
+        ew.export_html(str(out / (name + "_experiment.html")))
+        r["experiment_export"] = ew._export_data()
+    records[name] = r
+    dump(name + ".json", r)
+
+# Restore a state backed by an external assignment table; do not serialize IDs.
+stream, roster = make_case("A_positive")
+assignment = roster.set_index("user_id")
+state = out / "ab_saved_state.json"
+sw = stream.ab_test(diff, metric, assignment=assignment, observation_end="2026-01-03", state_file=str(state))
+restored_with = stream.ab_test(assignment=assignment, state_file=str(state))
+with_payload = json.loads(restored_with.result)
+restored_without = capture(lambda: stream.ab_test(state_file=str(state)))
+if "value" in restored_without:
+    rw = restored_without.pop("value")
+    restored_without.update(result=json.loads(rw.result), error=rw.error, assignment_info=rw.assignment_info)
+    rw.export_html(str(out / "restored_without_assignment.html"))
+check("state.explicit_assignment_same", with_payload, json.loads(sw.result))
+dump("state_restore.json", {"original": json.loads(sw.result), "restored_with_assignment": with_payload, "restored_without_assignment": restored_without, "saved_state": json.loads(state.read_text())})
+
+# Contract amendment: cutoff is exclusive. Exact-cutoff success t2 is excluded.
+# Keep late t3 to inspect advertised assignment/cutoff population semantics.
+d = json.loads(Path(__file__).with_name("oracle_expected.json").read_text())["cutoff_fixture"]
+da = pd.DataFrame(d["assignments"]).rename(columns={"subject": "user_id"}).set_index("user_id")
+da["assigned_at"] = pd.to_datetime(da["assigned_at"])
+de = pd.DataFrame(d["success_events"]).rename(columns={"subject": "user_id", "time": "timestamp"})
+de["timestamp"] = pd.to_datetime(de["timestamp"])
+de["event"] = "buy"
+ds = Eventstream(de)
+d_rejected = capture(lambda: ds.get_ab_test(diff, metric, assignment=da, observation_end=d["cutoff"]))
+da_admissible = da.drop(index="t3")
+d_head = ds.get_ab_test(diff, metric, assignment=da_admissible, observation_end=d["cutoff"])
+dr = scorecard_records(d_head)
+for key, want in [("group1_paths", 2), ("group2_paths", 3), ("group1_value", .5), ("group2_value", 1/3), ("delta", 1/6), ("rel_delta", .5)]:
+    check("D.exclusive_admissible." + key, dr[0][key], want)
+dump("D_cutoff_binding.json", {"source": d, "original_rejected": d_rejected, "admissible_headless": dr, "mcp": tools.get_ab_test(ReportSession(ds, assignment=da_admissible), list(diff), metric, observation_end=d["cutoff"]), "note": "Preregistered inclusive-end oracle D is not the public exclusive-end contract; t2 exact-cutoff event excluded. Original late assignment t3 rejected; admissible adaptation removes it."})
+
+# Unsupported/degenerate inference and sparse ratio warning provenance.
+ratio_metric = [{"name": "order_value", "metric": "column_sum", "metric_args": {"column": "amount"}, "denominator": {"metric": "event_count", "metric_args": {"event": "buy"}}}]
+rr = []
+for arm in ["control", "treatment"]:
+    for i in range(4):
+        rr.append([arm[0]+str(i), "open", pd.Timestamp("2026-01-02"), arm, 0.])
+        if i < 3:
+            rr.append([arm[0]+str(i), "buy", pd.Timestamp("2026-01-02 01:00"), arm, float(i+1)])
+rs = Eventstream(pd.DataFrame(rr, columns=["user_id", "event", "timestamp", "arm", "amount"]), {"segment_cols": ["arm"]})
+rw = rs.ab_test(diff, ratio_metric, n_bootstrap=1000, random_state=42)
+rw.export_html(str(out / "ratio_invalid_ab.html"))
+dump("ratio_invalid.json", {"widget": json.loads(rw.result), "mcp": tools.get_ab_test(ReportSession(rs), list(diff), ratio_metric)})
+
+# In-process FastMCP dispatch is real transport serialization, no network/client stub.
+async def transport():
+    import mcp
+    from retentioneering.mcp.server import _build_server
+    server = _build_server(stream, {}, assignment=assignment)
+    answer = await server.call_tool("get_ab_test", {"diff": list(diff), "metrics": metric, "observation_end": "2026-01-03"})
+    return {"type": str(type(answer)), "repr": repr(answer), "parts": [x.model_dump(mode="json") if hasattr(x, "model_dump") else x for x in (answer if isinstance(answer, (tuple, list)) else [answer])]}
+transport_result = capture(lambda: asyncio.run(transport()))
+dump("mcp_transport.json", transport_result)
+
+manifest = {"source": str(source), "package_file": retentioneering.__file__, "python": sys.executable, "python_version": platform.python_version(), "versions": {name: importlib.metadata.version(name) for name in ["pandas", "numpy", "anywidget", "mcp"]}, "hashes": {}}
+for path in list((source / "src/retentioneering").rglob("*.py")) + list((source / "src/retentioneering/static").glob("*")) + list((source / "js/widget/src").glob("ab_test*.tsx")) + [source / "js/widget/src/experiment.tsx"]:
+    manifest["hashes"][str(path.relative_to(source))] = hashlib.sha256(path.read_bytes()).hexdigest()
+dump("manifest.json", manifest)
+dump("checks.json", checks)
+print(json.dumps({"checks": len(checks), "passed": sum(x["pass"] for x in checks), "failed": [x for x in checks if not x["pass"]], "mcp_transport": transport_result.get("exception", "completed")}))

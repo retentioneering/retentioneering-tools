@@ -1,0 +1,47 @@
+{
+  "expected": {
+    "treatment": 0.3333333333333333,
+    "control": 0.5,
+    "delta": -0.16666666666666669,
+    "resampling_variance": 0.0,
+    "inference": "unavailable empirical variation"
+  },
+  "actual": [
+    {
+      "source": "A",
+      "target": "B",
+      "edge_weight": "proba_out",
+      "group1_edge_paths": 30,
+      "group2_edge_paths": 30,
+      "population": "assignment",
+      "group1_paths": 30,
+      "group2_paths": 30,
+      "group1_support": 30,
+      "group2_support": 30,
+      "conditional": true,
+      "group1_silent_paths": 0,
+      "group2_silent_paths": 0,
+      "unassigned_paths": 0,
+      "group1_value": 0.3333333333,
+      "group2_value": 0.5,
+      "delta": -0.1666666667,
+      "delta_se": 2.776946382e-17,
+      "delta_ci_low": -0.1666666667,
+      "delta_ci_high": -0.1666666667,
+      "rel_delta": -0.3333333333,
+      "p_value": 0.0,
+      "p_value_adjusted": 0.0,
+      "correction_family": "edges=declared/proba_out",
+      "mde_alpha": 0.05,
+      "mde": 7.779851935e-17,
+      "rel_mde": 1.555970387e-16,
+      "verdict": "decrease",
+      "test": "bootstrap",
+      "ci_basis": "path_bootstrap",
+      "p_basis": "bootstrap_se",
+      "valid_replicates": 1000,
+      "support_warning": "",
+      "reading": "over the whole observation period: interval [-16.67, -16.67] pp excludes 0 (p < 0.0001); relative -33 %; conditional on post-treatment behaviour: a share of the transitions out of 'A' (30 of 30 and 30 of 30 paths have one), so it also moves when the treatment changes who reaches 'A'; compares those transitions, not the arms; declared family (bh over 1 tested edge): confirmatory, if the edges were declared before the test"
+    }
+  ]
+}

@@ -1,0 +1,398 @@
+{
+  "retentioneering/__init__.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "d74b439552cfc9c21a008e1a34b80078976c40d13f29f38d84d9180810ade1ae"
+  },
+  "retentioneering/_tracking.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "45edbedb5a40f71af5ab07be27224b588f2a390c56264ddb60c0470d53b953ff"
+  },
+  "retentioneering/exceptions.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "da10816d63b7d2aee5e53f7fca3625e6753eff3275025a8cb0f5ee03603b459c"
+  },
+  "retentioneering/ops.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "a1015c591ca5164bc3dc63b5bf17cf5bcc8d04b2966a766822df016c49f374bf"
+  },
+  "retentioneering/data_processors/__init__.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "689c856a61d41a115cdd6b6a91562dd42caae64fdcbbbca70dc311a5ecef705a"
+  },
+  "retentioneering/data_processors/add_clusters.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "fe0e28f1b578b51a629ed9d79c06c0c544f56f8ff9e9748a89a764ad2eb1b5bf"
+  },
+  "retentioneering/data_processors/add_events.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "0848aadb4afc6bf390046005f0f670e2a8cbfccf668ba24135835c638b8c0316"
+  },
+  "retentioneering/data_processors/add_segment.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "e7ff65d26bbca97d3bcbf58a987fa8dc75f9a17d749b25890654e84516f3ffb9"
+  },
+  "retentioneering/data_processors/add_start_end_events.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "3daf730b4afbafd742f27cb7b4af78a37791ec234deab5699d9aed646a94e9f7"
+  },
+  "retentioneering/data_processors/collapse_events.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "e7b48c31408d7b77f932362016b9901d1e926b816ab1cccb735a92d1cfda9a19"
+  },
+  "retentioneering/data_processors/data_processor.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "0ed8cd7b67b7a5a68ed424baa4dbe2800f07efee09b922b2e6368d121751307f"
+  },
+  "retentioneering/data_processors/drop_segment.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "f86c72f4dff6ee00fcb42b4f0f00473bb8ddc0d41da367c371b3576c8eed98dc"
+  },
+  "retentioneering/data_processors/edit_events.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "c33a0e2b6eaf6587b4001de387de126124a24b80fbaf2eab23ee2e71c4386412"
+  },
+  "retentioneering/data_processors/filter_events.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "81ba9093062e88b92e8a1b02e27fd570f79d2c037b8b5a338c313232f5cfe274"
+  },
+  "retentioneering/data_processors/filter_paths.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "731084c7c2250cc5cb31c35590405032d89c02d6a886e1af58537a2619abf5bd"
+  },
+  "retentioneering/data_processors/rename_events.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "8906f5f156e66f6a57177a46e5dc42d42ce40d71a4ab7dd8b1356616b3a5bf8b"
+  },
+  "retentioneering/data_processors/rename_segment_levels.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "3896dcf4272ad3c756e6ec3d569753c80b3d13af3d22f31caa2b971e4c826df8"
+  },
+  "retentioneering/data_processors/sample_paths.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "1eb7632ee75f9c43a275f44d6d85c4a1b29f1ca5f64f9790316cc40ba5ea3173"
+  },
+  "retentioneering/data_processors/split_sessions.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "20a1f46aa861e4f9682cf98a7e3f833c18d460547032bf25610b9e5ebc25826c"
+  },
+  "retentioneering/data_processors/to_daily_states.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "c78504cb3c6d48cfd5b027bd2159627bf40d664eb1cf30154bd207ca48c5e176"
+  },
+  "retentioneering/data_processors/truncate_paths.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "0de951b3ad84a94c871135048262971c46e169eca4e9ce3e5fe4bd182919bd3c"
+  },
+  "retentioneering/data_processors/urls_to_events.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "75e5428d26ff18deb44c39d0ced71c0c35e79ac6386283afff3c95a4c1eb8e50"
+  },
+  "retentioneering/datasets/__init__.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "7fd43dc02c71e47c4b1ddde7b1b67496d38355fac0854dce02ab24c9c6eb3f73"
+  },
+  "retentioneering/datasets/ab_test.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "b892b57e332d72fbdc938c208e5f3f99f5f9271c1002776f6bedbe4fd41399c6"
+  },
+  "retentioneering/datasets/ecom.csv.gz": {
+    "sdist_wheel_equal": true,
+    "sha256": "110716838facbec8143c6c9af74500eb0252197da212fd75aa4c47bf3b692090"
+  },
+  "retentioneering/datasets/ecom.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "07a7ac7e091525ed1672751ce5d38d2347216ceda99be22111ec6ec7b113331b"
+  },
+  "retentioneering/datasets/ab_cases/__init__.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "09ce4d44a23675301b79be10c22ed58573c610e02e5862bdb922f2193beacb0f"
+  },
+  "retentioneering/datasets/ab_cases/_sim.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "21ee0001cc5cb2ac0a742a31570fba4f7574f55fe6ed60728edb83e14f912374"
+  },
+  "retentioneering/datasets/ab_cases/aa_calibration.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "e6810447dd6ce00e73df183f563660537d26d5f4f5f41413a8d2ba48061b66ee"
+  },
+  "retentioneering/datasets/ab_cases/push_campaign.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "6c4283163fe4ebb845ce4e5f78845576328fd07d41cbc3972b015206dda56d67"
+  },
+  "retentioneering/datasets/ab_cases/session_assignment.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "5afeb630c8af831db47623f041fba6350aa45b16f732e80bd40ae6bf259980db"
+  },
+  "retentioneering/datasets/ab_cases/srm_platform_bug.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "c8aff38a1821ae7740d33afc1e5e8f3063590f9a70e2b3e98168c367381779ab"
+  },
+  "retentioneering/datasets/ab_cases/trial_conversion.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "20710fe55892452f46773c53e8de91c4cad1f0a38c21cb9ddad296cb054035a2"
+  },
+  "retentioneering/engine/__init__.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "8e4430e64949275108ae46ff7da7d7c6b3eb8b00340a5e5580892977963da5a6"
+  },
+  "retentioneering/engine/dialect.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "e155f8fd7d13bb2bdd6156ad270d9e15e806fd606ef07fec080997b4d72db7c2"
+  },
+  "retentioneering/eventstream/__init__.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "fedc95a76041ab6a5ecc58a5d1ec2078466ce1e4466cf6056ad554389be278f0"
+  },
+  "retentioneering/eventstream/event_type.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "60d79fd82018d32dcc176d7ed6b9720bc29e296e63ab50092fa078ceedf6f541"
+  },
+  "retentioneering/eventstream/eventstream.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "346b746d99b1eea6a1a77fd94854f835df9089414aad38a764c348c5d76ac1b9"
+  },
+  "retentioneering/eventstream/schema.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "3d9ddf8b9a63c8c6a2e124dc6133c4c3201de6664821a609d3cfc69975a44b8d"
+  },
+  "retentioneering/mcp/__init__.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "2d668d168fb69ff27c7ad7a2bc5523ef08be36c8c1d1889baca606b3e7932e26"
+  },
+  "retentioneering/mcp/_agent_logic.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "db90c9f5cf4d5aae297a5ea416b30f1931d18382263dc9abf8eeaee7ffb775a8"
+  },
+  "retentioneering/mcp/_prompts.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "cf0fe7ce39584dd74ff30497f82cecbeaf613267b57536e83d43a66442d0d817"
+  },
+  "retentioneering/mcp/_report_session.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "9c11cc7fd460fa4dd970229a0fc231eb3ca3392608bc4de56b052e6d319db762"
+  },
+  "retentioneering/mcp/playbook.md": {
+    "sdist_wheel_equal": true,
+    "sha256": "85b529d90e02442623e89d5d5f1297ffc84ae52686a734cefc4775d889ba4a3e"
+  },
+  "retentioneering/mcp/server.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "b95836faaafbb5aa4e81d9126a6e5fa398802c9cb72f055f116f18b783f212b2"
+  },
+  "retentioneering/mcp/tools.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "e8a7af70333511cb381d86df4edbede13791155cbf7d079055222c502cd4b485"
+  },
+  "retentioneering/metrics/__init__.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retentioneering/metrics/composite.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "a7581b80ccb256a39febf8d86c4e787421242f5559b226e52b06ed4e4f693f47"
+  },
+  "retentioneering/metrics/condition_ast.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "6bc3a04bb2ed73895f45b2065c680bf31afc86a480b8b9d1fb645e5f6eed6c50"
+  },
+  "retentioneering/metrics/metric_builder.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "11055d0169a944cfe91f11044f236af29ed38243a36a0fe769beb381f8ac4480"
+  },
+  "retentioneering/paths/__init__.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "1b08b953579c6d4dca76416ddbae433cee32f90be6ef023808713c4455ce2c4f"
+  },
+  "retentioneering/paths/anchors.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "f243ba407fef2db7c8de87bf153ae2e73471eb5d5fb8f176a03a5900904e9528"
+  },
+  "retentioneering/paths/ordered_reach.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "22d7c12f69d6692d58cf9eaf655b804dae94baa4ef76b93e366bc34eb0a3254e"
+  },
+  "retentioneering/paths/tokens.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "8c5a6e778e02d4d3dd501790bf5f8c3e7c64a05cf0440541b8c7ad6e14d64821"
+  },
+  "retentioneering/static/widget-static.js": {
+    "sdist_wheel_equal": true,
+    "sha256": "c18d536a639ba235766bc0474ef31635bdc9d98fe205fd59bb40373a85a75dd1"
+  },
+  "retentioneering/static/widget.css": {
+    "sdist_wheel_equal": true,
+    "sha256": "486059a2fe1ee7c68084a4e8912ceca76a4afdd5ab3b74435623d96c30ba47f9"
+  },
+  "retentioneering/static/widget.js": {
+    "sdist_wheel_equal": true,
+    "sha256": "c46fddb448cca76dddd0a3660af0f31d281c12a7286c550c4e3aeb763624bc47"
+  },
+  "retentioneering/stats/__init__.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "0a613efaaf26259963501bf4d978be4952e3fcbe86716da5ae163f692119ab95"
+  },
+  "retentioneering/stats/experiments.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "6ef2be63192b7aad99034e8d20deeffa1b852eea98528d036446c4cb61d1ce1b"
+  },
+  "retentioneering/stats/primitives.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "c8df29b8ceeb45e72c437bdf4eeab1ab3d24463909ef31a841ac93503b667d1c"
+  },
+  "retentioneering/stats/resampling.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "480ed8443e316fe2257fb174cf53cffd3cb04a45bc01b85088654237ad9f6795"
+  },
+  "retentioneering/tools/__init__.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "5f9ef7fa3f8eb4b166e3a26356c5a08011aa088d367a27b831ba4b2c49fb5d41"
+  },
+  "retentioneering/tools/_bootstrap.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "71002a399533e9e37c7fe8959f40f7c9ff06563b0ec34b555fa2ceee6e794dad"
+  },
+  "retentioneering/tools/_diff.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "752dd8199359ec05dc8cebb36390b5d6a84a416914c8a2f53caab1fd035f929a"
+  },
+  "retentioneering/tools/_stats.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "2f9fbeab43419827c9c6204eff64d6604093073b9e589f90504060c6cbc2152c"
+  },
+  "retentioneering/tools/ab_test.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "bc34c0380ebdf249eb215ec0e39e786cdf66440a62ef447bec81cb178af40051"
+  },
+  "retentioneering/tools/cluster_analysis.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "83d49a46177140e86c8450cfbe98769cdb0caeee5bd36f3569d688074e3c5109"
+  },
+  "retentioneering/tools/conversion.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "757ce6bcb2638be6b88fa7b743d3bed632dc6b3d8b95b1f6c2d82cc4e4db872f"
+  },
+  "retentioneering/tools/describe.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "43d26ea2a28c2f88d9e7bf3acf03e20868690e2020ce6b50058a99e1150a286a"
+  },
+  "retentioneering/tools/experiment.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "9b8cfadcaf78e09c22b0d508241458c57679f782f6f58a0c7bbbc144f269aeba"
+  },
+  "retentioneering/tools/funnel.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "8addcb698d422179dc207c62aebfd858bbb6370da60d164e5d060bb5a35367b6"
+  },
+  "retentioneering/tools/graph_layout.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "f5c04fa4c837ab7a6559732dec29ad851b412b04bac080c943e8f4ae1a791937"
+  },
+  "retentioneering/tools/sample_ratio.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "f0963771a9a0f0eaeed8a9f588f13d9a923728796b42d54e4d85b9ef6e9e4102"
+  },
+  "retentioneering/tools/segment_overview.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "c1e65b377a60750993ce98561a9e94b4c8798a0f203a3af9d1120712fe478d55"
+  },
+  "retentioneering/tools/step_matrix.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "409aeee7067b1962e95740445a15c36d335f18eb6a70bf5ee989dadb20d8bd0d"
+  },
+  "retentioneering/tools/transition_matrix.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "2507226afef603357a4ea1fa6d9ce244160045a35a0a8f54b5653fc7bf6041ef"
+  },
+  "retentioneering/tools/types.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "3d5120e8e4a6baadbc4b45f93945da06923cb0350264f2f98ae31da4fdceef1d"
+  },
+  "retentioneering/utils/__init__.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retentioneering/utils/clustering_methods.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "a6de2e7d40312e40fc880618d82aa094a37ee5a2502d8529423d90d0d4614592"
+  },
+  "retentioneering/utils/durations.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "f3c29480e080c45505ae2b73e35678ffdce88e003567d09b6017b64b7d0873b2"
+  },
+  "retentioneering/utils/route_stats.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "be45359c00199e97365864b466fafe4bfa22edb1abba1db63cbff167c2becc0d"
+  },
+  "retentioneering/utils/sentinels.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "ddd47b14f0705c683df34e5073ebbfcf265d535bb3a128ff41d783d17c635632"
+  },
+  "retentioneering/utils/sequences.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "7efe60d157edd1a89a933f1db48667a9b7fc0f9b51aca35b84529d77d9ed59bc"
+  },
+  "retentioneering/utils/session_detection.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "09d870e8cd7f225c33e2dc04bd503a6afe9c04f7c636e4db681d0e5305e9cd38"
+  },
+  "retentioneering/utils/sql_quoting.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "497cf808f3932146b29dbec2ecb03dffb8170f49debe4acb17552576b2c98e9a"
+  },
+  "retentioneering/widgets/__init__.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "c8bbc1152dab2f6af05376738455bab3fb8ad220d7241a0bba99a9e571eccf30"
+  },
+  "retentioneering/widgets/_base.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "fa1e2dc6317af7ad7158a1cd0393b73cc7dd6ac9dde41dece7d941d8c6784cfc"
+  },
+  "retentioneering/widgets/_esm.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "67b6fa467cc57363dce2977889dbb19ba01e13ae5da1b25c302bf497ea2d9918"
+  },
+  "retentioneering/widgets/_html_export.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "98d88cf53453282ce2f55cdee0e556c6a53b374b193145a2e3e12df9fa6540c9"
+  },
+  "retentioneering/widgets/_state_file.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "f622c373a5cd11336585cc961c39180cdb720e82e47170c2b290dcec8e0c8f12"
+  },
+  "retentioneering/widgets/_utils.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "5826bed5bccbc08139d308eec28595115c5b4ccf2d4767a9086e8b41b0742ba4"
+  },
+  "retentioneering/widgets/ab_test.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "f306ad2a6ea9b21f98a1e229a6cc02db963aaf4a95bc642ec4438b660206ce7f"
+  },
+  "retentioneering/widgets/cluster_analysis.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "4b036181112251e02fbc4eaf80c4fe5236a5575a5459e45bd018f219667e1333"
+  },
+  "retentioneering/widgets/experiment.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "dd637b901f2fcb624aac48c375ff1b55050e3b63e09184c525406b6320795b27"
+  },
+  "retentioneering/widgets/funnel.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "4743b065c28a2d48369f1be1d524fb9e0ef11878df97566bc0cd41e891996575"
+  },
+  "retentioneering/widgets/segment_overview.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "02ead213cce34f96df8e1513eee133fb38b19444af4a7ea7cce4378c6e8863e4"
+  },
+  "retentioneering/widgets/step_matrix.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "dc1fa48f16820bae553f40931f5c93ebec47676ae6954f4025f2e526f43ca09b"
+  },
+  "retentioneering/widgets/step_sankey.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "1e86a66d7c944dc2b50775e0c90470e957d3d39f4464613494400086d5e2d8c2"
+  },
+  "retentioneering/widgets/transition_graph.py": {
+    "sdist_wheel_equal": true,
+    "sha256": "b2f6869354e14c99776746cf03bf6e23df31a137163ed0560a2a5f9a417ee8f0"
+  }
+}

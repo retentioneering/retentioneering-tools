@@ -12,7 +12,7 @@ The pandas-based engine was replaced with a DuckDB-backed one, so the same analy
 
 ## Should you upgrade?
 
-Upgrade if you want the new engine, the new widgets, agent support, or ongoing fixes. **Stay on 3.x** if your work depends on the Preprocessing Graph, `Cohorts`, `StatTests`, or `Sequences` — none of them exist in 5.x yet (see [What is gone](#what-is-gone) below).
+Upgrade if you want the new engine, the new widgets, agent support, or ongoing fixes. **Stay on 3.x** if your work depends on the Preprocessing Graph, `Cohorts`, or `Sequences` — none of them exist in 5.x yet (see [What is gone](#what-is-gone) below). `StatTests` has a successor in the A/B tools (`get_ab_test`).
 
 The 3.x engine is preserved on the [`3.x` branch](https://github.com/retentioneering/retentioneering-tools/tree/3.x) for reference and patches:
 
@@ -57,6 +57,7 @@ Same concept, different call shape.
 | `drop_paths()` | [`filter_paths(condition)`](/docs/data-processors/filter-paths) | A condition tree over [path metrics](/docs/path-metrics) — `{"op": ">", "metric": "length", "value": 5}` — instead of fixed thresholds. |
 | `add_positive_events` / `add_negative_events` | [`add_events(name, source_event=[...])`](/docs/data-processors/add-events) | One processor for synthetic events; the positive/negative distinction was only naming. |
 | `label_new_users` / `label_lost_users` / `label_cropped_paths` | [`add_segment`](/docs/data-processors/add-segment), [`add_events(churn=...)`](/docs/data-processors/add-events), [`to_daily_states`](/docs/data-processors/to-daily-states) | Labelling is a segment; a churn marker is a synthetic event; lifecycle states are their own processor. |
+| `StatTests(test=...)` (`ztest`, `ttest`, `mannwhitneyu`, ...) | [`get_ab_test(diff, metrics)`](/docs/eventstream#ab-test-scorecard), [`get_ab_bootstrap`](/docs/eventstream#joint-bootstrap-replicates), [`get_sample_ratio`](/docs/eventstream#sample-ratio-mismatch) | One scorecard over [path metrics](/docs/path-metrics): binary auto uses Fisher/conservative CP intervals; nonbinary auto is descriptive. Explicit Welch/bootstrap are approximate advanced options. Available MDE is a normal planning approximation. No rank tests; groups are resolved per path. |
 | `clusters()` (stateful `fit()`/`extract_features()`) | [`cluster_analysis()`](/docs/widgets/cluster-analysis) + [`add_clusters()`](/docs/data-processors/add-clusters) | Explore interactively, then persist the split as a segment column. |
 | `transition_matrix()` | [`transition_graph_data()`](/docs/widgets/transition-graph#headless-mode) | Same matrix, now the headless twin of the graph. |
 | `describe()` / `describe_events()` | [`describe()`](/docs/eventstream#inspecting-your-data) | One dict: schema, shape, date range, event frequency, path length/duration stats. |
@@ -74,7 +75,6 @@ No equivalent in 5.x today. These were cut deliberately to get the rewrite shipp
 |---|---|
 | **Preprocessing Graph** (visual no-code pipeline builder) | Chained data processors in code; for agents, the [MCP server](/docs/mcp-server)'s preprocessor lists. |
 | **Cohorts** | [`add_segment`](/docs/data-processors/add-segment) over a signup-period column plus [Segment Overview](/docs/widgets/segment-overview); [`to_daily_states`](/docs/data-processors/to-daily-states) for lifecycle-state retention. |
-| **StatTests** | Nothing built in — pull per-path values with [`get_metrics()`](/docs/eventstream#per-path-metrics-as-a-feature-table) and run your own test in `scipy`. |
 | **Sequences** | The `matches_pattern` [path metric](/docs/path-metrics) and `path_pattern` on [Step Matrix](/docs/widgets/step-matrix) / [Step Sankey](/docs/widgets/step-sankey) answer pattern questions, but there is no n-gram frequency table. |
 | `timedelta_hist`, `user_lifetime_hist`, `event_timestamp_hist` | [`get_metrics()`](/docs/eventstream#per-path-metrics-as-a-feature-table) returns `duration`, `time_between`, `first_event_time` and friends per path — plot them with your own matplotlib/plotly call. `describe()` gives the percentiles directly. |
 

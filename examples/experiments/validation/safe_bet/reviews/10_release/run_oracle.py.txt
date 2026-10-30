@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""API adapter authored AFTER freezing oracle.py; choose --source or wheel-only import."""
+import argparse
+import hashlib
+import importlib.metadata
+import json
+import math
+import os
+from pathlib import Path
+import platform
+import subprocess
+import sys
+import warnings
+
+p = argparse.ArgumentParser()
+p.add_argument('--source', type=Path, help='Checkout root; omit to test installed wheel')
+p.add_argument('--output', type=Path, required=True)
+a = p.parse_args()
+os.environ['RETENTIONEERING_NO_TRACK'] = '1'
+if a.source:
+    sys.path.insert(0, str(a.source.resolve()/'src'))
+import pandas as pd
+import retentioneering
+from retentioneering import Eventstream
+from oracle import ASSIGNMENTS, EVENTS, expected
+
+errors=[]
+notes=[]
+
+def check(key,actual,wanted):
+    if not math.isclose(float(actual),float(wanted),rel_tol=1e-12,abs_tol=1e-12):
+        errors.append({'check':key,'actual':actual,'expected':float(wanted)})
+
+def clean(value):
+    if isinstance(value,dict): return {str(k):clean(v) for k,v in value.items()}
+    if isinstance(value,(tuple,list)): return [clean(v) for v in value]
+    if isinstance(value,float) and not math.isfinite(value): return None
+    if isinstance(value,(str,int,float,bool)) or value is None: return value
+    if hasattr(value,'item'): return clean(value.item())
+    return str(value)
+
+def case(reverse=False,zero_denominator=False):
+    rows=[]
+    for i,(user,event,amount) in enumerate(EVENTS):
+        rows.append((user,'view' if zero_denominator else event,amount,user[0],pd.Timestamp('2026-01-03')+pd.Timedelta(seconds=i)))
+    if reverse: rows.reverse()
+    frame=pd.DataFrame(rows,columns=['user_id','event','amount','arm','timestamp'])
+    stream=Eventstream(frame,schema={'segment_cols':['arm'],'custom_cols':['amount']})
+    assignment=pd.DataFrame(ASSIGNMENTS,columns=['user_id','arm'])
+    assignment['assigned_at']=pd.Timestamp('2026-01-01')
+    if reverse: assignment=assignment.iloc[::-1].reset_index(drop=True)
+    return stream,assignment
+
+revenue={'metric':'event_value_sum','metric_args':{'event':'purchase','value_col':'amount'}}
+count={'metric':'event_count','metric_args':{'event':'purchase'}}
+binary={'metric':'has_event','metric_args':{'event':'purchase'}}
+strict_metrics=[{'name':'binary',**binary,'agg':'mean'}, {'name':'mean',**revenue,'agg':'mean'}, {'name':'ratio','agg':'ratio_of_sums','numerator':revenue,'denominator':count}]
+flex_metrics=[{'name':'binary',**binary},{'name':'mean',**revenue},{'name':'ratio',**revenue,'denominator':count}]
+
+def run(reverse=False,zero_denominator=False):
+    stream,assignment=case(reverse,zero_denominator)
+    with warnings.catch_warnings(record=True) as w:
+        strict=stream.experiment_data(assignments=assignment,metrics=strict_metrics,observation={'start':'2026-01-02','end':'2026-01-05','assignment_time_col':'assigned_at','complete':True},variant_col='arm',control='c',treatment='t',bootstrap={'n_resamples':1000,'random_state':109,'batch_size':64},event_catalog={'event':['view','purchase']})
+        flex=stream.ab_test_data(('arm','t','c'),flex_metrics,assignment=assignment.set_index('user_id'),observation_end='2026-01-05',n_bootstrap=1000,random_state=109,min_support=1)
+        alias=stream.get_ab_test(('arm','t','c'),flex_metrics,assignment=assignment.set_index('user_id'),observation_end='2026-01-05',n_bootstrap=1000,random_state=109,min_support=1)
+        srm=stream.get_sample_ratio('arm',assignment=assignment.set_index('user_id'))
+    notes.extend(str(x.message) for x in w)
+    return {'strict':strict,'scorecard':clean(flex.to_dict('records')),'alias_equal':flex.equals(alias),'srm':clean({k:(v.to_dict('records') if hasattr(v,'to_dict') else v) for k,v in srm.items()})}
+
+out={
+ 'python':platform.python_version(),'executable':sys.executable,'cwd':os.getcwd(),
+ 'package_file':retentioneering.__file__,'reported_version':retentioneering.__version__,
+ 'source_requested':str(a.source.resolve()) if a.source else None,
+ 'dependency_versions':{n:importlib.metadata.version(n) for n in ['retentioneering','numpy','pandas','scipy','duckdb','pyarrow']},
+ 'oracle_sha256':hashlib.sha256(Path(__file__).with_name('oracle.py').read_bytes()).hexdigest(),
+}
+if a.source:
+    out['source_head']=subprocess.check_output(['git','-C',str(a.source),'rev-parse','HEAD'],text=True).strip()
+    out['source_status']=subprocess.check_output(['git','-C',str(a.source),'status','--porcelain'],text=True)
+    out['source_diff_sha256']=hashlib.sha256(subprocess.check_output(['git','-C',str(a.source),'diff','HEAD','--'])).hexdigest()
+out['original']=run()
+out['repeat']=run()
+out['permuted']=run(reverse=True)
+ex=expected()
+for adapter in ['strict','scorecard']:
+    rows=out['original'][adapter]['summary'] if adapter=='strict' else out['original'][adapter]
+    for row in rows:
+        metric=row['metric']
+        for label,field in [('control','control' if adapter=='strict' else 'group2_value'),('treatment','treatment' if adapter=='strict' else 'group1_value'),('effect','absolute_effect' if adapter=='strict' else 'delta')]:
+            check(f'{adapter}.{metric}.{label}',row[field],ex[metric][label])
+        if adapter=='scorecard':
+            check(f'{adapter}.{metric}.n_control',row['group2_paths'],4)
+            check(f'{adapter}.{metric}.n_treatment',row['group1_paths'],4)
+    out[f'{adapter}_repeat_equal']=out['original'][adapter]==out['repeat'][adapter]
+    out[f'{adapter}_permuted_equal']=out['original'][adapter]==out['permuted'][adapter]
+for row in out['original']['strict']['diagnostics']:
+    check('strict.n_assigned',row['n_assigned'],4)
+try:
+    out['zero_denominator']=run(zero_denominator=True)
+except Exception as error:
+    out['zero_denominator']={'exception':type(error).__name__,'message':str(error)}
+out['warnings']=list(dict.fromkeys(notes))
+out['oracle_errors']=errors
+out['oracle_point_checks_passed']=not errors
+out=clean(out)
+a.output.parent.mkdir(parents=True,exist_ok=True)
+a.output.write_text(json.dumps(out,indent=2,sort_keys=True,allow_nan=False)+'\n')
+print(json.dumps({k:v for k,v in out.items() if k not in ['original','repeat','permuted','zero_denominator']},indent=2))
+if errors: sys.exit(1)

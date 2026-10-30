@@ -21,8 +21,10 @@ removed/added/renamed `Eventstream` methods and the 5.0 naming conventions. `doc
 pages, generated reference, ADRs) describes the current API.
 
 **Known gaps vs. 3.3.0** (deliberately not carried over, may return later — ADR-0012): the
-interactive Preprocessing Graph (visual no-code pipeline builder), and the `Cohorts`, `StatTests`,
-`Sequences` tools.
+interactive Preprocessing Graph (visual no-code pipeline builder), and the `Cohorts` and
+`Sequences` tools. `StatTests` is no longer a gap: A/B readouts are covered by `get_ab_test`,
+`get_ab_bootstrap`, `get_sample_ratio` and the `ab_test` widget (`[Unreleased]` in
+`CHANGELOG.md`, ADR-0017); `datasets.load_ab_test(name=...)` has six synthetic experiments.
 
 ## Commands
 
@@ -59,6 +61,15 @@ skip when Playwright is absent. After `make build`, install Chromium with
 `uv run --with playwright python -m playwright install chromium` and run
 `uv run --with playwright pytest tests/browser -v`. CI runs these on Python 3.12.
 `vite build` and docs demo generation remain additional JS correctness signals.
+
+After `make build` and `uv build`, run `uv run python scripts/verify_wheel.py dist/*.whl`
+to compare package bytes and all three widget assets with source, install that wheel
+in a fresh environment, and check assigned-user arithmetic plus real HTML exports.
+The runner removes source-path injection, uses Python isolated mode, and saves source,
+wheel, installed-file and dependency provenance under `artifacts/wheel/`. `--offline`
+uses existing dependency caches; `--environment-dir` preserves a new environment for
+additional installed-wheel tests. A passing artifact smoke does not validate every
+statistical method or replace browser/tutorial checks.
 
 ## Architecture
 
@@ -119,7 +130,8 @@ Follow these rules for any new API.
 
 `metrics/metric_builder.py` is the single registry of per-path metrics (`length`, `duration`,
 `event_count`, `has_event`, `time_between`, `first_event_time`, `active_days`,
-`matches_pattern`, `in_segment`). The same `{"metric": ..., "metric_args": ...}` configs feed
+`matches_pattern`, `in_segment`, `column_sum` / `column_mean` / `column_last` over custom
+columns). The same `{"metric": ..., "metric_args": ...}` configs feed
 clustering (`features`), segment comparison (`metrics` / `overview_metrics`), and
 `filter_paths` conditions. Adding a metric also requires updating the JS metric editor and the
 Path Metrics docs page.
@@ -190,18 +202,20 @@ paths. `.github/readme/ASSETS.md` maps each README image to the script that make
 ### CI/CD (ADR-0011)
 
 - `.github/workflows/ci.yml` — on push/PR: `lint` job (pre-commit --all-files) + `test` job
-  (matrix over Python 3.10-3.13, builds JS, runs pytest).
+  (matrix over Python 3.10-3.13, builds JS, runs pytest, then verifies the built wheel
+  in a fresh environment outside the checkout).
 - `.github/workflows/deps-latest.yml` — nightly + `workflow_dispatch`: installs with pip's own
   resolution instead of `uv.lock`, then `pip check` + pytest. Does not block merges; a failure
   opens an issue labelled `deps-latest`. Rationale is in the workflow's header comment.
 - `.github/workflows/release.yml` — on `v*` tag push (including PEP 440 `rc` tags, e.g.
-  `v5.0.0rc1`): build JS, test, `uv build`, verify `widget.js` actually landed in the wheel,
+  `v5.0.0rc1`): build JS, test, `uv build`, verify all widget assets and package bytes,
+  then run public numerical and HTML-export checks from a fresh installed-wheel environment,
   `uv publish` to real PyPI via OIDC trusted publishing (`environment: pypi`, no stored token),
   create a GitHub Release with notes extracted from the matching `## [VERSION]` section of
   `CHANGELOG.md`.
-- `.github/workflows/test-release.yml` — manual (`workflow_dispatch`), same pipeline but
-  publishes to TestPyPI (`environment: testpypi`) instead. Run via `make test-release` from any
-  branch. TestPyPI (like real PyPI) permanently reserves each version string once published, so
+- `.github/workflows/test-release.yml` — on `test-v*` tag push, the same artifact checks
+  before publishing to TestPyPI (`environment: testpypi`). Run via
+  `make test-release VERSION=x.y.z` from any branch. TestPyPI (like real PyPI) permanently reserves each version string once published, so
   bump `pyproject.toml`'s version between repeated test runs.
 - `master` is protected by a GitHub ruleset: PRs only (no direct push), no force-push, no
   deletion, required status checks (`lint`, `test (3.11)`, `test (3.12)`, `test (3.13)`), 0
@@ -228,3 +242,16 @@ native skill loader. Two skills ship today: `retentioneering-product-analytics`
 `retentioneering-contributing` (turning findings into issues/PRs that match this
 repository's conventions). When public API changes, re-verify the version-checked claims
 in each skill's `references/api-map.md`.
+
+
+### A/B integration contracts
+
+Read `docs/adr/0018-ab-integration.md` when changing experiment inference.
+`ab_test_data` / `ab_test` is the comparative scorecard (`get_ab_test` remains
+a compatible name); `experiment_data` / `experiment` is the strict fixed-calendar
+roster report. Both use `stats/primitives.py` and `stats/resampling.py`; do not
+introduce independent copies of inference formulas or draw generators. Horizons
+and since-assignment periods require an explicit exclusive `observation_end`.
+Keep silent assignments, declared family size, unavailable inference statuses and
+MCP metadata intact. Tests and tutorials must state the population and independent
+unit. Source PRs #216 and #217 remain linked in ADR-0018.

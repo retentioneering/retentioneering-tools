@@ -1,0 +1,71 @@
+"""Independent pre-source oracle: standard-library event reductions and arithmetic."""
+from datetime import datetime, timezone
+import json
+
+ROWS = [
+    # A row sequence deliberately differs from timestamp order.
+    {"id": "c1", "group": "control", "event": "pay", "time": "2026-01-01T00:00:03+00:00", "value": 6.0, "den": 2.0},
+    {"id": "t1", "group": "test", "event": "view", "time": "2026-01-01T00:00:01+00:00", "value": -4.0, "den": 1.0},
+    {"id": "c1", "group": "control", "event": "view", "time": "2026-01-01T00:00:01+00:00", "value": 2.0, "den": 1.0},
+    {"id": "t1", "group": "test", "event": "pay", "time": "2026-01-01T00:00:04+00:00", "value": 8.0, "den": 1.0},
+    {"id": "c2", "group": "control", "event": "view", "time": "2026-01-01T00:00:01+00:00", "value": -3.0, "den": 0.0},
+    {"id": "c2", "group": "control", "event": "leave", "time": "2026-01-01T00:00:02+00:00", "value": 1.0, "den": 0.0},
+    {"id": "t2", "group": "test", "event": "view", "time": "2026-01-01T00:00:01+00:00", "value": 0.0, "den": 2.0},
+    {"id": "t2", "group": "test", "event": "pay", "time": "2026-01-01T00:00:02+00:00", "value": 10.0, "den": 3.0},
+]
+MIXED_ID_ROWS = [
+    {"id": 1, "group": 1, "event": "view", "time": "2026-01-01T00:00:00+00:00", "value": 2.0, "den": 1.0},
+    {"id": "1", "group": "1", "event": "view", "time": "2026-01-01T01:00:00+01:00", "value": 4.0, "den": 2.0},
+    {"id": "01", "group": "test", "event": "pay", "time": "2026-01-01T00:00:01+00:00", "value": -1.0, "den": 0.0},
+]
+
+def typed_key(value):
+    return type(value).__name__ + ":" + repr(value)
+
+def reduce_paths(rows, column="value"):
+    """Finite, nonmissing fixture oracle; stable tie-break is original row order."""
+    paths = {}
+    for order, row in enumerate(rows):
+        paths.setdefault(typed_key(row["id"]), []).append((order, row))
+    out = {}
+    for key, members in paths.items():
+        values = [float(row[column]) for _, row in members]
+        last = max(members, key=lambda pair: (datetime.fromisoformat(pair[1]["time"]).astimezone(timezone.utc), pair[0]))[1]
+        out[key] = {"column_sum": sum(values), "column_mean": sum(values) / len(values), "column_last": float(last[column]), "group": typed_key(members[0][1]["group"])}
+    return out
+
+def effects(control, test):
+    return {"control": control, "test": test, "absolute": test-control,
+            "relative": (test-control)/control if control != 0 else None}
+
+def group_contributions(rows, reducer):
+    groups = {}
+    for key, row in reduce_paths(rows).items():
+        groups.setdefault(row["group"], {})[key] = row[reducer]
+    return groups
+
+def aggregate_ratio(rows, group):
+    selected = [row for row in rows if typed_key(row["group"]) == typed_key(group)]
+    den = sum(row["den"] for row in selected)
+    return sum(row["value"] for row in selected) / den if den else None
+
+def expected():
+    return {"paths": reduce_paths(ROWS), "mixed_paths": reduce_paths(MIXED_ID_ROWS),
+            "groups": {r: group_contributions(ROWS, r) for r in ("column_sum", "column_mean", "column_last")},
+            "mean_effects": {"column_sum": effects(3.0, 7.0), "column_mean": effects(1.5, 3.5), "column_last": effects(3.5, 9.0)},
+            "ratio_effects": effects(aggregate_ratio(ROWS, "control"), aggregate_ratio(ROWS, "test")),
+            "signed_effect": effects(-2.0, 4.0), "zero_control_effect": effects(0.0, 4.0)}
+
+def self_check():
+    result = expected()
+    assert result["paths"]["str:'c1'"]["column_sum"] == 8
+    assert result["paths"]["str:'c2'"]["column_mean"] == -1
+    assert result["paths"]["str:'t1'"]["column_last"] == 8
+    assert len(result["mixed_paths"]) == 3
+    assert result["ratio_effects"]["control"] == 2
+    assert result["ratio_effects"]["test"] == 2
+    assert result["signed_effect"]["relative"] == -3
+
+if __name__ == "__main__":
+    self_check()
+    print(json.dumps(expected(), indent=2, allow_nan=False))

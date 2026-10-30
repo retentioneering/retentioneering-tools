@@ -302,8 +302,8 @@ function NmfWMatrix({ nmf }: { nmf: NmfData }) {
 
 // ── features modal overlay (rendered at App root for VS Code compat) ────────
 
-function FeaturesOverlay({ features, events, segmentCols, segmentLevels, onFeaturesChange, onClose }: {
-  features: any[]; events: string[]; segmentCols: string[]; segmentLevels: Record<string,string[]>;
+function FeaturesOverlay({ features, events, segmentCols, segmentLevels, customCols, onFeaturesChange, onClose }: {
+  features: any[]; events: string[]; segmentCols: string[]; segmentLevels: Record<string,string[]>; customCols: Record<string,boolean>;
   onFeaturesChange: (f: any[]) => void; onClose: () => void;
 }) {
   const ref = React.useRef<HTMLDivElement>(null);
@@ -346,7 +346,7 @@ function FeaturesOverlay({ features, events, segmentCols, segmentLevels, onFeatu
               No features added yet. Click "Add Feature" to start.
             </div>
           ) : features.map((f, i) => (
-            <MetricRow key={i} cfg={f} events={events} segmentCols={segmentCols} segmentLevels={segmentLevels}
+            <MetricRow key={i} cfg={f} events={events} segmentCols={segmentCols} segmentLevels={segmentLevels} customCols={customCols}
               showErrors={submitted} showAgg={false}
               onChange={cfg => update(i, cfg)}
               onRemove={() => remove(i)}
@@ -385,8 +385,8 @@ function FeaturesTriggerButton({ count, onClick, disabled }: { count: number; on
   );
 }
 
-function MetricsOverlay({ metrics, events, segmentCols, segmentLevels, onMetricsChange, onClose }: {
-  metrics: any[]; events: string[]; segmentCols: string[]; segmentLevels: Record<string,string[]>;
+function MetricsOverlay({ metrics, events, segmentCols, segmentLevels, customCols, onMetricsChange, onClose }: {
+  metrics: any[]; events: string[]; segmentCols: string[]; segmentLevels: Record<string,string[]>; customCols: Record<string,boolean>;
   onMetricsChange: (m: any[]) => void; onClose: () => void;
 }) {
   React.useEffect(() => {
@@ -427,7 +427,7 @@ function MetricsOverlay({ metrics, events, segmentCols, segmentLevels, onMetrics
               No metrics added yet.
             </div>
           ) : metrics.map((m, i) => (
-            <MetricRow key={i} cfg={m} events={events} segmentCols={segmentCols} segmentLevels={segmentLevels} showErrors={submitted} showAgg={true} onChange={cfg => update(i, cfg)} onRemove={() => remove(i)} />
+            <MetricRow key={i} cfg={m} events={events} segmentCols={segmentCols} segmentLevels={segmentLevels} customCols={customCols} showErrors={submitted} showAgg={true} onChange={cfg => update(i, cfg)} onRemove={() => remove(i)} />
           ))}
         </div>
         <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
@@ -821,6 +821,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
     const pathCols      = parseJson<string[]>(host.get("path_cols"),      []);
     const segmentCols   = parseJson<string[]>(host.get("segment_cols"),   []);
     const segmentLevels = parseJson<Record<string,string[]>>(host.get("segment_levels"), {});
+    const customCols    = parseJson<Record<string,boolean>>(host.get("custom_cols"), {});
     const streamVarName = (host.get("stream_var_name") as string) || "stream";
 
     const {
@@ -1016,7 +1017,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
         {/* Features modal — position:absolute avoids VS Code transform issues */}
         {!isStatic && featuresOpen && (
           <FeaturesOverlay
-            features={features} events={events} segmentCols={segmentCols} segmentLevels={segmentLevels}
+            features={features} events={events} segmentCols={segmentCols} segmentLevels={segmentLevels} customCols={customCols}
             onFeaturesChange={setFeatures}
             onClose={() => setFeaturesOpen(false)}
           />
@@ -1024,7 +1025,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
 
         {!isStatic && metricsOpen && (
           <MetricsOverlay
-            metrics={metricsConfig} events={events} segmentCols={segmentCols} segmentLevels={segmentLevels}
+            metrics={metricsConfig} events={events} segmentCols={segmentCols} segmentLevels={segmentLevels} customCols={customCols}
             onMetricsChange={setMetrics}
             onClose={() => setMetricsOpen(false)}
           />

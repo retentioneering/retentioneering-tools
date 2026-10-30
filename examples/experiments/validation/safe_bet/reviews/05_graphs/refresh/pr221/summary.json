@@ -1,0 +1,55 @@
+{
+  "source": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/pr221-latest/src",
+  "constant": {
+    "source": "A",
+    "target": "B",
+    "edge_weight": "proba_out",
+    "group1_edge_paths": 30,
+    "group2_edge_paths": 30,
+    "population": "stream",
+    "group1_paths": 30,
+    "group2_paths": 30,
+    "group1_support": 30,
+    "group2_support": 30,
+    "conditional": true,
+    "unassigned_paths": 0,
+    "group1_value": 0.3333333333333333,
+    "group2_value": 0.5,
+    "delta": -0.16666666666666669,
+    "delta_se": 2.77694638204588e-17,
+    "delta_ci_low": -0.16666666666666669,
+    "delta_ci_high": -0.16666666666666669,
+    "rel_delta": -0.33333333333333337,
+    "p_value": 0.0,
+    "p_value_adjusted": 0.0,
+    "correction_family": "edges=declared/proba_out",
+    "mde_alpha": 0.05,
+    "mde": 7.779851935432024e-17,
+    "rel_mde": 1.5559703870864049e-16,
+    "verdict": "decrease",
+    "test": "bootstrap",
+    "ci_basis": "path_bootstrap",
+    "p_basis": "bootstrap_se",
+    "valid_replicates": 1000,
+    "support_warning": "",
+    "reading": "over the whole observation period: interval [-16.67, -16.67] pp excludes 0 (p < 0.0001); relative -33 %; conditional on post-treatment behaviour: a share of the transitions out of 'A' (30 of 30 and 30 of 30 paths have one), so it also moves when the treatment changes who reaches 'A'; compares those transitions, not the arms; declared family (bh over 1 tested edge): confirmatory, if the edges were declared before the test"
+  },
+  "null": {
+    "get_ab_transitions": {
+      "runs": 10,
+      "any_discovery": 10,
+      "total_discoveries": 40
+    },
+    "get_ab_steps": {
+      "runs": 10,
+      "any_discovery": 10,
+      "total_discoveries": 20
+    }
+  },
+  "invalid_verdict": "insufficient_data",
+  "invalid_warning": "invalid_replicates",
+  "stale_overlay_error": "",
+  "wrappers": {
+    "exists": false
+  }
+}

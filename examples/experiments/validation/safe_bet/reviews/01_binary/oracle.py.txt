@@ -1,0 +1,111 @@
+"""Independent binary inference oracle, frozen before candidate inspection.
+
+No imports from retentioneering or candidate source. Effect convention B - A.
+"""
+from math import comb, erf, erfc, exp, fsum, hypot, inf, isfinite, lgamma, log, sqrt
+from statistics import NormalDist
+
+
+def validate(k, n, alpha=.05):
+    if isinstance(k, bool) or isinstance(n, bool) or int(k) != k or int(n) != n:
+        raise ValueError("integer counts required")
+    if n < 1 or not 0 <= k <= n:
+        raise ValueError("0 <= successes <= positive trials")
+    if not isfinite(alpha) or not 0 < alpha < 1:
+        raise ValueError("0 < alpha < 1")
+
+
+def wilson(k, n, alpha=.05):
+    validate(k, n, alpha)
+    z = -NormalDist().inv_cdf(alpha / 2)
+    p = k / n
+    c = (p + z*z / (2*n)) / (1 + z*z/n)
+    r = z * sqrt(p*(1-p)/n + z*z/(4*n*n)) / (1 + z*z/n)
+    return max(0., c-r), min(1., c+r)
+
+
+def newcombe(ka, na, kb, nb, alpha=.05):
+    la, ua = wilson(ka, na, alpha)
+    lb, ub = wilson(kb, nb, alpha)
+    pa, pb = ka/na, kb/nb
+    d = pb-pa
+    return max(-1., d-hypot(pb-lb, ua-pa)), min(1., d+hypot(ub-pb, pa-la))
+
+
+def pooled_z(ka, na, kb, nb):
+    validate(ka, na)
+    validate(kb, nb)
+    p = (ka+kb)/(na+nb)
+    v = p*(1-p)*(1/na + 1/nb)
+    if v == 0:
+        return 0., 1.
+    z = (kb/nb-ka/na)/sqrt(v)
+    return z, erfc(abs(z)/sqrt(2))
+
+
+def fisher(ka, na, kb, nb):
+    """Exact integer combinatorial comparison avoids probability-tie roundoff."""
+    validate(ka, na)
+    validate(kb, nb)
+    total_successes = ka+kb
+    lo, hi = max(0, total_successes-nb), min(na, total_successes)
+    observed_numerator = comb(na, ka)*comb(nb, kb)
+    selected = sum(comb(na, x)*comb(nb, total_successes-x)
+                   for x in range(lo, hi+1)
+                   if comb(na, x)*comb(nb, total_successes-x) <= observed_numerator)
+    return selected / comb(na+nb, total_successes)
+
+
+def welch_binary(ka, na, kb, nb, alpha=.05):
+    validate(ka, na, alpha)
+    validate(kb, nb, alpha)
+    if min(na, nb) < 2:
+        raise ValueError("Welch requires at least two observations per group")
+    from scipy.stats import t
+    pa, pb = ka/na, kb/nb
+    va, vb = pa*(1-pa)/(na-1), pb*(1-pb)/(nb-1)
+    d, se2 = pb-pa, va+vb
+    if se2 == 0:
+        return {"difference":d, "se":0., "df":inf, "t":0. if d == 0 else (inf if d>0 else -inf),
+                "p":1. if d == 0 else 0., "ci":(d,d)}
+    df = se2*se2/(va*va/(na-1)+vb*vb/(nb-1))
+    se = sqrt(se2)
+    stat = d/se
+    width = t.isf(alpha/2, df)*se
+    return {"difference":d, "se":se, "df":df, "t":stat,
+            "p":2*t.sf(abs(stat),df), "ci":(d-width,d+width)}
+
+
+def binomial_probs(n,p):
+    if p == 0:
+        return [1.] + [0.]*n
+    if p == 1:
+        return [0.]*n + [1.]
+    return [comb(n,k)*p**k*(1-p)**(n-k) for k in range(n+1)]
+
+
+def coverage_single(intervals, n, p):
+    return fsum(w for (lo,hi),w in zip(intervals,binomial_probs(n,p)) if lo-1e-14 <= p <= hi+1e-14)
+
+
+def coverage_difference(intervals, na, nb, pa, pb):
+    a,b = binomial_probs(na,pa),binomial_probs(nb,pb)
+    d = pb-pa
+    return fsum(a[ka]*b[kb] for ka in range(na+1) for kb in range(nb+1)
+                if intervals[ka][kb][0]-1e-14 <= d <= intervals[ka][kb][1]+1e-14)
+
+
+def null_rejection(pvalues, na, nb, p, alpha=.05):
+    a,b = binomial_probs(na,p),binomial_probs(nb,p)
+    return fsum(a[ka]*b[kb] for ka in range(na+1) for kb in range(nb+1)
+                if pvalues[ka][kb] < alpha)
+
+
+if __name__ == "__main__":
+    import json
+    assert abs(fisher(6,8,1,5) - 0.10256410256410256) < 1e-15
+    assert abs(wilson(0,10)[0]) < 1e-15
+    assert abs(wilson(10,10)[1]-1) < 1e-15
+    assert newcombe(0,10,10,10)[0] > 0
+    print(json.dumps({"wilson_0_10":wilson(0,10),"newcombe_0_10_10_10":newcombe(0,10,10,10),
+                      "fisher_6_8_1_5":fisher(6,8,1,5),"z_0_10_10_10":pooled_z(0,10,10,10)},indent=2))

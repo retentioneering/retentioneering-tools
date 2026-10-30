@@ -1,0 +1,36 @@
+"""Post-cross-review reference: direct binomial-tail inversion, no SciPy beta.
+
+This is a disclosed supplemental reference, not the original blinded oracle.
+It encodes the same mathematical CP definition by a different numerical route.
+"""
+from functools import lru_cache
+from math import comb, fsum
+
+
+@lru_cache(maxsize=None)
+def cp_tail(k, n, tail):
+    def prob(p, start, stop):
+        return fsum(comb(n,j)*p**j*(1-p)**(n-j) for j in range(start,stop))
+    lo, hi = 0., 1.
+    if k:
+        for _ in range(100):
+            mid = (lo+hi)/2
+            if prob(mid,k,n+1) < tail: lo=mid
+            else: hi=mid
+        lower=(lo+hi)/2
+    else: lower=0.
+    lo, hi = 0., 1.
+    if k<n:
+        for _ in range(100):
+            mid = (lo+hi)/2
+            if prob(mid,0,k+1) > tail: lo=mid
+            else: hi=mid
+        upper=(lo+hi)/2
+    else: upper=1.
+    return lower,upper
+
+
+def difference(ka,na,kb,nb,alpha=.05):
+    la,ua=cp_tail(ka,na,alpha/4)
+    lb,ub=cp_tail(kb,nb,alpha/4)
+    return lb-ua,ub-la

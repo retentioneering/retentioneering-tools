@@ -1,0 +1,98 @@
+[
+  {
+    "condition": "normal_40_60",
+    "trials": 1000,
+    "B": 399,
+    "available": 1000,
+    "covered": 949,
+    "coverage_all": 0.949,
+    "coverage_all_wilson95": [
+      0.9335645136552384,
+      0.9609990572247331
+    ],
+    "coverage_available": 0.949,
+    "coverage_available_wilson95": [
+      0.9335645136552384,
+      0.9609990572247331
+    ],
+    "rejections": 49,
+    "type1": 0.049,
+    "type1_wilson95": [
+      0.037261034647360615,
+      0.06419070150661012
+    ],
+    "p_ci_disagreement": 8
+  },
+  {
+    "condition": "lognormal_15_150",
+    "trials": 1000,
+    "B": 399,
+    "available": 1000,
+    "covered": 725,
+    "coverage_all": 0.725,
+    "coverage_all_wilson95": [
+      0.6965038327040267,
+      0.7517741259774735
+    ],
+    "coverage_available": 0.725,
+    "coverage_available_wilson95": [
+      0.6965038327040267,
+      0.7517741259774735
+    ],
+    "rejections": 205,
+    "type1": 0.205,
+    "type1_wilson95": [
+      0.18113008647590156,
+      0.23112770103057595
+    ],
+    "p_ci_disagreement": 76
+  },
+  {
+    "condition": "rare_mixture_30_90",
+    "trials": 1000,
+    "B": 399,
+    "available": 1000,
+    "covered": 987,
+    "coverage_all": 0.987,
+    "coverage_all_wilson95": [
+      0.9778855576244203,
+      0.9923871796106489
+    ],
+    "coverage_available": 0.987,
+    "coverage_available_wilson95": [
+      0.9778855576244203,
+      0.9923871796106489
+    ],
+    "rejections": 10,
+    "type1": 0.01,
+    "type1_wilson95": [
+      0.00544075444552925,
+      0.018309468870314767
+    ],
+    "p_ci_disagreement": 3
+  },
+  {
+    "condition": "paired_40_60",
+    "trials": 1000,
+    "B": 399,
+    "available": 1000,
+    "covered": 948,
+    "coverage_all": 0.948,
+    "coverage_all_wilson95": [
+      0.9324442606807201,
+      0.9601269637162225
+    ],
+    "coverage_available": 0.948,
+    "coverage_available_wilson95": [
+      0.9324442606807201,
+      0.9601269637162225
+    ],
+    "rejections": 51,
+    "type1": 0.051,
+    "type1_wilson95": [
+      0.03900094277526685,
+      0.06643548634476165
+    ],
+    "p_ci_disagreement": 11
+  }
+]

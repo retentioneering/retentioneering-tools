@@ -1,0 +1,495 @@
+[
+  {
+    "pr": "221",
+    "before": "9d130f375b8a778a55e11de98b57d46ad082c55f",
+    "after": "2e9649395dda3ce647b4818c1ec013aba152ecdd",
+    "files": [
+      {
+        "file": "js/viz-core/src/components/TransitionGraph/TransitionGraph.tsx",
+        "old_sha256": "797668612210c31622bd1d676d9c8b135bf8998d438c5bedf0a661989ad68c3b",
+        "new_sha256": "58b3dc6d13150610fc57f95994cc40a55fd55ce3be4cc76e51773bf9de32a811",
+        "archive_matches_git": true,
+        "changed_functions": "See saved source diff; frontend files reviewed at file/selected-function scope, no UI certification."
+      },
+      {
+        "file": "js/viz-core/src/index.ts",
+        "old_sha256": "d5e3b4679d1fc9f2d2a2fa1a1b2ff95a24a5877390cbec8027e0d18250e9f473",
+        "new_sha256": "8e0f76fe5eda0e4666b72f32f96f3f2e6c3bad70d52e5854384106b316084d90",
+        "archive_matches_git": true,
+        "changed_functions": "See saved source diff; frontend files reviewed at file/selected-function scope, no UI certification."
+      },
+      {
+        "file": "js/viz-core/src/utils/ab-transitions.ts",
+        "old_sha256": "399e580913096e930a451c84c2758361ed5883db779a542560615c4ad5d17de5",
+        "new_sha256": "4c171c87e3e8709511860801d3eefc6b7cc7e6ff7b305be53f15e4602f8fce00",
+        "archive_matches_git": true,
+        "changed_functions": "See saved source diff; frontend files reviewed at file/selected-function scope, no UI certification."
+      },
+      {
+        "file": "src/retentioneering/eventstream/eventstream.py",
+        "old_sha256": "bd9cd63a773571f8ce9529ff5c20e6b7a0d24439fcbb1de9ad573f13d47f4e7b",
+        "new_sha256": "00c723f7a56c19da776c9496fd3723f7a2b4d1f02b30fb93892e92f06cf0e99a",
+        "archive_matches_git": true,
+        "changed_functions": [
+          {
+            "name": "Eventstream.get_ab_steps",
+            "change": "modified",
+            "new_line": 1249
+          },
+          {
+            "name": "Eventstream.get_ab_transitions",
+            "change": "modified",
+            "new_line": 1074
+          },
+          {
+            "name": "Eventstream.transition_graph",
+            "change": "modified",
+            "new_line": 3054
+          }
+        ]
+      },
+      {
+        "file": "src/retentioneering/mcp/playbook.md",
+        "old_sha256": "a4af4676e5bf0af0a5a4485c88eb6118380fa0fc9dec1d8b0b30267a7eca6eb3",
+        "new_sha256": "687407ea994a6fb6bbf4dfbc911bda511918db3ccf8940137d2f892286400152",
+        "archive_matches_git": true,
+        "changed_functions": "Documentation-only file; changes preserved in saved source diff."
+      },
+      {
+        "file": "src/retentioneering/mcp/server.py",
+        "old_sha256": "6812d81c2acfb0413d2fdd7451ca0a44cd8a5e4a812bdecd24fa0243d1413062",
+        "new_sha256": "2966bbce0c28a549cbc8821a7a2ee3ed3088e0f68fd987c24d9dc67cff81bf99",
+        "archive_matches_git": true,
+        "changed_functions": [
+          {
+            "name": "_build_server",
+            "change": "modified",
+            "new_line": 144
+          },
+          {
+            "name": "_build_server.get_ab_transitions",
+            "change": "modified",
+            "new_line": 873
+          }
+        ]
+      },
+      {
+        "file": "src/retentioneering/mcp/tools.py",
+        "old_sha256": "b41174793e24574f4e3955f1b0b01ec5e21ec74102c0e0eec0dad94e022a9a78",
+        "new_sha256": "99bbe9d39e8e820d8645c4778372807c4196981746b6f7f27add2601bc3ee6e2",
+        "archive_matches_git": true,
+        "changed_functions": [
+          {
+            "name": "_json_p_value",
+            "change": "added",
+            "new_line": 906
+          },
+          {
+            "name": "_screen_result",
+            "change": "modified",
+            "new_line": 1547
+          },
+          {
+            "name": "_screen_result._row",
+            "change": "modified",
+            "new_line": 1553
+          },
+          {
+            "name": "add_ab_test",
+            "change": "modified",
+            "new_line": 641
+          },
+          {
+            "name": "get_ab_bootstrap",
+            "change": "modified",
+            "new_line": 1402
+          },
+          {
+            "name": "get_ab_test",
+            "change": "modified",
+            "new_line": 1064
+          },
+          {
+            "name": "get_ab_test._row",
+            "change": "modified",
+            "new_line": 1266
+          },
+          {
+            "name": "get_ab_transitions",
+            "change": "modified",
+            "new_line": 1611
+          },
+          {
+            "name": "get_conversion_rate",
+            "change": "modified",
+            "new_line": 769
+          },
+          {
+            "name": "get_conversion_rate._cell",
+            "change": "modified",
+            "new_line": 872
+          },
+          {
+            "name": "get_sample_ratio",
+            "change": "modified",
+            "new_line": 916
+          }
+        ]
+      },
+      {
+        "file": "src/retentioneering/tools/ab_test.py",
+        "old_sha256": "6d4b08ecc871edb7b3ea6196704a8d3f6626d490fc97816cd67238ee7de983f5",
+        "new_sha256": "889804bd5e1940c7b9c654f0e470c97f5c33435a92f848cff8da18d7c29b7827",
+        "archive_matches_git": true,
+        "changed_functions": [
+          {
+            "name": "_no_p_value_text",
+            "change": "added",
+            "new_line": 2986
+          },
+          {
+            "name": "accepted_tests",
+            "change": "added",
+            "new_line": 315
+          },
+          {
+            "name": "resolve_test",
+            "change": "modified",
+            "new_line": 286
+          },
+          {
+            "name": "row_reading",
+            "change": "modified",
+            "new_line": 2737
+          }
+        ]
+      },
+      {
+        "file": "src/retentioneering/tools/ab_transitions.py",
+        "old_sha256": "20893f01c7c4563a16f031d4a3b3c856140f6735efa44dd4257f05ad41a2186e",
+        "new_sha256": "a1f8cf3213bc547982d90710852a8ce6e3c2f1aa14f9ced30b8e8eb39a07f37c",
+        "archive_matches_git": true,
+        "changed_functions": [
+          {
+            "name": "_compare",
+            "change": "modified",
+            "new_line": 274
+          },
+          {
+            "name": "_readings",
+            "change": "modified",
+            "new_line": 505
+          },
+          {
+            "name": "_resolve_edge_test",
+            "change": "modified",
+            "new_line": 601
+          },
+          {
+            "name": "_resolve_edge_test.error",
+            "change": "modified",
+            "new_line": 604
+          },
+          {
+            "name": "ab_steps",
+            "change": "modified",
+            "new_line": 846
+          },
+          {
+            "name": "ab_transitions",
+            "change": "modified",
+            "new_line": 641
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "pr": "222",
+    "before": "2e9649395dda3ce647b4818c1ec013aba152ecdd",
+    "after": "0bddd49a9de3d5f5a695ead7282062bf606fdf8b",
+    "files": [
+      {
+        "file": "js/widget/src/ab_matrix.tsx",
+        "old_sha256": null,
+        "new_sha256": "4f78f493a922bc4a6edbcf51b31e5c7695c88d03a10b78cd70bfcd6b860e1e1d",
+        "archive_matches_git": true,
+        "changed_functions": "See saved source diff; frontend files reviewed at file/selected-function scope, no UI certification."
+      },
+      {
+        "file": "js/widget/src/ab_matrix_encoding.ts",
+        "old_sha256": null,
+        "new_sha256": "ddda1eb3613b307c6183601497bdc11df8d74072c00f1e09183908242c3edf87",
+        "archive_matches_git": true,
+        "changed_functions": "See saved source diff; frontend files reviewed at file/selected-function scope, no UI certification."
+      },
+      {
+        "file": "js/widget/src/main.tsx",
+        "old_sha256": "03422cb25206d7f6ff27b070d3ca271331f55a8fe0c99265c5df95f91f8c4729",
+        "new_sha256": "fb2a116bbb1eded637c801f6f6b0f6fe11660f5a044a209c9e8b8a8711038a03",
+        "archive_matches_git": true,
+        "changed_functions": "See saved source diff; frontend files reviewed at file/selected-function scope, no UI certification."
+      },
+      {
+        "file": "src/retentioneering/eventstream/eventstream.py",
+        "old_sha256": "00c723f7a56c19da776c9496fd3723f7a2b4d1f02b30fb93892e92f06cf0e99a",
+        "new_sha256": "30ba730d6423ad70b0a5283acb6bbdb622638093e726d856282a6b7eb6e55910",
+        "archive_matches_git": true,
+        "changed_functions": [
+          {
+            "name": "Eventstream.ab_steps",
+            "change": "added",
+            "new_line": 4173
+          },
+          {
+            "name": "Eventstream.ab_steps_data",
+            "change": "added",
+            "new_line": 4218
+          },
+          {
+            "name": "Eventstream.ab_transitions",
+            "change": "added",
+            "new_line": 4084
+          },
+          {
+            "name": "Eventstream.ab_transitions_data",
+            "change": "added",
+            "new_line": 4136
+          },
+          {
+            "name": "Eventstream.get_ab_steps_table",
+            "change": "added",
+            "new_line": 1397
+          },
+          {
+            "name": "Eventstream.get_ab_transitions_table",
+            "change": "added",
+            "new_line": 1354
+          }
+        ]
+      },
+      {
+        "file": "src/retentioneering/tools/ab_tables.py",
+        "old_sha256": null,
+        "new_sha256": "5a8a8d3b8a4199a382caffa9b1f69288eac8a169685a4752931716a1156c04e8",
+        "archive_matches_git": true,
+        "changed_functions": [
+          {
+            "name": "_blend",
+            "change": "added",
+            "new_line": 155
+          },
+          {
+            "name": "_event_order",
+            "change": "added",
+            "new_line": 54
+          },
+          {
+            "name": "_keys_of",
+            "change": "added",
+            "new_line": 76
+          },
+          {
+            "name": "ab_table",
+            "change": "added",
+            "new_line": 113
+          },
+          {
+            "name": "cell_status",
+            "change": "added",
+            "new_line": 137
+          },
+          {
+            "name": "check_values",
+            "change": "added",
+            "new_line": 85
+          },
+          {
+            "name": "delta_background",
+            "change": "added",
+            "new_line": 162
+          },
+          {
+            "name": "matrix_axes",
+            "change": "added",
+            "new_line": 66
+          },
+          {
+            "name": "style_table",
+            "change": "added",
+            "new_line": 175
+          },
+          {
+            "name": "style_table._fmt",
+            "change": "added",
+            "new_line": 226
+          }
+        ]
+      },
+      {
+        "file": "src/retentioneering/widgets/_ab_matrix.py",
+        "old_sha256": null,
+        "new_sha256": "a64c773031cffad0a8fc5af799f31ca3ce28413025325d6204cd2df075bfd1f7",
+        "archive_matches_git": true,
+        "changed_functions": [
+          {
+            "name": "ABMatrixWidget.__init__",
+            "change": "added",
+            "new_line": 174
+          },
+          {
+            "name": "ABMatrixWidget._binary",
+            "change": "added",
+            "new_line": 290
+          },
+          {
+            "name": "ABMatrixWidget._compute_raw",
+            "change": "added",
+            "new_line": 293
+          },
+          {
+            "name": "ABMatrixWidget._data_names",
+            "change": "added",
+            "new_line": 228
+          },
+          {
+            "name": "ABMatrixWidget._export_data",
+            "change": "added",
+            "new_line": 339
+          },
+          {
+            "name": "ABMatrixWidget._on_params_change",
+            "change": "added",
+            "new_line": 249
+          },
+          {
+            "name": "ABMatrixWidget._params",
+            "change": "added",
+            "new_line": 256
+          },
+          {
+            "name": "ABMatrixWidget._payload",
+            "change": "added",
+            "new_line": 300
+          },
+          {
+            "name": "ABMatrixWidget._payload_extra",
+            "change": "added",
+            "new_line": 334
+          },
+          {
+            "name": "ABMatrixWidget._persist_names",
+            "change": "added",
+            "new_line": 232
+          },
+          {
+            "name": "ABMatrixWidget._recompute",
+            "change": "added",
+            "new_line": 271
+          },
+          {
+            "name": "ABMatrixWidget._to_trait",
+            "change": "added",
+            "new_line": 239
+          },
+          {
+            "name": "ABMatrixWidget._twin",
+            "change": "added",
+            "new_line": 268
+          },
+          {
+            "name": "_diff_text",
+            "change": "added",
+            "new_line": 120
+          },
+          {
+            "name": "_finite",
+            "change": "added",
+            "new_line": 60
+          },
+          {
+            "name": "_jsonable",
+            "change": "added",
+            "new_line": 105
+          },
+          {
+            "name": "untested_reason",
+            "change": "added",
+            "new_line": 67
+          }
+        ]
+      },
+      {
+        "file": "src/retentioneering/widgets/ab_steps.py",
+        "old_sha256": null,
+        "new_sha256": "9b828c353a0bb154d243198db4ce5f8bb22a6271114fe6d8acaa534c5c05d362",
+        "archive_matches_git": true,
+        "changed_functions": [
+          {
+            "name": "ABStepsWidget._params",
+            "change": "added",
+            "new_line": 55
+          },
+          {
+            "name": "ABStepsWidget._payload_extra",
+            "change": "added",
+            "new_line": 64
+          },
+          {
+            "name": "ABStepsWidget._to_trait",
+            "change": "added",
+            "new_line": 48
+          },
+          {
+            "name": "ABStepsWidget._tool_ab_steps_data",
+            "change": "added",
+            "new_line": 71
+          },
+          {
+            "name": "ABStepsWidget._twin",
+            "change": "added",
+            "new_line": 61
+          }
+        ]
+      },
+      {
+        "file": "src/retentioneering/widgets/ab_transitions.py",
+        "old_sha256": null,
+        "new_sha256": "1ebabb0c2ffadea600d9dbebd104a0a1ef94cff6bc32649b25e33d9e1ccf89c6",
+        "archive_matches_git": true,
+        "changed_functions": [
+          {
+            "name": "ABTransitionsWidget._binary",
+            "change": "added",
+            "new_line": 79
+          },
+          {
+            "name": "ABTransitionsWidget._params",
+            "change": "added",
+            "new_line": 66
+          },
+          {
+            "name": "ABTransitionsWidget._payload_extra",
+            "change": "added",
+            "new_line": 82
+          },
+          {
+            "name": "ABTransitionsWidget._to_trait",
+            "change": "added",
+            "new_line": 57
+          },
+          {
+            "name": "ABTransitionsWidget._tool_ab_transitions_data",
+            "change": "added",
+            "new_line": 91
+          },
+          {
+            "name": "ABTransitionsWidget._twin",
+            "change": "added",
+            "new_line": 76
+          }
+        ]
+      }
+    ]
+  }
+]

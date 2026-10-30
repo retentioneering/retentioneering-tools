@@ -169,7 +169,7 @@ def test_sidebar_changes_recompute_through_python(tmp_path):
             # confidence level and correction: the scorecard's note follows
             page.locator("[data-testid=ab-tab-scorecard]").click()
             page.get_by_label("Confidence level").select_option("0.99")
-            page.get_by_text("99% intervals").first.wait_for(state="visible")
+            page.get_by_text("99% primary intervals").first.wait_for(state="visible")
             assert json.loads(widget.result)["ci_level"] == 0.99
             page.get_by_label("Correction").select_option("bh")
             page.get_by_text("adjusted with bh").first.wait_for(state="visible")

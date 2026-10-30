@@ -1,0 +1,92 @@
+{
+  "notebooks": [
+    {
+      "name": "ab_testing_tutorial",
+      "python": "3.13.17 (main, Oct 21 2026, 17:49:18) [Clang 23.1.3 ]",
+      "source": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo",
+      "notebook_sha256": "84404b048e560057ac4613c3ef0e5261e5d5728eb096b84323059b0f5b25ba0b",
+      "diagnostic": false,
+      "installed_wheel": false,
+      "elapsed_seconds": 12.732487000001129,
+      "error": null,
+      "executed_code_cells": 33,
+      "changes_since_execution": [
+        {
+          "cell": 26,
+          "semantic_python_ast_equal": true
+        }
+      ],
+      "all_code_outputs_stripped": true,
+      "current_notebook_sha256": "9ae40ad8dc36c02e189a3752a5bdba493d3958e8280bafb4d3daba9e0db50f5f",
+      "success": true
+    },
+    {
+      "name": "ab_testing_showcase",
+      "python": "3.13.17 (main, Oct 21 2026, 17:49:18) [Clang 23.1.3 ]",
+      "source": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo",
+      "notebook_sha256": "230c89a26631a04ef360a1245c525d007623963885f1b1e652a4369ae90c28f1",
+      "diagnostic": false,
+      "installed_wheel": false,
+      "elapsed_seconds": 20.36623604100896,
+      "error": null,
+      "executed_code_cells": 56,
+      "changes_since_execution": [
+        {
+          "cell": 25,
+          "semantic_python_ast_equal": true
+        },
+        {
+          "cell": 31,
+          "semantic_python_ast_equal": true
+        },
+        {
+          "cell": 97,
+          "semantic_python_ast_equal": true
+        },
+        {
+          "cell": 99,
+          "semantic_python_ast_equal": true
+        },
+        {
+          "cell": 101,
+          "semantic_python_ast_equal": true
+        }
+      ],
+      "all_code_outputs_stripped": true,
+      "current_notebook_sha256": "1e38942e9dad1b2b81a9c49b16c1ff48c583e488d7e97989ccb19d843c843b8f",
+      "success": true
+    },
+    {
+      "name": "experiment_tutorial",
+      "python": "3.13.17 (main, Oct 21 2026, 17:49:18) [Clang 23.1.3 ]",
+      "source": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo",
+      "notebook_sha256": "0bea6db984cd2c6617e70541fb2fa03a5bfa5f6ece1511e1b2922004f599f237",
+      "diagnostic": false,
+      "installed_wheel": false,
+      "elapsed_seconds": 15.130862416990567,
+      "error": null,
+      "executed_code_cells": 15,
+      "changes_since_execution": [],
+      "all_code_outputs_stripped": true,
+      "current_notebook_sha256": "0bea6db984cd2c6617e70541fb2fa03a5bfa5f6ece1511e1b2922004f599f237",
+      "success": true
+    },
+    {
+      "name": "lumeo_experiment_tutorial",
+      "python": "3.13.17 (main, Oct 21 2026, 17:49:18) [Clang 23.1.3 ]",
+      "source": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/repo",
+      "notebook_sha256": "a5876f8000f69bdaed125e7da3ea35958835be91afcfd666c1e895edfb6f1fd1",
+      "diagnostic": false,
+      "installed_wheel": false,
+      "elapsed_seconds": 16.934650708019035,
+      "error": null,
+      "executed_code_cells": 19,
+      "changes_since_execution": [],
+      "all_code_outputs_stripped": true,
+      "current_notebook_sha256": "a5876f8000f69bdaed125e7da3ea35958835be91afcfd666c1e895edfb6f1fd1",
+      "success": true
+    }
+  ],
+  "api_map_mirrors_equal": true,
+  "oracle_sha256": "ff98beffd87c78e162f2b39cbf5f9953a8756ee692aac09ef074a19bc0477100"
+}

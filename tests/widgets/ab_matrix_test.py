@@ -556,6 +556,11 @@ class TestErrors:
             assert name not in widget.traits() and name not in widget.sync_state()
             assert name not in widget._export_data() and name not in saved
             assert name not in widget._params()
+        # None is "not passed", as in ab_steps and the getter
+        direct = ABStepsWidget(
+            stream, DIFF, max_steps=3, path_pattern=None, anchor=None
+        )
+        assert _strict(direct.result) == _strict(widget.result)
 
     @pytest.mark.parametrize(
         "diff",

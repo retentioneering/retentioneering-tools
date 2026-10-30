@@ -56,7 +56,7 @@ class ABStepsWidget(ABMatrixWidget):
         refused = {
             name: value
             for name, value in (("path_pattern", path_pattern), ("anchor", anchor))
-            if value is not _UNSET
+            if value is not _UNSET and value is not None
         }
         if refused:
             given = {

@@ -31,7 +31,6 @@ Design (ADR-0017, amendment "Transitions and steps")
 from __future__ import annotations
 
 import hashlib
-import warnings
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -43,7 +42,7 @@ from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.exceptions import InvalidParameterError
 from retentioneering.tools import _bootstrap as bs
 from retentioneering.tools import _stats
-from retentioneering.tools._diff import resolve_diff
+from retentioneering.tools._diff import resolve_diff, warn_user
 from retentioneering.tools.ab_test import (
     BOOTSTRAP_WEIGHTS,
     CORRECTIONS,
@@ -667,12 +666,16 @@ def ab_transitions(
             if value != default
         ]
         if ignored:
-            warnings.warn(
-                f"{', '.join(ignored)} apply only to the bootstrapped edge weights "
-                "(proba_out, proba_in, share_of_total, or test='bootstrap'); "
-                f"edge_weight={edge_weight!r} uses {test}, so they are ignored",
-                UserWarning,
-                stacklevel=3,
+            one = len(ignored) == 1
+            names = (
+                ignored[0] if one else f"{', '.join(ignored[:-1])} and {ignored[-1]}"
+            )
+            # at the caller's line: the tracking decorator adds frames
+            warn_user(
+                f"{names} {'applies' if one else 'apply'} only to the bootstrapped "
+                "edge weights (proba_out, proba_in, share_of_total, or "
+                f"test='bootstrap'); edge_weight={edge_weight!r} uses {test}, so "
+                f"{'it is' if one else 'they are'} ignored"
             )
     declared = None
     if edges is not None:

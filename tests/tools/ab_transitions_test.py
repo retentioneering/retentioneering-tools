@@ -501,8 +501,19 @@ class TestErrors:
         assert message.endswith("Allowed values: ['auto', 'welch_t_test', 'bootstrap']")
 
     def test_bootstrap_options_without_a_bootstrap_warn(self, stream) -> None:
-        with pytest.warns(UserWarning, match="n_bootstrap, random_state apply only"):
+        with pytest.warns(
+            UserWarning, match="n_bootstrap and random_state apply only"
+        ) as record:
             stream.get_ab_transitions(DIFF, n_bootstrap=200, random_state=1)
+        assert "so they are ignored" in str(record[0].message)
+        # at the caller's line, not inside the library's tracking decorator
+        assert {w.filename for w in record} == {__file__}
+        with pytest.warns(
+            UserWarning, match="n_bootstrap applies only to the bootstrapped"
+        ) as record:
+            stream.get_ab_transitions(DIFF, n_bootstrap=200)
+        assert "so it is ignored" in str(record[0].message)
+        assert {w.filename for w in record} == {__file__}
         import warnings
 
         with warnings.catch_warnings():

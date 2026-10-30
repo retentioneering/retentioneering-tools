@@ -482,6 +482,24 @@ class TestErrors:
         with pytest.raises(InvalidParameterError, match="max_steps"):
             stream.get_ab_steps(DIFF, max_steps=0)
 
+    @pytest.mark.parametrize("test", ["z_test", "welch_t_test"])
+    def test_a_ratio_weight_names_only_the_tests_it_accepts(self, stream, test) -> None:
+        with pytest.raises(InvalidParameterError) as info:
+            stream.get_ab_transitions(DIFF, "proba_out", test=test)
+        message = str(info.value)
+        assert "use test='bootstrap' (or 'auto')." in message
+        assert "use 'welch_t_test'" not in message
+        assert ".." not in message
+        assert message.endswith("Allowed values: ['auto', 'bootstrap']")
+
+    def test_a_count_weight_names_welch_and_the_bootstrap(self, stream) -> None:
+        with pytest.raises(InvalidParameterError) as info:
+            stream.get_ab_transitions(DIFF, "avg_per_path", test="z_test")
+        message = str(info.value)
+        assert "(use 'welch_t_test' or 'bootstrap')." in message
+        assert ".." not in message
+        assert message.endswith("Allowed values: ['auto', 'welch_t_test', 'bootstrap']")
+
     def test_bootstrap_options_without_a_bootstrap_warn(self, stream) -> None:
         with pytest.warns(UserWarning, match="n_bootstrap, random_state apply only"):
             stream.get_ab_transitions(DIFF, n_bootstrap=200, random_state=1)

@@ -298,17 +298,29 @@ def resolve_test(
         raise error(f"{label}: unknown test {test!r}; allowed: {list(TESTS)}")
     if test == "auto":
         test = _TEST_OF_KIND[kind]
-    if test == "z_test" and kind != "binary":
+    if test not in accepted_tests(kind):
+        # the hint names only tests this kind accepts
+        if kind == "ratio":
+            raise error(
+                f"{label}: a ratio of sums has no closed-form test here; use "
+                "test='bootstrap' (or 'auto')."
+            )
         raise error(
             f"{label}: 'z_test' is for 0/1 metrics; this one is a {kind} metric "
             "(use 'welch_t_test' or 'bootstrap')."
         )
-    if kind == "ratio" and test != "bootstrap":
-        raise error(
-            f"{label}: a ratio of sums has no closed-form test here; use "
-            "test='bootstrap' (or 'auto')."
-        )
     return test
+
+
+def accepted_tests(kind: str) -> tuple[str, ...]:
+    """The ``test`` values :func:`resolve_test` accepts for a ``kind`` of per-path
+    quantity: every test for a 0/1 one, ``bootstrap`` only for a ratio of sums
+    (``"auto"`` always)."""
+    if kind == "binary":
+        return TESTS
+    if kind == "ratio":
+        return ("auto", "bootstrap")
+    return ("auto", "welch_t_test", "bootstrap")
 
 
 def _kind_of(metric: str) -> str:

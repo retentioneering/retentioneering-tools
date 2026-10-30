@@ -51,6 +51,7 @@ from retentioneering.tools.ab_test import (
     TESTS,
     AnalysedWindow,
     _is_segment_diff,
+    accepted_tests,
     adjust_p,
     analysed_window,
     check_choice,
@@ -591,7 +592,10 @@ def _resolve_edge_test(kind: str, test: Any, edge_weight: str) -> str:
     check_choice("test", test, TESTS)
 
     def error(message: str) -> InvalidParameterError:
-        return InvalidParameterError("test", test, list(TESTS), reason=message)
+        # the allowed values are the weight's; the exception adds its own period
+        return InvalidParameterError(
+            "test", test, list(accepted_tests(kind)), reason=message.rstrip(".")
+        )
 
     return resolve_test(kind, test, f"edge_weight {edge_weight!r}", error)
 

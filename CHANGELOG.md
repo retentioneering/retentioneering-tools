@@ -226,7 +226,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   estimate and joint interval) return numbers only; `add_ab_test` registers the
   `ab_test` widget as a report tab (`[label:metric]` links focus a metric's
   row). Every row carries `population`, the supports, `conditional`, the raw and
-  adjusted p-values, `mde`, `mde_alpha`, `correction_family`, `reading`, `unit`
+  adjusted p-values (to three significant digits in every MCP tool, so a small
+  one keeps its magnitude instead of rounding to 0), `mde`, `mde_alpha`, `correction_family`, `reading`, `unit`
   (`"pp"` or `"value"`) and a `scope` sentence, plus the strata's
   pre-exposure flags and the call's `warnings`. `serve(stream, assignment=...)`
   attaches an assignment table: the A/B tools then count every assigned user

@@ -40,7 +40,7 @@ class TestGetSampleRatio:
             "control": 40,
             "treatment": 60,
         }
-        assert result["p_value"] == round(result["p_value"], 8)
+        assert result["p_value"] == float(f"{result['p_value']:.3g}")
         assert session.pending_tabs == []
 
     def test__expected_shares_and_period(self) -> None:
@@ -607,6 +607,47 @@ class TestDescribeForExperiments:
         assert "period and contrast are required" in boot["mcp_tool"]
         assert "ci_level" in boot["mcp_docs"] and "share_positive" in boot["mcp_docs"]
         assert "mcp_tool" not in out
+
+
+class TestPValues:
+    """p-values keep three significant digits, however small (eight fixed decimals
+    turned 4.28e-09 into 0.0)."""
+
+    def test_json_p_value(self) -> None:
+        assert tools._json_p_value(4.275451e-09) == 4.28e-09
+        assert tools._json_p_value(2.5652706e-08) == 2.57e-08
+        assert tools._json_p_value(0.4791) == 0.479
+        assert tools._json_p_value(1.0) == 1.0
+        assert tools._json_p_value(0.0) == 0.0
+        assert tools._json_p_value(float("nan")) is None
+        assert tools._json_p_value(None) is None
+
+    def test_a_small_p_value_survives_both_tools(self) -> None:
+        from retentioneering import datasets
+
+        stream = datasets.load_ab_test()
+        table = datasets.load_ab_test_assignment()
+        session = ReportSession(stream, {}, assignment=table)
+        diff = ["exp_group", "treatment", "control"]
+        frame = stream.get_ab_transitions(tuple(diff), assignment=table)
+        ref = frame.set_index(["source", "target"]).loc[("checkout_start", "home")]
+        result = tools.get_ab_transitions(session, diff, top=20)
+        row = next(
+            r
+            for r in result["top"]
+            if (r["source"], r["target"]) == ("checkout_start", "home")
+        )
+        assert 0 < ref["p_value"] < 1e-8
+        assert row["p_value"] == float(f"{ref['p_value']:.3g}")
+        assert row["p_value_adjusted"] == float(f"{ref['p_value_adjusted']:.3g}")
+        # the scorecard's p-values go through the same formatter
+        metric = {
+            "name": "abandon",
+            "metric": "matches_pattern",
+            "metric_args": {"pattern": "checkout_start->home"},
+        }
+        card = tools.get_ab_test(session, diff, [metric])
+        assert card["metrics"][0]["p_value"] == row["p_value"]
 
 
 class TestServerWrappersInSync:

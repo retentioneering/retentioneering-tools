@@ -1564,6 +1564,233 @@ ab_steps : The same frame drawn as an interactive matrix.""",
         ],
     )
 
+    @_tracked("get_ab_transitions_power")
+    def get_ab_transitions_power(
+        self,
+        diff: T_Diff,
+        edge_weight: str = "unique_paths",
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
+        path_col: str | None = None,
+        edges: list | None = None,
+        test: str = "auto",
+        correction: str = "bh",
+        ci_level: float = 0.95,
+        power: float = 0.8,
+        n_bootstrap: int = 1000,
+        bootstrap_weights: str = "multinomial",
+        min_support: int = 10,
+        random_state: int = 42,
+        scale=(0.25, 0.5, 1, 2, 4, 8, 16),
+        target_delta: float | None = None,
+    ) -> pd.DataFrame:
+        # The docstring is assembled below from get_ab_transitions'.
+        from retentioneering.tools.ab_power import ab_transitions_power
+
+        return ab_transitions_power(
+            self,
+            diff,
+            edge_weight,
+            scale=scale,
+            target_delta=target_delta,
+            assignment=assignment,
+            horizon=horizon,
+            path_col=path_col,
+            edges=edges,
+            test=test,
+            correction=correction,
+            ci_level=ci_level,
+            power=power,
+            n_bootstrap=n_bootstrap,
+            bootstrap_weights=bootstrap_weights,
+            min_support=min_support,
+            random_state=random_state,
+        )
+
+    @_tracked("get_ab_steps_power")
+    def get_ab_steps_power(
+        self,
+        diff: T_Diff,
+        max_steps: int = 10,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
+        path_col: str | None = None,
+        correction: str = "bh",
+        ci_level: float = 0.95,
+        power: float = 0.8,
+        min_support: int = 10,
+        path_pattern: str | None = None,
+        anchor: str | dict | None = None,
+        scale=(0.25, 0.5, 1, 2, 4, 8, 16),
+        target_delta: float | None = None,
+    ) -> pd.DataFrame:
+        # The docstring is assembled below from get_ab_steps'.
+        from retentioneering.tools.ab_power import ab_steps_power
+
+        return ab_steps_power(
+            self,
+            diff,
+            max_steps,
+            scale=scale,
+            target_delta=target_delta,
+            assignment=assignment,
+            horizon=horizon,
+            path_col=path_col,
+            correction=correction,
+            ci_level=ci_level,
+            power=power,
+            min_support=min_support,
+            path_pattern=path_pattern,
+            anchor=anchor,
+        )
+
+    _POWER_PARAMETERS = """
+scale : list of float, default (0.25, 0.5, 1, 2, 4, 8, 16)
+    Multiples of the current number of paths to project to, the same in both
+    arms; 1 (the data as it is) is always included.
+target_delta : float, optional
+    An absolute effect in the frame's units (a share: `0.01` is 1 pp; for
+    `avg_per_path` transitions per path). Adds the paths per arm a {row} needs for
+    its `mde` to reach it, and `attrs["curve"]` the share of testable {rows}
+    that reach it."""
+    _POWER_RETURNS = """pandas.DataFrame
+    One row per {row} of `{getter}` and per `scale`, sorted by {keys} and `scale`;
+    * marks the columns added with `target_delta`.
+
+    - {key_list}; `scale`.
+    - `group1_paths`, `group2_paths`: the projected paths per arm.
+    - `pooled_support`: the projected supporting paths of the support rule (paths
+      with the {what}, both arms).
+    - `testable`: the {row} passes the pooled support rule at this scale (at
+      `scale=1`, exactly the {rows} the getter tests); a {row} that passes it and
+      still has no p-value (a value constant in both arms) stays untestable.
+    - `family_size`: testable {rows} at this scale, the projected family `m`;
+      `mde_alpha`: `alpha / m`, the Bonferroni level the `mde` is computed at
+      (as the getter's; conservative for Benjamini-Hochberg, which rejects the
+      k-th smallest p-value at `alpha * k / m`, never below `alpha / m`).
+    - `mde`, `rel_mde`: the minimum detectable effect at that level and `power`:
+      the getter's own computation with the standard error scaled by
+      `1 / sqrt(scale)` (the pooled share and the projected arm sizes for a
+      z-test row; `delta_se / sqrt(scale)` for a Welch row and for a bootstrapped
+      one, whose `delta_se` is the bootstrap standard error). At `scale=1` the
+      getter's `mde`.
+    - `delta`, `test`: the getter's, unchanged (for reference).
+    - `scale_to_test`: the smallest multiple of the paths at which the {row}
+      passes the support rule (NaN when it never does).
+    - `group1_paths_needed`*, `group2_paths_needed`*, `scale_needed`*: the paths
+      per arm (and their multiple of the current ones) at which the {row}'s `mde`
+      reaches `target_delta`, keeping the family level of this scale.
+
+    `attrs` are the getter's plus `scale`, `target_delta`, `power`, `assumption`
+    and `curve`: one dict per scale with the paths per arm, `cells`, `testable`,
+    `family_size`, `mde_alpha`, `mde_median`, `mde_q25`, `mde_q75` (over the
+    testable {rows}) and, with `target_delta`, `share_reaching_target`.
+
+    The projection assumes the same path composition: more paths with the same
+    mix of behaviours, so the same pooled shares and per-path spread. It sizes the
+    data a screen needs; it says nothing about the effects the screen will find."""
+
+    _tp_summary, _tp_sections = _numpydoc_split(get_ab_transitions.__doc__ or "")
+    get_ab_transitions_power.__doc__ = _numpydoc_join(
+        """Return how much data the `get_ab_transitions` screen needs: its edges projected to other sizes.
+
+A screen with many events is data-hungry: each edge is its own test, the family
+is every testable edge, and an edge with few supporting paths is not tested. This
+getter runs `get_ab_transitions(...)` with the same arguments and projects every
+edge to `scale` times the current paths: whether it would be testable, the family
+it would belong to, and the minimum detectable effect (`mde`) there. At
+`scale=1` every number is the getter's. Read `attrs["curve"]` for the screen as a
+whole (testable edges and median MDE against the users), or draw it with
+`ab_transitions(...)` in its "Data needed" view.""",
+        [
+            (
+                "Parameters",
+                _tp_sections.get("Parameters", "")
+                + _POWER_PARAMETERS.format(row="edge", rows="edges"),
+            ),
+            (
+                "Returns",
+                _POWER_RETURNS.format(
+                    row="edge",
+                    rows="edges",
+                    getter="get_ab_transitions",
+                    keys="`source`, `target`",
+                    key_list="`source`, `target`",
+                    what="transition",
+                ),
+            ),
+            (
+                "Raises",
+                """DiffConfigError, InvalidParameterError, EmptyEventstreamError
+    As in `get_ab_transitions`; a `scale` that is not a list of positive numbers
+    or a `target_delta` that is not a positive number raises
+    `InvalidParameterError`.""",
+            ),
+            (
+                "Examples",
+                """    diff = ("exp_group", "treatment", "control")
+    power = stream.get_ab_transitions_power(diff, assignment=assignment,
+                                            target_delta=0.01)
+    pd.DataFrame(power.attrs["curve"])[["scale", "testable", "mde_median"]]
+    power[power["scale"] == 1].nlargest(5, "scale_needed")""",
+            ),
+            (
+                "See Also",
+                """get_ab_transitions : The screen itself.
+get_ab_compression : A smaller vocabulary for the same paths, so that more edges are testable.""",
+            ),
+        ],
+    )
+    _sp_summary, _sp_sections = _numpydoc_split(get_ab_steps.__doc__ or "")
+    get_ab_steps_power.__doc__ = _numpydoc_join(
+        """Return how much data the `get_ab_steps` screen needs: its cells projected to other sizes.
+
+The step matrix has a cell per event and step, and the later steps split the
+paths over more events, so many cells are thin. This getter runs
+`get_ab_steps(...)` with the same arguments and projects every cell to `scale`
+times the current paths: whether it would be testable, the family it would belong
+to, and its minimum detectable effect (`mde`) there. At `scale=1` every number is
+the getter's. Read `attrs["curve"]` for the screen as a whole, or draw it with
+`ab_steps(...)` in its "Data needed" view.""",
+        [
+            (
+                "Parameters",
+                _sp_sections.get("Parameters", "")
+                + _POWER_PARAMETERS.format(row="cell", rows="cells"),
+            ),
+            (
+                "Returns",
+                _POWER_RETURNS.format(
+                    row="cell",
+                    rows="cells",
+                    getter="get_ab_steps",
+                    keys="`event`, `step`",
+                    key_list="`event`, `step`",
+                    what="event at the step",
+                ),
+            ),
+            (
+                "Raises",
+                """DiffConfigError, InvalidParameterError, EmptyEventstreamError
+    As in `get_ab_steps`; a `scale` that is not a list of positive numbers or a
+    `target_delta` that is not a positive number raises `InvalidParameterError`.""",
+            ),
+            (
+                "Examples",
+                """    diff = ("exp_group", "treatment", "control")
+    power = stream.get_ab_steps_power(diff, max_steps=8, assignment=assignment)
+    pd.DataFrame(power.attrs["curve"])[["scale", "cells", "testable", "mde_median"]]""",
+            ),
+            (
+                "See Also",
+                """get_ab_steps : The screen itself.
+get_ab_compression : A smaller vocabulary for the same paths, so that more cells are testable.""",
+            ),
+        ],
+    )
+
     @_tracked("headless_describe")
     def describe(
         self,

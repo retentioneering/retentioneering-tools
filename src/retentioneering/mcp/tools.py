@@ -1527,6 +1527,13 @@ _SCREEN_COLUMNS = (
 )
 
 
+def _check_top(top: Any) -> dict | None:
+    """An error dict unless ``top`` is a positive int."""
+    if isinstance(top, bool) or not isinstance(top, int) or top < 1:
+        return {"error": f"top must be a positive integer, got {top!r}"}
+    return None
+
+
 def _screen_result(
     frame: pd.DataFrame, keys: tuple, top: int, unit: str, caught
 ) -> dict:
@@ -1627,7 +1634,8 @@ def get_ab_transitions(
     path_col:
         The randomised unit (default: primary path column).
     top:
-        Rows returned, by adjusted p-value then |delta| (default 15).
+        Rows returned, by adjusted p-value then |delta| (a positive integer,
+        default 15).
     local_preprocessors:
         One-off preprocessing. Never filter on post-exposure behaviour first.
 
@@ -1644,6 +1652,8 @@ def get_ab_transitions(
     per path).
     """
     if (err := _require_stream(session)) is not None:
+        return err
+    if (err := _check_top(top)) is not None:
         return err
     try:
         src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
@@ -1710,6 +1720,8 @@ def get_ab_steps(
     edge path counts); every row is a share read in percentage points.
     """
     if (err := _require_stream(session)) is not None:
+        return err
+    if (err := _check_top(top)) is not None:
         return err
     try:
         src = _apply_preprocessors(session.active_stream, local_preprocessors or [])

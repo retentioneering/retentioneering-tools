@@ -357,8 +357,9 @@ class TestBonferroni:
     def test_simultaneous_intervals_agree_with_the_adjusted_p(
         self, stream, weight
     ) -> None:
+        options = {"n_bootstrap": 300} if weight == "proba_out" else {}
         frame = stream.get_ab_transitions(
-            DIFF, weight, correction="bonferroni", n_bootstrap=300
+            DIFF, weight, correction="bonferroni", **options
         )
         tested = frame[frame["p_value_adjusted"].notna()]
         excludes = (tested["delta_ci_low_adj"] > 0) | (tested["delta_ci_high_adj"] < 0)
@@ -429,7 +430,8 @@ class TestCalibration:
     def test_aa_calibration_finds_nothing(self) -> None:
         stream = datasets.load_ab_test("aa_calibration")
         for weight in ("unique_paths", "avg_per_path", "proba_out"):
-            frame = stream.get_ab_transitions(DIFF, weight, n_bootstrap=300)
+            options = {"n_bootstrap": 300} if weight == "proba_out" else {}
+            frame = stream.get_ab_transitions(DIFF, weight, **options)
             assert _discoveries(frame) == 0, weight
         assert _discoveries(stream.get_ab_steps(DIFF)) == 0
 
@@ -479,6 +481,16 @@ class TestErrors:
             stream.get_ab_transitions(DIFF, "proba_out", n_bootstrap=10)
         with pytest.raises(InvalidParameterError, match="max_steps"):
             stream.get_ab_steps(DIFF, max_steps=0)
+
+    def test_bootstrap_options_without_a_bootstrap_warn(self, stream) -> None:
+        with pytest.warns(UserWarning, match="n_bootstrap, random_state apply only"):
+            stream.get_ab_transitions(DIFF, n_bootstrap=200, random_state=1)
+        import warnings
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            stream.get_ab_transitions(DIFF, "proba_out", n_bootstrap=200)
+            stream.get_ab_transitions(DIFF)
 
     def test_edges_must_name_events(self, stream) -> None:
         with pytest.raises(InvalidParameterError, match="edges"):

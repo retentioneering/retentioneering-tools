@@ -1157,9 +1157,13 @@ class Eventstream:
         power : float, default 0.8
             Power used for `mde`.
         n_bootstrap : int, default 1000
-            Replicates for the bootstrap weights, at least 100.
+            Replicates of the bootstrap, at least 100. Only for the bootstrapped
+            weights (`proba_out`, `proba_in`, `share_of_total`, or
+            `test="bootstrap"`); a value other than the default with another
+            test warns that it is ignored, as do `bootstrap_weights` and
+            `random_state`.
         bootstrap_weights : {"multinomial", "poisson"}, default "multinomial"
-            Resampling scheme of the bootstrap.
+            Resampling scheme of the bootstrap (bootstrapped weights only).
 
             - `"multinomial"` — resample each arm's paths with replacement.
             - `"poisson"` — a Poisson(1) weight per path.
@@ -1168,7 +1172,7 @@ class Eventstream:
             `"insufficient_data"`: reported, not tested, not in the family (for
             `unique_paths` the pooled paths without it too).
         random_state : int, default 42
-            Seed of the bootstrap.
+            Seed of the bootstrap (bootstrapped weights only).
 
         Returns
         -------

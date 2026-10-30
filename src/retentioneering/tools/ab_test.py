@@ -44,7 +44,7 @@ import math
 import re
 import warnings
 from dataclasses import asdict, dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -283,13 +283,16 @@ def _metric_args_hint(entry: dict[str, Any], unknown: set) -> str:
 
 
 def resolve_test(
-    kind: str, test: Any, label: str, error: type[Exception] = InvalidMetricConfigError
+    kind: str,
+    test: Any,
+    label: str,
+    error: Callable[[str], Exception] = InvalidMetricConfigError,
 ) -> str:
     """The test a ``kind`` of per-path quantity takes: ``"auto"`` resolved, a test
     that does not fit refused (``z_test`` on a non-0/1 quantity, anything but
     ``bootstrap`` on a ratio of sums). ``label`` starts the message; ``error``
-    is the exception raised (the scorecard's metric entries raise
-    ``InvalidMetricConfigError``)."""
+    builds the exception raised from the message (an exception class taking one
+    message, as the scorecard's ``InvalidMetricConfigError``, or a factory)."""
     if not isinstance(test, str) or test not in TESTS:
         raise error(f"{label}: unknown test {test!r}; allowed: {list(TESTS)}")
     if test == "auto":

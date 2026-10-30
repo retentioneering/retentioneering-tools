@@ -535,6 +535,9 @@ class TestGetAbTransitionsAndSteps:
         assert cells[("order", 2)]["verdict"] == "increase"
         assert all(r["unit"] == "pp" for r in result["top"])
         assert "error" in tools.get_ab_steps(session, ["arm", "x", "y"])
+        for bad in (0, -3, 2.5, "5", True):
+            assert "top" in tools.get_ab_steps(session, DIFF, top=bad)["error"]
+            assert "top" in tools.get_ab_transitions(session, DIFF, top=bad)["error"]
 
     def test_describe_tool_names_the_mcp_result(self) -> None:
         out = tools.describe_tool("get_ab_transitions")

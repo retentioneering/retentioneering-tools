@@ -31,6 +31,7 @@ Design (ADR-0017, amendment "Transitions and steps")
 from __future__ import annotations
 
 import hashlib
+import warnings
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -651,6 +652,24 @@ def ab_transitions(
     check_choice("bootstrap_weights", bootstrap_weights, BOOTSTRAP_WEIGHTS)
     check_n_bootstrap(n_bootstrap, allow_auto=False)
     check_random_state(random_state)
+    if test != "bootstrap":
+        ignored = [
+            name
+            for name, value, default in (
+                ("n_bootstrap", n_bootstrap, 1000),
+                ("bootstrap_weights", bootstrap_weights, "multinomial"),
+                ("random_state", random_state, 42),
+            )
+            if value != default
+        ]
+        if ignored:
+            warnings.warn(
+                f"{', '.join(ignored)} apply only to the bootstrapped edge weights "
+                "(proba_out, proba_in, share_of_total, or test='bootstrap'); "
+                f"edge_weight={edge_weight!r} uses {test}, so they are ignored",
+                UserWarning,
+                stacklevel=3,
+            )
     declared = None
     if edges is not None:
         event_col = stream.schema.event_col

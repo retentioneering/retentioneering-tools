@@ -4,7 +4,7 @@ Date: 2026-10-30. Candidate: `.work/ab-safe-bet/repo`. This follow-up was author
 
 ## Result
 
-The guide, reference templates, public A/B/strict/SRM docstrings, ADR-0018, API-map mirrors, four tutorials and their narrative assertions now describe the conservative release boundary. Dataset generators were not changed. All four notebooks passed a complete source execution before the final MCP precision adjustment. Root subsequently corrected the precision golden to direct parity and reported **2 passed** for the actual `tests/notebooks` suite. The frozen source commit is `aac5866c232a48bee3ca071c31c52fa26a818c51`. The release agent owns the isolated wheel build; wheel notebook acceptance remains a separate gate.
+The guide, reference templates, public A/B/strict/SRM docstrings, ADR-0018, API-map mirrors, four tutorials and their narrative assertions now describe the conservative release boundary. Dataset generators were not changed. All four notebooks passed a complete source execution before the final MCP precision adjustment. Root subsequently corrected the precision golden to direct parity and reported **2 passed** for the actual `tests/notebooks` suite. The frozen source commit is `aac5866c232a48bee3ca071c31c52fa26a818c51`. Role 10 built and installed the isolated wheel; **all four original notebooks now pass from that wheel**, as recorded below.
 
 ## Changes and intended behavior
 
@@ -39,10 +39,25 @@ The examples show the default descriptive nonbinary rows before explicitly reque
 
 Each notebook evidence directory preserves executed IPYNB, rendered HTML, execution metadata and raw DataFrame/scalar snapshots in `artifacts/namespace.json`. Diagnostic runs and the eight-item showcase assertion audit are preserved separately and **are not acceptance passes**. The first two attempted executions failed before execution because local kernel ports were unavailable in the sandbox; subsequent approved kernel launches executed normally. The first final narrative run exposed a floating-point exact-equality assertion; the rerun uses a 1e-15 tolerance for `0.05 / family_size`, preserving the numerical claim.
 
-Source acceptance above predates the final MCP unrounded-value change. Root identified and corrected the showcase's obsolete six-decimal rounding expectation to direct parity; its actual notebook test rerun reported **2 passed** before freezing commit `aac5866c232a48bee3ca071c31c52fa26a818c51`. Final wheel execution will use the configurable `execute_notebook.py` with `--installed-wheel`, a staged notebook/support-file tree outside the checkout, and the isolated interpreter supplied by role 10. That mode adds no source path and asserts the imported package is under the interpreter prefix.
+Source acceptance above predates the final MCP unrounded-value change. Root identified and corrected the showcase's obsolete six-decimal rounding expectation to direct parity; its actual notebook test rerun reported **2 passed** before freezing commit `aac5866c232a48bee3ca071c31c52fa26a818c51`. Final wheel execution used `execute_notebook.py --installed-wheel`, the frozen notebook/support-file tree outside the checkout, and the isolated interpreter supplied by role 10. It added no source path, used no fixture monkeypatch, and asserted the imported package was under the interpreter prefix.
+
+## Final installed-wheel gate
+
+Wheel SHA256: `d334f02b8d6d670b17a3e36c178c284d101e6c4790c3b600272f8e325c207879`. All runs imported `retentioneering` from `.work/ab-safe-bet/role10-final-wheel-env/lib/python3.13/site-packages/retentioneering/__init__.py`, with `PYTHONPATH` unset. The 16 staged inputs were read directly from frozen commit `aac5866c232a48bee3ca071c31c52fa26a818c51` and hashed in `frozen_wheel_tutorial_inputs/INPUT_MANIFEST.json`. No package source was staged.
+
+| Original notebook | Original code cells | Added verification cells | Runtime | Result |
+|---|---:|---:|---:|---|
+| A/B narrative tutorial | 30 | 3 | 16.96 s | Passed |
+| A/B API showcase | 54 | 2 | 21.28 s | Passed |
+| Strict experiment tutorial | 13 | 2 | 18.91 s | Passed |
+| Frozen Lumeo tutorial | 17 | 2 | 20.72 s | Passed |
+
+**114 original code cells** executed unchanged. The runner added setup and raw-table capture to each notebook, plus the narrative test's CHECKS cell to the A/B tutorial: nine added cells, 123 executed cells total. Complete original assertions remained enabled. `wheel_verification_summary.json` records hashes, exact import origins, checks hash, original/added cell counts and runtimes; each `wheel_*` directory preserves the executed notebook, HTML, metadata and raw tables. This supersedes the earlier source-only notebook acceptance. A report-aggregation helper initially assumed a Python 3.11 directory; the actual fresh environment is Python 3.13. The prefix/site-packages validation was corrected; no notebook execution failed.
+
+A read-only diff from `aac5866` to `13a24b8` confirmed no changes under `src`, `js` or `notebooks`; the later commit contains review evidence and browser tests. Subsequent evidence-only packaging does not change the executed package or tutorial code.
 
 ## Scope and limitations
 
 No statistical implementation, JS/MCP implementation, generator logic, version, changelog or workflow changes were made by role 09. The shared Eventstream file was changed only in owned docstrings; other agents' code edits were preserved. Historical simulation evidence in `examples/experiments` was labeled historical rather than repurposed to certify the new defaults. The initial frozen oracle SHA256 remains `ff98beffd87c78e162f2b39cbf5f9953a8756ee692aac09ef074a19bc0477100`.
 
-No new statistical guarantee follows from these deterministic tutorial runs. Final release acceptance additionally depends on the root's full-suite result, the final wheel gate and the independent statistical evidence assembled by the other roles.
+No new statistical guarantee follows from these deterministic tutorial runs. Final release acceptance additionally depends on the root's full-suite result and the independent statistical evidence assembled by the other roles; the four-notebook installed-wheel gate described above has passed.

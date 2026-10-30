@@ -1,0 +1,71 @@
+{
+  "source_commit": "aac5866c232a48bee3ca071c31c52fa26a818c51",
+  "wheel_sha256": "d334f02b8d6d670b17a3e36c178c284d101e6c4790c3b600272f8e325c207879",
+  "all_four_passed": true,
+  "notebooks": [
+    {
+      "import_origin": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/role10-final-wheel-env/lib/python3.13/site-packages/retentioneering/__init__.py",
+      "checks_sha256": "5104b3739eca40eff8ce21975668a0c8b1e81387d9bbf0f034f07503203d3531",
+      "name": "ab_testing_tutorial",
+      "python": "3.13.17 (main, Oct 21 2026, 17:49:18) [Clang 23.1.3 ]",
+      "source": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/output/AB_Safe_Bet_Review/roles/09_datasets/followup_docs_20261030/frozen_wheel_tutorial_inputs",
+      "notebook_sha256": "9ae40ad8dc36c02e189a3752a5bdba493d3958e8280bafb4d3daba9e0db50f5f",
+      "diagnostic": false,
+      "installed_wheel": true,
+      "elapsed_seconds": 16.962564042012673,
+      "error": null,
+      "executed_code_cells": 33,
+      "original_code_cells": 30,
+      "runner_added_code_cells": 3
+    },
+    {
+      "import_origin": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/role10-final-wheel-env/lib/python3.13/site-packages/retentioneering/__init__.py",
+      "checks_sha256": null,
+      "name": "ab_testing_showcase",
+      "python": "3.13.17 (main, Oct 21 2026, 17:49:18) [Clang 23.1.3 ]",
+      "source": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/output/AB_Safe_Bet_Review/roles/09_datasets/followup_docs_20261030/frozen_wheel_tutorial_inputs",
+      "notebook_sha256": "4d35a4dc399ed1abe4bc36f181f71762d0788de85b86b036a205bc9d99f37538",
+      "diagnostic": false,
+      "installed_wheel": true,
+      "elapsed_seconds": 21.27980416698847,
+      "error": null,
+      "executed_code_cells": 56,
+      "original_code_cells": 54,
+      "runner_added_code_cells": 2
+    },
+    {
+      "import_origin": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/role10-final-wheel-env/lib/python3.13/site-packages/retentioneering/__init__.py",
+      "checks_sha256": null,
+      "name": "experiment_tutorial",
+      "python": "3.13.17 (main, Oct 21 2026, 17:49:18) [Clang 23.1.3 ]",
+      "source": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/output/AB_Safe_Bet_Review/roles/09_datasets/followup_docs_20261030/frozen_wheel_tutorial_inputs",
+      "notebook_sha256": "0bea6db984cd2c6617e70541fb2fa03a5bfa5f6ece1511e1b2922004f599f237",
+      "diagnostic": false,
+      "installed_wheel": true,
+      "elapsed_seconds": 18.90768608401413,
+      "error": null,
+      "executed_code_cells": 15,
+      "original_code_cells": 13,
+      "runner_added_code_cells": 2
+    },
+    {
+      "import_origin": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/.work/ab-safe-bet/role10-final-wheel-env/lib/python3.13/site-packages/retentioneering/__init__.py",
+      "checks_sha256": null,
+      "name": "lumeo_experiment_tutorial",
+      "python": "3.13.17 (main, Oct 21 2026, 17:49:18) [Clang 23.1.3 ]",
+      "source": "/Users/maximgodzi/Documents/ChatGPT/rete_presentation_case/output/AB_Safe_Bet_Review/roles/09_datasets/followup_docs_20261030/frozen_wheel_tutorial_inputs",
+      "notebook_sha256": "a5876f8000f69bdaed125e7da3ea35958835be91afcfd666c1e895edfb6f1fd1",
+      "diagnostic": false,
+      "installed_wheel": true,
+      "elapsed_seconds": 20.722633917001076,
+      "error": null,
+      "executed_code_cells": 19,
+      "original_code_cells": 17,
+      "runner_added_code_cells": 2
+    }
+  ],
+  "original_code_cells_total": 114,
+  "runner_added_code_cells_total": 9,
+  "source_fixture_monkeypatch": false,
+  "source_path_injected": false
+}

@@ -45,3 +45,7 @@ No new statistical method was implemented in this role. Confidence labels, metad
 ## Transport reporting erratum
 
 The frozen initial report incorrectly described structured content as null because it read camelCase `structuredContent` from a snake_case `model_dump`. The raw initial and candidate evidence actually contain `structured_content={"result": <JSON string>}`. Strict decoding of both that result string and text content equals the direct payload, and `is_error` is false. `TRANSPORT_REPORTING_ERRATUM.json` records the correction; initial artifacts are preserved. There is still no remote HTTP/SSE test claim.
+
+## Complete repository browser gate
+
+All five existing browser test files ran against real Chromium: **11 passed in 15.40 seconds**. This covers A/B controls and Python callback bridge, experiment, funnel confidence intervals, report tabs/links, and transition graph rendering. The browser model in the callback test is a mock; the Python callback and browser execution are real. The original 10-pass/one stale-wording-failure log and the corrected final log are both retained. The role-specific 20-page/64-assertion browser evidence is additional and was not rerun because no JS changed.

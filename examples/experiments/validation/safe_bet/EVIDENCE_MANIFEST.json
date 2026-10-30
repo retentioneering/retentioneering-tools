@@ -44,9 +44,16 @@
   {
     "source_relative": "FINAL_REVIEW.md",
     "packaged_relative": "FINAL_REVIEW.md",
-    "source_sha256": "6bfcea2f0ff525780ea2295493d5d873d7b31037a4a2489e772b69a63c2dc9d2",
-    "packaged_sha256": "6bfcea2f0ff525780ea2295493d5d873d7b31037a4a2489e772b69a63c2dc9d2",
+    "source_sha256": "4de8c026a4de57b0bb83678719ca09212160bb1e3dff4fe5288963b714fb8be4",
+    "packaged_sha256": "4de8c026a4de57b0bb83678719ca09212160bb1e3dff4fe5288963b714fb8be4",
     "presentation_transform": "none"
+  },
+  {
+    "source_relative": "DEFERRED_FUNCTIONS.json",
+    "packaged_relative": "DEFERRED_FUNCTIONS.json",
+    "source_sha256": "1f4593d42a79940a6b139ff5e6530f3e7a0716efd152148e41bb182eaeb3604a",
+    "packaged_sha256": "f8c8ee5e13f366d129a23db0a532d377a6aed71c3a827d6fb105378f902c4089",
+    "presentation_transform": "trailing whitespace/newline normalization"
   },
   {
     "source_relative": "roles/01_binary/comparison_summary.json",
@@ -555,8 +562,8 @@
   {
     "source_relative": "roles/08_ui_mcp/CROSS_REVIEW.md",
     "packaged_relative": "reviews/08_ui_mcp/CROSS_REVIEW.md",
-    "source_sha256": "a0bd1835dfe0d6226ea96fbdfa9deb09144e71d05d94581a708a9fa4d20e431b",
-    "packaged_sha256": "a0bd1835dfe0d6226ea96fbdfa9deb09144e71d05d94581a708a9fa4d20e431b",
+    "source_sha256": "b06cfdd5714cf9146442f34d77e39f75bea1d89eba716fc9177afb5c9fa26beb",
+    "packaged_sha256": "b06cfdd5714cf9146442f34d77e39f75bea1d89eba716fc9177afb5c9fa26beb",
     "presentation_transform": "none"
   },
   {
@@ -569,8 +576,8 @@
   {
     "source_relative": "roles/08_ui_mcp/FIX_REPORT.md",
     "packaged_relative": "reviews/08_ui_mcp/FIX_REPORT.md",
-    "source_sha256": "c735049c57dfaaf9029035f056e0302a3f9788e0e27628162a9c5f6febdcf531",
-    "packaged_sha256": "c735049c57dfaaf9029035f056e0302a3f9788e0e27628162a9c5f6febdcf531",
+    "source_sha256": "aa571b9c94041e76a55003253a70d7cc42396e2fe578e230c5fbdf4833526447",
+    "packaged_sha256": "aa571b9c94041e76a55003253a70d7cc42396e2fe578e230c5fbdf4833526447",
     "presentation_transform": "none"
   },
   {
@@ -637,6 +644,20 @@
     "presentation_transform": "none"
   },
   {
+    "source_relative": "roles/09_datasets/followup_docs_20261030/post_freeze_equivalence.json",
+    "packaged_relative": "reviews/09_datasets/followup_docs_20261030/post_freeze_equivalence.json",
+    "source_sha256": "3bc0b699cd61dae049b486d49017ca4cddd1f3c9cceec4e463ea93ebe40e2fd9",
+    "packaged_sha256": "3bc0b699cd61dae049b486d49017ca4cddd1f3c9cceec4e463ea93ebe40e2fd9",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/09_datasets/followup_docs_20261030/wheel_verification_summary.json",
+    "packaged_relative": "reviews/09_datasets/followup_docs_20261030/wheel_verification_summary.json",
+    "source_sha256": "301008ff2d8a3cefe3e0b7511cff9acd46e28fad7080298cd751c5dfbe3175fc",
+    "packaged_sha256": "301008ff2d8a3cefe3e0b7511cff9acd46e28fad7080298cd751c5dfbe3175fc",
+    "presentation_transform": "none"
+  },
+  {
     "source_relative": "roles/09_datasets/followup_docs_20261030/verification_summary.json",
     "packaged_relative": "reviews/09_datasets/followup_docs_20261030/verification_summary.json",
     "source_sha256": "66ae702a8b6879daa22e79b5b3d16fdc92cbcb68ad2b733628859c1fb78ab372",
@@ -646,15 +667,15 @@
   {
     "source_relative": "roles/09_datasets/followup_docs_20261030/CROSS_REVIEW.md",
     "packaged_relative": "reviews/09_datasets/followup_docs_20261030/CROSS_REVIEW.md",
-    "source_sha256": "104bc34c56db70ea340198b23638aa5082124375e5a4528bf91aee7ea365b76c",
-    "packaged_sha256": "104bc34c56db70ea340198b23638aa5082124375e5a4528bf91aee7ea365b76c",
+    "source_sha256": "067d671c128433747ce571489e94471032abdf67be79298301234a82e7cdb3be",
+    "packaged_sha256": "067d671c128433747ce571489e94471032abdf67be79298301234a82e7cdb3be",
     "presentation_transform": "none"
   },
   {
     "source_relative": "roles/09_datasets/followup_docs_20261030/FIX_REPORT.md",
     "packaged_relative": "reviews/09_datasets/followup_docs_20261030/FIX_REPORT.md",
-    "source_sha256": "638e79bccc6997194ab97e21970b913e385057e069202efed370f8f1c34c23a5",
-    "packaged_sha256": "638e79bccc6997194ab97e21970b913e385057e069202efed370f8f1c34c23a5",
+    "source_sha256": "a0469d7f9b6aba635382f0ac841494235ae13cc5997bc988afa05eb1d16ec072",
+    "packaged_sha256": "a0469d7f9b6aba635382f0ac841494235ae13cc5997bc988afa05eb1d16ec072",
     "presentation_transform": "none"
   },
   {
@@ -711,6 +732,34 @@
     "packaged_relative": "reviews/10_release/FIX_REPORT.md",
     "source_sha256": "f8a88132f975d20dacfa4cad7a115334650ad65b6e983fe0b7a13aa58c9fecf0",
     "packaged_sha256": "f8a88132f975d20dacfa4cad7a115334650ad65b6e983fe0b7a13aa58c9fecf0",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/10_release/final_aac5866/FINAL_REPORT.md",
+    "packaged_relative": "reviews/10_release/final_aac5866/FINAL_REPORT.md",
+    "source_sha256": "435e26b13dc3c493e45728b17ff78c8f08390d022c65b81729b65dbc43152d05",
+    "packaged_sha256": "435e26b13dc3c493e45728b17ff78c8f08390d022c65b81729b65dbc43152d05",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/10_release/final_aac5866/FINAL_SUMMARY.json",
+    "packaged_relative": "reviews/10_release/final_aac5866/FINAL_SUMMARY.json",
+    "source_sha256": "7f93a666fb71d8a575b4c5e9417741ef2562c99fc3a194af00ab77ce92b88df5",
+    "packaged_sha256": "7f93a666fb71d8a575b4c5e9417741ef2562c99fc3a194af00ab77ce92b88df5",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/10_release/final_aac5866/sdist-wheel-parity.json",
+    "packaged_relative": "reviews/10_release/final_aac5866/sdist-wheel-parity.json",
+    "source_sha256": "cc5433fccb312112ec5a30063665d5ab78a2d05c7c22470ac0f15c06054e4f3a",
+    "packaged_sha256": "cc5433fccb312112ec5a30063665d5ab78a2d05c7c22470ac0f15c06054e4f3a",
+    "presentation_transform": "none"
+  },
+  {
+    "source_relative": "roles/10_release/final_aac5866/external_checks/oracle.py",
+    "packaged_relative": "reviews/10_release/final_aac5866/external_checks/oracle.py.txt",
+    "source_sha256": "5ab59d156e0ba971a76dbe8607de1df24ffc26bc526e1106e587321352530c2c",
+    "packaged_sha256": "5ab59d156e0ba971a76dbe8607de1df24ffc26bc526e1106e587321352530c2c",
     "presentation_transform": "none"
   },
   {

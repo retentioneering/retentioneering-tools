@@ -91,6 +91,12 @@ class TransitionGraphWidget(RetentioneeringWidget):
     # Initial view: JSON view object, a name from `views`, or (static export
     # only) a base64url blob injected from the #view= URL fragment.
     view = traitlets.Unicode("").tag(sync=True)
+    # ── A/B significance overlay (get_ab_transitions) ──────────────────────────
+    # JSON payload of tools.ab_transitions.transitions_payload, or "". Data,
+    # not a setting: never persisted to state_file; the frame passed in IS the
+    # data, so there is no headless twin. JS draws it only while the graph
+    # shows the edge weight and diff it was computed for.
+    ab_transitions = traitlets.Unicode("").tag(sync=True)
 
     _persist_names = (
         "edge_weight",
@@ -117,6 +123,7 @@ class TransitionGraphWidget(RetentioneeringWidget):
         label_scale=_UNSET,
         views=_UNSET,
         view=_UNSET,
+        ab_transitions=_UNSET,
         state_file=None,
         **kwargs,
     ):
@@ -140,9 +147,35 @@ class TransitionGraphWidget(RetentioneeringWidget):
         # views/view referencing them must validate, not just real events.
         _available_events = set(_event_counts.keys()) | {"path_start", "path_end"}
 
-        self.edge_weight = edge_weight if edge_weight is not _UNSET else "proba_out"
         _diff_val = diff if diff is not _UNSET else None
+        _ab_payload = None
+        if ab_transitions is not _UNSET and ab_transitions is not None:
+            from retentioneering.tools.ab_transitions import transitions_payload
+
+            _ab_payload = transitions_payload(
+                ab_transitions,
+                _diff_val,
+                edge_weight if edge_weight is not _UNSET else None,
+            )
+            if edge_weight is _UNSET:
+                # the graph draws the weight the frame tested
+                edge_weight = _ab_payload["edge_weight"]
+        self.edge_weight = edge_weight if edge_weight is not _UNSET else "proba_out"
         self.diff = json.dumps(list(_diff_val)) if _diff_val else ""
+        if _ab_payload is not None:
+            _graph_path_col = (
+                path_col if path_col is not _UNSET and path_col else None
+            ) or eventstream.schema.path_col
+            if _ab_payload["path_col"] not in (None, _graph_path_col):
+                raise InvalidParameterError(
+                    "path_col",
+                    _graph_path_col,
+                    [_ab_payload["path_col"]],
+                    reason="ab_transitions was computed per "
+                    f"{_ab_payload['path_col']}; the graph must use the same paths",
+                )
+            _ab_payload["diff"] = json.loads(self.diff)
+            self.ab_transitions = json.dumps(_ab_payload, allow_nan=False)
         self.path_col = path_col if path_col is not _UNSET else ""
 
         # Stable per-graph identity instead of the base class's random uuid:
@@ -418,6 +451,9 @@ class TransitionGraphWidget(RetentioneeringWidget):
             "label_scale": self.label_scale,
             "views": json.loads(self.views or "[]"),
             "view": self.view,
+            "ab_transitions": json.loads(self.ab_transitions)
+            if self.ab_transitions
+            else None,
         }
 
 

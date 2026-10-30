@@ -40,7 +40,7 @@ class TestGetSampleRatio:
             "control": 40,
             "treatment": 60,
         }
-        assert result["p_value"] == round(result["p_value"], 8)
+        assert result["p_value"] == float(f"{result['p_value']:.3g}")
         assert session.pending_tabs == []
 
     def test__expected_shares_and_period(self) -> None:
@@ -471,6 +471,107 @@ class TestAssignmentThroughMcp:
         assert session.assignment is None
 
 
+DIFF = ["arm", "treatment", "control"]
+
+
+class TestGetAbTransitionsAndSteps:
+    """The screens through MCP: counts and the top rows of the Python frame."""
+
+    def test_transitions_are_the_python_rows(self) -> None:
+        session = _ab_session()
+        result = tools.get_ab_transitions(session, DIFF, top=3)
+        json.dumps(result, allow_nan=False)
+        assert "error" not in result, result
+        assert session.pending_tabs == []
+        frame = session.active_stream.get_ab_transitions(tuple(DIFF))
+        assert result["n_rows"] == len(frame)
+        assert result["n_tested"] == frame.attrs["n_tested"]
+        assert result["n_increase"] == int((frame["verdict"] == "increase").sum())
+        assert result["edge_weight"] == "unique_paths"
+        assert result["population"] == "stream"
+        assert len(result["top"]) == 3
+        for row, (_, ref) in zip(result["top"], frame.head(3).iterrows()):
+            assert (row["source"], row["target"]) == (ref["source"], ref["target"])
+            assert row["delta"] == pytest.approx(ref["delta"], abs=1e-6)
+            assert row["verdict"] == ref["verdict"]
+            assert row["reading"] == ref["reading"]
+            assert row["unit"] == "pp"
+        visit_order = next(
+            r for r in result["top"] if (r["source"], r["target"]) == ("visit", "order")
+        )
+        assert visit_order["verdict"] == "increase"
+        assert "bh over" in result["scope"]
+
+    def test_declared_edges_and_weights(self) -> None:
+        session = _ab_session()
+        result = tools.get_ab_transitions(
+            session, DIFF, "avg_per_path", edges=[["visit", "order"]]
+        )
+        assert "error" not in result, result
+        assert result["n_rows"] == 1 and result["n_tested"] == 1
+        assert result["top"][0]["unit"] == "value"
+        # a declared family, one tested row: neither "screen" nor "1 tested rows"
+        assert result["scope"].startswith(
+            "bh over the 1 tested row of this call (a declared family: confirmatory"
+        )
+        assert "screen" not in result["scope"]
+        assert "declared family" in result["top"][0]["reading"]
+        screen = tools.get_ab_transitions(session, DIFF)
+        assert "exploratory screen" in screen["scope"]
+        assert f"over the {screen['n_tested']} tested rows" in screen["scope"]
+        ratio = tools.get_ab_transitions(session, DIFF, "proba_out")
+        assert all(r["conditional"] for r in ratio["top"])
+        assert "error" in tools.get_ab_transitions(session, DIFF, "count")
+
+    def test_counts_add_up_to_the_family(self) -> None:
+        # visit -> order is the one way into order: proba_in is 1 in both arms,
+        # no p-value, so the row is untested, not inconclusive
+        result = tools.get_ab_transitions(_itt_session(), DIFF, "proba_in", top=50)
+        assert "error" not in result, result
+        tested = result["n_increase"] + result["n_decrease"] + result["n_inconclusive"]
+        assert tested == result["n_tested"]
+        assert tested + result["n_untested"] == result["n_rows"]
+        row = next(
+            r for r in result["top"] if (r["source"], r["target"]) == ("visit", "order")
+        )
+        assert row["verdict"] == "insufficient_data" and row["p_value"] is None
+        assert "constant in both arms" in row["reading"]
+
+    def test_itt_with_horizon(self) -> None:
+        result = tools.get_ab_transitions(_itt_session(), DIFF, horizon="7D")
+        json.dumps(result, allow_nan=False)
+        assert "error" not in result, result
+        assert result["population"] == "assignment"
+        assert result["horizon"] == "7D"
+        assert result["unassigned_paths"] == 0
+        assert "immature_paths" in result
+
+    def test_steps(self) -> None:
+        session = _ab_session()
+        result = tools.get_ab_steps(session, DIFF, max_steps=3, top=50)
+        json.dumps(result, allow_nan=False)
+        assert "error" not in result, result
+        frame = session.active_stream.get_ab_steps(tuple(DIFF), 3)
+        assert result["n_tested"] == frame.attrs["n_tested"]
+        assert result["max_steps"] == 3
+        cells = {(r["event"], r["step"]): r for r in result["top"]}
+        assert cells[("order", 2)]["verdict"] == "increase"
+        assert all(r["unit"] == "pp" for r in result["top"])
+        assert "error" in tools.get_ab_steps(session, ["arm", "x", "y"])
+        for bad in (0, -3, 2.5, "5", True):
+            assert "top" in tools.get_ab_steps(session, DIFF, top=bad)["error"]
+            assert "top" in tools.get_ab_transitions(session, DIFF, top=bad)["error"]
+
+    def test_describe_tool_names_the_mcp_result(self) -> None:
+        out = tools.describe_tool("get_ab_transitions")
+        assert out["method"] == "get_ab_transitions"
+        assert "top rows" in out["mcp_tool"]
+        assert "exploratory screen" in out["mcp_docs"]
+        assert "get_ab_steps" in (tools.describe_tool.__doc__ or "")
+        steps = tools.describe_tool("get_ab_steps")
+        assert steps["method"] == "get_ab_steps" and "top cells" in steps["mcp_tool"]
+
+
 class TestDescribeForExperiments:
     def test_levels_values_constant_flags_and_table(self) -> None:
         session = _itt_session()
@@ -508,6 +609,47 @@ class TestDescribeForExperiments:
         assert "mcp_tool" not in out
 
 
+class TestPValues:
+    """p-values keep three significant digits, however small (eight fixed decimals
+    turned 4.28e-09 into 0.0)."""
+
+    def test_json_p_value(self) -> None:
+        assert tools._json_p_value(4.275451e-09) == 4.28e-09
+        assert tools._json_p_value(2.5652706e-08) == 2.57e-08
+        assert tools._json_p_value(0.4791) == 0.479
+        assert tools._json_p_value(1.0) == 1.0
+        assert tools._json_p_value(0.0) == 0.0
+        assert tools._json_p_value(float("nan")) is None
+        assert tools._json_p_value(None) is None
+
+    def test_a_small_p_value_survives_both_tools(self) -> None:
+        from retentioneering import datasets
+
+        stream = datasets.load_ab_test()
+        table = datasets.load_ab_test_assignment()
+        session = ReportSession(stream, {}, assignment=table)
+        diff = ["exp_group", "treatment", "control"]
+        frame = stream.get_ab_transitions(tuple(diff), assignment=table)
+        ref = frame.set_index(["source", "target"]).loc[("checkout_start", "home")]
+        result = tools.get_ab_transitions(session, diff, top=20)
+        row = next(
+            r
+            for r in result["top"]
+            if (r["source"], r["target"]) == ("checkout_start", "home")
+        )
+        assert 0 < ref["p_value"] < 1e-8
+        assert row["p_value"] == float(f"{ref['p_value']:.3g}")
+        assert row["p_value_adjusted"] == float(f"{ref['p_value_adjusted']:.3g}")
+        # the scorecard's p-values go through the same formatter
+        metric = {
+            "name": "abandon",
+            "metric": "matches_pattern",
+            "metric_args": {"pattern": "checkout_start->home"},
+        }
+        card = tools.get_ab_test(session, diff, [metric])
+        assert card["metrics"][0]["p_value"] == row["p_value"]
+
+
 class TestServerWrappersInSync:
     """ADR-0009: each A/B server wrapper takes the tool's parameters."""
 
@@ -521,6 +663,8 @@ class TestServerWrappersInSync:
             "get_ab_test",
             "add_ab_test",
             "get_ab_bootstrap",
+            "get_ab_transitions",
+            "get_ab_steps",
         ):
             tool_params = list(inspect.signature(getattr(tools, name)).parameters)[1:]
             schema = registered[name].parameters["properties"]

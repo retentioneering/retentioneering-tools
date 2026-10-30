@@ -156,9 +156,9 @@ and `tools/_bootstrap.py` are pure functions without an `Eventstream`.
 
 ## Roadmap (not in this release)
 
-1. Behaviour in A/B: a transition test per edge with Benjamini–Hochberg over
-   edges and a shared vocabulary, then dose-response; a `prob_group1_better`
-   column.
+1. Behaviour in A/B: ~~a transition test per edge with Benjamini–Hochberg over
+   edges and a shared vocabulary~~ shipped (see the amendment below); then
+   dose-response; a `prob_group1_better` column.
 2. Design from history: an A/A replay on past data to size a test and check
    the false-positive rate of the planned analysis, then `get_ab_design`.
 3. Variance reduction: CUPED and linearisation on pre-exposure metrics. There
@@ -173,3 +173,70 @@ Deferred decisions: `assignment=` on the funnel, and equivalence /
 non-inferiority verdicts (a margin-based verdict next to the superiority one).
 Items 1–3 are ordered by expected value per effort: the transition test first,
 design-from-history second, variance reduction third.
+
+## Amendment (2026-10): the transition and step screens
+
+Roadmap item 1 ships as `Eventstream.get_ab_transitions(diff, edge_weight=...)`
+and `get_ab_steps(diff, max_steps=...)`, with MCP tools of the same names and a
+significance overlay on the diff transition graph
+(`transition_graph(diff=..., ab_transitions=frame)`).
+
+**A1 — one machine, not a second scorecard.** Both screens reuse the scorecard's
+contracts: `diff` resolved per path, the population (`assignment=` for ITT,
+silent paths included), the unit guard, `horizon` with `immature_paths`, the
+pooled support rule, the verdict as a pure function of the adjusted p-value, the
+`reading` sentence, `mde` at `alpha / m`, and the z-test, Welch and joint path
+bootstrap. The shared rules moved out of `get_ab_test` into helpers in
+`tools/ab_test.py` (validation, population, analysed window, support, adjustment,
+verdicts), and the scorecard's numbers did not change. Per-path edge counts come
+from the transition graph's own SQL (`path_transition_counts`) as a sparse
+matrix; the bootstrap takes sparse input and gives bit-identical replicates.
+An arm's value equals `transition_graph_data` / `step_matrix_data` for that arm
+on the stream's paths, for every weight.
+
+**A2 — a screen with FDR control.** The family is every edge (cell) with enough
+pooled support and a p-value, adjusted together with Benjamini–Hochberg by default
+(`correction_family` names it, `attrs["n_tested"]` sizes it). A row outside it —
+below the support rule, or without a p-value (constant in both arms, invalid
+bootstrap replicates) — is `insufficient_data`, so the tested verdicts add up to
+`n_tested`; the scorecard, which has no family size to agree with, reads a
+supported row without a p-value as `inconclusive`. It is found after
+looking, so it is exploratory by construction: a discovery's reading ends "a
+hypothesis to confirm as the declared metric of a new test, not a decision".
+`edges=[(source, target), ...]` declared before the test makes a confirmatory
+family. Intervals are per row; only Bonferroni adds simultaneous ones, which
+for bootstrapped rows are normal on the bootstrap SE (a percentile at
+`1 - alpha / m` is beyond `n_bootstrap` replicates at a screen's `m`), so they
+agree with the adjusted p-value, the same rule as the scorecard's bootstrap
+rows.
+
+**A3 — per-path quantities, conditional ratios.** `unique_paths` (0/1, z-test)
+and `avg_per_path` (count, Welch) average over every path of the arm and are
+effects of the assignment. `proba_out`, `proba_in` and `share_of_total` are
+ratios of sums over paths (joint path bootstrap of numerator and denominator
+means on shared weights), and their denominators are post-treatment behaviour:
+every such row has `conditional=True` and its reading says what it compares.
+`count` raises (it grows with the arm's size); the time weights are not tested.
+Step cells are 0/1 per path from each path's start; `path_end` cells count the
+paths that ended, silent paths ended at step 1; step 0 is not a cell.
+
+**A4 — the overlay is the frame.** The graph takes the frame itself (no `_data`
+twin): it is validated against the graph's `diff`, `edge_weight` and
+`path_col`, shipped as a JSON payload, exported in static HTML, and not
+persisted in `state_file`. Significant edges are drawn in their sign's colour and
+bypass the edge filter; inconclusive edges turn grey, untested ones dashed, edges
+without a row faint, and the tooltip shows the test's values (shares for
+`unique_paths`) so its units agree with the test. The label of an edge with a row
+is the frame's delta, and every row on an edge of the graph is drawn even where
+the graph's own difference is 0: with arms of different sizes a path-count
+difference can be 0, or have the other sign, while the shares differ. When the sidebar changes the
+weight, the diff or the path column, the overlay steps aside.
+
+Validation: on `load_ab_test()` the screens find the planted cart loop (story 4)
+and, with `proba_out`, the conditional checkout step (story 2) flagged
+conditional; over 20 `aa_calibration` seeds no run had an edge discovery for any
+tested weight, and the raw null p-values were uniform.
+
+Out of scope in this release: time weights (`time_median`, `time_q95`), `count`,
+`path_pattern` / `anchor` on steps (cut with `truncate_paths`), simultaneous
+intervals other than Bonferroni, a confidence interval on `rel_delta`.

@@ -15,6 +15,59 @@ if TYPE_CHECKING:
 TRANSITION_MATRIX_VALUES_OPTIONS = get_args(T_TransitionMatrixValues)
 
 
+def _transitions_subquery(schema, path_col: str, table: str = "df") -> str:
+    """One row per event with the next event of its path (``next_<event_col>``,
+    NULL on the path's last event), in the order of ``index``, ``subindex``.
+
+    path_cols is validated (coarsest-first, strictly nested) at Eventstream
+    construction time, and path_col is restricted to schema.path_cols by the
+    callers, so ordering by index_col is correct at any accepted grain (see
+    ADR-0004).
+    """
+    event_col = schema.event_col
+    path_col_q = engine.quote_ident(path_col)
+    event_col_q = engine.quote_ident(event_col)
+    order_by = (
+        f"{engine.quote_ident(schema.index)}, {engine.quote_ident(schema.subindex)}"
+    )
+    return f"""
+                    select
+                        {event_col_q},
+                        lead({event_col_q}) over (
+                            partition by {path_col_q}
+                            order by {order_by}
+                        ) as next_{event_col},
+                        {path_col_q}
+                    from {table}"""
+
+
+def path_transition_counts(eventstream: "Eventstream", path_col: str) -> pd.DataFrame:
+    """Per-path transition counts, with the synthetic ``path_start`` / ``path_end``
+    events added exactly as :meth:`TransitionMatrix.fit` adds them.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Columns ``path_col``, ``source``, ``target``, ``count``: one row per path
+        and transition that occurs in it. Summed over paths, ``count`` is the
+        ``count`` matrix of ``transition_graph_data``; the number of paths per
+        ``(source, target)`` is its ``unique_paths`` matrix.
+    """
+    schema = eventstream.schema
+    event_col = schema.event_col
+    path_col_q = engine.quote_ident(path_col)
+    event_col_q = engine.quote_ident(event_col)
+    df = eventstream.add_start_end_events(path_col=path_col).df
+    query = f"""
+    select {path_col_q}, {event_col_q} as source, next_{event_col} as target,
+        count(*) as count
+    from ({_transitions_subquery(schema, path_col)}
+    ) where next_{event_col} is not null
+    group by {path_col_q}, {event_col_q}, next_{event_col}
+    """
+    return engine.run(query, df=df)
+
+
 @dataclass
 class TransitionMatrix:
     eventstream: "Eventstream"
@@ -62,6 +115,7 @@ class TransitionMatrix:
         # (see ADR-0004).
         order_by = f"{index_col_q}, {subindex_col_q}"
         time_values = ["time_median", "time_q95"]
+        transitions = _transitions_subquery(self.eventstream.schema, path_col)
 
         if self.eventstream.is_empty():
             raise EmptyEventstreamError(
@@ -83,14 +137,7 @@ class TransitionMatrix:
                 query = f"""
                 select {event_col_q}, next_{event_col}, count(*) as cnt
                 from (
-                    select
-                        {event_col_q},
-                        lead({event_col_q}) over (
-                            partition by {path_col_q}
-                            order by {order_by}
-                        ) as next_{event_col},
-                        {path_col_q}
-                    from df
+{transitions}
                 ) where next_{event_col} is not null
                 group by {event_col_q}, next_{event_col}
                 """
@@ -117,14 +164,7 @@ class TransitionMatrix:
                 query = f"""
                 select {event_col_q}, next_{event_col}, count(distinct {path_col_q}) as cnt
                 from (
-                    select
-                        {event_col_q},
-                        lead({event_col_q}) over (
-                            partition by {path_col_q}
-                            order by {order_by}
-                        ) as next_{event_col},
-                        {path_col_q}
-                    from df
+{transitions}
                 ) where next_{event_col} is not null
                 group by {event_col_q}, next_{event_col}
                 """

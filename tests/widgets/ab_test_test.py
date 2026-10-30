@@ -372,9 +372,7 @@ class TestMcpReportTab:
         for entry, (_, row) in zip(out["metrics"], expected.iterrows()):
             assert entry["verdict"] == row["verdict"]
             assert entry["delta"] == pytest.approx(row["delta"], abs=1e-6)
-            assert entry["p_value_adjusted"] == pytest.approx(
-                row["p_value_adjusted"], abs=1e-8
-            )
+            assert entry["p_value_adjusted"] == float(f"{row['p_value_adjusted']:.3g}")
         assert any("strata_pre_exposure" in w for w in out["warnings"])
 
         path = tmp_path / "report.html"

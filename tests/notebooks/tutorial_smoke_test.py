@@ -126,8 +126,29 @@ for _name, _row in cluster_funnels.items():
     _stratum = strata.set_index("stratum").loc[_name]
     assert abs(_row["order_delta"] - _stratum["delta"]) < 1e-12
 
-# step 8: the loop exists in treatment only
-assert graph_treatment.loc["cart", "cart"] > 0 and graph_control.loc["cart", "cart"] == 0
+# step 8: the screen of the curators' edges; the loop exists in treatment only
+assert curator_edges.attrs["n_tested"] == 67 and len(differ) == 18
+assert curator_edges["group1_paths"].iloc[0] == 1147
+assert curator_edges["group2_paths"].iloc[0] == 1176
+assert set(curator_edges["population"]) == {"stream"}
+_edges = curator_edges.set_index(["source", "target"])
+_cart_loop = _edges.loc[("cart", "cart")]
+assert (_cart_loop["group1_edge_paths"], _cart_loop["group2_edge_paths"]) == (237, 0)
+assert (
+    round(_cart_loop["delta"] * 100, 2),
+    round(_cart_loop["delta_ci_low"] * 100, 2),
+    round(_cart_loop["delta_ci_high"] * 100, 2),
+) == (20.66, 18.40, 23.10)
+assert _cart_loop["verdict"] == "increase" and _cart_loop["support_warning"] == "one_arm_only"
+assert round(_edges.loc[("checkout_start", "payment"), "delta"] * 100, 2) == -6.23
+assert round(_edges.loc[("payment", "order_success"), "delta"] * 100, 2) == -5.12
+assert _edges.loc[("checkout_start", "payment"), "verdict"] == "decrease"
+assert _edges.loc[("payment", "order_success"), "verdict"] == "decrease"
+# "most of the edges that differ restate the treatment": they touch quick_add or add_to_cart
+_feature = differ["source"].isin(["quick_add", "add_to_cart"]) | differ["target"].isin(
+    ["quick_add", "add_to_cart"]
+)
+assert _feature.sum() > len(differ) / 2
 
 # step 9: descriptive loop -> order (conditional), ITT loop share under the pooled support rule
 assert loop_to_order.iloc[0]["group2_paths_with_start"] == 0

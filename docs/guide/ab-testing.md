@@ -329,6 +329,93 @@ On the full stream, the bins mix pre-exposure browsing with everything the treat
 
 **New users have no history.** In an acquisition or onboarding test the treatment acts from the first screen, so there is no pre-exposure window to cluster on. Blind clusters then collapse to what is known at assignment — platform, channel, country — and clustering on post-exposure behaviour is descriptive only.
 
+## Which edges and steps differ: a screen with FDR control
+
+The scorecard answers the question declared before the test. After it, a
+transition graph with `diff` shows where the arms' paths part, but every edge in it
+is a point estimate: with 92 edges, some differences are noise. [`get_ab_transitions()`](/docs/tools/get-ab-transitions)
+puts an interval and a test on each edge, and [`get_ab_steps()`](/docs/tools/get-ab-steps)
+on each cell of the step matrix, with the p-values adjusted over every tested row
+(Benjamini–Hochberg by default: among the rows called significant, the share of
+false discoveries is at most about 5 % on average). Arms, population and window are the scorecard's:
+
+```python
+edges = stream.get_ab_transitions(diff, assignment=assignment)
+edges.attrs["n_tested"], edges["verdict"].value_counts().to_dict()
+# (90, {'inconclusive': 71, 'increase': 10, 'decrease': 9, 'insufficient_data': 2})
+```
+
+| source | target | group1_value | group2_value | delta | interval | p_value_adjusted | verdict |
+|---|---|---|---|---|---|---|---|
+| product_view | add_to_cart | 0.2796 | 0.6254 | −34.58 pp | [−36.39, −32.73] | 1.1e-262 | decrease |
+| cart | cart | 0.0478 | 0 | +4.78 pp | [+4.21, +5.41] | 1.6e-54 | increase (`one_arm_only`) |
+| checkout_start | home | 0.0190 | 0.0060 | +1.30 pp | [+0.87, +1.75] | 2.6e-8 | increase |
+| checkout_start | payment | 0.2883 | 0.2877 | +0.06 pp | [−1.71, +1.84] | 0.98 | inconclusive |
+
+A row that is not tested — below `min_support`, or without a p-value because its
+value is constant in both arms — is `insufficient_data`, so the other verdicts add
+up to `n_tested`. With the default `edge_weight="unique_paths"` a row is the share of assigned users
+whose path has the transition. Most discoveries restate the treatment itself
+(`quick_add` replaces `add_to_cart`); two are new. The `cart -> cart` self-loop
+exists in the treatment arm only — the curators' reopened carts of the strata above.
+And `checkout_start -> home` triples while `checkout_start -> payment`, the share of
+users with a checkout followed by a payment, does not move: the shortcut starts checkouts that
+are abandoned, it does not stop anyone paying.
+
+Pass the frame to the graph to see it: `stream.transition_graph(diff=diff,
+ab_transitions=edges)` draws significant edges in their sign's colour, inconclusive
+ones grey, untested ones dashed and edges without a row in the frame faint; it
+labels each edge with the frame's delta in pp and draws every row of the frame,
+also where the arms' path counts tie, and its
+tooltip shows the test's values (the arms' shares, not the graph's path counts),
+the interval and the adjusted p-value. `get_ab_steps(diff, max_steps=8, assignment=assignment)`
+does the same per step: 93 cells tested, `quick_add` higher and `add_to_cart` lower
+at steps 3 to 8, and `cart` at step 8 higher by +1.71 pp [+0.89, +2.55].
+
+**When to use it.** After the scorecard, to find where the arms' paths part, and as
+a source of hypotheses for the next test. Not for the launch decision: the family is
+every edge with enough support, chosen after the data were seen. A discovery is
+confirmed by declaring it as the metric of a new test — the loop's share of users as
+a `matches_pattern` metric, or a handful of edges named before the test with
+`edges=[("cart", "cart"), ...]`, which makes them the whole family.
+
+**Pitfalls.**
+
+- *Conditional weights.* `proba_out`, `proba_in` and `share_of_total` divide by
+  behaviour the treatment changes. With `edge_weight="proba_out"`,
+  `checkout_start -> payment` is a `decrease` of −5.25 pp [−6.66, −3.82] — the
+  funnel's conditional step from story 2 — while the share of users with a checkout followed by a
+  payment is unchanged (the table above): the shortcut filled the denominator with
+  checkouts nobody meant to finish. These rows carry `conditional=True` and their
+  reading says what they compare. Read `unique_paths` or `avg_per_path`, which
+  average over every assigned user, for an effect of the treatment.
+- *Post-exposure selection.* Filtering the paths first — users who reached the
+  cart, sessions with a `quick_add` — compares groups the treatment selected
+  ([pitfall 1](#1-conditioning-on-post-treatment-behaviour)). Screen the whole
+  population, or cut it at a pre-exposure event (`truncate_paths`) and declare why.
+- *Per-row intervals.* The interval of each row is at `ci_level` for that row
+  alone, not for all of them at once; the verdict reads the adjusted p-value, so an
+  interval can exclude 0 on a grey row (with `edge_weight="proba_out"`,
+  `cart -> checkout_start` reads `per-comparison interval [-4.79, -0.12] pp excludes
+  0, but p 0.24 after bh is not below alpha 0.05`). Only `correction="bonferroni"`
+  adds simultaneous intervals.
+- *The winner's curse.* The rows that pass the screen are selected for a large
+  estimate, so their deltas, and their intervals, sit further from 0 than the true
+  effects on average — most for the rows just past the threshold. Quote a
+  discovery's interval as where the screen found it, and size the confirming test
+  on a smaller effect.
+- *A window is not churn.* Under `horizon=`, `path_end` is the last event inside each
+  user's window: `X -> path_end` says the window closed after `X`, not that the user
+  left. Without a horizon, it is the last event of the observation period.
+- *Cells and edges are not independent.* A path that reaches an event a step earlier
+  moves that event's cells at two steps; a path one event longer moves a `path_end`
+  cell; a new event moves every edge around it. Read the
+  screen as a map of where the difference lives, not as a count of effects.
+
+Under a true null (20 seeds of `load_ab_test("aa_calibration", seed=...)`) the screen called
+no edge significant in any run, at any of `unique_paths`, `avg_per_path`,
+`proba_out` and `share_of_total`, and one cell in one run of `get_ab_steps`.
+
 ## Sample ratio mismatch
 
 A sample ratio mismatch (SRM) — arms whose sizes differ from the design by more than chance — means the assignment, the logging or a filter lost users from one arm, and no metric of the test can be trusted until it is explained. [`get_sample_ratio()`](/docs/tools/get-sample-ratio) tests the counts against the expected shares (chi-square goodness of fit, an equal split by default):
@@ -428,7 +515,8 @@ In the library: `period_basis="since_assignment"` bins by exposure age, and `get
 
 - `assignment=` on the funnel (an ITT denominator that counts silent users);
 - equivalence and non-inferiority verdicts with a margin;
-- a per-edge transition test between arms with Benjamini–Hochberg over edges, then dose-response;
+- dose-response (a per-edge test is available: [`get_ab_transitions`](/docs/tools/get-ab-transitions));
+- in the transition and step screens: the time weights (`time_median`, `time_q95`) and the raw `count` (it grows with the arm's size; `avg_per_path` is its per-user form), and `path_pattern` / `anchor` in `get_ab_steps` (cut the paths with `truncate_paths` instead);
 - design from history: an A/A replay on past data to size a test and check the planned analysis's false-positive rate;
 - variance reduction (CUPED, linearisation) on pre-exposure metrics — there is no `covariates=` parameter; `get_ab_paths()` returns the per-path table behind the scorecard (arm, `assigned_at`, every metric's value), on which you can fit one by hand;
 - an exposure-based population (`exposure_event=`, `population="exposed"`) and a balance check with a within-strata permutation test.
@@ -437,13 +525,13 @@ Sequential (always-valid) tests and a bootstrap over a unit coarser than the pat
 
 ## Asking an agent instead
 
-The [MCP server](/docs/mcp-server) has four A/B tools: `get_sample_ratio`, `get_ab_test` and `get_ab_bootstrap` (an early-minus-late contrast with its interval) return numbers only, and `add_ab_test` registers the scorecard as a report tab. `get_ab_paths` is Python only. Its playbook has an A/B scenario: check the sample ratio first, declare the decision metric and the metrics before the first call, read `inconclusive` with the interval and the `mde`, and never filter or stratify on post-exposure behaviour. Two habits from this page carry over. When the treatment renames an event — `quick_add` instead of `add_to_cart` — compare the union (`has_any_event` over both), not either event alone. And to find who the treatment helps, test heterogeneity first, then read `stratum_vs_rest_p_value`, with every stratum labelled exploratory unless it was fixed before exposure. `export_report` saves only report tabs, so a numbers-only analysis needs a tab, such as the scorecard via `add_ab_test`, before it can be exported. An agent with retentioneering's [skills](/docs/agent-skills) can run the same calls as code.
+The [MCP server](/docs/mcp-server) has six A/B tools: `get_sample_ratio`, `get_ab_test`, `get_ab_bootstrap` (an early-minus-late contrast with its interval), `get_ab_transitions` and `get_ab_steps` (the screens above: counts per verdict and the top rows) return numbers only, and `add_ab_test` registers the scorecard as a report tab. `get_ab_paths` is Python only. Its playbook has an A/B scenario: check the sample ratio first, declare the decision metric and the metrics before the first call, read `inconclusive` with the interval and the `mde`, and never filter or stratify on post-exposure behaviour. Two habits from this page carry over. When the treatment renames an event — `quick_add` instead of `add_to_cart` — compare the union (`has_any_event` over both), not either event alone. And to find who the treatment helps, test heterogeneity first, then read `stratum_vs_rest_p_value`, with every stratum labelled exploratory unless it was fixed before exposure. `export_report` saves only report tabs, so a numbers-only analysis needs a tab, such as the scorecard via `add_ab_test`, before it can be exported. An agent with retentioneering's [skills](/docs/agent-skills) can run the same calls as code.
 
 ## Next steps
 
 - [A/B testing tutorial](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_tutorial.ipynb) — an eleven-step notebook on the built-in `load_ab_test()` dataset: sample ratio, scorecard and its widget, funnel, novelty, pre-exposure strata, loops, example paths per arm, and a decision.
 - [A/B testing showcase](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_showcase.ipynb) — the companion reference notebook, organised by capability: every dataset, metric kind, test, correction, period basis and output column, each shown once with its reading.
-- [A/B Test Scorecard](/docs/tools/get-ab-test), [A/B Bootstrap Replicates](/docs/tools/get-ab-bootstrap), [A/B Per-Path Table](/docs/tools/get-ab-paths), [Sample Ratio Check](/docs/tools/get-sample-ratio) — every parameter and output column; `get_ab_paths()` returns the per-path table behind the scorecard, for an analysis the scorecard does not run (a covariate adjustment by hand); the [A/B Test widget](/docs/widgets/ab-test) draws the scorecard as a table and a forest plot.
+- [A/B Test Scorecard](/docs/tools/get-ab-test), [A/B Bootstrap Replicates](/docs/tools/get-ab-bootstrap), [A/B Per-Path Table](/docs/tools/get-ab-paths), [A/B Transition Screen](/docs/tools/get-ab-transitions), [A/B Step Screen](/docs/tools/get-ab-steps), [Sample Ratio Check](/docs/tools/get-sample-ratio) — every parameter and output column; `get_ab_paths()` returns the per-path table behind the scorecard, for an analysis the scorecard does not run (a covariate adjustment by hand); the [A/B Test widget](/docs/widgets/ab-test) draws the scorecard as a table and a forest plot.
 - [A/B test datasets](/docs/eventstream#ab-test-datasets) — `list_ab_tests()` and `load_ab_test(name=...)`: six synthetic experiments to practise on, some of them broken tests whose right answer is not to read them.
 - [Funnel](/docs/widgets/funnel#confidence-intervals-and-ab-tests) — what each interval and p-value assumes.
 - [Segments](/docs/segments) and [Add Segment](/docs/data-processors/add-segment) — carrying an assignment table or pre-exposure labels onto the event log with `path_values`.

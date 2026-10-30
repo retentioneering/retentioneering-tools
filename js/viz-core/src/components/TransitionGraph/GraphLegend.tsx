@@ -16,6 +16,8 @@ interface GraphLegendProps {
   defaultCollapsed?: boolean;
   /** Direction currently shown by the node focus (mode === "focus"). */
   focusDirection?: "out" | "in" | "both";
+  /** Diff mode with the get_ab_transitions overlay: its one-line summary. */
+  abText?: string | null;
 }
 
 function Swatch({ color, kind }: { color: string; kind: "line" | "dot" }) {
@@ -48,6 +50,48 @@ function Swatch({ color, kind }: { color: string; kind: "line" | "dot" }) {
 }
 
 /**
+ * Rows of the diff-mode legend (no hooks, so it renders on its own in tests).
+ * With the get_ab_transitions overlay (`abText`) the colours mean significant
+ * differences, and grey / dashed edges are inconclusive / not tested.
+ */
+export function DiffLegendRows({
+  rowStyle,
+  diffLabel1,
+  diffLabel2,
+  abText = null,
+}: {
+  rowStyle: React.CSSProperties;
+  diffLabel1?: string | null;
+  diffLabel2?: string | null;
+  abText?: string | null;
+}) {
+  const more = abText ? "significantly more in" : "more in";
+  return (
+    <>
+      <div style={rowStyle}>
+        <Swatch color="rgb(239,68,68)" kind="line" />
+        <span>{more} {diffLabel1 ?? "group 1"}</span>
+      </div>
+      <div style={rowStyle}>
+        <Swatch color="rgb(59,130,246)" kind="line" />
+        <span>{more} {diffLabel2 ?? "group 2"}</span>
+      </div>
+      {abText && (
+        <>
+          <div style={rowStyle}>
+            <Swatch color="rgba(156,163,175,0.6)" kind="line" />
+            <span>inconclusive; dashed: not tested</span>
+          </div>
+          <div data-testid="ab-legend" style={{ ...rowStyle, maxWidth: 260, whiteSpace: "normal" }}>
+            <span>{abText}</span>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+/**
  * Contextual legend + coverage indicator, bottom-left of the graph canvas.
  * Content adapts to the current mode (normal / differential / focus);
  * the coverage line keeps the user honest about how much of the graph the
@@ -63,6 +107,7 @@ export function GraphLegend({
   widgetId,
   defaultCollapsed = false,
   focusDirection = "out",
+  abText = null,
 }: GraphLegendProps) {
   const storageKey = `transition-graph-legend:${widgetId}`;
   const [collapsed, setCollapsed] = React.useState<boolean>(() => {
@@ -189,16 +234,7 @@ export function GraphLegend({
           </span>
         </div>
       ) : mode === "diff" ? (
-        <>
-          <div style={rowStyle}>
-            <Swatch color="rgb(239,68,68)" kind="line" />
-            <span>more in {diffLabel1 ?? "group 1"}</span>
-          </div>
-          <div style={rowStyle}>
-            <Swatch color="rgb(59,130,246)" kind="line" />
-            <span>more in {diffLabel2 ?? "group 2"}</span>
-          </div>
-        </>
+        <DiffLegendRows rowStyle={rowStyle} diffLabel1={diffLabel1} diffLabel2={diffLabel2} abText={abText} />
       ) : (
         <>
           <div style={rowStyle}>

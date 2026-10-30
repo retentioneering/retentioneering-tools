@@ -14,6 +14,20 @@ import { DEFAULT_VALUE_TYPE, isTimeValueType, isProbabilityValueType, type Matri
 import { formatNumber } from "../../utils/format-number";
 import { formatTime } from "../../utils/format-time";
 import { resolveDiffLabels } from "../../utils/diff-tooltip";
+import {
+  type AbTransitionsPayload,
+  abDrawsEdge,
+  abEdgeClass,
+  abEdgeIndex,
+  abEdgeKey,
+  abEdgeLabel,
+  abEdgeLook,
+  abLegendText,
+  abTooltipLines,
+  abTooltipValues,
+  formatAbDelta,
+  formatAbValue,
+} from "../../utils/ab-transitions";
 import { withSeededRandom } from "../../utils/seeded-random";
 import { RangeSlider } from "./RangeSlider";
 import { SearchBar } from "./SearchBar";
@@ -419,6 +433,15 @@ export interface TransitionGraphProps {
   applyViewRef?: React.MutableRefObject<
     ((view: GraphView | string) => void) | undefined
   >;
+  /**
+   * Significance overlay from `get_ab_transitions` (diff mode only): pass it
+   * only while it describes the drawn edge weight and diff (see
+   * `abPayloadApplies`). Significant edges are drawn in the colour of their
+   * sign and are never hidden by the edge filter; inconclusive edges turn
+   * grey, untested ones grey and dashed; the edge tooltip adds the delta, its
+   * interval, the adjusted p-value and the verdict.
+   */
+  abTransitions?: AbTransitionsPayload | null;
 }
 
 export const TransitionGraph = observer(function TransitionGraph({
@@ -446,6 +469,7 @@ export const TransitionGraph = observer(function TransitionGraph({
   views,
   initialView,
   applyViewRef,
+  abTransitions = null,
 }: TransitionGraphProps) {
   // internal state for uncontrolled valuesType
   const [internalValuesType, setInternalValuesType] = React.useState<MatrixValueType>(valuesTypeProp ?? DEFAULT_VALUE_TYPE);
@@ -662,6 +686,17 @@ export const TransitionGraph = observer(function TransitionGraph({
   const hasShownInitialSceneRef = React.useRef(false);
   const isDifferential =
     !!committedDiffSegment || committedMatrixType === "differential";
+  // Significance overlay (get_ab_transitions): only on a diff graph.
+  const abOverlay = isDifferential ? abTransitions : null;
+  const abIndex = React.useMemo(() => abEdgeIndex(abOverlay), [abOverlay]);
+  const abSignificant = React.useMemo(() => {
+    const keys = new Set<string>();
+    abIndex.forEach((stat, key) => {
+      const cls = abEdgeClass(stat);
+      if (cls === "increase" || cls === "decrease") keys.add(key);
+    });
+    return keys;
+  }, [abIndex]);
   const diffLabels = React.useMemo(
     () => resolveDiffLabels(diffSegment, diffValue1, diffValue2),
     [diffSegment, diffValue1, diffValue2],
@@ -1181,22 +1216,34 @@ export const TransitionGraph = observer(function TransitionGraph({
       hasBackward: boolean;
     }> = [];
 
+    // An edge with a non-zero value; under the A/B overlay also a row of the
+    // frame on an edge of the graph whose two arms tie (abIndex is empty
+    // without the overlay, so the plain diff mode is unchanged).
+    const isDrawn = (source: string, target: string, value: number): boolean =>
+      abDrawsEdge(
+        value,
+        abIndex.get(abEdgeKey(source, target)),
+        store.getDiffGroupValue(source, target, "group1"),
+        store.getDiffGroupValue(source, target, "group2"),
+      );
+
     graphEvents.forEach((rowEvent) => {
       graphEvents.forEach((colEvent) => {
         const isSelfLoop = rowEvent.id === colEvent.id;
 
         const forwardValue = store.getMatrixValue(rowEvent.id, colEvent.id);
-        if (!Number.isFinite(forwardValue) || forwardValue === 0) return;
+        if (!isDrawn(rowEvent.id, colEvent.id, forwardValue)) return;
+        const weight = Number.isFinite(forwardValue) ? forwardValue : 0;
 
         const backwardValue = store.getMatrixValue(colEvent.id, rowEvent.id);
         const hasBackward =
-          !isSelfLoop && Number.isFinite(backwardValue) && backwardValue !== 0;
+          !isSelfLoop && isDrawn(colEvent.id, rowEvent.id, backwardValue);
 
         list.push({
           source: rowEvent.id,
           target: colEvent.id,
-          weight: forwardValue,
-          normalizedWeight: normalize(forwardValue),
+          weight,
+          normalizedWeight: normalize(weight),
           isSelfLoop,
           hasBackward,
         });
@@ -1205,7 +1252,7 @@ export const TransitionGraph = observer(function TransitionGraph({
 
     list.sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight));
     return list;
-  }, [store, visibleEvents, maxWeight, isProbability, isDifferential]);
+  }, [store, visibleEvents, maxWeight, isProbability, isDifferential, abIndex]);
 
   // Smallest nonzero |weight| on the graph — the data-driven lower bound of
   // the manual slider's log scale. Without it the scale starts at
@@ -1233,6 +1280,8 @@ export const TransitionGraph = observer(function TransitionGraph({
   // legend's coverage indicator.
   const isEdgeVisible = React.useCallback(
     (source: string, target: string, normalizedWeight: number) => {
+      // a significant edge of the A/B overlay is the finding: never filtered out
+      if (abSignificant.has(abEdgeKey(source, target))) return true;
       if (edgeFilter.mode === "topk") {
         return keptEdgeKeys?.has(edgeKey(source, target)) ?? true;
       }
@@ -1241,7 +1290,7 @@ export const TransitionGraph = observer(function TransitionGraph({
         normalizedWeight <= edgeFilter.range[1]
       );
     },
-    [edgeFilter, keptEdgeKeys],
+    [edgeFilter, keptEdgeKeys, abSignificant],
   );
 
   // Mirror of isEdgeVisible for the graph-build effect: read through a ref
@@ -1497,11 +1546,28 @@ export const TransitionGraph = observer(function TransitionGraph({
         edgeOpacity = 0.25 + scaledNormalized * 0.75;
       }
 
+      let dashed = false;
+      if (abOverlay) {
+        const look = abEdgeLook(
+          abEdgeClass(abIndex.get(abEdgeKey(edge.source, edge.target))),
+          { edgeSize, edgeOpacity, baseColor: baseEdgeColor, dashed: false },
+        );
+        ({ edgeSize, edgeOpacity, dashed } = look);
+        baseEdgeColor = look.baseColor;
+      }
+
       const edgeColor = applyAlphaColor(baseEdgeColor, edgeOpacity);
 
-      const baseValue = isDifferential
-        ? (edge.weight > 0 ? "+" : "") + formatValue(edge.weight)
-        : formatValue(edge.weight);
+      // Under the A/B overlay a frame row's label is the frame's delta (in pp
+      // for shares), the number its colour and tooltip read.
+      const abLabel = abOverlay
+        ? abEdgeLabel(abIndex.get(abEdgeKey(edge.source, edge.target)), abOverlay)
+        : null;
+      const baseValue =
+        abLabel ??
+        (isDifferential
+          ? (edge.weight > 0 ? "+" : "") + formatValue(edge.weight)
+          : formatValue(edge.weight));
 
       elements.push({
         group: "edges",
@@ -1532,6 +1598,7 @@ export const TransitionGraph = observer(function TransitionGraph({
           baseAlpha: edgeOpacity,
           edgeSize,
           edgeColor,
+          abDashed: dashed,
           showLabel: false,
           loopDirection: DEFAULT_LOOP_DIRECTION,
           zIndex: 1, // Raised to 999 for labeled edges by allocateEdgeLabels
@@ -1601,6 +1668,13 @@ export const TransitionGraph = observer(function TransitionGraph({
           "z-index-compare": "manual",
           "z-index": "data(zIndex)",
         },
+      },
+      // Edges the A/B overlay did not test (below its support rule)
+      {
+        selector: "edge[?abDashed]",
+        style: {
+          "line-style": "dashed",
+        } as any,
       },
       // Edge labels - render on top so labels are visible
       {
@@ -2069,6 +2143,8 @@ export const TransitionGraph = observer(function TransitionGraph({
     isGraphLayoutLoading,
     edgeList,
     nodeBaseSizes,
+    abOverlay,
+    abIndex,
   ]);
 
   React.useEffect(() => {
@@ -3209,9 +3285,11 @@ export const TransitionGraph = observer(function TransitionGraph({
           diffLabel2={diffLabels.value2Label}
           widgetId={sharedPreferencesId}
           focusDirection={focusDirection}
+          abText={abOverlay ? abLegendText(abOverlay) : null}
           // Exported HTML starts with the legend collapsed — reports embed
-          // several widgets and an open legend eats canvas space.
-          defaultCollapsed={host === null}
+          // several widgets and an open legend eats canvas space — unless it
+          // carries the significance overlay, whose legend explains the colours.
+          defaultCollapsed={host === null && !abOverlay}
         />
       </div>
 
@@ -3712,23 +3790,48 @@ export const TransitionGraph = observer(function TransitionGraph({
               isDark={isDark}
             />
           ) : isDifferential ? (
-            <DiffBreakdownTooltip
-              isTime={isTimeValue}
-              title={
-                <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span>{tooltip.from}</span>
-                  <span style={{ color: isDark ? "#9ca3af" : "#6b7280" }}>→</span>
-                  <span>{tooltip.to}</span>
-                </span>
-              }
-              segmentName={diffLabels.segmentName}
-              value1Label={diffLabels.value1Label}
-              value2Label={diffLabels.value2Label}
-              group1Value={tooltip.group1Value}
-              group2Value={tooltip.group2Value}
-              diffValue={tooltip.diffValue}
-              isDark={isDark}
-            />
+            (() => {
+              // Under the overlay the rows show the test's values (shares for
+              // unique_paths, not the graph's path counts) so the diff row and
+              // the test lines are in the same units.
+              const abStat = abOverlay
+                ? abIndex.get(abEdgeKey(tooltip.from, tooltip.to))
+                : undefined;
+              const abValues = abOverlay ? abTooltipValues(abStat, abOverlay) : null;
+              return (
+                <DiffBreakdownTooltip
+                  isTime={isTimeValue && !abValues}
+                  title={
+                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span>{tooltip.from}</span>
+                      <span style={{ color: isDark ? "#9ca3af" : "#6b7280" }}>→</span>
+                      <span>{tooltip.to}</span>
+                    </span>
+                  }
+                  subtitle={abValues?.subtitle}
+                  segmentName={diffLabels.segmentName}
+                  value1Label={diffLabels.value1Label}
+                  value2Label={diffLabels.value2Label}
+                  group1Value={abValues ? abValues.group1 : tooltip.group1Value}
+                  group2Value={abValues ? abValues.group2 : tooltip.group2Value}
+                  diffValue={abValues ? abValues.delta : tooltip.diffValue}
+                  isDark={isDark}
+                  formatValue={
+                    abValues && abOverlay
+                      ? (v) => formatAbValue(v, abOverlay)
+                      : undefined
+                  }
+                  formatDiff={
+                    abValues && abOverlay
+                      ? (v) => formatAbDelta(v, abOverlay)
+                      : undefined
+                  }
+                  extraLines={
+                    abOverlay ? abTooltipLines(abStat, abOverlay) : undefined
+                  }
+                />
+              );
+            })()
           ) : tooltip.type === "edge" ? (
             <div
               style={{

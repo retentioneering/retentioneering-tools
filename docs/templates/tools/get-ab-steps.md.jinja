@@ -1,0 +1,49 @@
+{% extends "_tool_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+The arms, the population, the unit guard and the window are those of
+[`get_ab_test`](/docs/tools/get-ab-test). Each path's events are numbered from its
+start (by timestamp, then the stream's order); a cell `(event, step)` is 1 for a
+path whose `step`-th event is `event`, and `(path_end, step)` is 1 for a path with
+fewer than `step` events. An arm's value is the share of its paths, which on the
+stream's paths is the number [`step_matrix_data(max_steps,
+diff=...)`](/docs/widgets/step-matrix) shows for that arm. With an `assignment`
+table, a silent path is in the denominators and has ended at step 1.
+
+Every cell is a 0/1 per-path quantity over every path of the arm, so its delta is an
+effect of the assignment, tested with the pooled z-test and a Newcombe interval. A
+cell is tested when its pooled support (paths with the event at the step, and paths
+without it) reaches `min_support`; the tested cells form one family adjusted with
+`correction` (Benjamini-Hochberg by default), and the verdict reads the adjusted
+p-value, as in [`get_ab_transitions`](/docs/tools/get-ab-transitions). The intervals
+are per cell, not simultaneous.
+
+Cells are not independent: a path that reaches `checkout` one step earlier moves
+the `checkout` cells of two steps, and a path one event longer or shorter moves a
+`path_end` cell (`path_end` at step k counts the paths with fewer than k events).
+Under `horizon`, a path ends with the last event of its window, not when the user
+left. Read the screen as
+"where the paths of the two arms part", and confirm one hypothesis as the declared
+metric of a new test.
+
+Steps count from each path's start. To compare the steps around an event, cut the
+paths first with [`truncate_paths`](/docs/data-processors/truncate-paths), on a
+pre-exposure event: `path_pattern` and `anchor`, which centre
+`step_matrix_data` on the paths where they match, raise here, with that hint. Step 0
+(the synthetic `path_start`) is not a cell.
+
+On `load_ab_test()` with `max_steps=8`, 92 cells are tested and 14 differ; the
+strongest is `quick_add` at step 7 (`+4.62 pp`, an event the control arm does not
+have, flagged `one_arm_only`), and `add_to_cart` is lower in the treatment arm at
+every step from 3 to 8 (the treatment's `quick_add` replaces it).
+
+{% endblock %}
+
+{% block extra_params %}
+### correction
+
+{{ bullets(doc.parameters, "correction") }}
+
+{% endblock %}

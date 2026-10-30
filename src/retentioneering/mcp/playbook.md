@@ -215,7 +215,22 @@ times counts once. For a per-visit figure, carve out the subpopulation with
    questions), and `period="14D", period_basis="since_assignment"` gives rows by
    days since assignment. `get_ab_bootstrap(..., contrast={"novelty": [["0-13"],
    ["28-41"]]})` puts one interval on "the early effect minus the late one".
-6. Finish: `export_report` needs at least one tab, and the numbers-only tools
+6. Optional, after the scorecard: which transitions or steps changed.
+   `get_ab_transitions(diff=[...])` tests every edge of the graph (share of paths with
+   the transition by default; `edge_weight="avg_per_path"` for repeats, `"proba_out"`
+   for "of the transitions out of X, where do they go") and `get_ab_steps(diff=[...])`
+   every step-matrix cell, with p-values adjusted over the tested rows (`n_tested`,
+   Benjamini-Hochberg by default: on average at most about 5 % of the discoveries are
+   false; the discoveries' deltas are biased away from 0, so size the confirming test
+   on a smaller effect). This is
+   an exploratory screen, never the decision: report it after the scorecard as "where
+   the arms differ", and turn a significant edge into the declared metric of the next
+   test (e.g. `matches_pattern`). Quote each row's `reading`. `conditional=true` rows
+   (`proba_out`, `proba_in`, `share_of_total`) have post-treatment denominators: they
+   compare transitions, not the arms. The intervals are per row, not simultaneous.
+   Never filter on post-exposure behaviour (`filter_paths` on a later event) before
+   the screen: the arms stop being comparable.
+7. Finish: `export_report` needs at least one tab, and the numbers-only tools
    register none. Add the scorecard as a tab with `add_ab_test(label=..., same
    arguments)` (or an `add_segment_overview` by arm) before `check_analysis` and
    `export_report`.
@@ -239,9 +254,10 @@ Compare the union: `{"metric": "has_any_event", "metric_args": {"events":
 `period="D"` and by a signup stratum); (2) the scorecard on the decision metric;
 (3) strata declared before looking — segments fixed at signup
 (`segments_constant_per_path` in `describe()`) with `strata_pre_exposure=true`, and
-read `heterogeneity_p_value` before any single stratum; (4) only then descriptive
-looks at loops and conditional steps (`add_transition_graph` with `diff`,
-`get_conversion_rate`), labelled descriptive. A stratum found by looking is a
+read `heterogeneity_p_value` before any single stratum; (4) only then the screen of
+transitions and steps (`get_ab_transitions`, `get_ab_steps`, with FDR over the
+tested rows) and descriptive looks (`add_transition_graph` with `diff`,
+`get_conversion_rate`), labelled exploratory. A stratum found by looking is a
 hypothesis for a targeted follow-up test, not a result.
 
 **Reading the verdict:** `increase` / `decrease` come from the multiplicity-adjusted
@@ -250,7 +266,8 @@ p-value: `p_value_adjusted` below `1 - ci_level` (`mde_alpha` is only the level 
 `inconclusive` is not "no effect": report the interval as the range of effects the
 data still allow, by quoting the row's `reading`. The `mde` is the effect the test detects with 80 % power at
 `mde_alpha`, a design quantity: never say the effect is smaller than the `mde`.
-`insufficient_data`: pooled support (paths, not events) below `min_support`; report its estimates
+`insufficient_data`: pooled support (paths, not events) below `min_support` (in the
+transition and step screens also a row without a p-value, constant in both arms); report its estimates
 descriptively. `support_warning="no_data"`: no path of either arm has the
 behaviour — say "no data in either arm", not "one arm only" — or a value / ratio
 metric has no value in one arm (the reading says which). `conditional=true`: the

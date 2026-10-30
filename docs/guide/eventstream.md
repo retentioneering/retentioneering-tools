@@ -372,6 +372,19 @@ paths.groupby("arm")["conversion"].mean()     # the scorecard's group values
 
 See [A/B Per-Path Table](/docs/tools/get-ab-paths) for every column.
 
+### Which edges and step cells differ between arms
+
+`get_ab_transitions()` takes the `diff`, `assignment`, `horizon` and `path_col` of `get_ab_test()` and tests every edge of the transition graph between the arms: one row per edge with each arm's value of `edge_weight`, the delta and its interval, a p-value adjusted over the tested edges (Benjamini–Hochberg by default) and the scorecard's `verdict` and `reading`. `unique_paths` (the share of paths with the transition) and `avg_per_path` are tested with the z-test and Welch's test; `proba_out`, `proba_in` and `share_of_total` with the joint path bootstrap, and they are `conditional=True`, because their denominators are behaviour the treatment changes. `get_ab_steps()` does the same for the step matrix, one row per `(event, step)` cell. On the stream's paths an arm's value equals what `transition_graph_data()` / `step_matrix_data()` show for it.
+
+```python
+edges = stream.get_ab_transitions(("exp_group", "treatment", "control"), assignment=assignment)
+edges.attrs["n_tested"], edges["verdict"].value_counts().to_dict()
+# (90, {'inconclusive': 71, 'increase': 10, 'decrease': 9, 'insufficient_data': 2})
+stream.transition_graph(diff=("exp_group", "treatment", "control"), ab_transitions=edges)
+```
+
+The family is every edge with enough support, found by looking, so these are screens: a discovery is a hypothesis for a declared metric of a new test, read after the scorecard. See [A/B Transition Screen](/docs/tools/get-ab-transitions), [A/B Step Screen](/docs/tools/get-ab-steps) and the [A/B Testing guide](/docs/ab-testing#which-edges-and-steps-differ-a-screen-with-fdr-control).
+
 ### Reproducing an eventstream
 
 Every processor call is recorded, so a derived eventstream can describe how it was built:

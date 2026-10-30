@@ -204,6 +204,28 @@ class TestInconclusive:
         )
         assert text == "no p-value: the metric is constant in both arms"
 
+    def test_a_supported_row_a_screen_does_not_test(self) -> None:
+        # a screen labels a supported row without a p-value insufficient_data:
+        # the reading says why it has none, not a support count
+        untested = _row(
+            p_value=float("nan"),
+            p_value_adjusted=float("nan"),
+            delta_se=float("nan"),
+            verdict="insufficient_data",
+        )
+        text = _read(untested, kind="ratio", non_support_count=None, constant=True)
+        assert text == (
+            "no p-value: the metric is constant in both arms; estimate shown "
+            "descriptively"
+        )
+        text = _read(
+            dict(untested, support_warning="invalid_replicates"),
+            kind="ratio",
+            non_support_count=None,
+        )
+        assert text.startswith("no interval or p-value: more than 1 % of bootstrap")
+        assert text.count("estimate shown descriptively") == 1
+
     def test_no_spread(self) -> None:
         text = _read(
             _row(
@@ -362,6 +384,37 @@ class TestFlags:
         none = _read(_row(mde_alpha=0.05), correction="none", several_metrics=True)
         assert none.endswith("; not corrected across metrics; name one decision metric")
         assert "decision metric" not in _read(_row())
+
+    def test_screen_family_counts_its_rows_in_the_right_number(self) -> None:
+        for what in ("edge", "cell"):
+            one = _read(_row(), screen=(what, 1, False))
+            assert one.endswith(f"; screen: holm over 1 tested {what}")
+            many = _read(_row(), screen=(what, 84, False))
+            assert many.endswith(f"; screen: holm over 84 tested {what}s")
+        none = _read(_row(mde_alpha=0.05), correction="none", screen=("cell", 1, False))
+        assert none.endswith("; screen: no correction over 1 tested cell")
+
+    def test_declared_rows_are_a_confirmatory_family(self) -> None:
+        hit = _row(
+            verdict="increase",
+            p_value_adjusted=0.001,
+            delta_ci_low=0.01,
+            delta_ci_high=0.03,
+        )
+        screen = _read(hit, screen=("edge", 1, False))
+        assert screen.endswith(
+            "screen result (holm over 1 tested edge): a hypothesis to confirm as the "
+            "declared metric of a new test, not a decision"
+        )
+        declared = _read(hit, screen=("edge", 1, True))
+        assert declared.endswith(
+            "; declared family (holm over 1 tested edge): confirmatory, if the edges "
+            "were declared before the test"
+        )
+        assert "screen" not in declared and "not a decision" not in declared
+        assert _read(_row(), screen=("edge", 3, True)).endswith(
+            "; declared family: holm over 3 tested edges"
+        )
 
     def test_flags_in_order(self) -> None:
         text = _read(

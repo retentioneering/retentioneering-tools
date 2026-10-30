@@ -18,7 +18,8 @@ Design (plan v2, lead decisions D3, D5, D6, D12, D13)
   ``p_value_adjusted`` only; the confidence interval is per comparison and labelled so.
 * Statistical dispatch: 0/1 metric -> pooled z-test with Wilson/Newcombe intervals;
   per-path count or value metric -> Welch t; ratio-of-sums metric -> joint path bootstrap
-  (percentile CI, p from the bootstrap SE).
+  (percentile CI, p from the bootstrap SE; the Bonferroni simultaneous CI is normal on
+  that SE).
 * Every row ends with ``reading`` (:func:`row_reading`): one sentence built from the
   row's own numbers, templated per verdict, with the row's flags appended.
 
@@ -2323,9 +2324,14 @@ class ABTest:
             rl, rh = self._rel_ci(reps, g2)
             se_f = float(se)
 
-            def ci_at(lv, d_reps=d_reps):
-                low, high = bs.percentile_ci(d_reps, lv)
-                return low[0], high[0]
+            def ci_at(lv, d=g1 - g2, se_f=se_f):
+                # only the Bonferroni interval asks for another level; its
+                # percentile at 1 - alpha / m sits on the last few replicates
+                # (or beyond them), so it is normal on the bootstrap SE, the
+                # basis of the p-value, and excludes 0 exactly when
+                # p_value_adjusted < alpha
+                q = stats.norm.ppf(0.5 + lv / 2)
+                return d - q * se_f, d + q * se_f
 
             extra["ci_at"] = ci_at
             extra["mde_at"] = lambda a, se_f=se_f: _stats.mde_from_se(

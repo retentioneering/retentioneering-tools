@@ -31,7 +31,9 @@ The test follows the metric: a pooled z-test with Wilson and Newcombe intervals
 for 0/1 metrics, Welch's t-test for per-path totals and values, and a joint
 path bootstrap for ratio metrics (an entry with a `denominator`). The
 `verdict` reads only the adjusted p-value; the interval is per comparison
-(only `correction="bonferroni"` adds a simultaneous one). The correction runs
+(only `correction="bonferroni"` adds a simultaneous one; for a ratio metric it
+is `delta ± z·SE` on the bootstrap SE, because a percentile that far in the
+tail rests on a handful of replicates). The correction runs
 within each metric's rows (`correction_scope="metric"`): metrics are not
 corrected against each other, so name one decision metric before the test.
 Guardrails are read the same way, each on its own: a guardrail passes only when

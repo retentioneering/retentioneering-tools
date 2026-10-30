@@ -566,12 +566,29 @@ class TestErrors:
             {"min_support": -1},
             {"path_pattern": "cart"},
             {"anchor": {"event": "cart"}},
+            {"anchor": "cart", "horizon": "7D"},
+            {"path_pattern": ""},
+            {"anchor": ""},
+            {"max_steps": 0, "path_pattern": "cart"},
         ],
     )
     def test__steps(self, stream, kwargs) -> None:
         assert _message(lambda: stream.ab_steps(DIFF, **kwargs)) == _message(
             lambda: stream.get_ab_steps(DIFF, **kwargs)
         )
+
+    def test__path_pattern_and_anchor_have_no_state(self, stream, tmp_path) -> None:
+        # get_ab_steps refuses both: the widget takes them (its twin's signature)
+        # only to raise the getter's error, and keeps nothing of them
+        path = tmp_path / "steps.json"
+        widget = stream.ab_steps(
+            DIFF, max_steps=3, path_pattern=None, anchor=None, state_file=str(path)
+        )
+        saved = json.loads(path.read_text())["state"]
+        for name in ("path_pattern", "anchor"):
+            assert name not in widget.traits() and name not in widget.sync_state()
+            assert name not in widget._export_data() and name not in saved
+            assert name not in widget._params()
 
     @pytest.mark.parametrize(
         "diff",

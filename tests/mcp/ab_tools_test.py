@@ -471,6 +471,81 @@ class TestAssignmentThroughMcp:
         assert session.assignment is None
 
 
+DIFF = ["arm", "treatment", "control"]
+
+
+class TestGetAbTransitionsAndSteps:
+    """The screens through MCP: counts and the top rows of the Python frame."""
+
+    def test_transitions_are_the_python_rows(self) -> None:
+        session = _ab_session()
+        result = tools.get_ab_transitions(session, DIFF, top=3)
+        json.dumps(result, allow_nan=False)
+        assert "error" not in result, result
+        assert session.pending_tabs == []
+        frame = session.active_stream.get_ab_transitions(tuple(DIFF))
+        assert result["n_rows"] == len(frame)
+        assert result["n_tested"] == frame.attrs["n_tested"]
+        assert result["n_increase"] == int((frame["verdict"] == "increase").sum())
+        assert result["edge_weight"] == "unique_paths"
+        assert result["population"] == "stream"
+        assert len(result["top"]) == 3
+        for row, (_, ref) in zip(result["top"], frame.head(3).iterrows()):
+            assert (row["source"], row["target"]) == (ref["source"], ref["target"])
+            assert row["delta"] == pytest.approx(ref["delta"], abs=1e-6)
+            assert row["verdict"] == ref["verdict"]
+            assert row["reading"] == ref["reading"]
+            assert row["unit"] == "pp"
+        visit_order = next(
+            r for r in result["top"] if (r["source"], r["target"]) == ("visit", "order")
+        )
+        assert visit_order["verdict"] == "increase"
+        assert "bh over" in result["scope"]
+
+    def test_declared_edges_and_weights(self) -> None:
+        session = _ab_session()
+        result = tools.get_ab_transitions(
+            session, DIFF, "avg_per_path", edges=[["visit", "order"]]
+        )
+        assert "error" not in result, result
+        assert result["n_rows"] == 1 and result["n_tested"] == 1
+        assert result["top"][0]["unit"] == "value"
+        ratio = tools.get_ab_transitions(session, DIFF, "proba_out")
+        assert all(r["conditional"] for r in ratio["top"])
+        assert "error" in tools.get_ab_transitions(session, DIFF, "count")
+
+    def test_itt_with_horizon(self) -> None:
+        result = tools.get_ab_transitions(_itt_session(), DIFF, horizon="7D")
+        json.dumps(result, allow_nan=False)
+        assert "error" not in result, result
+        assert result["population"] == "assignment"
+        assert result["horizon"] == "7D"
+        assert result["unassigned_paths"] == 0
+        assert "immature_paths" in result
+
+    def test_steps(self) -> None:
+        session = _ab_session()
+        result = tools.get_ab_steps(session, DIFF, max_steps=3, top=50)
+        json.dumps(result, allow_nan=False)
+        assert "error" not in result, result
+        frame = session.active_stream.get_ab_steps(tuple(DIFF), 3)
+        assert result["n_tested"] == frame.attrs["n_tested"]
+        assert result["max_steps"] == 3
+        cells = {(r["event"], r["step"]): r for r in result["top"]}
+        assert cells[("order", 2)]["verdict"] == "increase"
+        assert all(r["unit"] == "pp" for r in result["top"])
+        assert "error" in tools.get_ab_steps(session, ["arm", "x", "y"])
+
+    def test_describe_tool_names_the_mcp_result(self) -> None:
+        out = tools.describe_tool("get_ab_transitions")
+        assert out["method"] == "get_ab_transitions"
+        assert "top rows" in out["mcp_tool"]
+        assert "exploratory screen" in out["mcp_docs"]
+        assert "get_ab_steps" in (tools.describe_tool.__doc__ or "")
+        steps = tools.describe_tool("get_ab_steps")
+        assert steps["method"] == "get_ab_steps" and "top cells" in steps["mcp_tool"]
+
+
 class TestDescribeForExperiments:
     def test_levels_values_constant_flags_and_table(self) -> None:
         session = _itt_session()
@@ -521,6 +596,8 @@ class TestServerWrappersInSync:
             "get_ab_test",
             "add_ab_test",
             "get_ab_bootstrap",
+            "get_ab_transitions",
+            "get_ab_steps",
         ):
             tool_params = list(inspect.signature(getattr(tools, name)).parameters)[1:]
             schema = registered[name].parameters["properties"]

@@ -184,6 +184,7 @@ def describe_tool(tool: str = "") -> dict:
 
     Analysis tools (called directly, not as a preprocessor step):
       get_conversion_rate  get_sample_ratio  get_ab_test  get_ab_bootstrap
+      get_ab_transitions  get_ab_steps
 
     Reference topics:
       report_links   (anchor link syntax for analysis text)
@@ -224,6 +225,16 @@ def describe_tool(tool: str = "") -> dict:
 #: Analysis tools whose MCP result differs from the Python method's: describe_tool
 #: says so and adds the MCP tool's own docs (``mcp_docs``).
 _MCP_RESULT_NOTES = {
+    "get_ab_transitions": (
+        "Through MCP get_ab_transitions returns counts (n_tested, n_increase, "
+        "n_decrease, ...) and the top rows by adjusted p-value (`top`), not the whole "
+        "table; each row keeps its reading. See mcp_docs."
+    ),
+    "get_ab_steps": (
+        "Through MCP get_ab_steps returns counts (n_tested, n_increase, n_decrease, "
+        "...) and the top cells by adjusted p-value (`top`), not the whole table; "
+        "each row keeps its reading. See mcp_docs."
+    ),
     "get_ab_bootstrap": (
         "Through MCP get_ab_bootstrap returns a contrast summary, not the "
         "replicate table the Python docs below describe: one row per metric (and "
@@ -1497,6 +1508,232 @@ def get_ab_bootstrap(
         "rows": rows,
         "warnings": list(dict.fromkeys(str(w.message) for w in caught)),
     }
+
+
+#: Columns of a get_ab_transitions / get_ab_steps row the MCP tools return.
+_SCREEN_COLUMNS = (
+    "group1_value",
+    "group2_value",
+    "delta",
+    "delta_ci_low",
+    "delta_ci_high",
+    "p_value",
+    "p_value_adjusted",
+    "mde",
+    "verdict",
+    "support_warning",
+    "conditional",
+    "reading",
+)
+
+
+def _screen_result(
+    frame: pd.DataFrame, keys: tuple, top: int, unit: str, caught
+) -> dict:
+    """The numbers-only view of a screen: counts, the family, the top rows."""
+    meta = frame.attrs
+
+    def _row(row: dict) -> dict:
+        out: dict[str, Any] = {}
+        for column in keys + _SCREEN_COLUMNS:
+            value = row[column]
+            if column in ("p_value", "p_value_adjusted"):
+                out[column] = _json_number(value, 8)
+            elif column == "conditional":
+                out[column] = bool(value)
+            elif column == "step" or column.endswith("_paths"):
+                out[column] = int(value)
+            elif isinstance(value, str):
+                out[column] = value
+            else:
+                out[column] = _json_number(value, 6)
+        out["unit"] = unit
+        return out
+
+    verdicts = frame["verdict"].value_counts()
+    first = frame.iloc[0] if len(frame) else None
+    out: dict[str, Any] = {
+        "diff": meta.get("diff"),
+        "path_col": meta.get("path_col"),
+        "population": meta.get("population"),
+        "ci_level": meta.get("ci_level"),
+        "correction": meta.get("correction"),
+        "n_rows": int(len(frame)),
+        "n_tested": int(meta.get("n_tested", 0)),
+        "n_increase": int(verdicts.get("increase", 0)),
+        "n_decrease": int(verdicts.get("decrease", 0)),
+        "n_inconclusive": int(verdicts.get("inconclusive", 0)),
+        "n_untested": int(verdicts.get("insufficient_data", 0)),
+        "unassigned_paths": None if first is None else int(first["unassigned_paths"]),
+        "group1_paths": None if first is None else int(first["group1_paths"]),
+        "group2_paths": None if first is None else int(first["group2_paths"]),
+        "scope": (
+            f"{meta.get('correction')} over the {int(meta.get('n_tested', 0))} tested "
+            "rows of this call (an exploratory screen: a discovery is a hypothesis "
+            "for a declared metric of a new test); intervals are per row "
+            "(unadjusted); the verdict reads p_value_adjusted"
+        ),
+        "top": [_row(r) for r in frame.head(int(top)).to_dict("records")],
+    }
+    if first is not None and "immature_paths" in frame.columns:
+        out["immature_paths"] = int(first["immature_paths"])
+    out["warnings"] = list(dict.fromkeys(str(w.message) for w in caught))
+    return out
+
+
+def get_ab_transitions(
+    session: Any,
+    diff: list,
+    edge_weight: str = "unique_paths",
+    edges: list | None = None,
+    horizon: str | None = None,
+    correction: str = "bh",
+    ci_level: float = 0.95,
+    path_col: str | None = None,
+    top: int = 15,
+    local_preprocessors: list | None = None,
+) -> dict:
+    """
+    Screen every transition (edge) of the graph for a difference between two arms.
+
+    An exploratory screen AFTER the scorecard (get_ab_test), not a decision metric:
+    which transitions differ, with a per-edge interval and p-values adjusted over the
+    tested edges (Benjamini-Hochberg by default). A significant edge is a hypothesis
+    to name as the declared metric of a new test (e.g. a matches_pattern metric).
+    Numbers only (no report tab): quote them in backticks. Population and unit are
+    get_ab_test's (the session's assignment table gives intention to treat).
+
+    Parameters
+    ----------
+    diff:
+        As in get_ab_test: ["segment_col", "group1", "group2"]; delta = group1 -
+        group2.
+    edge_weight:
+        "unique_paths" (default: share of paths with the transition, z-test),
+        "avg_per_path" (count per path, Welch), "proba_out" / "proba_in" /
+        "share_of_total" (ratios of sums, path bootstrap; conditional on
+        post-treatment behaviour: their denominators are behaviour the treatment
+        may change, so they compare transitions, not the arms). "count" and the
+        time weights are refused.
+    edges:
+        Optional [[source, target], ...] declared before the test: only these edges
+        are tested (a confirmatory family).
+    horizon:
+        As in get_ab_test (needs the session's assignment table with assigned_at).
+    correction:
+        "bh" (default), "holm", "bonferroni" or "none".
+    ci_level:
+        Interval level (default 0.95); intervals are per edge, not simultaneous.
+    path_col:
+        The randomised unit (default: primary path column).
+    top:
+        Rows returned, by adjusted p-value then |delta| (default 15).
+    local_preprocessors:
+        One-off preprocessing. Never filter on post-exposure behaviour first.
+
+    Returns
+    -------
+    diff, path_col, population, ci_level, correction, edge_weight, n_rows (edges
+    seen), n_tested (the correction family), n_increase, n_decrease,
+    n_inconclusive, n_untested (below min_support: not tested), group sizes,
+    unassigned_paths, immature_paths (with horizon), scope, warnings, and top — per
+    edge: source, target, group1_edge_paths, group2_edge_paths (paths with the
+    transition), group1_value, group2_value, delta, delta_ci_low, delta_ci_high,
+    p_value, p_value_adjusted, mde, verdict, support_warning, conditional, reading
+    (quote it) and unit ("pp": shares read in percentage points; "value": counts
+    per path).
+    """
+    if (err := _require_stream(session)) is not None:
+        return err
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
+    try:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            frame = src.get_ab_transitions(
+                tuple(diff) if diff else None,
+                edge_weight,
+                assignment=getattr(session, "assignment", None),
+                horizon=horizon or None,
+                path_col=path_col or None,
+                edges=[tuple(e) for e in edges] if edges else None,
+                correction=correction,
+                ci_level=ci_level,
+            )
+    except Exception as exc:
+        return {"error": _with_table_hint(str(exc), session, horizon, None)}
+    out = _screen_result(
+        frame,
+        ("source", "target", "group1_edge_paths", "group2_edge_paths"),
+        top,
+        "value" if edge_weight == "avg_per_path" else "pp",
+        caught,
+    )
+    out["edge_weight"] = edge_weight
+    if horizon:
+        out["horizon"] = horizon
+    return out
+
+
+def get_ab_steps(
+    session: Any,
+    diff: list,
+    max_steps: int = 10,
+    horizon: str | None = None,
+    correction: str = "bh",
+    ci_level: float = 0.95,
+    path_col: str | None = None,
+    top: int = 15,
+    local_preprocessors: list | None = None,
+) -> dict:
+    """
+    Screen every step-matrix cell (event at step k) for a difference between two arms.
+
+    An exploratory screen AFTER the scorecard (get_ab_test), not a decision metric:
+    the share of each arm's paths whose k-th event is the event (path_end: the path
+    has fewer events), with a per-cell interval and p-values adjusted over the
+    tested cells (Benjamini-Hochberg by default). A significant cell is a
+    hypothesis for a declared metric of a new test. Numbers only (no report tab).
+
+    Parameters
+    ----------
+    diff, horizon, correction, ci_level, path_col, top, local_preprocessors:
+        As in get_ab_transitions.
+    max_steps:
+        Steps compared, from 1 (default 10).
+
+    Returns
+    -------
+    As get_ab_transitions, with event and step instead of source and target (and no
+    edge path counts); every row is a share read in percentage points.
+    """
+    if (err := _require_stream(session)) is not None:
+        return err
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
+    try:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            frame = src.get_ab_steps(
+                tuple(diff) if diff else None,
+                max_steps,
+                assignment=getattr(session, "assignment", None),
+                horizon=horizon or None,
+                path_col=path_col or None,
+                correction=correction,
+                ci_level=ci_level,
+            )
+    except Exception as exc:
+        return {"error": _with_table_hint(str(exc), session, horizon, None)}
+    out = _screen_result(frame, ("event", "step"), top, "pp", caught)
+    out["max_steps"] = int(max_steps)
+    if horizon:
+        out["horizon"] = horizon
+    return out
 
 
 def check_analysis(analysis: str) -> dict:

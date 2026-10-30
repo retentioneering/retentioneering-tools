@@ -73,8 +73,8 @@ def serve(
         Optional experiment assignment table, as for `Eventstream.get_ab_test`
         (a Series path id -> arm, or a DataFrame indexed by path id with column
         `arm` and optionally `assigned_at`). When given, the A/B tools
-        (get_sample_ratio, get_ab_test, add_ab_test, get_ab_bootstrap) count every
-        assigned path, silent ones included (intention to treat), and `horizon=` /
+        (get_sample_ratio, get_ab_test, add_ab_test, get_ab_bootstrap,
+        get_ab_transitions, get_ab_steps) count every assigned path, silent ones included (intention to treat), and `horizon=` /
         since-assignment periods become available to the agent. The table stays
         in this process; describe() reports its size and arms. Example::
 
@@ -285,6 +285,7 @@ def _build_server(
 
         Analysis tools (called directly, not as a preprocessor step):
           get_conversion_rate  get_sample_ratio  get_ab_test  get_ab_bootstrap
+          get_ab_transitions  get_ab_steps
 
         Reference topics:
           report_links   (anchor link syntax for analysis text)
@@ -864,6 +865,113 @@ def _build_server(
             ci_level,
             n_bootstrap,
             path_col,
+            local_preprocessors,
+        )
+        return json.dumps(result, ensure_ascii=False, allow_nan=False)
+
+    @_tool()
+    def get_ab_transitions(
+        diff: list,
+        edge_weight: str = "unique_paths",
+        edges: list | None = None,
+        horizon: str | None = None,
+        correction: str = "bh",
+        ci_level: float = 0.95,
+        path_col: str | None = None,
+        top: int = 15,
+        local_preprocessors: list | None = None,
+    ) -> str:
+        """
+        Screen every transition (edge) of the graph for a difference between two arms.
+
+        An exploratory screen AFTER the scorecard (get_ab_test), never the decision:
+        which transitions differ, with per-edge intervals and p-values adjusted over
+        the tested edges (Benjamini-Hochberg by default). A significant edge is a
+        hypothesis to declare as the metric of a new test (e.g. matches_pattern).
+        Numbers only, no report tab: quote in backticks. Population and unit are
+        get_ab_test's (the session's assignment table gives intention to treat).
+
+        Parameters
+        ----------
+        diff, horizon, path_col, local_preprocessors:
+            As in get_ab_test.
+        edge_weight:
+            "unique_paths" (default: share of paths with the transition),
+            "avg_per_path" (transitions per path), "proba_out" / "proba_in" /
+            "share_of_total" (ratios with post-treatment denominators: conditional,
+            they compare transitions, not the arms). "count" and time weights are
+            refused.
+        edges:
+            Optional [[source, target], ...] declared before the test: only these
+            edges form the family.
+        correction:
+            "bh" (default), "holm", "bonferroni" or "none".
+        ci_level:
+            Per-edge interval level (default 0.95; not simultaneous).
+        top:
+            Rows returned, by adjusted p-value then |delta| (default 15).
+
+        Returns
+        -------
+        JSON with n_rows, n_tested (the correction family), n_increase, n_decrease,
+        n_inconclusive, n_untested, group sizes, unassigned_paths, scope, warnings
+        and top: source, target, group1_edge_paths, group2_edge_paths, group1_value,
+        group2_value, delta, delta_ci_low, delta_ci_high, p_value, p_value_adjusted,
+        mde, verdict, support_warning, conditional, reading (quote it) and unit.
+        """
+        result = tools.get_ab_transitions(
+            session,
+            diff,
+            edge_weight,
+            edges,
+            horizon,
+            correction,
+            ci_level,
+            path_col,
+            top,
+            local_preprocessors,
+        )
+        return json.dumps(result, ensure_ascii=False, allow_nan=False)
+
+    @_tool()
+    def get_ab_steps(
+        diff: list,
+        max_steps: int = 10,
+        horizon: str | None = None,
+        correction: str = "bh",
+        ci_level: float = 0.95,
+        path_col: str | None = None,
+        top: int = 15,
+        local_preprocessors: list | None = None,
+    ) -> str:
+        """
+        Screen every step-matrix cell (event at step k) for a difference between arms.
+
+        An exploratory screen AFTER the scorecard (get_ab_test), never the decision:
+        the share of each arm's paths whose k-th event is the event (path_end: the
+        path is shorter), with per-cell intervals and p-values adjusted over the
+        tested cells (Benjamini-Hochberg by default). Numbers only, no report tab.
+
+        Parameters
+        ----------
+        diff, horizon, correction, ci_level, path_col, top, local_preprocessors:
+            As in get_ab_transitions.
+        max_steps:
+            Steps compared, from 1 (default 10).
+
+        Returns
+        -------
+        JSON as get_ab_transitions, with event and step per row (shares, in pp).
+        """
+        result = tools.get_ab_steps(
+            session,
+            diff,
+            max_steps,
+            horizon,
+            correction,
+            ci_level,
+            path_col,
+            top,
             local_preprocessors,
         )
         return json.dumps(result, ensure_ascii=False, allow_nan=False)

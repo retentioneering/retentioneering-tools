@@ -38,7 +38,9 @@ def _stream() -> Eventstream:
         elif rng.random() < 0.3:
             events += ["add_to_cart", "cart"]
         for i, event in enumerate(events):
-            rows.append((user, event, pd.Timestamp("2024-01-01") + pd.Timedelta(i, "min"), arm))
+            rows.append(
+                (user, event, pd.Timestamp("2024-01-01") + pd.Timedelta(i, "min"), arm)
+            )
     df = pd.DataFrame(rows, columns=["user_id", "event", "timestamp", "arm"])
     return Eventstream(df, {"segment_cols": ["arm"]})
 

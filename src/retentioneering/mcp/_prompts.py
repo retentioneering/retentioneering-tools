@@ -106,7 +106,14 @@ def _playbook_index() -> dict:
 # they are called as their own MCP tool rather than as a step in a
 # preprocessors list, and the index has to say so.
 _ANALYSIS_METHODS = frozenset(
-    {"get_conversion_rate", "get_sample_ratio", "get_ab_test", "get_ab_bootstrap"}
+    {
+        "get_conversion_rate",
+        "get_sample_ratio",
+        "get_ab_test",
+        "get_ab_bootstrap",
+        "get_ab_transitions",
+        "get_ab_steps",
+    }
 )
 
 
@@ -294,6 +301,9 @@ def _static_instructions(tail: str = "") -> str:
         "  longer or re-reading it at another horizon (peeking): a next step is a",
         "  NEW test, sized and with its horizon fixed before it starts.",
         "  Strata only on segments fixed before exposure. See playbook('ab_test').",
+        "  Which transitions or steps changed: get_ab_transitions / get_ab_steps, an",
+        "  exploratory screen AFTER the scorecard (FDR over the tested edges); a",
+        "  significant edge is a hypothesis for the next test, never the decision.",
         "",
         "### Conversion drop-off analysis (why is conversion from A to B dropping?)",
         "Use add_segment with funnel_events to create an N+1 level funnel segment.",
@@ -358,8 +368,8 @@ def _system_instructions(
     if assignment is not None:
         header.append(
             "An experiment assignment table is attached (see describe()['assignment']): "
-            "get_sample_ratio, get_ab_test, add_ab_test and get_ab_bootstrap count every "
-            "assigned user, silent ones included (intention to treat); horizon= and "
+            "get_sample_ratio, get_ab_test, add_ab_test, get_ab_bootstrap, "
+            "get_ab_transitions and get_ab_steps count every assigned user, silent ones included (intention to treat); horizon= and "
             "period_basis='since_assignment' use its assigned_at."
         )
     if context.get("description"):

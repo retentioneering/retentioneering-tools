@@ -124,6 +124,53 @@ Binning is what makes a continuous confounder usable as a control: comparing two
 groups *within* buckets of path length says something the pooled comparison
 can't, because path length is itself correlated with most outcomes.
 
+### path_values — one value per path, from anywhere
+
+When the label already exists per path — an experiment's assignment table read
+from a file, or clusters found on a truncated stream — pass it as a Series (or a
+dict) indexed by path id. Every event of the path gets the path's value:
+
+```python
+groups = pd.read_csv("ab_groups.csv", index_col="user_id")   # user_id, exp_group
+stream = stream.add_segment("exp_group", path_values=groups["exp_group"])
+```
+
+Before — the stream knows nothing about the experiment; the table has one row per
+user, including `u3`, who never showed up in the log:
+
+| user_id | exp_group |
+|---|---|
+| u1 | treatment |
+| u2 | control |
+| u3 | treatment |
+
+After:
+
+| user_id | event | exp_group |
+|---|---|---|
+| u1 | home | treatment |
+| u1 | cart | treatment |
+| u2 | home | control |
+
+A path the mapping does not hold gets no value (`<MISSING>` in `diff`), and an
+id in the mapping that is not in the stream is ignored — so the segment counts
+the users who *have events*, not everyone who was assigned. For the full
+assigned population (and its silent users) pass the table itself as
+`assignment=` to `get_sample_ratio`.
+
+The way back is
+[`get_path_segments`](/docs/eventstream#path-level-labels): it returns one value
+per path of a segment column, so labels computed on one stream travel to another:
+
+```python
+clusters = first_week.add_clusters("cluster", features=[...], method_args={"n_clusters": 4})
+stream = stream.add_segment("cluster", path_values=clusters.get_path_segments("cluster"))
+```
+
+Because the value is the same on every event of a path, a `path_values` segment
+is always a valid `diff` for the inferential methods, which refuse paths whose
+segment changes inside them.
+
 ### func and sql — anything else
 
 `func` receives the raw DataFrame and returns one label per row, in row order;

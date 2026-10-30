@@ -5,7 +5,39 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added
+
+- Assignment-aware A/B scorecards, joint unit bootstrap, sample-ratio diagnostics,
+  pre-exposure strata, calendar periods and explicitly observed fixed horizons.
+- Native scorecard and strict experiment widgets with matching headless methods,
+  offline export, support/status diagnostics, confidence intervals and tests.
+- A shared statistical kernel for both analysis contracts: Wilson/Newcombe,
+  stable Welch, multiplicity adjustment and unit-weight resampling.
+- Column and event-value metrics, named metrics, explicit ratios, pre-exposure
+  path segments, six reproducible A/B datasets, MCP tools and English tutorials.
+- Independent statistical calibration records and a comparison/integration ADR
+  linking PR #216 and PR #217; severe-tail limitations remain explicit.
+
+### Changed
+
+- Fixed horizons and since-assignment periods require an explicit complete
+  logging cutoff (`observation_end`); the last event does not establish maturity.
+- The scorecard defaults to Holm across all declared metric rows in each call.
+  Unknown/post-exposure strata and active-period selections are descriptive.
+- Multiplicity includes unavailable declared hypotheses. Bootstrap intervals
+  with undefined replicates retain an unavailable status instead of dropping draws.
+- Scorecard, funnel and conversion uncertainty requires independent units at the coarsest
+  declared path grain; finer-grain descriptive point estimates remain available.
+- Conditional conversion comparisons do not emit confirmatory p-values.
+- Funnel payloads include rate denominators; relative differences use group 2
+  as the baseline. `get_metrics` honours configured metric names.
+
 ### Fixed
+
+- Exact Wilson boundaries, decimal-constant inference, numerical scale stability,
+  categorical silent-arm assignments and percentage-point effect labels.
+- Point-only funnels aggregate shared reach semantics in SQL. Notebook figures
+  preserve unavailable results; dataset rebuild metadata matches frozen data.
 
 - `time_median` and `time_q95` edge weights in `transition_graph` and
   `transition_graph_data` measure the exact gap between events instead of

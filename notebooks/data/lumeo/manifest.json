@@ -1,0 +1,165 @@
+{
+  "dataset_version": "lumeo-ab-sample-1",
+  "parent_package": "Lumeo v8.1E3.5",
+  "parent_dataset_version": "v8",
+  "generator_seed": 5044,
+  "kind": "selected_synthetic_teaching",
+  "selected_parent": true,
+  "sampling": {
+    "algorithm": "sha256(UTF8(salt+'|'+decimal_user_id)); lexical digest then numeric ID",
+    "salt": "lumeo-ab-tutorial-2026-10-29-v1",
+    "n_users": 4000,
+    "outcome_based_selection": false
+  },
+  "time_basis": "timezone-naive synthetic wall clock (UK store, no DST modelled)",
+  "event_window": [
+    "2026-03-02",
+    "2026-05-25"
+  ],
+  "click_window_start": "2026-05-11",
+  "source_hashes": {
+    "events": "75751ee022be68f727fb7879601089b3417d1268bdccb52236383f57262baa38",
+    "assignments": "b26cec751be2d6a0a9ba9755bedbfd3d7bb78ff9ec2ab237563bf98d00c2e3db",
+    "screens": "9b867037f88ef68a5f28458b0c44a3e336f74e460b3068a9341291aebffb3913",
+    "clicks": "90ba276b2d27b34cfc9ee72d4e904933a3f4b95e490c458541ecfd536b95b387",
+    "layout": "bfd8b655a9122895706896209ec5529b667a3547210467e98d6c7c59177cb74a"
+  },
+  "source_receipt_sha256": "420aec2f794609e66680307b9af3891da76ac0b4fe97ecc5fd60f129cbd3bf51",
+  "license_status": "Apache-2.0; synthetic teaching fixture contributed with the Retentioneering tutorial.",
+  "files": {
+    "events": {
+      "path": "events.csv.gz",
+      "rows": 104916,
+      "sha256": "1191d3ed3d419e59a1b7b683b33abc9da95550b3ae32ef9c633ed22bf35c19a6",
+      "columns": [
+        "user_id",
+        "session_id",
+        "timestamp",
+        "event",
+        "screen",
+        "platform",
+        "app_version",
+        "device",
+        "channel",
+        "country",
+        "product_category",
+        "search_query",
+        "cart_value_gbp",
+        "order_items",
+        "order_value_gbp"
+      ]
+    },
+    "assignments": {
+      "path": "assignments.csv.gz",
+      "rows": 4000,
+      "sha256": "66fc6c3b33772c9fa87b6cca7af723d94e593866c13e4703d9575f09b6fecf6c",
+      "columns": [
+        "user_id",
+        "exp_group",
+        "assigned_at"
+      ]
+    },
+    "screens": {
+      "path": "screens.csv.gz",
+      "rows": 3891,
+      "sha256": "7c8d8544b31724593d78665115008e93f6aeadbb2b006d78f005b747e61ec2b5",
+      "columns": [
+        "screen_instance_id",
+        "user_id",
+        "session_id",
+        "screen",
+        "segment",
+        "surface_id",
+        "platform",
+        "device",
+        "viewport_w",
+        "viewport_h",
+        "opened_at",
+        "closed_at",
+        "coverage_reason",
+        "recording_complete",
+        "n_taps",
+        "source_event_seq",
+        "page_category",
+        "added_category",
+        "added_price_gbp",
+        "cart_n_items",
+        "cart_value_gbp",
+        "rec_categories"
+      ]
+    },
+    "clicks": {
+      "path": "clicks.csv.gz",
+      "rows": 4897,
+      "sha256": "b6751b63941968b437e09fb358e3a118655432aad274ea02b1da78cb1d6e2d6f",
+      "columns": [
+        "tap_id",
+        "user_id",
+        "session_id",
+        "screen_instance_id",
+        "timestamp",
+        "platform",
+        "app_version",
+        "device",
+        "screen",
+        "surface_id",
+        "layer",
+        "viewport_w",
+        "viewport_h",
+        "surface_w",
+        "surface_h",
+        "scroll_y",
+        "x",
+        "y",
+        "element",
+        "css_selector",
+        "is_interactive",
+        "response_event",
+        "source_event_seq",
+        "tap_index",
+        "ms_since_screen_open"
+      ]
+    },
+    "layout": {
+      "path": "layout.csv.gz",
+      "rows": 137,
+      "sha256": "29bc5c16ba13f64bebe3c8e92a9073407c9a66749d591803f98c07178f8d5dd5",
+      "columns": [
+        "surface_id",
+        "screen",
+        "device",
+        "variant",
+        "layer",
+        "anchor",
+        "visible_when",
+        "zone",
+        "role",
+        "hit_owner",
+        "x0",
+        "y0",
+        "x1",
+        "y1",
+        "is_interactive",
+        "css_selector",
+        "surface_w",
+        "surface_h"
+      ]
+    }
+  },
+  "verified_rebuild_serialization": {
+    "python": "3.13.17",
+    "pandas": "3.1.0",
+    "numpy": "2.5.4",
+    "zlib": "1.2.12",
+    "csv": {
+      "encoding": "utf-8",
+      "index": false,
+      "lineterminator": "\n"
+    },
+    "gzip": {
+      "mtime": 0,
+      "filename": "",
+      "compresslevel": 9
+    }
+  }
+}

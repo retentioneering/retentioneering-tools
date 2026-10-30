@@ -234,13 +234,11 @@ def _step_to_code(step: dict) -> str:
             return f"stream.filter_events(sql={args['sql']!r})"
     elif t == "filter_paths":
         return f"stream.filter_paths({args!r})"
-    elif t == "add_segment":
-        if args.get("funnel_events"):
-            return f"stream.add_segment(name={args['name']!r}, funnel_events={args['funnel_events']!r})"
-        elif args.get("rules"):
-            return f"stream.add_segment(name={args['name']!r}, rules={args['rules']!r})"
-        elif args.get("sql"):
-            return f"stream.add_segment(name={args['name']!r}, sql={args['sql']!r})"
+    elif t == "add_segment" and "name" in args:
+        # every argument is kept: pre_exposure=, path_col= and the like change
+        # what the segment means downstream (get_ab_test reads the declaration)
+        rest = ", ".join(f"{k}={v!r}" for k, v in args.items() if k != "name")
+        return f"stream.add_segment(name={args['name']!r}{', ' + rest if rest else ''})"
     return f"stream.{t}({kw})" if kw else f"stream.{t}()"
 
 

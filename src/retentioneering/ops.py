@@ -133,11 +133,41 @@ def op(func):
                     ):
                         continue
                     params[pname] = pval
+                for pname, pval in list(params.items()):
+                    params.update(_json_safe_series(pname, pval))
             result._lineage = list(self._lineage) + [{"type": op_type, **params}]
         return result
 
     wrapper._op_type = op_type  # noqa: SLF001 -- introspected by tests
     return wrapper
+
+
+#: Suffix of the op key that keeps a Series argument's ``attrs["pre_exposure"]``
+#: (``add_segment(path_values=...)`` labels from ``get_path_segments``). Keys that
+#: start with ``_`` are annotations: replay passes them on as attrs, not as kwargs.
+_PRE_EXPOSURE_KEY = "_{}_pre_exposure"
+
+
+def _json_safe_series(name: str, value: Any) -> dict:
+    """A pandas Series argument recorded as ``{str(id): value}`` (JSON-serializable),
+    plus its ``attrs["pre_exposure"]`` flag when it carries one; ``{}`` otherwise."""
+    import pandas as pd
+
+    if not isinstance(value, pd.Series):
+        return {}
+    plain = value.astype(object)
+    plain = plain.where(plain.notna(), None)
+    out: dict = {name: {str(k): _native(v) for k, v in plain.items()}}
+    flag = value.attrs.get("pre_exposure")
+    if isinstance(flag, bool):
+        out[_PRE_EXPOSURE_KEY.format(name)] = flag
+    return out
+
+
+def _native(value: Any) -> Any:
+    """A numpy scalar as the matching Python scalar (JSON knows no numpy types)."""
+    item = getattr(value, "item", None)
+    return item() if callable(item) else value
 
 
 # ── dispatch / replay ─────────────────────────────────────────────────────────
@@ -158,6 +188,17 @@ def _adapt_params(op_type: str, params: dict) -> dict:
     natural, signature-matching shape with an explicit `condition` key. Both
     are accepted here: if `condition` is already present, this is a no-op.
     """
+    flags = {k: v for k, v in params.items() if k.startswith("_")}
+    if flags:
+        import pandas as pd
+
+        params = {k: v for k, v in params.items() if not k.startswith("_")}
+        for name, value in list(params.items()):
+            key = _PRE_EXPOSURE_KEY.format(name)
+            if key in flags and isinstance(value, dict):
+                series = pd.Series(value, dtype=object)
+                series.attrs["pre_exposure"] = flags[key]
+                params[name] = series
     if op_type == "filter_paths" and "condition" not in params:
         params = dict(params)
         path_col = params.pop("path_col", None)

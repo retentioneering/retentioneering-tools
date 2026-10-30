@@ -297,6 +297,26 @@ stream = rete.Eventstream(ga4, schema={
 - **Build your own outputs.** Every widget has a [headless](https://retentioneering.com/docs/widgets#headless-mode) `*_data()` twin that returns the numbers behind the chart, for custom charts, reports and checks.
 - **Share.** [`export_html()`](https://retentioneering.com/docs/widgets#exporting-to-html) saves a widget as a standalone interactive page that opens without Python.
 
+## A/B tests
+
+Path analysis suggests hypotheses; an experiment confirms them. [`get_sample_ratio`](https://retentioneering.com/docs/tools/get-sample-ratio) checks the arms' sizes, and [`get_ab_test`](https://retentioneering.com/docs/tools/get-ab-test) reads an experiment out on any [path metrics](https://retentioneering.com/docs/path-metrics): per metric the delta with a confidence interval, a multiplicity-adjusted p-value, the minimum detectable effect and a verdict, over the assignment table as the population (intention to treat), optionally per pre-exposure stratum or per period since assignment. Funnels take `ci_level=` too. The bundled `load_ab_test()` dataset is a synthetic experiment with planted effects to practise on:
+
+```python
+stream = rete.datasets.load_ab_test()
+assignment = rete.datasets.load_ab_test_assignment()   # user_id -> arm, assigned_at
+stream.get_ab_test(
+    ("exp_group", "treatment", "control"),
+    metrics=[{"name": "conversion", "metric": "has_event", "metric_args": {"event": "order_success"}}],
+    assignment=assignment,
+)
+```
+
+`stream.ab_test(...)` takes the same arguments and draws the scorecard as a [widget](https://retentioneering.com/docs/widgets/ab-test): a table and a forest plot of the deltas, with Strata and Periods tabs.
+
+`rete.datasets.list_ab_tests()` names six more practice experiments, some of them broken on purpose; `load_ab_test(name=...)` and `load_ab_test_assignment(name=...)` load one.
+
+The [A/B testing guide](https://retentioneering.com/docs/ab-testing) explains how to read the scorecard, which comparisons are randomised and which only describe, the pitfalls of mixing the two, and how to go from a scorecard to a decision. The [tutorial notebook](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_tutorial.ipynb) walks through the bundled dataset in eleven steps.
+
 ## Explore agent runs, conversations and other event sequences
 
 A path doesn't have to be a user journey. Treat each agent run as a path and its internal steps – tool calls, retries, errors, validations – as events, then use the same tools to see where runs loop, recover or fail, and how successful runs differ from failed ones. See the [agent-run example notebook](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/agent_path_analysis.ipynb) ([open in Colab](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/notebooks/agent_path_analysis.ipynb)) for a synthetic walkthrough.

@@ -23,6 +23,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from retentioneering.datasets.ab_test import load_ab_test, load_ab_test_assignment
 from retentioneering.datasets.ecom import load_ecom
 from retentioneering.eventstream import Eventstream
 
@@ -157,17 +158,38 @@ def build_toy_stream() -> Eventstream:
 # Pages whose <DemoWidget> tags run against something other than the bundled
 # ecom dataset. Inside a page, `stream` always means whatever that page's own
 # text means by it.
-STREAM_BUILDERS = {GUIDE_DIR / "path-analysis.md": build_toy_stream}
+STREAM_BUILDERS = {
+    GUIDE_DIR / "path-analysis.md": build_toy_stream,
+    # the A/B guide's worked example runs on the synthetic experiment dataset
+    GUIDE_DIR / "ab-testing.md": load_ab_test,
+    TEMPLATES_DIR / "widgets" / "ab-test.md.jinja": load_ab_test,
+}
+
+# Names a page's <DemoWidget> commands use besides `stream`, each built on first
+# use. The page's own text says what they hold (the A/B widget page: the
+# assignment table of the bundled experiment).
+EXTRA_GLOBALS = {
+    TEMPLATES_DIR / "widgets" / "ab-test.md.jinja": {
+        "assignment": load_ab_test_assignment,
+    },
+}
 
 
 def main() -> None:
     streams: dict[Path, Eventstream] = {}
+    extras: dict[Path, dict] = {}
 
     def stream_for(source_file: Path) -> Eventstream:
         if source_file not in streams:
             builder = STREAM_BUILDERS.get(source_file, build_stream)
             streams[source_file] = builder()
         return streams[source_file]
+
+    def globals_for(source_file: Path) -> dict:
+        if source_file not in extras:
+            builders = EXTRA_GLOBALS.get(source_file, {})
+            extras[source_file] = {name: build() for name, build in builders.items()}
+        return {"stream": stream_for(source_file), **extras[source_file]}
 
     tags = find_demo_tags()
     if not tags:
@@ -182,7 +204,7 @@ def main() -> None:
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            widget = eval(tag.cmd, {"stream": stream_for(tag.source_file)})  # noqa: S307 -- trusted, hand-authored template content
+            widget = eval(tag.cmd, globals_for(tag.source_file))  # noqa: S307 -- trusted, hand-authored template content
             for trait, value in tag.traits.items():
                 # Display-only traits: none of them triggers a recompute, so
                 # setting them after construction is equivalent to passing them

@@ -246,7 +246,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   interval and the adjusted p-value; any statistic column of the frame can be
   asked for, NaN where the frame has no row, the frame's `attrs` carried over.
   Nothing is recomputed. `styled=True` returns a pandas `Styler` with the
-  widgets' encoding, which `to_excel` keeps (with `openpyxl`, not a dependency).
+  widgets' encoding, which `to_excel` keeps (with `openpyxl`, not a dependency;
+  the `Styler` itself needs `jinja2`, and without it `styled=True` raises an
+  `ImportError` before computing).
 - `add_segment(..., pre_exposure=True)` declares a segment fixed before
   exposure; the declaration is kept in the recipe, and `get_ab_test(strata_col=)`
   reads it as `strata_pre_exposure_source="declared"` without a warning.

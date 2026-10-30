@@ -442,6 +442,7 @@ The [MCP server](/docs/mcp-server) has four A/B tools: `get_sample_ratio`, `get_
 ## Next steps
 
 - [A/B testing tutorial](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_tutorial.ipynb) — an eleven-step notebook on the built-in `load_ab_test()` dataset: sample ratio, scorecard and its widget, funnel, novelty, pre-exposure strata, loops, example paths per arm, and a decision.
+- [A/B testing showcase](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_showcase.ipynb) — the companion reference notebook, organised by capability: every dataset, metric kind, test, correction, period basis and output column, each shown once with its reading.
 - [A/B Test Scorecard](/docs/tools/get-ab-test), [A/B Bootstrap Replicates](/docs/tools/get-ab-bootstrap), [A/B Per-Path Table](/docs/tools/get-ab-paths), [Sample Ratio Check](/docs/tools/get-sample-ratio) — every parameter and output column; `get_ab_paths()` returns the per-path table behind the scorecard, for an analysis the scorecard does not run (a covariate adjustment by hand); the [A/B Test widget](/docs/widgets/ab-test) draws the scorecard as a table and a forest plot.
 - [A/B test datasets](/docs/eventstream#ab-test-datasets) — `list_ab_tests()` and `load_ab_test(name=...)`: six synthetic experiments to practise on, some of them broken tests whose right answer is not to read them.
 - [Funnel](/docs/widgets/funnel#confidence-intervals-and-ab-tests) — what each interval and p-value assumes.

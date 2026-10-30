@@ -237,6 +237,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   support. Every number is printed by a library call, and every step says what
   it proves and what remains a hypothesis. It runs against the development
   install until this release ships; CI executes it.
+- Reference notebook `notebooks/ab_testing_showcase.ipynb`: the same tools organised
+  by capability rather than by story — every bundled dataset with its planted
+  story found, every metric kind, test and correction, guardrails, `min_support`
+  and each `support_warning`, strata with `strata_pre_exposure`, the unit guard,
+  calendar and since-assignment periods, `horizon`, bootstrap contrasts,
+  `get_ab_paths`, funnel intervals, the widget and its `ab_test_data` twin, and
+  the MCP tools — with a closing cell that asserts every number its prose quotes.
 - Docs: a Tools reference section (`get_ab_test`, `get_ab_bootstrap`,
   `get_ab_paths`, `get_sample_ratio`) rendered from the docstrings and listed
   in `llms.txt`.

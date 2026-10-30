@@ -3,6 +3,7 @@ from typing import Any
 
 os.environ["RETENTIONEERING_NO_TRACK"] = "1"
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -54,3 +55,52 @@ def pytest_collection_modifyitems(config, items) -> None:
     for item in items:
         if "slow" in item.keywords:
             item.add_marker(skip)
+
+
+def _markov_stream(n_events: int = 80, n_users: int = 3000, seed: int = 0):
+    """Paths of a Markov chain over ``n_events`` event types in which almost every
+    transition occurs (81 sources x 81 targets for 80 types); the treatment arm
+    moves ten rows of the chain."""
+    from retentioneering.eventstream.eventstream import Eventstream
+
+    rng = np.random.default_rng(seed)
+    events = np.array([f"event_{i:02d}" for i in range(n_events)])
+    chain = rng.dirichlet(np.full(n_events, 2.0), size=n_events)
+    frames = []
+    for arm, n in (("treatment", n_users + 100), ("control", n_users - 100)):
+        moved = chain.copy()
+        if arm == "treatment":
+            moved[:10] = rng.dirichlet(np.full(n_events, 2.0), size=10)
+        cumulative = moved.cumsum(axis=1)
+        length = rng.integers(20, 120, size=n)
+        current = rng.integers(0, n_events, size=n)
+        steps = []
+        for _ in range(int(length.max())):
+            steps.append(current)
+            u = rng.random(n)[:, None]
+            current = np.minimum((cumulative[current] < u).sum(axis=1), n_events - 1)
+        path = np.stack(steps, axis=1)
+        keep = np.arange(path.shape[1])[None, :] < length[:, None]
+        user, step = np.nonzero(keep)
+        frames.append(
+            pd.DataFrame(
+                {
+                    "user_id": [f"{arm}{u}" for u in user],
+                    "event": events[path[keep]],
+                    "timestamp": pd.Timestamp("2026-01-01")
+                    + pd.to_timedelta(user * 10_000 + step * 30, unit="s"),
+                    "exp_group": arm,
+                }
+            )
+        )
+    return Eventstream(
+        pd.concat(frames, ignore_index=True), {"segment_cols": ["exp_group"]}
+    )
+
+
+@pytest.fixture(scope="session")
+def ab_markov80():
+    """An A/B stream with 80 event types in which almost every transition occurs:
+    an 81 x 81 transition matrix (6,500+ edges), the size the A/B matrices' payload
+    and static export are checked at."""
+    return _markov_stream()

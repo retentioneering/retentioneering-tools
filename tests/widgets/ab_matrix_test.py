@@ -14,6 +14,7 @@ from __future__ import annotations
 import inspect
 import json
 import math
+import re
 
 import numpy as np
 import pandas as pd
@@ -26,7 +27,12 @@ from retentioneering.exceptions import (
     InvalidParameterError,
     RetentioneeringError,
 )
-from retentioneering.tools.ab_tables import cell_status, matrix_axes
+from retentioneering.tools.ab_tables import (
+    TABLE_VALUES,
+    ab_table,
+    cell_status,
+    matrix_axes,
+)
 from retentioneering.tools.ab_transitions import EDGE_WEIGHTS
 from retentioneering.widgets._ab_matrix import (
     VIEW_DEFAULTS,
@@ -164,48 +170,9 @@ class TestPayloadIsTheFrame:
         json.dumps(widget._export_data(), allow_nan=False)
 
 
-def _markov_stream(n_events: int = 80, n_users: int = 3000, seed: int = 0):
-    """Paths of a Markov chain over ``n_events`` event types in which almost every
-    transition occurs (81 sources x 81 targets for 80 types); the treatment arm
-    moves ten rows of the chain."""
-    rng = np.random.default_rng(seed)
-    events = np.array([f"event_{i:02d}" for i in range(n_events)])
-    chain = rng.dirichlet(np.full(n_events, 2.0), size=n_events)
-    frames = []
-    for arm, n in (("treatment", n_users + 100), ("control", n_users - 100)):
-        moved = chain.copy()
-        if arm == "treatment":
-            moved[:10] = rng.dirichlet(np.full(n_events, 2.0), size=10)
-        cumulative = moved.cumsum(axis=1)
-        length = rng.integers(20, 120, size=n)
-        current = rng.integers(0, n_events, size=n)
-        steps = []
-        for _ in range(int(length.max())):
-            steps.append(current)
-            u = rng.random(n)[:, None]
-            current = np.minimum((cumulative[current] < u).sum(axis=1), n_events - 1)
-        path = np.stack(steps, axis=1)
-        keep = np.arange(path.shape[1])[None, :] < length[:, None]
-        user, step = np.nonzero(keep)
-        frames.append(
-            pd.DataFrame(
-                {
-                    "user_id": [f"{arm}{u}" for u in user],
-                    "event": events[path[keep]],
-                    "timestamp": pd.Timestamp("2026-01-01")
-                    + pd.to_timedelta(user * 10_000 + step * 30, unit="s"),
-                    "exp_group": arm,
-                }
-            )
-        )
-    return Eventstream(
-        pd.concat(frames, ignore_index=True), {"segment_cols": ["exp_group"]}
-    )
-
-
 class TestPayloadSize:
-    def test__80_event_types_travel_column_by_column(self) -> None:
-        stream = _markov_stream()
+    def test__80_event_types_travel_column_by_column(self, ab_markov80) -> None:
+        stream = ab_markov80
         widget = stream.ab_transitions(DIFF)
         frame = stream.get_ab_transitions(DIFF)
         assert len(frame) > 6_500
@@ -704,6 +671,55 @@ class TestTraitlets:
         assert warnings and set(warnings) <= set(frame_warns)
 
 
+class TestITTAndHorizon:
+    """The assignment table and the horizon reach the widget, its sidebar
+    recomputes and the table getters as they reach the getters."""
+
+    @pytest.mark.parametrize("horizon", ["7D", pd.Timedelta(days=3)])
+    def test__transitions(self, stream, assignment, horizon) -> None:
+        given = {"assignment": assignment, "horizon": horizon}
+        frame = stream.get_ab_transitions(
+            ARM_DIFF, "proba_out", n_bootstrap=200, **given
+        )
+        widget = stream.ab_transitions(ARM_DIFF, "proba_out", n_bootstrap=200, **given)
+        payload = _strict(widget.result)
+        _assert_rows_are_the_frame(payload["rows"], frame)
+        assert payload["population"] == frame.attrs["population"] == "assignment"
+        assert pd.Timedelta(payload["horizon"]) == pd.Timedelta(frame.attrs["horizon"])
+        table = stream.get_ab_transitions_table(
+            ARM_DIFF, "proba_out", n_bootstrap=200, **given
+        )
+        pd.testing.assert_frame_equal(table, ab_table(frame))
+        assert table.attrs == {**frame.attrs, "values": list(TABLE_VALUES)}
+        # a sidebar change keeps the table and the horizon (and the fixed
+        # n_bootstrap, which the z-test weight ignores with the getter's warning)
+        widget.edge_weight = "unique_paths"
+        with pytest.warns(UserWarning, match="n_bootstrap") as caught:
+            frame = stream.get_ab_transitions(ARM_DIFF, n_bootstrap=200, **given)
+        payload = _strict(widget.result)
+        _assert_rows_are_the_frame(payload["rows"], frame)
+        assert payload["warnings"] == [str(w.message) for w in caught]
+
+    @pytest.mark.parametrize("horizon", ["7D", pd.Timedelta(days=3)])
+    def test__steps(self, stream, assignment, horizon) -> None:
+        given = {"assignment": assignment, "horizon": horizon}
+        frame = stream.get_ab_steps(ARM_DIFF, 6, **given)
+        widget = stream.ab_steps(ARM_DIFF, 6, **given)
+        payload = _strict(widget.result)
+        _assert_rows_are_the_frame(payload["rows"], frame)
+        assert payload["population"] == "assignment"
+        assert pd.Timedelta(payload["horizon"]) == pd.Timedelta(frame.attrs["horizon"])
+        table = stream.get_ab_steps_table(ARM_DIFF, 6, **given)
+        pd.testing.assert_frame_equal(table, ab_table(frame))
+        assert table.attrs == {**frame.attrs, "values": list(TABLE_VALUES)}
+        widget.max_steps = 4
+        widget.min_support = 30
+        _assert_rows_are_the_frame(
+            _strict(widget.result)["rows"],
+            stream.get_ab_steps(ARM_DIFF, 4, min_support=30, **given),
+        )
+
+
 # ── state file and static export ─────────────────────────────────────────────
 
 
@@ -751,10 +767,12 @@ class TestStateAndExport:
                 assert name in data, name
             assert widget._export_data(sidebar_open=False)["sidebar_open"] is False
 
-    def test__export_html_and_render_static(self, transitions, steps, tmp_path) -> None:
-        for (widget, _), title in (
-            (transitions, "A/B Transitions"),
-            (steps, "A/B Steps"),
+    def test__export_html_and_render_static(
+        self, stream, transitions, steps, tmp_path
+    ) -> None:
+        for (widget, payload), title, frame in (
+            (transitions, "A/B Transitions", stream.get_ab_transitions(DIFF)),
+            (steps, "A/B Steps", stream.get_ab_steps(DIFF)),
         ):
             out = tmp_path / f"{widget.widget_type}.html"
             widget.export_html(str(out))
@@ -762,3 +780,43 @@ class TestStateAndExport:
             assert f'"widget_type": "{widget.widget_type}"' in html
             assert f"<title>{title}</title>" in html
             assert "srcdoc" in widget.render_static().data
+            # the page carries the whole payload: every row of the frame
+            embedded = re.search(r"window.__HS_DATA__ = (.*?);</script>", html)
+            data = json.loads(embedded.group(1).replace("<\\/", "</"))
+            assert decode_payload(data["result"]) == payload
+            _assert_rows_are_the_frame(decode_payload(data["result"])["rows"], frame)
+
+    def test__steps_state_is_saved_and_restored(
+        self, stream, assignment, tmp_path
+    ) -> None:
+        path = tmp_path / "steps.json"
+        first = stream.ab_steps(
+            ARM_DIFF, 6, assignment=assignment, horizon="7D", state_file=str(path)
+        )
+        first.max_steps = 4
+        first.correction = "bonferroni"
+        first.min_support = 20
+        first.interval_kind = "simultaneous"
+        first.show_ci = False
+        first.significance_filter = "hide"
+        first.row_sort = "n_significant"
+        first.cell_size = "compact"
+        first.color_clip = 0.05
+        first.sidebar_open = False
+        first.event_visibility = json.dumps({"quick_add": {"isPinned": True}})
+        saved = json.loads(path.read_text())
+        assert saved["widget_type"] == "ab_steps"
+        assert set(saved["state"]) == set(first._persist_names)
+        for name in ("diff", "assignment", "assignment_info", "result", "error"):
+            assert name not in saved["state"], name
+        assert saved["state"]["horizon"] == "7D"
+
+        # diff and the assignment table are passed again; the rest comes back
+        second = stream.ab_steps(ARM_DIFF, assignment=assignment, state_file=str(path))
+        for name in first._persist_names:
+            assert getattr(second, name) == getattr(first, name), name
+        assert _strict(second.result) == _strict(first.result)
+        assert _strict(second.result)["population"] == "assignment"
+        # nothing of the table is in the file
+        text = path.read_text()
+        assert "assigned_at" not in text and str(assignment.index[0]) not in text

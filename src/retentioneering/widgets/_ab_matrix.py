@@ -3,10 +3,13 @@
 Each widget draws one frame of its headless twin (``ab_transitions_data`` /
 ``ab_steps_data``, documented aliases of ``get_ab_transitions`` / ``get_ab_steps``,
 ADR-0006/ADR-0017) as a matrix: one cell per row of the frame. The rows travel as
-they come back, one dict per row with NaN / NA as null (``scorecard_records``), plus
-what the browser cannot read off a row: the matrix axes, the frame's ``attrs`` and
-why a row without an adjusted p-value was not tested. The cell encoding itself
-(background, outline, cross) is drawn in ``js/widget/src/ab_matrix.tsx``.
+they come back, every cell with NaN / NA as null (``scorecard_records``), column by
+column with repeated values sent once (``encode_frame``: 80 event types are 6,561
+rows, each with its ``reading``), plus what the browser cannot read off a row: the
+matrix axes, the frame's ``attrs`` and why a row without an adjusted p-value was
+not tested. ``decode_payload`` (``parsePayload`` in the browser) gives the rows
+back. The cell encoding itself (background, outline, cross) is drawn in
+``js/widget/src/ab_matrix.tsx``.
 
 Data parameters are the twin's; the sidebar edits the few that a reader varies
 while reading (the weight or the number of steps, the correction, the level and
@@ -100,6 +103,66 @@ def untested_reason(row: dict, *, kind: str, min_support: int) -> str | None:
         "no p-value: no spread to estimate (the value is constant in both arms, or "
         "an arm has too few paths)"
     )
+
+
+def encode_column(values: list) -> dict:
+    """One column of the payload, losslessly: ``{"values": [...]}`` as it is or,
+    when it has at most half as many distinct values as rows, ``{"levels": [...],
+    "codes": [...]}`` with ``values[i] == levels[codes[i]]``; a column with one
+    value for every row is ``{"levels": [value]}``. See ``decode_column``."""
+    levels: list = []
+    position: dict = {}
+    codes = []
+    for value in values:
+        # repr keeps 1, True and 1.0 apart, and 0.0 and -0.0
+        key = (type(value), repr(value))
+        if key not in position:
+            position[key] = len(levels)
+            levels.append(value)
+        codes.append(position[key])
+    if not values or 2 * len(levels) > len(values):
+        return {"values": list(values)}
+    if len(levels) == 1:
+        return {"levels": levels}
+    return {"levels": levels, "codes": codes}
+
+
+def decode_column(column: dict, length: int) -> list:
+    """The values of an ``encode_column`` column of ``length`` rows."""
+    if "values" in column:
+        return list(column["values"])
+    if "codes" in column:
+        return [column["levels"][code] for code in column["codes"]]
+    return column["levels"] * length
+
+
+def encode_frame(rows: list[dict], columns: list[str]) -> dict:
+    """The rows of a frame (one dict per row) as ``{"length", "columns": [{"name",
+    ...encode_column}]}``, in the frame's column order."""
+    return {
+        "length": len(rows),
+        "columns": [
+            {"name": name, **encode_column([row[name] for row in rows])}
+            for name in columns
+        ],
+    }
+
+
+def decode_payload(payload: dict) -> dict:
+    """The widget's ``result`` with ``rows`` (one dict per row of the frame, in its
+    column order) in place of ``frame`` and ``untested_reason`` as a list: what the
+    browser reads (``parsePayload`` in ``js/widget/src/ab_matrix_encoding.ts``).
+    An empty result (``{}``) comes back as it is."""
+    if "frame" not in payload:
+        return dict(payload)
+    frame = payload["frame"]
+    length = frame["length"]
+    names = [column["name"] for column in frame["columns"]]
+    columns = [decode_column(column, length) for column in frame["columns"]]
+    decoded = {key: value for key, value in payload.items() if key != "frame"}
+    decoded["rows"] = [dict(zip(names, cells)) for cells in zip(*columns)]
+    decoded["untested_reason"] = decode_column(payload["untested_reason"], length)
+    return decoded
 
 
 def _jsonable(value: Any) -> Any:
@@ -304,11 +367,13 @@ class ABMatrixWidget(RetentioneeringWidget):
         rows_axis, cols_axis = matrix_axes(frame)
         return {
             "tool": self._tool,
-            "rows": rows,
-            "untested_reason": [
-                untested_reason(row, kind=kind, min_support=params["min_support"])
-                for row in rows
-            ],
+            "frame": encode_frame(rows, list(frame.columns)),
+            "untested_reason": encode_column(
+                [
+                    untested_reason(row, kind=kind, min_support=params["min_support"])
+                    for row in rows
+                ]
+            ),
             "row_keys": [str(k) for k in rows_axis],
             "col_keys": [
                 str(k) if self._tool == "get_ab_transitions" else int(k)

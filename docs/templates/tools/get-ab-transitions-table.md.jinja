@@ -48,7 +48,8 @@ proportional to `|delta|` over the largest one; a significant edge
 text; a tested, not significant one in grey with a thin grey border; an untested
 one in light grey italics with a dashed border. `Styler.to_excel` keeps the
 colours and the borders; it needs `openpyxl`, which the library does not
-install.
+install, and the `Styler` itself needs `jinja2` (without it `styled=True` raises
+an `ImportError` before computing anything).
 
 ```python
 stream.get_ab_transitions_table(diff, assignment=assignment, styled=True).to_excel("edges.xlsx")

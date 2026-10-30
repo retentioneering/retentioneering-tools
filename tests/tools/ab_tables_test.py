@@ -10,8 +10,11 @@ encoding.
 
 from __future__ import annotations
 
+import importlib.util
 import inspect
 import math
+import pathlib
+import sys
 
 import numpy as np
 import pandas as pd
@@ -205,6 +208,25 @@ class TestValues:
         with pytest.raises(InvalidParameterError, match=match):
             stream.get_ab_transitions_table(DIFF, values=values)
 
+    def test__a_single_value_and_the_order_asked(self, stream, edges) -> None:
+        one = stream.get_ab_transitions_table(DIFF, values="delta")
+        assert list(one.columns.get_level_values("stat").unique()) == ["delta"]
+        assert one.attrs["values"] == ["delta"]
+        pd.testing.assert_frame_equal(
+            one, stream.get_ab_transitions_table(DIFF, values=["delta"])
+        )
+        assert _assert_table_is_the_frame(one, edges, ("source", "target")) == len(
+            edges
+        )
+        # any statistic column, text included, in the order asked for
+        asked = ("verdict", "p_value_adjusted", "reading")
+        mixed = stream.get_ab_steps_table(DIFF, 4, values=asked)
+        assert tuple(mixed.columns.get_level_values("stat")[:3]) == asked
+        assert mixed.attrs["values"] == list(asked)
+        _assert_table_is_the_frame(
+            mixed, stream.get_ab_steps(DIFF, 4), ("event", "step")
+        )
+
     def test__step_keys_are_refused(self, stream) -> None:
         with pytest.raises(InvalidParameterError, match="key of the table"):
             stream.get_ab_steps_table(DIFF, 3, values=["step"])
@@ -337,4 +359,58 @@ class TestStyled:
         )
         html = styled.to_html()
         assert SIGNIFICANT_BORDER in html
-        assert styled.data.attrs["values"] == ["delta", "p_value"]
+        assert styled.data.attrs == {**cells.attrs, "values": ["delta", "p_value"]}
+
+    def test__an_aa_test_has_no_significant_cell(self) -> None:
+        aa = datasets.load_ab_test("aa_calibration")
+        for getter, keys in (
+            ("get_ab_transitions", ("source", "target")),
+            ("get_ab_steps", ("event", "step")),
+        ):
+            frame = getattr(aa, getter)(DIFF)
+            styled = getattr(aa, f"{getter}_table")(DIFF, styled=True)
+            table = styled.data
+            _assert_table_is_the_frame(table, frame, keys)
+            p = table.xs("p_value_adjusted", axis=1, level="stat").stack().dropna()
+            assert len(p) > 0 and (p >= frame.attrs["alpha"]).all()
+            styled._compute()
+            props = [dict(cell) for cell in styled.ctx.values()]
+            assert props and not any(
+                SIGNIFICANT_BORDER in v for cell in props for v in cell.values()
+            )
+            assert not any(cell.get("font-weight") == "bold" for cell in props)
+            assert "1px solid" in styled.to_html()
+
+
+class TestOneEncoding:
+    def test__the_widgets_draw_with_these_constants(self) -> None:
+        # one source: js/widget/src/generated/ab_encoding.generated.ts is written
+        # from tools/ab_tables.py by scripts/export_ab_encoding.py
+        script = pathlib.Path(__file__).resolve().parents[2] / "scripts"
+        spec = importlib.util.spec_from_file_location(
+            "export_ab_encoding", script / "export_ab_encoding.py"
+        )
+        export = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(export)
+        assert export.OUTPUT_PATH.read_text() == export.render(), (
+            "js/widget/src/generated/ab_encoding.generated.ts is stale: run "
+            "`make export-ab-encoding` and commit the result."
+        )
+        assert 'export const RED = "239, 68, 68";' in export.render()
+
+
+class TestStyledWithoutJinja2:
+    def test__says_so_before_computing(self, stream, monkeypatch) -> None:
+        monkeypatch.setitem(sys.modules, "jinja2", None)  # import jinja2 fails
+
+        def computed(*args, **kwargs):
+            raise AssertionError("computed before the jinja2 check")
+
+        with monkeypatch.context() as patch:
+            patch.setattr(Eventstream, "get_ab_transitions", computed)
+            patch.setattr(Eventstream, "get_ab_steps", computed)
+            for getter in ("get_ab_transitions_table", "get_ab_steps_table"):
+                with pytest.raises(ImportError, match="pip install jinja2"):
+                    getattr(stream, getter)(DIFF, styled=True)
+        # the table itself needs no jinja2
+        assert isinstance(stream.get_ab_steps_table(DIFF, 3), pd.DataFrame)

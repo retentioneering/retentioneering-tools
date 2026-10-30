@@ -1,7 +1,8 @@
 """Render the A/B difference matrices in a real browser: the static export (every
 cell's outline against the frame, a known significant and a known not significant
-cell, the A/A dataset), the view controls that work without a kernel, and a live
-host whose sidebar changes go to the Python widget and come back recomputed.
+cell, the tooltips, the A/A dataset, 80 event types), the view controls that work
+without a kernel, and a live host whose sidebar changes go to the Python widget and
+come back recomputed.
 
 Run with ``uv run --with playwright pytest tests/browser -v`` after
 ``uv run --with playwright python -m playwright install chromium`` and
@@ -142,6 +143,16 @@ def test_static_transitions_every_cell_is_its_row(stream, tmp_path):
                 (frame["source"] == "add_to_cart") & (frame["target"] == "cart")
             ]
             assert row["reading"].iloc[0][:40] in text
+            # an untested cell says why
+            untested = frame[frame["p_value_adjusted"].isna()].iloc[0]
+            page.locator(
+                f"[data-testid=ab-cell][data-row='{untested['source']}']"
+                f"[data-col='{untested['target']}']"
+            ).hover()
+            page.get_by_text("why not tested").wait_for(state="visible")
+            assert (
+                "not tested" in page.locator("[data-testid=ab-tip-status]").inner_text()
+            )
 
             # the header names the arms, the weight, the population, the family
             header = page.locator("[data-testid=ab-header]").inner_text()
@@ -188,11 +199,49 @@ def test_static_steps_every_cell_is_its_row(stream, tmp_path):
             )
             assert cell.get_attribute("data-status") == "significant"
             assert cell.get_attribute("data-sign") == "positive"
+            # the tooltip carries the row, without a kernel
+            cell.hover()
+            tip = page.locator("[data-testid=ab-tooltip]")
+            tip.wait_for(state="visible")
+            text = tip.inner_text()
+            row = frame[(frame["event"] == "quick_add") & (frame["step"] == 5)]
+            assert "quick_add @ step 5" in text and "increase" in text
+            assert row["reading"].iloc[0][:40] in text
             # report links scroll to a cell: scrollToEvent("event@step")
             page.evaluate(
                 "RetentioneeringWidget.scrollToEvent('path_end@10', "
                 "document.querySelector('[data-testid=ab-matrix-widget-steps]').parentElement)"
             )
+            assert not errors, errors
+        finally:
+            browser.close()
+
+
+def test_static_80_event_types(ab_markov80, tmp_path):
+    # 6,500+ cells travel column by column; the export decodes them without a
+    # kernel: every cell its row, and the tooltip its reading
+    frame = ab_markov80.get_ab_transitions(DIFF)
+    export = _export(ab_markov80.ab_transitions(DIFF), tmp_path, "transitions80")
+    with playwright.sync_playwright() as runtime:
+        browser = _launch(runtime)
+        try:
+            page = browser.new_page(viewport={"width": 1500, "height": 900})
+            errors = []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.goto(export.as_uri())
+            page.locator("[data-testid=ab-matrix]").wait_for(state="visible")
+            cells = _cells(page)
+            assert len(cells) == 81 * 81
+            counts = _check_cells(cells, _expected(frame, ("source", "target")))
+            assert sum(n for s, n in counts.items() if s != "empty") == len(frame)
+            last = frame.iloc[-1]
+            page.locator(
+                f"[data-testid=ab-cell][data-row='{last['source']}']"
+                f"[data-col='{last['target']}']"
+            ).hover()
+            reading = page.locator("[data-testid=ab-tip-reading]")
+            reading.wait_for(state="visible")
+            assert reading.inner_text() == last["reading"]
             assert not errors, errors
         finally:
             browser.close()

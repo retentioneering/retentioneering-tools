@@ -14,20 +14,22 @@
  *    grey, the cross and muted text when not tested; nothing for a cell with no
  *    row in the frame.
  *
- * The same rules are written for pandas in `tools/ab_tables.py` (`styled=True`).
+ * The same rules are written for pandas in `tools/ab_tables.py` (`styled=True`),
+ * whose colours and opacity these are (generated, `make export-ab-encoding`).
  */
+import * as encoding from "./generated/ab_encoding.generated";
 
 /** group 1 above group 2: red-500, the diff palette (viz-core `AB_RED`). */
-export const MATRIX_RED = "239, 68, 68";
+export const MATRIX_RED = encoding.RED;
 /** group 1 below group 2: blue-500 (viz-core `AB_BLUE`). */
-export const MATRIX_BLUE = "59, 130, 246";
+export const MATRIX_BLUE = encoding.BLUE;
 /** Opacity of a background at the scale maximum (keeps dark text readable). */
-export const MAX_ALPHA = 0.75;
-export const OUTLINE_BLACK = "#111827";
-export const OUTLINE_GREY = "#d1d5db";
-export const CROSS_GREY = "#d1d5db";
-export const TEXT_MAIN = "#111827";
-export const TEXT_MUTED = "#9ca3af";
+export const MAX_ALPHA = encoding.MAX_ALPHA;
+export const OUTLINE_BLACK = encoding.SIGNIFICANT_BORDER;
+export const OUTLINE_GREY = encoding.MUTED_BORDER;
+export const CROSS_GREY = encoding.MUTED_BORDER;
+export const TEXT_MAIN = encoding.MAIN_TEXT;
+export const TEXT_MUTED = encoding.UNTESTED_TEXT;
 /** Width of the wide outline, px; drawn inside the cell so neighbours never overlap. */
 export const OUTLINE_WIDTH = 2.5;
 
@@ -73,7 +75,23 @@ export interface MatrixRow {
   [key: string]: unknown;
 }
 
-/** The widget's `result` traitlet (see `widgets/_ab_matrix.py`). */
+/** One column of the frame as `encode_column` (`widgets/_ab_matrix.py`) sends it:
+ *  the values as they are, or `levels` indexed by `codes`; without `codes` every
+ *  row holds `levels[0]`. */
+export interface EncodedColumn {
+  values?: unknown[];
+  levels?: unknown[];
+  codes?: number[];
+}
+
+/** The frame's rows, column by column (`encode_frame`). */
+export interface EncodedFrame {
+  length: number;
+  columns: (EncodedColumn & { name: string })[];
+}
+
+/** The widget's `result` traitlet as `parsePayload` returns it: the frame's rows
+ *  decoded (see `widgets/_ab_matrix.py`, which sends `frame` in place of `rows`). */
 export interface MatrixPayload {
   tool: "get_ab_transitions" | "get_ab_steps" | string;
   rows: MatrixRow[];
@@ -103,6 +121,27 @@ export interface MatrixPayload {
 
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
+/** The values of an encoded column of `length` rows (`decode_column`). */
+export function decodeColumn(column: EncodedColumn | null | undefined, length: number): unknown[] {
+  if (!column) return new Array(length).fill(null);
+  if (Array.isArray(column.values)) return column.values;
+  const levels = column.levels ?? [];
+  if (Array.isArray(column.codes)) return column.codes.map((code) => levels[code]);
+  return new Array(length).fill(levels[0] ?? null);
+}
+
+/** The frame's rows, one object per row in the frame's column order. */
+export function decodeFrame(frame: EncodedFrame): MatrixRow[] {
+  const columns = frame.columns.map((c) => [c.name, decodeColumn(c, frame.length)] as const);
+  const rows: MatrixRow[] = [];
+  for (let i = 0; i < frame.length; i++) {
+    const row: MatrixRow = {};
+    for (const [name, values] of columns) row[name] = values[i];
+    rows.push(row);
+  }
+  return rows;
+}
+
 /** Parse the `result` traitlet; null for an empty or broken payload. */
 export function parsePayload(raw: unknown): MatrixPayload | null {
   let value: unknown = raw;
@@ -111,10 +150,11 @@ export function parsePayload(raw: unknown): MatrixPayload | null {
     try { value = JSON.parse(raw); } catch { return null; }
   }
   if (!value || typeof value !== "object") return null;
-  const p = value as Partial<MatrixPayload>;
-  if (!Array.isArray(p.rows) || !Array.isArray(p.row_keys) || !Array.isArray(p.col_keys)) return null;
+  const { frame, untested_reason, ...p } = value as Partial<Omit<MatrixPayload, "rows" | "untested_reason">> & {
+    frame?: EncodedFrame; untested_reason?: EncodedColumn;
+  };
+  if (!frame || !Array.isArray(frame.columns) || !Array.isArray(p.row_keys) || !Array.isArray(p.col_keys)) return null;
   return {
-    untested_reason: [],
     warnings: [],
     group1_label: "group 1",
     group2_label: "group 2",
@@ -132,6 +172,8 @@ export function parsePayload(raw: unknown): MatrixPayload | null {
     conditional: false,
     tool: "get_ab_transitions",
     ...p,
+    rows: decodeFrame(frame),
+    untested_reason: decodeColumn(untested_reason, frame.length) as (string | null)[],
   } as MatrixPayload;
 }
 

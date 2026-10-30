@@ -39,16 +39,33 @@ KEYS = {
     "get_ab_steps": ("event", "step"),
 }
 
-#: Colours of the encoding, shared with the widgets (js/widget/src/ab_matrix_encoding.ts):
-#: red where group 1 is higher, blue where it is lower (the diff palette).
+#: The encoding's colours, the single source of the widgets' too: those in
+#: ``JS_ENCODING`` are written to js/widget/src/generated/ab_encoding.generated.ts
+#: (``make export-ab-encoding``), which ab_matrix_encoding.ts draws with.
+#: Red where group 1 is higher, blue where it is lower (the diff palette).
 RED = (239, 68, 68)
 BLUE = (59, 130, 246)
 #: Largest opacity of a cell background (|delta| at the scale maximum).
 MAX_ALPHA = 0.75
+#: The outline of a significant cell, and the main text.
 SIGNIFICANT_BORDER = "#111827"
+MAIN_TEXT = "#111827"
+#: The outline (and the widget's cross) of a tested or untested cell.
 MUTED_BORDER = "#d1d5db"
+#: The table's text of a not significant cell (the widget draws a cross instead).
 NOT_SIGNIFICANT_TEXT = "#6b7280"
+#: The muted text of an untested cell.
 UNTESTED_TEXT = "#9ca3af"
+#: The constants the widgets draw with.
+JS_ENCODING = (
+    "RED",
+    "BLUE",
+    "MAX_ALPHA",
+    "SIGNIFICANT_BORDER",
+    "MAIN_TEXT",
+    "MUTED_BORDER",
+    "UNTESTED_TEXT",
+)
 
 
 def _event_order(events) -> list:
@@ -134,6 +151,20 @@ def ab_table(frame: pd.DataFrame, values: Any = TABLE_VALUES) -> pd.DataFrame:
     return table
 
 
+def require_jinja2() -> None:
+    """``styled=True`` returns a pandas ``Styler``, which needs ``jinja2`` (not a
+    dependency of retentioneering). Without it pandas raises an ``AttributeError``
+    from ``DataFrame.style`` after the frame is computed; this says what is missing,
+    before anything is computed."""
+    try:
+        import jinja2  # noqa: F401
+    except ImportError:
+        raise ImportError(
+            "styled=True returns a pandas Styler, which needs jinja2: "
+            "pip install jinja2 (the table itself, styled=False, does not)"
+        ) from None
+
+
 def cell_status(row: dict | None, alpha: float) -> str:
     """How the widgets draw a cell: ``"significant"`` (adjusted p-value below
     ``alpha``: black outline), ``"not_significant"`` (tested: grey outline and a
@@ -204,7 +235,7 @@ def style_table(table: pd.DataFrame, frame: pd.DataFrame):
                 continue
             if status == "significant":
                 border = f"2px solid {SIGNIFICANT_BORDER}"
-                font = "font-weight: bold; color: #111827;"
+                font = f"font-weight: bold; color: {MAIN_TEXT};"
             elif status == "not_significant":
                 border = f"1px solid {MUTED_BORDER}"
                 font = f"color: {NOT_SIGNIFICANT_TEXT};"

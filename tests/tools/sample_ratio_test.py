@@ -65,6 +65,14 @@ def test_mismatch_detected() -> None:
     assert result["mismatch"] is True and result["p_value"] < 0.001
 
 
+def test_overall_mismatch_with_clean_days_is_not_read_as_reassuring() -> None:
+    result = _stream(_arms(560, 440)).get_sample_ratio("arm", period="D")
+    assert result["mismatch"] is True and not result["periods"]["mismatch"].any()
+    assert result["reading"].startswith("mismatch: ")
+    assert "by day: no single day mismatches on its own" in result["reading"]
+    assert "no group mismatches" not in result["reading"]
+
+
 def test_custom_shares() -> None:
     stream = _stream(_arms(200, 800))
     result = stream.get_sample_ratio(

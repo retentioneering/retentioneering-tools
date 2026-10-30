@@ -283,6 +283,22 @@ class TestMatrix:
         orders = out[out.metric == "orders"]
         np.testing.assert_allclose(orders["group2_value"], [1 / 2])
 
+    def test_active_since_assignment_population_leaves_immature_paths_out(self) -> None:
+        out = _fit(
+            _tiny(),
+            assignment=_table(),
+            period="7D",
+            period_basis="since_assignment",
+            period_population="active",
+        )
+        # c3 has an event in its first window but the window is still open at the
+        # end of data: it is immature, so not in the active population either
+        assert list(out["period"]) == ["0-6"]
+        assert list(out["immature_paths"]) == [1]
+        assert list(out["group1_paths"]) == [3]
+        assert list(out["group2_paths"]) == [2]
+        assert set(out["population"]) == {"active"}
+
     def test_horizon(self) -> None:
         out = _fit(_tiny(), [CONV, ORDERS], assignment=_table(), horizon="7D")
         out = out.set_index("metric")
@@ -1480,6 +1496,15 @@ def test_metric_key_errors_point_at_metric_args() -> None:
     )
     with pytest.raises(InvalidMetricConfigError, match="'metric_args': "):
         ABMetricSpec.from_user({"has_event": "order"})
+
+
+def test_call_level_keys_in_a_metric_entry_are_named_as_such() -> None:
+    entry = {**CONV, "family": "primary"}
+    with pytest.raises(InvalidMetricConfigError, match="correction_scope") as info:
+        ABMetricSpec.from_user(entry)
+    assert "under 'metric_args'" not in str(info.value)
+    with pytest.raises(InvalidMetricConfigError, match="guardrail margin"):
+        ABMetricSpec.from_user({**CONV, "margin": -0.01})
 
 
 # ---------------------------------------------------------------- wave 5 usability

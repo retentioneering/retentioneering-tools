@@ -252,9 +252,25 @@ def _metric_column(config: dict[str, Any], role: str, label: str) -> str:
     return names[0]
 
 
+# Keys that belong to the call, not to a metric entry, with where they live instead.
+_NOT_METRIC_KEYS = {
+    "family": "families are not declared per metric; `correction_scope=` on the call "
+    "sets one family per metric or one for the whole scorecard",
+    "exploratory": "there is no per-metric exploratory flag; strata rows carry an "
+    "`exploratory` column of their own",
+    "margin": "a guardrail margin is not declared; read the interval against the "
+    "margin you accept (see the guide)",
+    "correction": "`correction=` is an argument of the call, not of a metric",
+    "ci_level": "`ci_level=` is an argument of the call, not of a metric",
+}
+
+
 def _metric_args_hint(entry: dict[str, Any], unknown: set) -> str:
     """The fix for keys outside an entry's schema: metric arguments go under
     ``metric_args`` (``{"metric": "has_event", "event": "x"}`` is a common guess)."""
+    misplaced = {key: _NOT_METRIC_KEYS[key] for key in unknown if key in _NOT_METRIC_KEYS}
+    if misplaced:
+        return " ".join(f"'{key}': {why}." for key, why in sorted(misplaced.items()))
     metric = entry.get("metric")
     args = {key: entry[key] for key in sorted(unknown, key=str)}
     example = {
@@ -1079,7 +1095,9 @@ class MetricMatrix:
         if periods is None:
             pops = np.ones((len(path_ids), 1), dtype=bool)
         elif period_population == "active":
-            pops = active
+            # a path whose window is still open at the end of data is only partly
+            # observed in the bin: it is left out of the active population too
+            pops = active & mature if since else active
         elif since:
             pops = mature
         else:

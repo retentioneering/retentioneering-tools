@@ -123,6 +123,8 @@ def sample_ratio_reading(result: dict[str, Any]) -> str:
             )
             more = f" and {len(bad) - 3} more" if len(bad) > 3 else ""
             parts.append(f"by {name}: mismatch in {shown}{more} — {INVALID} there")
+        elif np.isfinite(p) and p < alpha:
+            parts.append(f"by {name}: no single {name} mismatches on its own")
         else:
             parts.append(f"by {name}: no group mismatches")
     return "; ".join(parts)

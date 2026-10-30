@@ -23,7 +23,10 @@ from __future__ import annotations
 import inspect
 import json
 import math
+import warnings
 from typing import Any
+
+import pandas as pd
 
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.mcp._agent_logic import (
@@ -180,10 +183,11 @@ def describe_tool(tool: str = "") -> dict:
       urls_to_events   sample_paths   split_sessions
 
     Analysis tools (called directly, not as a preprocessor step):
-      get_conversion_rate
+      get_conversion_rate  get_sample_ratio  get_ab_test  get_ab_bootstrap
 
     Reference topics:
       report_links   (anchor link syntax for analysis text)
+      metrics        (the metric registry: names, metric_args, how A/B reads them)
     """
     t = tool.strip()
     if not t:
@@ -193,9 +197,65 @@ def describe_tool(tool: str = "") -> dict:
     method = getattr(Eventstream, t, None)
     doc = inspect.getdoc(method) if method and callable(method) else None
     if doc:
-        key = "method" if t in _ANALYSIS_METHODS else "preprocessor"
-        return {key: t, "docs": doc}
+        if t in _ANALYSIS_METHODS:
+            out: dict[str, Any] = {"method": t}
+            python_only = _python_only_parameters(t)
+            if python_only:
+                out["through_mcp"] = (
+                    "The docs below are the Python method's. Through MCP these "
+                    f"parameters are NOT available: {', '.join(python_only)}. "
+                    "Passing one gives an 'unexpected keyword argument' error."
+                    + (
+                        " assignment= comes from serve(stream, assignment=...) "
+                        "when the session has a table (see describe())."
+                        if "assignment" in python_only
+                        else ""
+                    )
+                )
+            if t in _MCP_RESULT_NOTES:
+                out["mcp_tool"] = _MCP_RESULT_NOTES[t]
+                out["mcp_docs"] = inspect.getdoc(globals()[t])
+            out["docs"] = doc
+            return out
+        return {"preprocessor": t, "docs": doc}
     return {"error": f"Unknown tool {t!r}.", **_tool_docs_index()}
+
+
+#: Analysis tools whose MCP result differs from the Python method's: describe_tool
+#: says so and adds the MCP tool's own docs (``mcp_docs``).
+_MCP_RESULT_NOTES = {
+    "get_ab_bootstrap": (
+        "Through MCP get_ab_bootstrap returns a contrast summary, not the "
+        "replicate table the Python docs below describe: one row per metric (and "
+        "stratum) and contrast with each arm's change between the two sides, delta "
+        "(the point estimate on the observed data), its percentile interval at "
+        "ci_level, a bootstrap-SE p-value and share_positive. period and contrast "
+        "are required (contrast={'name': [periods_a, periods_b]}); see mcp_docs."
+    ),
+}
+
+
+def _with_table_hint(message: str, session: Any, horizon, period_basis) -> str:
+    """An error about a missing ``assigned_at`` names where MCP gets the table."""
+    needs_table = bool(horizon) or period_basis == "since_assignment"
+    if needs_table and getattr(session, "assignment", None) is None:
+        return (
+            f"{message}. This session has no assignment table: horizon and "
+            "since-assignment periods need one with assigned_at, passed when the "
+            "server starts: serve(stream, assignment=table)."
+        )
+    return message
+
+
+def _python_only_parameters(name: str) -> list[str]:
+    """Parameters of ``Eventstream.<name>`` that the MCP tool of the same name
+    does not take."""
+    tool = globals().get(name)
+    if tool is None:
+        return []
+    python = list(inspect.signature(getattr(Eventstream, name)).parameters)[1:]
+    mcp = set(inspect.signature(tool).parameters)
+    return [p for p in python if p not in mcp]
 
 
 def describe(session: Any, context: dict) -> dict:
@@ -222,11 +282,78 @@ def describe(session: Any, context: dict) -> dict:
         },
         "events": sorted(df[ec].astype(str).unique().tolist()),
     }
+    result.update(_experiment_facts(cur))
+    assignment = getattr(session, "assignment", None)
+    if assignment is not None:
+        result["assignment"] = _assignment_facts(assignment)
     if context.get("events"):
         result["event_descriptions"] = context["events"]
     if context.get("segments"):
         result["segment_descriptions"] = context["segments"]
     return result
+
+
+#: describe() lists at most this many levels per segment column.
+_MAX_LEVELS = 20
+
+
+def _experiment_facts(stream: Eventstream) -> dict:
+    """What an A/B call needs from describe(): segment levels (arm names), value
+    columns (revenue) and which segments are constant per path (an arm or a
+    stratum must be; constant per user means fixed for the user)."""
+    from retentioneering.tools._diff import MULTI, per_path_label
+
+    schema = stream.schema
+    df = stream.df
+    levels, truncated = {}, []
+    for col, values in stream.get_segment_levels().items():
+        values = [str(v) for v in values]
+        if len(values) > _MAX_LEVELS:
+            truncated.append(col)
+        levels[col] = values[:_MAX_LEVELS]
+    constant: dict[str, list[str]] = {}
+    for col in schema.segment_cols:
+        constant[col] = [
+            path_col
+            for path_col in schema.path_cols
+            if not (per_path_label(df, col, path_col) == MULTI).any()
+        ]
+    values = [
+        col
+        for col in (schema.custom_cols or [])
+        if col in df.columns and pd.api.types.is_numeric_dtype(df[col])
+    ]
+    out: dict[str, Any] = {
+        "segment_levels": levels,
+        "segments_constant_per_path": constant,
+        "value_columns": values,
+    }
+    if truncated:
+        out["segment_levels_truncated"] = truncated
+    return out
+
+
+def _assignment_facts(assignment: Any) -> dict:
+    """The session's assignment table in a few numbers (never the table)."""
+    from retentioneering.tools._diff import normalize_assignment
+
+    try:
+        table = normalize_assignment(assignment)
+    except Exception as exc:  # reported, not raised: describe() must answer
+        return {"error": str(exc)}
+    arms = table["arm"].astype(str).value_counts().sort_index()
+    out: dict[str, Any] = {
+        "paths": int(len(table)),
+        "arms": {str(k): int(v) for k, v in arms.items()},
+        "has_assigned_at": "assigned_at" in table.columns,
+        "usage": (
+            "get_sample_ratio and get_ab_test count every assigned path (silent ones "
+            "included, intention to treat): diff=['arm', <arm1>, <arm2>]"
+        ),
+    }
+    if isinstance(assignment, pd.DataFrame):
+        out["columns"] = [str(c) for c in assignment.columns]
+    return out
 
 
 def add_transition_graph(
@@ -500,6 +627,134 @@ def add_segment_overview(
     return summary
 
 
+def add_ab_test(
+    session: Any,
+    label: str,
+    diff: list,
+    metrics: list,
+    strata_col: str | None = None,
+    period: str | None = None,
+    period_population: str = "itt",
+    correction: str = "holm",
+    ci_level: float = 0.95,
+    path_col: str | None = None,
+    strata_pre_exposure: bool | None = None,
+    local_preprocessors: list | None = None,
+    horizon: str | None = None,
+    period_basis: str = "calendar",
+    test: str = "auto",
+    correction_scope: str = "metric",
+) -> dict:
+    """
+    Compute an A/B test scorecard and register it as a tab in the pending report.
+
+    The tab is the ab_test widget: a table and a forest plot of each metric's
+    delta with its interval, coloured by verdict, plus Strata and Periods tabs
+    with strata_col / period. Its numbers are get_ab_test's (same arguments, same
+    population: the session's assignment table when there is one, otherwise the
+    stream's paths split by the segment in `diff`). Run get_sample_ratio first.
+    Use get_ab_test instead when you only need numbers; a numbers-only analysis
+    still needs one tab to export a report, and this is the A/B one.
+
+    Parameters
+    ----------
+    label:
+        Tab label shown in the report. No colons in the label.
+    diff, metrics, strata_col, period, period_population, correction, ci_level,
+    path_col, strata_pre_exposure, local_preprocessors, horizon, period_basis,
+    test, correction_scope:
+        As in get_ab_test.
+
+    Returns
+    -------
+    tab_id, label, correction, correction_scope, and metrics: per metric
+    (overall rows) unit ("pp" or "value"), verdict, population ("assignment" or
+    "stream"), group1_paths, group2_paths, conditional, delta, delta_ci_low,
+    delta_ci_high, p_value_adjusted, mde, mde_alpha, correction_family,
+    support_warning, reading and scope (what the row is corrected against);
+    with strata_col also strata_pre_exposure, strata_pre_exposure_source,
+    exploratory and strata_correction_family; warnings. Link a metric's row in
+    the analysis as [label:metric_name]. "inconclusive" is NOT "no effect".
+    """
+    if (err := _require_stream(session)) is not None:
+        return err
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
+    try:
+        widget = src.ab_test(
+            tuple(diff) if diff else None,
+            metrics,
+            assignment=getattr(session, "assignment", None),
+            strata_col=strata_col or None,
+            period=period or None,
+            period_basis=period_basis if period else None,
+            period_population=period_population if period else None,
+            horizon=horizon or None,
+            test=test,
+            correction=correction,
+            correction_scope=correction_scope,
+            ci_level=ci_level,
+            path_col=path_col or None,
+            strata_pre_exposure=strata_pre_exposure,
+            sidebar_open=False,
+        )
+    except Exception as exc:
+        message = _with_table_hint(str(exc), session, horizon, period_basis)
+        return {"error": message, "label": label}
+    if widget.error:
+        message = _with_table_hint(widget.error, session, horizon, period_basis)
+        return {"error": message, "label": label}
+    data = widget._export_data(sidebar_open=False)
+    tab_id = session.add_tab(label, data, local_preprocessors or [])
+
+    result = data["result"]
+    kinds = result.get("metric_kinds") or {}
+    scope = _scope_text(correction, correction_scope, "this metric's row")
+    strata_rows = result.get("strata") or []
+    entries = []
+    for row in result.get("overall") or []:
+        name = row["metric"]
+        entry: dict[str, Any] = {
+            "metric": name,
+            "unit": "pp" if kinds.get(name) == "binary" else "value",
+            "verdict": row["verdict"],
+            "population": row.get("population"),
+        }
+        for column in ("group1_paths", "group2_paths"):
+            if row.get(column) is not None:
+                entry[column] = int(row[column])
+        entry["conditional"] = bool(row.get("conditional", False))
+        for column in ("delta", "delta_ci_low", "delta_ci_high", "mde"):
+            entry[column] = _json_number(row.get(column), 6)
+        entry["p_value_adjusted"] = _json_number(row.get("p_value_adjusted"), 8)
+        entry["mde_alpha"] = _json_number(row.get("mde_alpha"), 8)
+        entry["correction_family"] = row.get("correction_family", "")
+        entry["support_warning"] = row.get("support_warning", "")
+        if "reading" in row:
+            entry["reading"] = row["reading"]
+        entry["scope"] = scope
+        own = [r for r in strata_rows if r.get("metric") == name]
+        if own:
+            flag = own[0].get("strata_pre_exposure")
+            entry["strata_pre_exposure"] = None if flag is None else bool(flag)
+            entry["strata_pre_exposure_source"] = own[0].get(
+                "strata_pre_exposure_source"
+            )
+            entry["exploratory"] = all(bool(r.get("exploratory")) for r in own)
+            entry["strata_correction_family"] = own[0].get("correction_family")
+        entries.append(entry)
+    return {
+        "tab_id": tab_id,
+        "label": label,
+        "correction": correction,
+        "correction_scope": correction_scope,
+        "metrics": entries,
+        "warnings": result.get("warnings", []),
+    }
+
+
 def get_conversion_rate(
     session: Any,
     start_anchor: str | dict | list,
@@ -507,6 +762,8 @@ def get_conversion_rate(
     within: int | str | None = None,
     path_col: str | None = None,
     local_preprocessors: list | None = None,
+    ci_level: float | None = None,
+    diff: list | None = None,
 ) -> dict:
     """
     Measure how often one event is followed by another, against its baseline.
@@ -548,10 +805,23 @@ def get_conversion_rate(
     local_preprocessors:
         Optional one-off preprocessing applied on top of the base stream for
         this measurement only. Same format as update_base_stream preprocessors.
+    ci_level:
+        e.g. 0.95: adds conversion_rate_ci_low / conversion_rate_ci_high (Wilson).
+    diff:
+        Compare two groups of paths: ["segment_col", "value1", "value2"]
+        ("<REST>" allowed as value2). Each row then carries group1_* and group2_*
+        versions of the columns below (with their CIs), delta (group1 - group2),
+        delta_ci_low / delta_ci_high and p_value. Groups are whole paths: a path
+        whose segment changes inside it is an error, not a split. The interval
+        assumes path_col is the unit that was assigned (user-level test -> user
+        paths). The denominator is the paths with the start anchor: unless that is
+        "path_start", each row is conditional=true, the groups are selected after
+        exposure and the p_value describes, it does not test; for the treatment's
+        effect use get_ab_test with a matches_pattern metric (an ITT share).
 
     Returns
     -------
-    path_col, within (echoed back), and rows — one per (start, end) pair:
+    path_col, within, ci_level, diff (echoed back), and rows — one per (start, end) pair:
       paths_with_start  the denominator: paths where the start anchor occurred
       converted         of those, paths where the target followed it
       conversion_rate   converted / paths_with_start (null if denominator is 0)
@@ -575,6 +845,8 @@ def get_conversion_rate(
             end_anchor=end_anchor,
             within=within,
             path_col=path_col or None,
+            ci_level=ci_level,
+            diff=tuple(diff) if diff else None,
         )
     except Exception as exc:
         return {"error": str(exc)}
@@ -586,21 +858,644 @@ def get_conversion_rate(
         value = float(value)
         return None if math.isnan(value) else round(value, 4)
 
-    return {
+    def _cell(column: str, value: Any) -> Any:
+        if column in ("start_anchor", "end_anchor"):
+            return str(value)
+        if column.endswith(("paths_with_start", "converted")):
+            return int(value)
+        if column == "p_value":
+            return _json_number(value, 8)
+        if column == "conditional":
+            return bool(value)
+        return _num(value)
+
+    out: dict[str, Any] = {
         "path_col": path_col or src.schema.path_col,
         "within": within,
         "rows": [
-            {
-                "start_anchor": str(row["start_anchor"]),
-                "end_anchor": str(row["end_anchor"]),
-                "paths_with_start": int(row["paths_with_start"]),
-                "converted": int(row["converted"]),
-                "conversion_rate": _num(row["conversion_rate"]),
-                "base_rate": _num(row["base_rate"]),
-                "lift": _num(row["lift"]),
-            }
+            {column: _cell(column, value) for column, value in row.items()}
             for row in frame.to_dict("records")
         ],
+    }
+    if ci_level is not None:
+        out["ci_level"] = ci_level
+    if diff:
+        out["diff"] = list(diff)
+    return out
+
+
+def _json_number(value: Any, digits: int = 6) -> float | None:
+    """A float for JSON: NaN/inf become null (an absent estimate is not 0)."""
+    if value is None:
+        return None
+    value = float(value)
+    return round(value, digits) if math.isfinite(value) else None
+
+
+def get_sample_ratio(
+    session: Any,
+    segment_col: str | None = None,
+    expected_shares: dict | None = None,
+    alpha: float = 0.001,
+    path_col: str | None = None,
+    strata_col: str | None = None,
+    period: str | None = None,
+    local_preprocessors: list | None = None,
+) -> dict:
+    """
+    Check an A/B test's arm sizes against the expected split (sample ratio mismatch).
+
+    Run this FIRST on any experiment, before reading a single metric: if the
+    arms do not have the planned sizes, paths were lost from one arm and every
+    comparison is suspect. Returns numbers only (no report tab); quote them in
+    backticks.
+
+    With an assignment table in the session (serve(stream, assignment=...);
+    describe() shows it) the counts are the table's rows, silent assigned users
+    included, and segment_col is optional: omit it to check the table alone, or
+    name the stream's arm segment to also check that every path agrees with the
+    table.
+
+    Parameters
+    ----------
+    segment_col:
+        Segment column holding the arm (see describe() for segments). Required
+        without an assignment table.
+    expected_shares:
+        {arm: share}, summing to 1. Omit for an equal split.
+    alpha:
+        Mismatch threshold, default 0.001 (SRM alarms are strict on purpose).
+    path_col:
+        The unit that was randomised (default: the primary path column).
+    strata_col:
+        Repeat the check per stratum: a segment constant per path that was fixed at
+        assignment (platform at signup). Not for variables the treatment can change.
+    period:
+        Repeat the check per calendar unit of assigned_at (with an assignment
+        table) or of the path's first event: "D" (day), "W" (week) or "M"
+        (month), as get_ab_test spells it. Not with strata_col.
+    local_preprocessors:
+        One-off preprocessing for this check only. Never filter on behaviour
+        (e.g. "reached cart") before an SRM check: on such a subset a share
+        difference is a treatment effect, not a bug.
+
+    Returns
+    -------
+    segment_col, path_col, mismatch (bool), p_value, chi2, dof, alpha,
+    multi_valued_paths (paths with >1 arm: an assignment bug), silent_paths
+    (assigned paths with no events; 0 without a table), unassigned_paths,
+    basis, reading (one sentence: the expected and observed split, the p-value and
+    the conclusion, e.g. "expected 50/50, observed 5040/4960 (control/treatment),
+    p 0.42: no mismatch"; quote it), and levels — one row per arm with paths, share,
+    expected_share. With strata_col: strata, one row per stratum with stratum, paths,
+    chi2, p_value, p_value_adjusted (Holm across the strata) and mismatch; with
+    period: periods, the same per period; reading names the strata or periods that
+    mismatch.
+    """
+    if (err := _require_stream(session)) is not None:
+        return err
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
+    try:
+        result = src.get_sample_ratio(
+            segment_col or None,
+            expected_shares=expected_shares,
+            alpha=alpha,
+            path_col=path_col or None,
+            assignment=getattr(session, "assignment", None),
+            strata_col=strata_col or None,
+            period=period or None,
+        )
+    except Exception as exc:
+        return {"error": str(exc)}
+
+    levels = result["levels"]
+    for key in ("stratum", "period"):
+        if key in levels.columns:
+            levels = levels[levels[key] == "<ALL>"]
+    out: dict[str, Any] = {
+        "segment_col": segment_col,
+        "path_col": path_col or src.schema.path_col,
+        "mismatch": bool(result["mismatch"]),
+        "p_value": _json_number(result["p_value"], 8),
+        "chi2": _json_number(result["chi2"], 4),
+        "dof": int(result["dof"]),
+        "alpha": float(result["alpha"]),
+        "multi_valued_paths": int(result["multi_valued_paths"]),
+        "silent_paths": int(result["silent_paths"]),
+        "unassigned_paths": int(result["unassigned_paths"]),
+        "basis": result["basis"],
+        "reading": result["reading"],
+        "levels": [
+            {
+                "level": str(row["level"]),
+                "paths": int(row["paths"]),
+                "share": _json_number(row["share"], 4),
+                "expected_share": _json_number(row["expected_share"], 4),
+            }
+            for row in levels.to_dict("records")
+        ],
+    }
+    for arg, key, name in (
+        ("strata_col", "stratum", "strata"),
+        ("period", "period", "periods"),
+    ):
+        if name not in result:
+            continue
+        out[arg] = result[arg]
+        out[name] = [
+            {
+                key: str(row[key]),
+                "paths": int(row["paths"]),
+                "chi2": _json_number(row["chi2"], 4),
+                "p_value": _json_number(row["p_value"], 8),
+                "p_value_adjusted": _json_number(row["p_value_adjusted"], 8),
+                "mismatch": bool(row["mismatch"]),
+            }
+            for row in result[name].to_dict("records")
+        ]
+    return out
+
+
+def _scope_text(
+    correction: str, correction_scope: str, rows: str = "this metric's rows"
+) -> str:
+    """What one row's p_value_adjusted and interval are corrected against."""
+    tail = (
+        "intervals are per comparison (unadjusted); the verdict reads "
+        "p_value_adjusted"
+    )
+    if correction == "none":
+        return (
+            "no correction: p_value_adjusted = p_value; metrics are not corrected "
+            f"against each other; {tail}"
+        )
+    if correction_scope == "all":
+        return f"{correction} across every row of every metric; {tail}"
+    return (
+        f"{correction} within {rows} only; metrics are not corrected against each "
+        f"other (name one decision metric); {tail}"
+    )
+
+
+def get_ab_test(
+    session: Any,
+    diff: list,
+    metrics: list,
+    strata_col: str | None = None,
+    period: str | None = None,
+    period_population: str = "itt",
+    correction: str = "holm",
+    ci_level: float = 0.95,
+    path_col: str | None = None,
+    strata_pre_exposure: bool | None = None,
+    local_preprocessors: list | None = None,
+    horizon: str | None = None,
+    period_basis: str = "calendar",
+    test: str = "auto",
+    correction_scope: str = "metric",
+) -> dict:
+    """
+    Compare two arms of an experiment on path metrics: delta, interval, verdict, MDE.
+
+    Run get_sample_ratio first: if the arms do not have the planned sizes, no
+    metric of the test can be trusted. Returns numbers only (no report tab): quote
+    them in backticks. Population (the `population` field): with an assignment
+    table in the session (serve(stream, assignment=...), shown by describe()),
+    every assigned user, silent ones included (intention to treat, "assignment");
+    without one, the paths of the stream (users with at least one event) split by
+    the segment in `diff` ("stream"): silent assigned users are not counted, and
+    horizon / since-assignment periods need the table's assigned_at.
+
+    Parameters
+    ----------
+    diff:
+        ["segment_col", "group1", "group2"], e.g. ["exp_group", "treatment",
+        "control"]; delta = group1 - group2. Exactly three elements. With an
+        assignment table, diff[0] is "arm" (the table) or the stream's arm segment.
+        The segment must be constant per path, and path_col must be the randomised
+        unit (per-user experiment -> user paths; session paths raise an error).
+    metrics:
+        Registry metric configs, one number per path, each with an optional "name"
+        and "denominator" (a second config: the metric becomes a ratio of sums, e.g.
+        revenue / orders = average order value). describe_tool("metrics") lists
+        the registry. Examples:
+        {"name": "conversion", "metric": "has_event", "metric_args": {"event": "purchase"}},
+        {"name": "revenue", "metric": "column_sum", "metric_args": {"column": "amount"}}.
+        Metric arguments go under "metric_args", never at the top level.
+    strata_col:
+        A segment constant per path and fixed BEFORE exposure (platform at signup, a
+        cluster found on a stream truncated before the first exposure). Adds the top
+        three strata by |delta| per metric (strata_selection says so: picking the
+        largest deltas is selection, read them as exploratory) with p-values adjusted
+        with `correction`, a stratum-vs-rest p-value and a heterogeneity p-value. A
+        stratum defined by post-exposure behaviour compares selected groups, not
+        randomised ones: strata_pre_exposure=false and exploratory=true flag it.
+    strata_pre_exposure:
+        true declares the strata fixed before exposure (platform at signup); omit to
+        read the recipe (a declaration add_segment(..., pre_exposure=true), or a
+        truncate_paths that cuts at an event before the segment was computed).
+    period:
+        Calendar unit ("D", "W", "M", "Q") or fixed length ("7D"): adds one row per
+        period. ITT by default (every path that entered before the period's end
+        counts in it, 0 when silent).
+    period_basis:
+        "calendar" (default) or "since_assignment" (bins of time since assigned_at,
+        "0-6", "7-13", ...: the novelty view; needs the session's assignment table
+        with assigned_at; period is then a fixed length such as "7D").
+    period_population:
+        "itt" (default, inferential) or "active" (only paths active in the period —
+        survivors; rows are descriptive, no p-value).
+    horizon:
+        A fixed window per user, e.g. "14D" or "28D": only events in the first 14
+        days after assigned_at count, and users not observed that long are left out
+        (immature). Needs the session's assignment table with assigned_at. Different
+        horizons answer different questions: choose it before reading.
+    test:
+        "auto" (default: z-test for 0/1 metrics, Welch for totals and values,
+        bootstrap for ratios), "z_test", "welch_t_test" or "bootstrap".
+    correction:
+        "holm" (default), "bonferroni", "bh" or "none".
+    correction_scope:
+        "metric" (default): the correction runs within one metric's rows, metrics
+        are not corrected against each other — name one decision metric, and read
+        each guardrail alone against a declared harm margin. "all": every row of
+        every metric in one family (a scorecard read without one decision metric).
+    ci_level:
+        Confidence level of the intervals (default 0.95).
+    path_col:
+        The randomised unit (default: the primary path column).
+    local_preprocessors:
+        One-off preprocessing. Never filter on post-exposure behaviour (e.g. "reached
+        checkout") before a test: that compares selected groups, not the arms.
+
+    Returns
+    -------
+    diff, path_col, ci_level, correction, correction_scope, population
+    ("assignment" or "stream"; "active" on period_population="active" rows),
+    unassigned_paths (stream paths in neither
+    group of diff, e.g. a third arm), and metrics — one entry per
+    metric: population, group1_paths, group2_paths, group1_support,
+    group2_support (paths with a value), conditional (true when the metric has a
+    value only for some paths — time_between, column_mean, order value: it
+    compares those paths, not the arms), group1_value, group2_value, delta,
+    delta_ci_low, delta_ci_high, rel_delta, p_value (raw), p_value_adjusted, mde
+    (the effect the test detects with 80% power at mde_alpha), verdict
+    ("increase", "decrease", "inconclusive", "descriptive", "insufficient_data"),
+    test, correction_family (what was adjusted together), mde_alpha (the level the
+    mde is computed at, alpha / m under a correction; the verdict compares
+    p_value_adjusted with 1 - ci_level), reading (one sentence built from the
+    row's numbers: the window it covers, what the per-comparison interval
+    includes or excludes, the p-value after the correction, for an inconclusive
+    row the effect the design detects and the paths a new test needs for a
+    smaller one, and the row's flags; quote it), unit ("pp": a 0/1 metric whose delta fields are shares and whose
+    reading is in percentage points; "value": the metric's own unit) and scope
+    (what the row is corrected against: e.g. "holm within this metric's rows
+    only; metrics are not corrected against each other ...; intervals are per
+    comparison (unadjusted)"); with strata_col: strata (top 3 by |delta|:
+    stratum, group1_share, group2_share, delta, delta_ci_low, delta_ci_high,
+    p_value, p_value_adjusted, mde_alpha, stratum_vs_rest_p_value, verdict,
+    reading, unit, scope), strata_selection ("top 3 by |delta| of N"),
+    strata_count, heterogeneity_p_value, strata_correction_family,
+    strata_pre_exposure, strata_pre_exposure_source ("declared", "recipe",
+    "not_pre_exposure") and exploratory (true unless the strata count as
+    pre-exposure); support_warning per metric ("no_data": no path of either arm
+    has the behaviour, or no value in one arm for a value or ratio metric;
+    "one_arm_only": the behaviour exists in one arm only; "invalid_replicates":
+    more than 1 % of bootstrap replicates without a value in an arm, so no
+    interval or p-value; "low_support": few paths behind a bootstrap interval,
+    coverage below nominal);
+    warnings (the library's warnings for this call); with period: periods (period,
+    period_complete, delta, delta_ci_low, delta_ci_high, p_value,
+    p_value_adjusted, mde_alpha, verdict, reading, unit, scope) and
+    periods_correction_family; with horizon: horizon and immature_paths.
+    "descriptive" marks period_population="active" rows (survivors, no p-value).
+
+    "inconclusive" is NOT "no effect": quote the row's `reading` (it says which
+    effects the interval still allows and what the design could detect); a smaller
+    effect needs a new test sized before it starts, never this test run longer or
+    re-read at another horizon. The mde is not a bound on the effect.
+    """
+    if (err := _require_stream(session)) is not None:
+        return err
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
+    diff_t = tuple(diff) if diff else None
+    assignment = getattr(session, "assignment", None)
+    kwargs = {
+        "assignment": assignment,
+        "horizon": horizon or None,
+        "test": test,
+        "correction": correction,
+        "correction_scope": correction_scope,
+        "ci_level": ci_level,
+        "path_col": path_col or None,
+    }
+    try:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            overall = src.get_ab_test(diff_t, metrics, **kwargs)
+            strata = (
+                src.get_ab_test(
+                    diff_t,
+                    metrics,
+                    strata_col=strata_col,
+                    strata_pre_exposure=strata_pre_exposure,
+                    **kwargs,
+                )
+                if strata_col
+                else None
+            )
+            periods = (
+                src.get_ab_test(
+                    diff_t,
+                    metrics,
+                    period=period,
+                    period_basis=period_basis,
+                    period_population=period_population,
+                    **kwargs,
+                )
+                if period
+                else None
+            )
+    except Exception as exc:
+        basis = period_basis if period else None
+        return {"error": _with_table_hint(str(exc), session, horizon, basis)}
+    messages = list(dict.fromkeys(str(w.message) for w in caught))
+    from retentioneering.tools.ab_test import parse_metrics
+
+    # the unit `reading` quotes: 0/1 metrics in percentage points (their delta and
+    # interval fields are shares), every other metric in its own unit
+    units = {
+        spec.name: "pp" if spec.kind == "binary" else "value"
+        for spec in parse_metrics(metrics)
+    }
+    scope_overall = _scope_text(correction, correction_scope, "this metric's row")
+    scope_strata = _scope_text(
+        correction, correction_scope, "this metric's strata rows"
+    )
+    scope_periods = _scope_text(
+        correction, correction_scope, "this metric's period rows"
+    )
+
+    def _row(row: dict, columns: tuple) -> dict:
+        out = {}
+        for column in columns:
+            value = row[column]
+            if column.endswith("_paths") or column.endswith("_support"):
+                out[column] = int(value)
+            elif column in ("p_value", "p_value_adjusted", "stratum_vs_rest_p_value"):
+                out[column] = _json_number(value, 8)
+            elif isinstance(value, str):
+                out[column] = value
+            elif column in ("period_complete", "conditional"):
+                out[column] = bool(value)
+            else:
+                out[column] = _json_number(value, 6)
+        return out
+
+    main_cols = (
+        "population",
+        "group1_paths",
+        "group2_paths",
+        "group1_support",
+        "group2_support",
+        "conditional",
+        "group1_value",
+        "group2_value",
+        "delta",
+        "delta_ci_low",
+        "delta_ci_high",
+        "rel_delta",
+        "p_value",
+        "p_value_adjusted",
+        "mde",
+        "verdict",
+        "test",
+        "correction_family",
+        "mde_alpha",
+        "support_warning",
+        "reading",
+    )
+    entries = []
+    for row in overall.to_dict("records"):
+        unit = units.get(row["metric"], "value")
+        entry = {
+            "metric": row["metric"],
+            "unit": unit,
+            **_row(row, main_cols),
+            "scope": scope_overall,
+        }
+        if strata is not None:
+            part = strata[strata["metric"] == row["metric"]]
+            top = part.reindex(part["delta"].abs().sort_values(ascending=False).index)
+            entry["strata_count"] = int(len(part))
+            entry["strata_selection"] = (
+                f"top {min(3, len(part))} by |delta| of {len(part)}"
+            )
+            entry["heterogeneity_p_value"] = _json_number(
+                part["heterogeneity_p_value"].iloc[0] if len(part) else None, 8
+            )
+            flag = part["strata_pre_exposure"].iloc[0] if len(part) else pd.NA
+            entry["strata_correction_family"] = (
+                str(part["correction_family"].iloc[0]) if len(part) else None
+            )
+            entry["strata_pre_exposure"] = None if pd.isna(flag) else bool(flag)
+            entry["strata_pre_exposure_source"] = (
+                str(part["strata_pre_exposure_source"].iloc[0]) if len(part) else None
+            )
+            entry["exploratory"] = bool(part["exploratory"].all())
+            entry["strata"] = [
+                _row(
+                    r,
+                    (
+                        "stratum",
+                        "group1_share",
+                        "group2_share",
+                        "delta",
+                        "delta_ci_low",
+                        "delta_ci_high",
+                        "p_value",
+                        "p_value_adjusted",
+                        "mde_alpha",
+                        "stratum_vs_rest_p_value",
+                        "verdict",
+                        "reading",
+                    ),
+                )
+                | {"unit": unit, "scope": scope_strata}
+                for r in top.head(3).to_dict("records")
+            ]
+        if periods is not None:
+            part = periods[periods["metric"] == row["metric"]]
+            entry["periods_correction_family"] = (
+                str(part["correction_family"].iloc[0]) if len(part) else None
+            )
+            entry["periods"] = [
+                _row(
+                    r,
+                    (
+                        "period",
+                        "period_complete",
+                        "delta",
+                        "delta_ci_low",
+                        "delta_ci_high",
+                        "p_value",
+                        "p_value_adjusted",
+                        "mde_alpha",
+                        "verdict",
+                        "reading",
+                    ),
+                )
+                | {"unit": unit, "scope": scope_periods}
+                for r in part.to_dict("records")
+            ]
+        entries.append(entry)
+    out: dict[str, Any] = {
+        "diff": list(diff),
+        "path_col": path_col or src.schema.path_col,
+        "ci_level": ci_level,
+        "correction": correction,
+        "correction_scope": correction_scope,
+        "population": str(overall["population"].iloc[0]),
+        "unassigned_paths": int(overall["unassigned_paths"].iloc[0]),
+        "metrics": entries,
+    }
+    if horizon:
+        out["horizon"] = horizon
+        out["immature_paths"] = int(overall["immature_paths"].iloc[0])
+    out["warnings"] = messages
+    if strata_col:
+        out["strata_col"] = strata_col
+    if period:
+        out["period"] = period
+        out["period_basis"] = period_basis
+        out["period_population"] = period_population
+    return out
+
+
+def get_ab_bootstrap(
+    session: Any,
+    diff: list,
+    metrics: list,
+    period: str,
+    contrast: dict,
+    period_basis: str = "calendar",
+    horizon: str | None = None,
+    strata_col: str | None = None,
+    strata_pre_exposure: bool | None = None,
+    ci_level: float = 0.95,
+    n_bootstrap: int = 1000,
+    path_col: str | None = None,
+    local_preprocessors: list | None = None,
+) -> dict:
+    """
+    Contrast an A/B effect between periods with a joint bootstrap interval (novelty).
+
+    Answers "is the early effect larger than the late one?" with one interval:
+    every period is evaluated on the same resampled users, and both sides of a
+    contrast run on the users observed in all its periods (no change of cohort
+    mix). Numbers only (no report tab): quote them in backticks.
+
+    Parameters
+    ----------
+    diff, metrics, path_col, local_preprocessors, horizon, strata_col,
+    strata_pre_exposure:
+        As in get_ab_test.
+    period:
+        The bins the contrast names: a fixed length with
+        period_basis="since_assignment" ("14D" -> "0-13", "14-27", ...), or a
+        calendar unit ("W").
+    period_basis:
+        "calendar" (default) or "since_assignment" (needs the session's assignment
+        table with assigned_at; the novelty view).
+    contrast:
+        {"name": [periods_a, periods_b]}, e.g. {"novelty": [["0-13"], ["28-41"]]}:
+        per metric, (value in a - value in b) within each arm, and delta = that
+        change in group1 minus group2. Period labels as get_ab_test(period=...)
+        returns them.
+    ci_level:
+        Level of the percentile interval (default 0.95).
+    n_bootstrap:
+        Replicates (default 1000, at least 100).
+
+    Returns
+    -------
+    diff, period, period_basis, contrast, n_bootstrap, population, warnings and
+    rows — one per metric (and stratum) and contrast: metric, [stratum],
+    contrast, group1_value and group2_value (each arm's change between the sides),
+    delta (the point estimate on the observed data, not the replicates' mean),
+    delta_ci_low, delta_ci_high (percentile of the replicates, unadjusted), p_value (from the
+    bootstrap standard error, unadjusted), share_positive (share of replicates
+    with delta > 0; not a p-value), valid_replicates, unit ("pp" or "value").
+    """
+    if (err := _require_stream(session)) is not None:
+        return err
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
+    from retentioneering.tools.ab_test import ABTest
+
+    if not isinstance(contrast, dict) or not contrast:
+        return {"error": "contrast must be {'name': [periods_a, periods_b]}"}
+    sides = {
+        name: tuple(value) if isinstance(value, list) else value
+        for name, value in contrast.items()
+    }
+    try:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            test = ABTest.from_stream(
+                src,
+                tuple(diff) if diff else None,
+                metrics,
+                assignment=getattr(session, "assignment", None),
+                strata_col=strata_col or None,
+                strata_pre_exposure=strata_pre_exposure,
+                period=period,
+                period_basis=period_basis,
+                horizon=horizon or None,
+                ci_level=ci_level,
+                n_bootstrap=n_bootstrap,
+                path_col=path_col or None,
+            )
+            table = test.contrast_summary(sides)
+    except Exception as exc:
+        return {"error": _with_table_hint(str(exc), session, horizon, period_basis)}
+    units = {s.name: "pp" if s.kind == "binary" else "value" for s in test.specs}
+    rows = []
+    for row in table.to_dict("records"):
+        entry: dict[str, Any] = {"metric": row["metric"]}
+        if "stratum" in row:
+            entry["stratum"] = str(row["stratum"])
+        entry["contrast"] = row["contrast"]
+        for column in (
+            "group1_value",
+            "group2_value",
+            "delta",
+            "delta_ci_low",
+            "delta_ci_high",
+        ):
+            entry[column] = _json_number(row[column], 6)
+        entry["p_value"] = _json_number(row["p_value"], 8)
+        entry["share_positive"] = _json_number(row["share_positive"], 4)
+        entry["valid_replicates"] = int(row["valid_replicates"])
+        entry["unit"] = units.get(row["metric"], "value")
+        rows.append(entry)
+    return {
+        "diff": list(diff),
+        "period": period,
+        "period_basis": period_basis,
+        "contrast": contrast,
+        "n_bootstrap": test.resolved_n_bootstrap(),
+        "population": "assignment" if test.matrix.with_assignment else "stream",
+        "rows": rows,
+        "warnings": list(dict.fromkeys(str(w.message) for w in caught)),
     }
 
 
@@ -649,8 +1544,10 @@ def export_report(
 ) -> dict:
     """
     Finalize the report with all widgets added via add_transition_graph /
-    add_step_matrix / add_segment_overview. Resets the pending widget list
-    afterwards.
+    add_step_matrix / add_segment_overview / add_ab_test. Needs at least one tab:
+    numbers-only tools (get_ab_test, get_sample_ratio, get_conversion_rate)
+    register none, so an A/B analysis adds its scorecard with add_ab_test.
+    Resets the pending widget list afterwards.
 
     Parameters
     ----------
@@ -669,6 +1566,10 @@ def export_report(
     """
     if not session.pending_tabs:
         return {
-            "error": "No widgets added. Call add_transition_graph or add_step_matrix first."
+            "error": (
+                "No widgets added. Call an add_* tool first (add_transition_graph, "
+                "add_step_matrix, add_segment_overview, or add_ab_test for an A/B "
+                "analysis whose numbers came from numbers-only tools)."
+            )
         }
     return session.package(title, analysis)

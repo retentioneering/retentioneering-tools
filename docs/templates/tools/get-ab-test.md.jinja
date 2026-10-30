@@ -1,0 +1,202 @@
+{% extends "_tool_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+The two arms are sets of paths: `diff` is resolved per path, and a path that
+would fall in both arms raises an error instead of being counted twice. With an
+`assignment` table the population is intention-to-treat — every assigned path,
+including those with no events (they count as zeros), with events before
+`assigned_at` dropped. Without it the population is the stream's paths, each
+with at least one event. The `population` column says which (`"assignment"` or
+`"stream"`; `"active"` on `period_population="active"` rows, which compare the
+survivors of a period), so a funnel's rate on the stream can be told apart from
+the ITT rate. A metric that has a value only for some paths (`time_between`,
+`column_mean`, a ratio such as order value) compares those paths, not the whole
+arms: `group1_support` / `group2_support` count them and `conditional` flags
+the row.
+
+The path grain must be the randomised unit. A table indexed by a coarser or a
+finer path column than `path_col` raises. So does a segment `diff` at a session
+grain when the arm is constant within the users: when at least 99 % of the users
+that hold several sessions keep one arm, and at least 10 such users do, the call
+raises (`'exp_group' is constant within every user_id (…)`, or `within 995 of the
+1000 user_ids that hold several session_id paths (5 carry both arms)` when a few
+users carry both arms); from 90 % it warns. Per-session intervals of a per-user
+experiment are too narrow. `funnel_data(ci_level=…)` and
+`get_conversion_rate(diff=…)` apply the same guard; a descriptive funnel diff
+(no `ci_level`) does not.
+
+The test follows the metric: a pooled z-test with Wilson and Newcombe intervals
+for 0/1 metrics, Welch's t-test for per-path totals and values, and a joint
+path bootstrap for ratio metrics (an entry with a `denominator`). The
+`verdict` reads only the adjusted p-value; the interval is per comparison
+(only `correction="bonferroni"` adds a simultaneous one; for a ratio metric it
+is `delta ± z·SE` on the bootstrap SE, because a percentile that far in the
+tail rests on a handful of replicates). The correction runs
+within each metric's rows (`correction_scope="metric"`): metrics are not
+corrected against each other, so name one decision metric before the test.
+Guardrails are read the same way, each on its own: a guardrail passes only when
+its interval clears the harm margin declared before the test, and correcting
+guardrails together would make harm harder to detect. `correction_scope="all"`
+corrects every row of every metric together, for a scorecard read without one
+decision metric. The [A/B Testing guide](/docs/ab-testing) is a walk-through on
+the bundled synthetic experiment, `load_ab_test()`.
+
+### Assignment ids and time
+
+Table ids are matched to `path_col` as they are, or by their string form when
+none matches as is (ids read from JSON or CSV). No match at all raises
+`InvalidParameterError`; fewer than half of the table's ids matched gives a
+`UserWarning` with the counts, once per table — right when most assigned paths never produced an
+event, wrong when the ids are spelled differently. A table whose index is named
+after a coarser path column (user ids, with `path_col="session_id"`) or after a
+finer one (`session_id` read per user) raises; an unnamed index whose ids are
+more often ids of a finer column warns.
+
+A naive `assigned_at` on a tz-aware stream is read in the stream's timezone: a
+wall time skipped by a daylight-saving change moves forward, and one that occurs
+twice (the hour the clocks go back) raises — pass a tz-aware `assigned_at`. A
+tz-aware one is converted to the stream's timezone; on a naive stream it raises.
+
+### Periods and windows
+
+Calendar periods (`period_basis="calendar"`) are bins of the event timestamp in
+the stream's timezone: `"D"`, `"W"`, `"M"`, `"Q"`, `"Y"` (`"W-MON"` etc. pick the
+week's end; `"ME"`, `"MS"`, `"QE"`, `"QS"`, `"YE"`, `"YS"` and
+`pd.offsets.MonthEnd()` mean the same as their unit), a multiple of weeks,
+months, quarters or years (`"2W"`, `"3M"`, counted from the unit that holds the
+stream's first day; another unit with a multiple raises), or a fixed length
+(`"7D"`, `"12h"`) whose bins start at midnight of the first day. A period's
+population is every path assigned before its end (`assigned_at`, or the path's
+first event without it; silent paths with no `assigned_at` are in every
+period). `period_complete` is False when the observed range — from midnight of
+the first event's day to the last event — cuts the period.
+
+Since-assignment bins (`period_basis="since_assignment"`, a fixed length:
+`"7D"`, `"14D"`, `"W"` = 7 days) are labelled `"0-6"`, `"7-13"` (days) or
+`"0-11h"` (hours). A path is in a bin's population only when the bin's window
+closes by the last event; the others are counted in `immature_paths`, and a bin
+with no such path in either arm is left out. A bin that `horizon` cuts
+(`horizon="10D"` with `period="7D"`: `"7-13"` holds days 7 to 9) keeps its label
+with `period_complete=False`. A bare number (`14`) has no unit and raises for
+`period` and `horizon` alike.
+
+### Support and coverage
+
+`min_support` is pooled over the two arms and counted in paths: paths with the
+event for 0/1 metrics (and, separately, the paths without it), paths with a
+non-zero total for totals (every path has a total, so "a value" would be every
+path), paths with a non-zero numerator for ratios, and paths with a value for
+values. Below it a row is `insufficient_data`: the estimates stay, the test does
+not run. Because support is pooled, a behaviour present in one arm only — a new
+feature's event, 0 paths in control — is tested and flagged `one_arm_only`. A
+value or ratio metric with no value in an arm has no estimate there and is
+`insufficient_data` with `support_warning="no_data"`, as is a row where no path
+of either arm has the behaviour.
+
+Percentile bootstrap intervals under-cover with few supporting paths. Simulated
+under a true null with 300 paths per arm, the 95 % interval covered about 0.93
+at 60 supporting paths per arm; at about 6 per arm (2 % of paths with an order)
+a ratio row rejected 6 % of the time and covered 0.91. Bootstrap rows below 30
+supporting paths in an arm keep their verdict and are flagged `low_support`.
+More than 1 % of replicates without a value in an arm (a ratio's denominator at
+0) gives `invalid_replicates`: no interval, p-value, `delta_se` or `mde`.
+
+An absent estimate is NaN, never 0. `p_value` is NaN when both arms are
+constant, when an arm has fewer than two paths with a value (totals and values),
+and on `insufficient_data`, `descriptive` and `invalid_replicates` rows (a
+`low_support` row keeps it); `delta_se` and `mde` are NaN when the metric has no
+spread; `rel_delta*` are NaN when `group2_value <= 0`; an arm with no path has
+NaN estimates; `heterogeneity_*` are NaN with fewer than two strata that pass
+the support guard (>= 5 events and >= 5 non-events per arm for 0/1 metrics, >= 10
+supporting paths per arm otherwise).
+
+### Reading a row
+
+The last column, `reading`, says in one sentence what the row's own numbers
+support, so a scorecard can be read row by row without re-deriving the rules.
+It reads the row's numbers only: it does not check the sample ratio, the unit or
+whether strata are pre-exposure, so gate on `get_sample_ratio()` first. 0/1
+metrics are read in percentage points (pp), other metrics in their unit;
+negative numbers use a plain `-`, so the text can be parsed back. The examples
+below are printed by `get_ab_test` on `load_ab_test()` with
+`diff=("exp_group", "treatment", "control")`, `assignment=load_ab_test_assignment()`
+and the conversion metric (`has_event` of `order_success`) unless said otherwise.
+
+Every sentence starts with the window the row covers: `over the whole
+observation period`, `within 28 days of assignment` (with `horizon`),
+`calendar week 2026-03-09` or `days 14-27 since assignment` (period rows). A
+period row describes its window, not the experiment: quote the window with the
+number.
+
+- **inconclusive** — `"over the whole observation period: interval [-1.07,
+  +2.28] pp includes 0 (p 0.48); effects outside it are unlikely; the design
+  detects 2.39 pp at alpha 0.05 — to detect 1 pp, about 5.7× the paths are
+  needed in a new test sized before it starts"`. The interval bounds the effect;
+  the `mde` describes the design. The multiplier comes from the design variance:
+  the `mde` shrinks with the square root of the paths, so a round effect (1, 2 or
+  5 times a power of ten) at or below half the `mde` needs `(mde / effect)²` times
+  the paths at the same split — in a new test, sized before it starts; extending
+  this one, or re-reading it at another horizon, is peeking. The clause is left
+  out when there is no `mde`. With a correction over several rows the p-value is
+  the adjusted one and says so (`p 0.58 after holm`), while the interval stays
+  per comparison and is called that: `"calendar week 2026-03-02: per-comparison
+  interval [-0.44, +3.38] pp includes 0 (p 0.58 after holm); …"` (`period="W"`).
+  A row whose interval excludes 0 only before the correction says so:
+  `"calendar week 2026-03-16: per-comparison interval [+0.33, +2.22] pp excludes
+  0, but p 0.057 after holm is not below alpha 0.05; …"`.
+- **increase / decrease** — `"within 14 days of assignment: interval [+1.38,
+  +4.12] pp excludes 0 (p < 0.0001); relative +21 %"` (`horizon="14D"`).
+- **insufficient_data** — `"calendar day 2026-03-02: pooled support 31 <
+  min_support 50; estimate shown descriptively"` (`period="D"`,
+  `min_support=50`); a row where no path of either arm has the behaviour reads
+  `"no data in either arm"` (`support_warning="no_data"`), and a value or ratio
+  metric with no value in one arm reads `no value in group1: ...`.
+- **descriptive** — `"calendar week 2026-03-02: active population: not
+  randomised, describes who was active in the period"`
+  (`period_population="active"`).
+
+Then the row's flags, when set: `exploratory: strata not pre-exposure (declare
+strata_pre_exposure=True if they are)`, `window not complete` for a period whose
+window the data does not cover, `conditional: a value for 1207 of 4960 and 1196
+of 5040 paths; compares those paths, not the whole arms` (the scorecard's order
+value, revenue over orders), and the `support_warning` (`low support: coverage
+below nominal (under 30 supporting paths in an arm)` on bootstrap rows, whose
+verdict stays). A row with one of these flags, or with `invalid_replicates`,
+does not say "effects outside it are unlikely": its interval is weaker than
+nominal or answers another question. With several metrics and no strata or
+periods, each row ends with `corrected within this metric only; name one
+decision metric` (`corrected across all 3 metrics` with
+`correction_scope="all"`). With `correction="bonferroni"` the sentence quotes the
+simultaneous interval. Since-assignment bins whose window closes after the end
+of data for every path have no population in either arm and are left out.
+
+{% endblock %}
+
+{% block extra_params %}
+### test
+
+{{ bullets(doc.parameters, "test") }}
+
+### correction
+
+{{ bullets(doc.parameters, "correction") }}
+
+### correction_scope
+
+{{ bullets(doc.parameters, "correction_scope") }}
+
+### period_basis
+
+{{ bullets(doc.parameters, "period_basis") }}
+
+### period_population
+
+{{ bullets(doc.parameters, "period_population") }}
+
+### bootstrap_weights
+
+{{ bullets(doc.parameters, "bootstrap_weights") }}
+
+{% endblock %}

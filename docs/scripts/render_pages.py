@@ -10,8 +10,9 @@ a couple of small helpers (`param_table`, `bullets`, both from
 docstring_utils.py); everything else about a page's shape belongs in its
 template.
 
-Common structure lives in the two base templates
-(docs/templates/_widget_base.md.jinja and _data_processor_base.md.jinja);
+Common structure lives in the three base templates
+(docs/templates/_widget_base.md.jinja, _data_processor_base.md.jinja and
+_tool_base.md.jinja);
 per-page templates `{% extends %}` a base and override a `{% block %}` only
 where that page actually diverges (e.g. an extra section).
 
@@ -23,6 +24,7 @@ from __future__ import annotations
 
 import re
 import shutil
+import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -38,7 +40,14 @@ BUILD_DIR = REPO_ROOT / "docs" / "build"
 
 SITE_URL = "https://retentioneering.com"
 
-TITLE_OVERRIDES = {"urls_to_events": "URLs to Events"}
+TITLE_OVERRIDES = {
+    "urls_to_events": "URLs to Events",
+    "ab_test": "A/B Test",
+    "get_ab_test": "A/B Test Scorecard",
+    "get_ab_bootstrap": "A/B Bootstrap Replicates",
+    "get_ab_paths": "A/B Per-Path Table",
+    "get_sample_ratio": "Sample Ratio Check",
+}
 
 # Guide pages in reading order, with the label the docs site shows in its
 # sidebar. Copying a guide page needs no such list (that's a plain glob), but
@@ -57,6 +66,7 @@ GUIDES = [
     ("segments", "Segments"),
     ("path-metrics", "Path Metrics"),
     ("path-patterns", "Path Patterns"),
+    ("ab-testing", "A/B Testing"),
     ("mcp-server", "MCP Server"),
     ("agent-skills", "Agent Skills"),
     ("recipes", "Recipes"),
@@ -87,6 +97,7 @@ WIDGETS = [
     ("widgets/funnel.md.jinja", "funnel", "funnel_data"),
     ("widgets/segment-overview.md.jinja", "segment_overview", "segment_overview_data"),
     ("widgets/cluster-analysis.md.jinja", "cluster_analysis", "cluster_analysis_data"),
+    ("widgets/ab-test.md.jinja", "ab_test", "ab_test_data"),
 ]
 
 DATA_PROCESSORS = [
@@ -107,6 +118,17 @@ DATA_PROCESSORS = [
     "split_sessions",
     "truncate_paths",
     "urls_to_events",
+]
+
+
+# Analysis tools: getters that return numbers (a DataFrame or a dict) rather
+# than a widget or a new eventstream. Pages are titled by TITLE_OVERRIDES and
+# carry a Returns section parsed from the docstring.
+TOOLS = [
+    "get_ab_test",
+    "get_ab_bootstrap",
+    "get_ab_paths",
+    "get_sample_ratio",
 ]
 
 
@@ -165,6 +187,32 @@ def render_data_processor(env: jinja2.Environment, method_name: str) -> str:
         title=title_of(method_name),
         doc=load_doc(method_name),
         default_call=f"stream.{method_name}()",
+    )
+
+
+def split_returns(returns: str) -> tuple[str, str]:
+    """Split a numpydoc Returns block into its type line and dedented body.
+
+    A ``*`` right after inline code marks an optional column in the docstrings;
+    it is escaped so the docs renderer does not read it as emphasis.
+    """
+    lines = returns.splitlines()
+    if not lines:
+        return "", ""
+    body = textwrap.dedent("\n".join(lines[1:])).strip("\n")
+    return lines[0].strip(), body.replace("`*", "`\\*")
+
+
+def render_tool(env: jinja2.Environment, method_name: str) -> str:
+    template = env.get_template(f"tools/{slugify(method_name)}.md.jinja")
+    doc = load_doc(method_name)
+    returns_type, returns_body = split_returns(doc.returns)
+    return template.render(
+        title=title_of(method_name),
+        doc=doc,
+        default_call=f"stream.{method_name}()",
+        returns_type=returns_type,
+        returns_body=returns_body,
     )
 
 
@@ -308,6 +356,7 @@ def _collect_pages() -> dict[str, list[LlmsPage]]:
         "Data processors": [
             from_method(name, "data-processors") for name in DATA_PROCESSORS
         ],
+        "Tools": [from_method(name, "tools") for name in TOOLS],
     }
 
 
@@ -376,6 +425,7 @@ def write_llms_files() -> None:
 def main() -> None:
     (BUILD_DIR / "widgets").mkdir(parents=True, exist_ok=True)
     (BUILD_DIR / "data-processors").mkdir(parents=True, exist_ok=True)
+    (BUILD_DIR / "tools").mkdir(parents=True, exist_ok=True)
     env = build_env()
 
     copy_guide_pages()
@@ -390,6 +440,12 @@ def main() -> None:
     for method_name in DATA_PROCESSORS:
         rendered = render_data_processor(env, method_name)
         out_path = BUILD_DIR / "data-processors" / f"{slugify(method_name)}.md"
+        out_path.write_text(rendered, encoding="utf-8")
+        print(f"wrote {out_path.relative_to(REPO_ROOT)}")
+
+    for method_name in TOOLS:
+        rendered = render_tool(env, method_name)
+        out_path = BUILD_DIR / "tools" / f"{slugify(method_name)}.md"
         out_path.write_text(rendered, encoding="utf-8")
         print(f"wrote {out_path.relative_to(REPO_ROOT)}")
 

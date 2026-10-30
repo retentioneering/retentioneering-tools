@@ -263,6 +263,17 @@ class RetentioneeringWidget(StateFileMixin, anywidget.AnyWidget):
         except Exception as exc:
             self.compute_response = json.dumps({"id": req_id, "error": str(exc)})
 
+    @staticmethod
+    def _encode_result(raw: Any) -> str:
+        """Encode a computed result for a JSON traitlet (``result``, ``dist_result``).
+
+        NaN/Infinity become ``null`` (``_replace_non_finite``) and
+        ``allow_nan=False`` turns anything that still slips through into an
+        error here instead of a bare ``NaN`` token that the browser's
+        ``JSON.parse`` rejects. The JS side reads ``null`` as "no estimate".
+        """
+        return json.dumps(_replace_non_finite(raw), allow_nan=False)
+
     def sync_state(self) -> dict[str, Any]:
         """Every ``sync=True`` traitlet's current value, by name.
 

@@ -26,6 +26,7 @@ from retentioneering.exceptions import (
     InvalidSegmentSelectionError,
     SegmentLevelNotFoundError,
 )
+from retentioneering.metrics.composite import COMPOSITE_COL, composite_path_stream
 from retentioneering.metrics.metric_builder import MetricBuilder, MetricConfig
 from retentioneering.utils.sentinels import UNSET as _UNSET
 
@@ -50,45 +51,6 @@ AGG_FUNCTIONS = {
     "q75": lambda x: x.quantile(0.75),
     "q95": lambda x: x.quantile(0.95),
 }
-
-
-def _build_composite_path(
-    df: pd.DataFrame, path_col: str, segment_col: str
-) -> Tuple[np.ndarray, Dict[Any, Any]]:
-    """
-    Build an integer composite path id combining ``path_col`` and ``segment_col``,
-    so MetricBuilder can compute per-path metrics separately for each segment
-    value.
-
-    This uses `factorize` rather than the previous `astype(str) + sep +
-    astype(str)` string concatenation, which had two failure modes: numeric
-    segment levels came back stringified (e.g. `1.0` instead of `1`), and rows
-    with a missing (None/NaN) segment level — which `add_segment` can produce
-    via its `func`/`sql` modes — silently vanished, since concatenating a NaN
-    into a string produces NaN for the whole composite key. `path_col` is
-    already guaranteed non-null by Eventstream's own validation, and
-    `use_na_sentinel=False` gives every distinct segment level (including a
-    missing one) its own stable code, so the composite id is always defined.
-
-    Returns the composite id array and a mapping from composite id back to the
-    original segment level (None for a missing segment, the original level
-    otherwise).
-    """
-    segment_codes, segment_uniques = pd.factorize(
-        df[segment_col], use_na_sentinel=False
-    )
-    pairs = pd.array(list(zip(df[path_col], segment_codes)), dtype=object)
-    composite_ids, _ = pd.factorize(pairs)
-    segment_by_composite = dict(
-        zip(
-            composite_ids,
-            (
-                None if pd.isna(segment_uniques[code]) else segment_uniques[code]
-                for code in segment_codes
-            ),
-        )
-    )
-    return composite_ids, segment_by_composite
 
 
 def _segment_mask(series: pd.Series, value: Any) -> pd.Series:
@@ -138,19 +100,14 @@ class SegmentOverview:
         if segment_col not in df.columns:
             raise ValueError(f"Segment column '{segment_col}' not found in DataFrame")
 
-        # Create composite path ID: (path_id, segment_level)
-        composite_col = "__composite_path_id__"
-        composite_ids, segment_by_composite = _build_composite_path(
-            df, path_col, segment_col
+        # Composite paths (path_id, segment_level): metrics per path and level.
+        # A missing level is a level of its own (None in the back-map).
+        composite_col = COMPOSITE_COL
+        temp_stream, back = composite_path_stream(
+            self.eventstream, df[segment_col].to_numpy(), path_col
         )
-        df[composite_col] = composite_ids
-
-        # Create a temporary eventstream with composite path ID
-        from retentioneering.eventstream.eventstream import Eventstream
-
-        temp_schema = dict(self.eventstream._schema) if self.eventstream._schema else {}
-        temp_schema["path_cols"] = [composite_col]
-        temp_stream = Eventstream(df, temp_schema, preprocess=False)
+        segment_by_composite = back["key"].to_dict()
+        df = temp_stream.df
 
         # Use MetricConfig to get enriched configs with column names. Pass the
         # available events so that has_event/event_count with omitted 'events'
@@ -352,19 +309,14 @@ class SegmentOverview:
         # Validate metric configuration using MetricBuilder
         MetricBuilder(self.eventstream).validate_metric_config(metric)
 
-        # Create composite path ID: (path_id, segment_level)
-        composite_col = "__composite_path_id__"
-        composite_ids, segment_by_composite = _build_composite_path(
-            df, path_col, segment_col
+        # Composite paths (path_id, segment_level): metrics per path and level.
+        # A missing level is a level of its own (None in the back-map).
+        composite_col = COMPOSITE_COL
+        temp_stream, back = composite_path_stream(
+            self.eventstream, df[segment_col].to_numpy(), path_col
         )
-        df[composite_col] = composite_ids
-
-        # Create a temporary eventstream with composite path ID
-        from retentioneering.eventstream.eventstream import Eventstream
-
-        temp_schema = dict(self.eventstream._schema) if self.eventstream._schema else {}
-        temp_schema["path_cols"] = [composite_col]
-        temp_stream = Eventstream(df, temp_schema, preprocess=False)
+        segment_by_composite = back["key"].to_dict()
+        df = temp_stream.df
 
         # Build metric using MetricBuilder
         metric_builder = MetricBuilder(temp_stream)

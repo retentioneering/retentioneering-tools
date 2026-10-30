@@ -120,6 +120,29 @@ stream = rete.Eventstream(df, schema={
 })
 ```
 
+### A/B test datasets
+
+For experiments, `load_ab_test(name)` generates one of six synthetic randomised tests, each with stories planted in it, and `load_ab_test_assignment(name)` returns its assignment table (the population for [`get_ab_test(assignment=...)`](/docs/tools/get-ab-test)). Nothing is downloaded: every dataset is a deterministic generator that runs in about a second, with `seed=` and `n_users=` to vary it. Some datasets hide an effect in a segment, some are broken tests whose right answer is "do not read this test" — finding out which is the exercise.
+
+```python
+import retentioneering as rete
+
+rete.datasets.list_ab_tests()                    # name -> one-line description
+stream = rete.datasets.load_ab_test("srm_platform_bug")
+assignment = rete.datasets.load_ab_test_assignment("srm_platform_bug")
+```
+
+| name | size | what it practises | solutions |
+|---|---|---|---|
+| `northwind_home` (default) | 10,000 users, 8 weeks | the full readout: sample ratio, scorecard, funnel intervals, novelty, pre-exposure strata, loops; the [A/B tutorial](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_tutorial.ipynb)'s dataset | [`ab_test.py`](https://github.com/retentioneering/retentioneering-tools/blob/master/src/retentioneering/datasets/ab_test.py) |
+| `srm_platform_bug` | 10,000 users, 5 weeks | validity checks before any metric; `get_sample_ratio(strata_col=..., period=...)` | [`srm_platform_bug.py`](https://github.com/retentioneering/retentioneering-tools/blob/master/src/retentioneering/datasets/ab_cases/srm_platform_bug.py) |
+| `session_assignment` | 8,000 users, 4 weeks | the unit of randomisation versus the unit of analysis | [`session_assignment.py`](https://github.com/retentioneering/retentioneering-tools/blob/master/src/retentioneering/datasets/ab_cases/session_assignment.py) |
+| `aa_calibration` | 10,000 users, 4 weeks | what an A/A test should show; daily rows; revenue metrics | [`aa_calibration.py`](https://github.com/retentioneering/retentioneering-tools/blob/master/src/retentioneering/datasets/ab_cases/aa_calibration.py) |
+| `trial_conversion` | 10,000 users, 6 weeks | outcomes that arrive late; `horizon` and since-assignment periods | [`trial_conversion.py`](https://github.com/retentioneering/retentioneering-tools/blob/master/src/retentioneering/datasets/ab_cases/trial_conversion.py) |
+| `push_campaign` | 20,000 assigned users, 2 weeks | assignment from outside the product; ITT versus the users who showed up | [`push_campaign.py`](https://github.com/retentioneering/retentioneering-tools/blob/master/src/retentioneering/datasets/ab_cases/push_campaign.py) |
+
+Each generator's docstring (`help(rete.datasets.ab_cases.push_campaign)`) describes the experiment — where the treatment sits, which segments are fixed at assignment and can be declared pre-exposure, what the assignment table is — and ends with a "Solutions (spoilers)" section: the planted stories and the correct conclusion. Every dataset has the path columns `user_id` and `session_id` and the arm segment `exp_group`; user ids do not overlap between datasets, so a table loaded for one never matches another's stream. `with_truth=True` adds the planted truth column for checking an analysis at the end.
+
 ## Inspecting your data
 
 `stream.describe()` is a quick sanity check on what got loaded: dataset shape, schema, date range, event frequency, and path length/duration statistics.
@@ -220,6 +243,134 @@ stream.get_conversion_rate(
 ```
 
 **The unit is the path, not the occurrence.** A path where the start event happened three times counts once in the denominator, so "of 23,000 visits to this page, how many were entrances" is a different question this method does not answer — the per-visit figure can differ from the per-path one by several points. `path_col="session_id"` is usually the right lever: at session grain "added to cart" and "purchased" describe the same visit rather than the same person, and the lift stops being washed out by everything a user ever did.
+
+**Intervals and two-group comparisons.** `ci_level` adds a Wilson interval of the rate, and `diff` compares two groups of paths in one row:
+
+```python
+stream.get_conversion_rate("add_to_cart", "purchase", ci_level=0.95)
+# ... conversion_rate 0.569, conversion_rate_ci_low 0.526, conversion_rate_ci_high 0.611 ...
+
+stream.get_conversion_rate(
+    "add_to_cart", "purchase", path_col="session_id", diff=("platform", "mobile", "desktop")
+)
+```
+
+| group1_conversion_rate | group2_conversion_rate | delta | delta_ci_low | delta_ci_high | p_value |
+|---|---|---|---|---|---|
+| 0.240 | 0.330 | -0.090 | -0.144 | -0.034 | 0.0018 |
+
+Every per-path column comes once per group (`group1_paths_with_start`, `group1_converted`, `group1_conversion_rate` with its interval, `group1_base_rate`, `group1_lift`, and the same for `group2_`), followed by `delta` (group 1 minus group 2) with a Newcombe interval and a pooled two-proportion `p_value` (`NaN` when it is undefined). The groups are whole paths: on `load_ecom()` 180 users switch platform between sessions, so the same call at user grain raises `DiffConfigError` instead of counting those users in both groups — compare sessions, or carry a per-path label with `add_segment(path_values=...)`. The interval treats every path as an independent unit, which is right only when `path_col` is the unit that was assigned: sessions of a user-level experiment give intervals that are too narrow. Two more things limit what this example says. `platform` is not randomised, so the delta compares two groups of sessions, it does not measure an effect of the platform. And the start anchor `add_to_cart` makes the rate conditional — the denominator is whoever reached it — so the result carries `conditional=True` (False only when the start anchor is the path start); in an experiment, a treatment that changes who reaches the anchor makes the delta and its `p_value` descriptive, and the effect on the whole arm is a job for `get_ab_test` with a `has_event` or `matches_pattern` metric and `assignment=`.
+
+### Path-level labels
+
+`get_path_segments(segment_col)` returns one value of a segment column per path, `<MULTI>` where it changes inside the path and `<MISSING>` where it is empty throughout:
+
+```python
+stream.get_path_segments("platform").value_counts()
+# desktop 229, <MULTI> 180, mobile 146, tablet 45
+stream.get_path_segments("platform", path_col="session_id").value_counts()   # no <MULTI>
+```
+
+It is the inverse of [`add_segment(name, path_values=...)`](/docs/data-processors/add-segment), which broadcasts one value per path onto every event — together they carry an assignment table onto the event log, or clusters found on a truncated stream back onto the full one. `<MULTI>` paths are what the inferential methods (`get_ab_test`, `get_ab_bootstrap`, `get_conversion_rate(diff=...)`, `funnel(ci_level=...)`) refuse to split, with `DiffConfigError`; `get_sample_ratio` counts them as `multi_valued_paths` and reports a mismatch, because for a sample ratio check a path with two arms is the finding.
+
+### Sample ratio mismatch
+
+Before reading any metric of an experiment, check that the arms have the sizes the design promised. `get_sample_ratio()` counts paths per arm and tests them against the expected shares (chi-square goodness of fit):
+
+```python
+check = stream.get_sample_ratio("exp_group")                 # equal split expected
+check["mismatch"], check["p_value"], check["levels"]
+
+stream.get_sample_ratio(
+    "exp_group",
+    expected_shares={"control": 0.8, "treatment": 0.2},
+    assignment=groups,         # index user_id; columns arm and, optionally, assigned_at
+    period="D",                # per assignment day, Holm-adjusted
+)
+```
+
+`levels` has one row per arm (`level`, `paths`, `share`, `expected_share`, `expected_paths`). `mismatch` is raised when `p_value < alpha` (default `0.001` — an SRM alarm gates every other result, so it is set strict) **or** when any path carries more than one arm (`multi_valued_paths`), which is an assignment bug whatever the shares say. With `assignment=` the counts come from the table, including users who never produced an event (`silent_paths`), and `segment_col` is optional; without it they come from the stream. Paths left out of the test — stream paths the table does not list, paths with no arm — are counted in `unassigned_paths`. `period=` repeats the check per calendar unit of assignment (`"D"`, `"W"`, `"M"`, as in `get_ab_test`; result in `periods`) and `strata_col=` per segment fixed at assignment (`strata`), with Holm-adjusted p-values.
+
+Run it on the assignment or on the full stream. On a subset defined by behaviour — users who reached the cart — the shares differ whenever the treatment works, and that difference is an effect, not a bug: the chi-square there is the conversion test in disguise.
+
+### A/B test scorecard
+
+`get_ab_test()` compares two arms of an experiment on a handful of path metrics and returns one row per metric: the value in each arm, the difference with a confidence interval, a p-value, the smallest effect the test could have detected (`mde`) and a verdict. The metrics are ordinary [path metrics](/docs/path-metrics) configs, one number per path, with an optional `name` and an optional `denominator` that turns a metric into a ratio of sums:
+
+```python
+from retentioneering.datasets import load_ab_test, load_ab_test_assignment
+
+stream = load_ab_test()
+assignment = load_ab_test_assignment()        # index user_id; columns arm, assigned_at
+orders = {"metric": "event_count", "metric_args": {"event": "order_success"}}
+
+scorecard = stream.get_ab_test(
+    ("exp_group", "treatment", "control"),
+    metrics=[
+        {"name": "conversion", "metric": "has_event", "metric_args": {"event": "order_success"}},
+        {"name": "orders_per_user", **orders},
+        {"name": "revenue_per_user", "metric": "column_sum", "metric_args": {"column": "order_value"}},
+        {"name": "aov", "metric": "column_sum", "metric_args": {"column": "order_value"},
+         "denominator": orders},
+    ],
+    assignment=assignment,
+)
+```
+
+| metric | group1_value | group2_value | delta | delta_ci_low | delta_ci_high | p_value | mde | verdict | test |
+|---|---|---|---|---|---|---|---|---|---|
+| conversion | 0.2433 | 0.2373 | 0.0060 | -0.0107 | 0.0228 | 0.479 | 0.0239 | inconclusive | z_test |
+| orders_per_user | 0.3034 | 0.2889 | 0.0145 | -0.0086 | 0.0377 | 0.219 | 0.0331 | inconclusive | welch_t_test |
+| revenue_per_user | 20.14 | 18.64 | 1.50 | -0.28 | 3.28 | 0.099 | 2.55 | inconclusive | welch_t_test |
+| aov | 66.39 | 64.53 | 1.86 | -1.30 | 5.03 | 0.262 | 4.64 | inconclusive | bootstrap |
+
+`delta` is group 1 minus group 2. The test follows the metric: a 0/1 metric gets a pooled two-proportion z-test with Wilson and Newcombe intervals, a per-path total or value gets Welch's t-test, a ratio of sums (average order value = revenue / orders) gets a joint path bootstrap — paths are resampled within each arm and every metric is recomputed on the same resample, so the ratio's interval respects that revenue and orders come from the same users. `test=` (or a per-metric `"test"`) overrides the choice where it fits the metric.
+
+**Read an inconclusive row with its interval and `mde`.** Above, conversion moved by +0.60 pp with an interval from -1.07 to +2.28 pp: an effect larger than about +2.3 pp or below about -1.1 pp is unlikely, and a smaller one, in either direction, is possible. The `mde` (about 2.4 pp) is the effect the test detects with 80 % power at alpha 0.05 (`mde_alpha`) — a design quantity, not a bound on the true effect: an inconclusive result does not say the effect is smaller than the `mde`, the interval says how large it can be. The verdict is `increase` / `decrease` only when the multiplicity-adjusted p-value is below `1 - ci_level`; `insufficient_data` marks rows whose support, pooled across both arms, is below `min_support` (default 10; for totals, paths with a non-zero total), with `support_warning="no_data"` when no path of either arm has the behaviour; a behaviour present in one arm only still gets a p-value, flagged `support_warning="one_arm_only"`.
+
+**The population.** `assignment=` makes the assignment table the population (intention to treat): users who were assigned but never produced an event count as zeros (`group1_silent_paths`), events before `assigned_at` are dropped, and stream paths missing from the table are counted in `unassigned_paths`. Without it the population is the paths of the stream; the `population` column of every row says which (`"assignment"` or `"stream"`). Either way the unit is the path: with a user-level assignment table, or an arm segment constant within the users, a session `path_col` raises, because per-session intervals of a per-user experiment are too narrow.
+
+**Strata.** `strata_col=` repeats every metric per level of a segment that is constant per path, with each stratum's share in both arms, a share-balance p-value, Cochran's heterogeneity test and a stratum-versus-rest test. The p-values are corrected within each metric (`correction="holm"` by default; `"bonferroni"` also adds simultaneous intervals, `"bh"` controls the false discovery rate; `correction_scope="all"` corrects every row of the call together instead, for a scorecard read without one decision metric), and `correction_family` says what was corrected together. A stratum must be fixed before exposure: find it on a stream truncated before the first exposure and carry it over with [`add_segment(path_values=..., pre_exposure=True)`](/docs/data-processors/add-segment), which records your declaration with the segment. A source column fixed at assignment, such as a signup platform, is declared with `strata_pre_exposure=True`. A stratum that is neither declared nor read from a truncation in the stream's recipe — clusters or `metric_bins` on the full stream — raises a warning and is flagged `strata_pre_exposure=False` — the treatment can move users between such strata, so their rows compare selected groups, not randomised ones. `strata_pre_exposure_source` says which case applies (`"declared"`, `"recipe"`, `"not_pre_exposure"`), and rows are `exploratory=True` unless the stratum counts as pre-exposure.
+
+**Periods and windows.** `period="W"` gives one row per calendar week, each on every user assigned by the end of that week (ITT per period). `period_population="active"` restricts each week to users active in it; such rows compare survivors and are marked `descriptive`, with no p-value. `period_basis="since_assignment"` bins events by time since each user's assignment (`"0-13"`, `"14-27"` days for `period="14D"`), and keeps a user in a bin only when the bin's window closed by the stream's last event (`immature_paths` counts the others). `horizon="28D"` gives every user the same 28-day window from assignment. Different horizons answer different questions — choose the one that matches the decision before reading any.
+
+### Joint bootstrap replicates
+
+`get_ab_bootstrap()` returns the replicates behind the bootstrap: one row per replicate, metric, stratum and period, with both arms' values and the delta, all computed on the same resampled users. Combine them freely — an effect that changes with exposure age is the difference between an early and a late window, with an interval that accounts for the same users being in both. `contrast=` compares the same paths in every contrasted bin — the library keeps only the paths whose windows closed in all of them — so the horizon below is a choice of window that makes the population explicit, not a requirement:
+
+```python
+reps = stream.get_ab_bootstrap(
+    ("exp_group", "treatment", "control"),
+    metrics=[{"name": "conversion", "metric": "has_event",
+              "metric_args": {"event": "order_success"}}],
+    assignment=assignment,
+    period="14D",
+    period_basis="since_assignment",
+    horizon="42D",
+    contrast={"novelty": (["0-13"], ["28-41"])},
+)
+novelty = reps.loc[reps["contrast"] == "novelty", "delta"]
+novelty.quantile([0.025, 0.975]).tolist()
+# [0.0284, 0.0675]
+```
+
+The interval comes from the replicates; the estimate is the same difference on the observed data, +4.86 pp: the effect is larger in days 0-13 than in days 28-41 (`get_ab_test(..., period="14D", period_basis="since_assignment", horizon="42D")` gives +3.38 pp and −1.48 pp for the two bins, and MCP's `get_ab_bootstrap` reports this `delta`).
+
+### Per-path table behind the scorecard
+
+`get_ab_paths()` takes the `diff`, `metrics`, `assignment`, `horizon` and `path_col` of `get_ab_test()` and returns the table its rows are computed from: one row per path of both arms, with the arm, `assigned_at` when the table has it, `silent`, `mature` (False for a path whose `horizon` window had not closed) and every metric's per-path value (a ratio metric as its numerator and denominator columns). Its per-arm means reproduce the scorecard's `group1_value` and `group2_value`. Use it for an analysis the scorecard does not run, such as a covariate adjustment (CUPED) fitted by hand:
+
+```python
+paths = stream.get_ab_paths(
+    ("exp_group", "treatment", "control"),
+    metrics=[{"name": "conversion", "metric": "has_event",
+              "metric_args": {"event": "order_success"}}],
+    assignment=assignment,
+)
+paths.groupby("arm")["conversion"].mean()     # the scorecard's group values
+```
+
+See [A/B Per-Path Table](/docs/tools/get-ab-paths) for every column.
 
 ### Reproducing an eventstream
 

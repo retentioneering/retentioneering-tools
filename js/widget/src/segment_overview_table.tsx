@@ -571,7 +571,7 @@ export function metricBaseName(metricName: string): string {
   // "length_mean" → "length"
   // Bulk variants are checked before the plain ones: "event_count_bulk_x" also
   // starts with "event_count", so the more specific prefix has to win.
-  const known = ["event_count_bulk", "has_event_bulk", "in_segment_bulk", "has_all_events", "has_any_event", "event_count", "has_event", "time_between", "active_days", "in_segment", "matches_pattern", "first_event_time", "duration", "length"];
+  const known = ["column_sum", "column_mean", "column_last", "event_count_bulk", "has_event_bulk", "in_segment_bulk", "has_all_events", "has_any_event", "event_count", "has_event", "time_between", "active_days", "in_segment", "matches_pattern", "first_event_time", "duration", "length"];
   for (const k of known) if (metricName.startsWith(k)) return k;
   return metricName.split("_")[0];
 }
@@ -597,6 +597,10 @@ export function metricArgsFromName(metricName: string, _events: string[]): any {
   if (m === "has_event") {
     const rest = metricName.replace(/^has_event_/, "").replace(/_[a-z\d]+$/, "");
     return rest ? { event: rest } : undefined;
+  }
+  if (m === "column_sum" || m === "column_mean" || m === "column_last") {
+    const rest = metricName.slice(m.length + 1).replace(/_[a-z\d]+$/, "");
+    return rest ? { column: rest } : undefined;
   }
   // has_all_events/has_any_event: the joined events list can't be
   // unambiguously split back out if an event name itself contains "_and_"/

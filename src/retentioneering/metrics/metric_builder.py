@@ -46,6 +46,12 @@ Supports metrics:
   Both flavours reject unknown metric_args keys (including each other's spelling
   of the level key, and the pre-5.0 'segment_value'): ignoring a key meant to
   name a level would read as "no level given", i.e. every level.
+- column_sum - sum of a custom column over the path's events (NULL counts as 0)
+  - column: a column in schema.custom_cols (numeric)
+- column_mean - mean of a custom column over its non-null values (NaN if none)
+  - column: a column in schema.custom_cols (numeric)
+- column_last - last non-null value of a custom column by event order (NaN if none)
+  - column: a column in schema.custom_cols (any dtype)
 
 Every metric that takes event names also takes an optional 'event_col' in its
 metric_args - the column those names are matched against, defaulting to
@@ -90,7 +96,18 @@ VALID_METRICS = {
     "matches_pattern",
     "in_segment",
     "in_segment_bulk",
+    "column_sum",
+    "column_mean",
+    "column_last",
 }
+
+# Metrics over a custom (non-schema) column: money, quantities, scores.
+COLUMN_METRICS = {"column_sum", "column_mean", "column_last"}
+# The ones that aggregate arithmetically and so need a numeric column.
+NUMERIC_COLUMN_METRICS = {"column_sum", "column_mean"}
+# Metrics whose value can be undefined for a path: build_metrics keeps their NaN
+# instead of filling 0 (an absent value is not a zero).
+NAN_METRICS = {"time_from_to", "column_mean", "column_last"}
 
 # Valid modes for the in_segment metric
 IN_SEGMENT_MODES = {
@@ -356,6 +373,28 @@ def _normalize_in_segment_threshold(
     return threshold
 
 
+def _normalize_column(metric_args: Dict[str, Any], metric_name: str) -> str:
+    """Normalizes the 'column' metric_args value for column_sum/mean/last:
+    required, a column name. Unknown keys are rejected so a misspelled
+    'column' fails instead of reading as "no column"."""
+    unknown = sorted(set(metric_args) - {"column"})
+    if unknown:
+        raise InvalidMetricConfigError(
+            f"'{metric_name}' metric takes only 'column' in metric_args, got {unknown}"
+        )
+    column = metric_args.get("column")
+    if not isinstance(column, str) or not column:
+        raise InvalidMetricConfigError(
+            f"'{metric_name}' metric requires 'column' (a custom column name) in metric_args"
+        )
+    return column
+
+
+def column_metric_name(metric: str, column: str) -> str:
+    """Column name of a column_sum/column_mean/column_last metric."""
+    return f"{metric}_{column}"
+
+
 def combined_metric_name(
     metric: str, events: List[str], event_col: str | None = None
 ) -> str:
@@ -574,6 +613,14 @@ class MetricConfig:
                 ],
                 "original": config_dict,
             }
+        elif metric in COLUMN_METRICS:
+            column = _normalize_column(metric_args, metric)
+            return {
+                "type": metric,
+                "column": column,
+                "metric_names": [column_metric_name(metric, column)],
+                "original": config_dict,
+            }
         elif metric == "in_segment":
             norm = _normalize_in_segment(metric_args)
             segment_name = norm["segment_name"]
@@ -681,6 +728,25 @@ class MetricBuilder:
             )
 
         metric_args = metric.get("metric_args", {})
+
+        if metric_name in COLUMN_METRICS:
+            column = _normalize_column(metric_args, metric_name)
+            custom_cols = list(self.schema.custom_cols or [])
+            if column not in custom_cols or column not in self.df.columns:
+                raise InvalidMetricConfigError(
+                    f"'{metric_name}' metric 'column' must be a custom column of the "
+                    f"eventstream; '{column}' is not. Custom columns: {sorted(custom_cols)}"
+                )
+            if (
+                metric_name in NUMERIC_COLUMN_METRICS
+                and not pd.api.types.is_numeric_dtype(self.df[column])
+            ):
+                raise InvalidMetricConfigError(
+                    f"'{metric_name}' metric needs a numeric column; '{column}' has "
+                    f"dtype {self.df[column].dtype}. Use 'column_last' for a "
+                    f"non-numeric column."
+                )
+            return
 
         metric_event_col = _normalize_event_col(metric_args, metric_name)
         if metric_event_col is not None:
@@ -831,7 +897,10 @@ class MetricBuilder:
                     )
 
     def build_metrics(
-        self, config: List[Dict[str, Any]], path_col: str | None = None
+        self,
+        config: List[Dict[str, Any]],
+        path_col: str | None = None,
+        validate: bool = True,
     ) -> pd.DataFrame:
         """
         Main method for building metrics
@@ -839,6 +908,10 @@ class MetricBuilder:
         Args:
             config: List of metric configuration dicts with 'metric' and optional 'metric_args' fields
             path_col: Path ID column (if None, taken from schema)
+            validate: Check event/segment existence against this eventstream. Callers
+                that already validated the configs on a parent stream pass False when
+                building on a slice of it (a time window, a period), where an event
+                that happens not to occur is a zero, not a typo.
 
         Returns:
             DataFrame with path_id as index and metrics as columns
@@ -854,10 +927,11 @@ class MetricBuilder:
         available_events = set(self.df[event_col].unique().tolist())
         metric_config = MetricConfig(config, available_events=available_events)
 
-        for parsed in metric_config.parsed_configs:
-            self.validate_metric_config(
-                parsed["original"], available_events=available_events
-            )
+        if validate:
+            for parsed in metric_config.parsed_configs:
+                self.validate_metric_config(
+                    parsed["original"], available_events=available_events
+                )
 
         path_ids = self.df[path_col].unique()
 
@@ -867,8 +941,8 @@ class MetricBuilder:
         for config_item in metric_config.parsed_configs:
             metric_df = self._build_metric(config_item, path_col, event_col)
 
-            # For time_from_to metrics, keep NaN values (don't fill with 0)
-            if config_item["type"] == "time_from_to":
+            # Metrics that can be undefined keep NaN (an absent value is not 0)
+            if config_item["type"] in NAN_METRICS:
                 metric_df = metric_df.reindex(path_ids)
             else:
                 metric_df = metric_df.reindex(path_ids, fill_value=0).fillna(0)
@@ -918,6 +992,8 @@ class MetricBuilder:
             return self._build_in_segment(config, path_col)
         elif config["type"] == "in_segment_bulk":
             return self._build_in_segment_bulk(config, path_col)
+        elif config["type"] in COLUMN_METRICS:
+            return self._build_column_metric(config, path_col)
         else:
             raise InvalidMetricConfigError(f"Unknown metric type: '{config['type']}'")
 
@@ -1128,6 +1204,42 @@ class MetricBuilder:
         """
         result = engine.run(query, df=self.df)
         return result.set_index(path_col)
+
+    def _build_column_metric(
+        self, config: Dict[str, Any], path_col: str
+    ) -> pd.DataFrame:
+        """column_sum / column_mean / column_last over a custom column.
+
+        - column_sum: SUM(COALESCE(col, 0)) — a path with no value sums to 0.
+        - column_mean: AVG(col) — NULLs are ignored; no value at all gives NaN.
+        - column_last: the non-null value at the latest event position
+          (index, subindex); no value at all gives NaN.
+        """
+        metric = config["type"]
+        column = config["column"]
+        name = config["metric_names"][0]
+        path_col_q = engine.quote_ident(path_col)
+        col_q = engine.quote_ident(column)
+        if metric == "column_sum":
+            expr = f"SUM(COALESCE({col_q}, 0))"
+        elif metric == "column_mean":
+            expr = f"AVG({col_q})"
+        else:
+            position = dialect.event_position(
+                engine.quote_ident(self.schema.index),
+                engine.quote_ident(self.schema.subindex),
+            )
+            expr = f"arg_max({col_q}, {position}) FILTER (WHERE {col_q} IS NOT NULL)"
+        query = f"""
+        SELECT {path_col_q}, {expr} AS value
+        FROM df
+        GROUP BY {path_col_q}
+        """
+        result = engine.run(query, df=self.df).set_index(path_col)
+        values = result["value"]
+        if metric != "column_last":
+            values = values.astype(float)
+        return values.to_frame(name)
 
     def _build_matches(
         self, config: Dict[str, Any], path_col: str, event_col: str

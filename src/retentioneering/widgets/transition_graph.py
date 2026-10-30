@@ -295,7 +295,7 @@ class TransitionGraphWidget(RetentioneeringWidget):
                 path_col=self.path_col or None,
                 diff=diff_list,
             )
-            self.result = json.dumps(result)
+            self.result = self._encode_result(result)
 
             if diff_list:
                 try:

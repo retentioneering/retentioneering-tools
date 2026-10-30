@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+import pandas as pd
+
 
 def distribution_levels(req: dict) -> dict:
     """
@@ -94,3 +96,19 @@ def max_steps_for_window(step_window: int, max_steps: int) -> int:
     if step_window > max_steps:
         return step_window + STEP_WINDOW_HEADROOM
     return max_steps
+
+
+def custom_columns_catalogue(eventstream) -> str:
+    """JSON `{custom column: is numeric}` for the column_* metrics' dropdown.
+
+    Numeric means `column_sum`/`column_mean` accept it (booleans count, like in
+    the metric registry); `column_last` accepts every custom column.
+    """
+    try:
+        df = eventstream.df
+        cols = [c for c in (eventstream.schema.custom_cols or []) if c in df.columns]
+        return json.dumps(
+            {str(c): bool(pd.api.types.is_numeric_dtype(df[c])) for c in cols}
+        )
+    except Exception:
+        return "{}"

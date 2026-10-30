@@ -1,0 +1,21 @@
+{% extends "_tool_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+Run it before reading any metric. A mismatch between the arm sizes and the
+planned split means assignment, logging or a filter lost paths from one arm,
+and every comparison of the experiment is suspect until the cause is found.
+`period="D"` repeats the check per day of assignment (`"W"` and `"M"` per week
+and month, spelled as in `get_ab_test`), and `strata_col=` per segment fixed at
+assignment; a segment computed after exposure is not a valid stratum here.
+With `assignment=`, `segment_col` is optional: the table alone is counted.
+
+The result's `reading` puts the check in one sentence: `"expected 50/50,
+observed 5040/4960 (control/treatment), p 0.42: no mismatch"`, or
+`"mismatch: ... — the test is invalid until the assignment is fixed"` when the
+split is off or paths carry two arms. With `strata_col=` or `period=` it also
+names the strata or periods that mismatch: a logging bug on one platform can hide inside a plausible overall
+split.
+
+{% endblock %}

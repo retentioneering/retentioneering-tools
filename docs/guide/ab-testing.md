@@ -365,7 +365,7 @@ ab_transitions=edges)` draws significant edges in their sign's colour, inconclus
 ones grey and untested ones dashed, and adds the interval and the adjusted p-value
 to each edge's tooltip. `get_ab_steps(diff, max_steps=8, assignment=assignment)`
 does the same per step: 93 cells tested, `quick_add` higher and `add_to_cart` lower
-at steps 3 to 8, and `cart` at step 8 higher by +1.72 pp [+0.89, +2.55].
+at steps 3 to 8, and `cart` at step 8 higher by +1.71 pp [+0.89, +2.55].
 
 **When to use it.** After the scorecard, to find where the arms' paths part, and as
 a source of hypotheses for the next test. Not for the launch decision: the family is

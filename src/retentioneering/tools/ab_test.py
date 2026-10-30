@@ -282,6 +282,31 @@ def _metric_args_hint(entry: dict[str, Any], unknown: set) -> str:
     return f"Put metric arguments under 'metric_args': {example!r}"
 
 
+def resolve_test(
+    kind: str, test: Any, label: str, error: type[Exception] = InvalidMetricConfigError
+) -> str:
+    """The test a ``kind`` of per-path quantity takes: ``"auto"`` resolved, a test
+    that does not fit refused (``z_test`` on a non-0/1 quantity, anything but
+    ``bootstrap`` on a ratio of sums). ``label`` starts the message; ``error``
+    is the exception raised (the scorecard's metric entries raise
+    ``InvalidMetricConfigError``)."""
+    if not isinstance(test, str) or test not in TESTS:
+        raise error(f"{label}: unknown test {test!r}; allowed: {list(TESTS)}")
+    if test == "auto":
+        test = _TEST_OF_KIND[kind]
+    if test == "z_test" and kind != "binary":
+        raise error(
+            f"{label}: 'z_test' is for 0/1 metrics; this one is a {kind} metric "
+            "(use 'welch_t_test' or 'bootstrap')."
+        )
+    if kind == "ratio" and test != "bootstrap":
+        raise error(
+            f"{label}: a ratio of sums has no closed-form test here; use "
+            "test='bootstrap' (or 'auto')."
+        )
+    return test
+
+
 def _kind_of(metric: str) -> str:
     if metric in BINARY_METRICS:
         return "binary"
@@ -368,23 +393,7 @@ class ABMetricSpec:
             _metric_column(denominator, "denominator", label)
             kind = "ratio"
 
-        test = entry.get("test", default_test)
-        if test not in TESTS:
-            raise InvalidMetricConfigError(
-                f"{label}: unknown test {test!r}; allowed: {list(TESTS)}"
-            )
-        if test == "auto":
-            test = _TEST_OF_KIND[kind]
-        if test == "z_test" and kind != "binary":
-            raise InvalidMetricConfigError(
-                f"{label}: 'z_test' is for 0/1 metrics; this one is a {kind} metric "
-                "(use 'welch_t_test' or 'bootstrap')."
-            )
-        if kind == "ratio" and test != "bootstrap":
-            raise InvalidMetricConfigError(
-                f"{label}: a ratio of sums has no closed-form test here; use "
-                "test='bootstrap' (or 'auto')."
-            )
+        test = resolve_test(kind, entry.get("test", default_test), label)
         name = entry.get("name", column)
         if not isinstance(name, str) or not name:
             raise InvalidMetricConfigError(f"{label}: 'name' must be a non-empty str")
@@ -783,6 +792,241 @@ def prepare_assignment(
     return aligned
 
 
+# ======================================================================= shared
+# Validation, population and window helpers shared by every A/B getter
+# (``get_ab_test`` / ``get_ab_bootstrap`` / ``get_ab_paths`` here, and
+# ``get_ab_transitions`` / ``get_ab_steps`` in ``tools/ab_transitions.py``), so that
+# they refuse the same arguments with the same messages and compare the same paths.
+
+
+def check_choice(name: str, value: Any, allowed: tuple[str, ...]) -> None:
+    """Refuse a string option outside ``allowed``."""
+    if not isinstance(value, str) or value not in allowed:
+        raise InvalidParameterError(name, value, list(allowed))
+
+
+def check_levels(ci_level: Any, power: Any) -> None:
+    """``ci_level`` in ``[0.5, 1)`` and ``power`` in ``(0, 1)``."""
+    for name, value, low, allowed in (
+        ("ci_level", ci_level, 0.5, "a float in [0.5, 1), e.g. 0.95"),
+        ("power", power, 0.0, "a float in (0, 1)"),
+    ):
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not low <= value < 1
+            or value <= 0
+        ):
+            raise InvalidParameterError(name, value, [allowed])
+
+
+def check_min_support(min_support: Any) -> None:
+    """``min_support`` is an int >= 1."""
+    if isinstance(min_support, bool) or not isinstance(min_support, (int, np.integer)):
+        raise InvalidParameterError("min_support", min_support, ["an int >= 1"])
+    if min_support < 1:
+        raise InvalidParameterError("min_support", min_support, ["an int >= 1"])
+
+
+def check_n_bootstrap(n_bootstrap: Any, allow_auto: bool = True) -> None:
+    """At least :data:`~retentioneering.tools._bootstrap.MIN_REPLICATES` replicates
+    (fewer give NaN intervals on every bootstrap row), or ``"auto"``."""
+    if allow_auto and n_bootstrap == "auto":
+        return
+    if (
+        isinstance(n_bootstrap, bool)
+        or not isinstance(n_bootstrap, (int, np.integer))
+        or n_bootstrap < bs.MIN_REPLICATES
+    ):
+        raise InvalidParameterError(
+            "n_bootstrap",
+            n_bootstrap,
+            [f"an int >= {bs.MIN_REPLICATES}"] + (["auto"] if allow_auto else []),
+        )
+
+
+def check_random_state(random_state: Any) -> None:
+    """``random_state`` is an int."""
+    if isinstance(random_state, bool) or not isinstance(
+        random_state, (int, np.integer)
+    ):
+        raise InvalidParameterError("random_state", random_state, ["an int"])
+
+
+def check_path_col(schema, path_col: str | None) -> str:
+    """``path_col`` (default: the schema's) must be one of the path columns."""
+    path_col = path_col or schema.path_col
+    if path_col not in schema.path_cols:
+        raise InvalidParameterError("path_col", path_col, list(schema.path_cols))
+    return path_col
+
+
+def prepare_population(
+    stream,
+    diff: Any,
+    assignment: pd.Series | pd.DataFrame | None,
+    *,
+    path_col: str,
+    horizon: Any | None = None,
+    period_basis: str = "calendar",
+) -> pd.DataFrame | None:
+    """The prepared assignment table (or None) after every population guard.
+
+    Normalises the table, refuses ``horizon`` and since-assignment periods without
+    ``assigned_at``, validates ``horizon``, applies the unit guard of an assignment
+    table (:func:`prepare_assignment`) or, without one, of a segment ``diff``
+    (:func:`check_segment_unit`).
+    """
+    table = normalize_assignment(assignment) if assignment is not None else None
+    has_time = table is not None and "assigned_at" in table.columns
+    if period_basis == "since_assignment" and not has_time:
+        raise InvalidParameterError(
+            "period_basis",
+            period_basis,
+            [
+                "'calendar'",
+                "'since_assignment' with an assignment DataFrame "
+                "holding an 'assigned_at' column",
+            ],
+        )
+    if horizon is not None and not has_time:
+        raise InvalidParameterError(
+            "horizon",
+            horizon,
+            [
+                "None",
+                "a duration with an assignment DataFrame holding 'assigned_at'",
+            ],
+        )
+    if horizon is not None:
+        _fixed_length(horizon, "horizon")
+    table = prepare_assignment(stream, path_col, table)
+    if table is None and _is_segment_diff(diff):
+        check_segment_unit(stream, path_col, diff[0])
+    return table
+
+
+@dataclass
+class AnalysedWindow:
+    """The compared paths and the events each one contributes.
+
+    Attributes
+    ----------
+    path_ids : pandas.Index
+        Sorted ids of both arms (silent assigned paths included; immature paths of a
+        ``horizon`` excluded).
+    arm : ndarray (n_paths,)
+        0 = group 1, 1 = group 2.
+    assigned_at : pandas.Series or None
+        ``assigned_at`` per path in ``path_ids`` (with an assignment table that has it).
+    work : Eventstream
+        The stream restricted to the analysed events: the compared paths, from
+        ``assigned_at`` on, within ``horizon``.
+    horizon_immature : int
+        Paths left out because their ``horizon`` window is not closed at the end of
+        data (0 without ``horizon``).
+    horizon_length : pandas.Timedelta or None
+        The resolved ``horizon``.
+    coverage : tuple of pandas.Timestamp
+        The stream's observed range (see :func:`_coverage`).
+    """
+
+    path_ids: pd.Index
+    arm: np.ndarray
+    assigned_at: pd.Series | None
+    work: Any
+    horizon_immature: int
+    horizon_length: pd.Timedelta | None
+    coverage: tuple[pd.Timestamp, pd.Timestamp]
+
+
+def analysed_window(
+    stream: "Eventstream",
+    groups: DiffGroups,
+    assignment: pd.DataFrame | None,
+    path_col: str,
+    *,
+    horizon: Any | None = None,
+    require_assigned_at: bool = False,
+) -> AnalysedWindow:
+    """Restrict the stream to the compared paths and their analysed window.
+
+    With ``assignment`` (a prepared table) events before ``assigned_at`` are
+    dropped; with ``horizon`` only events in ``[assigned_at, assigned_at +
+    horizon)`` count and paths whose window ends after the stream's last event are
+    left out (``horizon_immature``). ``require_assigned_at`` (set for ``horizon``
+    and since-assignment periods) refuses a compared path without ``assigned_at``.
+
+    Raises
+    ------
+    InvalidParameterError
+        A compared path without ``assigned_at`` where one is needed.
+    EmptyEventstreamError
+        An arm with no path whose ``horizon`` window is closed.
+    """
+    from retentioneering.eventstream.eventstream import Eventstream
+
+    schema = stream.schema
+    ts_col = schema.timestamp_col
+    df = stream.df
+    coverage = _coverage(df[ts_col])
+    cov_end = coverage[1]
+
+    path_ids = _sorted_ids(groups.ids1.append(groups.ids2))
+    arm = np.where(path_ids.isin(groups.ids1), 0, 1)
+
+    assigned_at = None
+    if assignment is not None and "assigned_at" in assignment.columns:
+        assigned_at = assignment["assigned_at"].reindex(path_ids)
+
+    if assigned_at is not None and (horizon is not None or require_assigned_at):
+        undated = assigned_at.index[assigned_at.isna()]
+        if len(undated):
+            raise InvalidParameterError(
+                "assignment",
+                f"{len(undated)} compared path(s) without assigned_at, e.g. "
+                f"{list(undated[:3])}",
+                [
+                    "an assigned_at for every compared path (horizon and "
+                    "since-assignment periods count time from it)"
+                ],
+            )
+    keep = df[path_col].isin(path_ids).to_numpy()
+    horizon_immature = 0
+    length = None
+    if assigned_at is not None:
+        row_assigned = df[path_col].map(assigned_at)
+        keep = keep & ((df[ts_col] >= row_assigned) | row_assigned.isna()).to_numpy()
+        if horizon is not None:
+            length = _fixed_length(horizon, "horizon")
+            mature = (assigned_at + length <= cov_end).to_numpy()
+            horizon_immature = int((~mature).sum())
+            path_ids, arm, assigned_at = (
+                path_ids[mature],
+                arm[mature],
+                assigned_at[mature],
+            )
+            keep = keep & (df[ts_col] < row_assigned + length).to_numpy()
+            keep = keep & df[path_col].isin(path_ids).to_numpy()
+    if (arm == 0).sum() == 0 or (arm == 1).sum() == 0:
+        raise EmptyEventstreamError(
+            "an arm has no path whose horizon window is closed at the stream's end"
+        )
+    if keep.all():
+        work = stream
+    else:
+        work = Eventstream(df.loc[keep].copy(), asdict(schema), preprocess=False)
+    return AnalysedWindow(
+        path_ids=path_ids,
+        arm=arm,
+        assigned_at=assigned_at,
+        work=work,
+        horizon_immature=horizon_immature,
+        horizon_length=length,
+        coverage=coverage,
+    )
+
+
 def _cuts_at_an_event(op: dict) -> bool:
     """Whether a ``truncate_paths`` op ends paths at an event (a no-op truncation to
     ``path_end`` does not)."""
@@ -980,62 +1224,26 @@ class MetricMatrix:
         ``strata_labels`` (a column of the assignment table) the strata come from the
         table instead of the stream's events.
         """
-        from retentioneering.eventstream.eventstream import Eventstream
-
         schema = stream.schema
         path_col = path_col or schema.path_col
         ts_col = schema.timestamp_col
         df = stream.df
-        cov_start, cov_end = _coverage(df[ts_col])
-
-        path_ids = _sorted_ids(groups.ids1.append(groups.ids2))
-        arm = np.where(path_ids.isin(groups.ids1), 0, 1)
-
-        assigned_at = None
-        if assignment is not None and "assigned_at" in assignment.columns:
-            assigned_at = assignment["assigned_at"].reindex(path_ids)
 
         # ---- the analysed window: drop pre-assignment events, apply the horizon
         since = period is not None and period_basis == "since_assignment"
-        if assigned_at is not None and (horizon is not None or since):
-            undated = assigned_at.index[assigned_at.isna()]
-            if len(undated):
-                raise InvalidParameterError(
-                    "assignment",
-                    f"{len(undated)} compared path(s) without assigned_at, e.g. "
-                    f"{list(undated[:3])}",
-                    [
-                        "an assigned_at for every compared path (horizon and "
-                        "since-assignment periods count time from it)"
-                    ],
-                )
-        keep = df[path_col].isin(path_ids).to_numpy()
-        horizon_immature = 0
-        length = None
-        if assigned_at is not None:
-            row_assigned = df[path_col].map(assigned_at)
-            keep = (
-                keep & ((df[ts_col] >= row_assigned) | row_assigned.isna()).to_numpy()
-            )
-            if horizon is not None:
-                length = _fixed_length(horizon, "horizon")
-                mature = (assigned_at + length <= cov_end).to_numpy()
-                horizon_immature = int((~mature).sum())
-                path_ids, arm, assigned_at = (
-                    path_ids[mature],
-                    arm[mature],
-                    assigned_at[mature],
-                )
-                keep = keep & (df[ts_col] < row_assigned + length).to_numpy()
-                keep = keep & df[path_col].isin(path_ids).to_numpy()
-        if (arm == 0).sum() == 0 or (arm == 1).sum() == 0:
-            raise EmptyEventstreamError(
-                "an arm has no path whose horizon window is closed at the stream's end"
-            )
-        if keep.all():
-            work = stream
-        else:
-            work = Eventstream(df.loc[keep].copy(), asdict(schema), preprocess=False)
+        window = analysed_window(
+            stream,
+            groups,
+            assignment,
+            path_col,
+            horizon=horizon,
+            require_assigned_at=since,
+        )
+        path_ids, arm, assigned_at = window.path_ids, window.arm, window.assigned_at
+        work = window.work
+        horizon_immature = window.horizon_immature
+        length = window.horizon_length
+        cov_start, cov_end = window.coverage
 
         # ---- period keys per row
         periods = None
@@ -1402,6 +1610,140 @@ def _numeric(frame: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(out, index=frame.index)
 
 
+# ======================================================================= rules
+@dataclass
+class SupportRule:
+    """The pooled support rule of :func:`support_rule`, one entry per row.
+
+    Attributes
+    ----------
+    support : ndarray of bool
+        The row is tested (pooled support at least ``min_support``; for 0/1 rows
+        the pooled paths without the behaviour too).
+    count : ndarray of int
+        Pooled supporting paths.
+    non_support : ndarray of int or None
+        Pooled paths without the behaviour (0/1 rows only).
+    q_support : ndarray of bool
+        The per-arm guard of Cochran's Q.
+    warning : ndarray of str
+        ``support_warning`` before the estimates are known (``"no_data"``,
+        ``"one_arm_only"``, ``"low_support"`` or ``""``).
+    """
+
+    support: np.ndarray
+    count: np.ndarray
+    non_support: np.ndarray | None
+    q_support: np.ndarray
+    warning: np.ndarray
+
+
+def support_rule(kind: str, test: str, s1, s2, n1, n2, min_support: int) -> SupportRule:
+    """The scorecard's pooled support rule, vectorised over rows.
+
+    ``s1`` / ``s2`` are the supporting paths of each arm (paths with the event for
+    0/1 rows, a non-zero total for totals, a non-zero numerator for ratios, a value
+    for values), ``n1`` / ``n2`` the paths of each arm. The rule is pooled over the
+    arms: a behaviour present in one arm only is the strongest effect there is,
+    not missing data, so it is tested and flagged ``one_arm_only``. No supporting
+    path in either arm is ``no_data`` (nothing to compare); a bootstrap row with
+    fewer than :data:`LOW_SUPPORT_PATHS` supporting paths in an arm is
+    ``low_support``.
+    """
+    s1, s2, n1, n2 = (
+        np.atleast_1d(np.asarray(x, dtype=np.int64)) for x in (s1, s2, n1, n2)
+    )
+    count = s1 + s2
+    support = count >= min_support
+    low = np.minimum(s1, s2)
+    non_support = None
+    if kind == "binary":
+        non_support = (n1 - s1) + (n2 - s2)
+        support = support & (non_support >= min_support)
+        q_support = (low >= 5) & (np.minimum(n1 - s1, n2 - s2) >= 5)
+    else:
+        q_support = low >= 10
+    warning = np.where(
+        count == 0,
+        "no_data",
+        np.where(
+            low == 0,
+            "one_arm_only",
+            np.where(
+                (test == "bootstrap") & (low < LOW_SUPPORT_PATHS), "low_support", ""
+            ),
+        ),
+    ).astype(object)
+    support = support & (count > 0)
+    return SupportRule(support, count, non_support, q_support, warning)
+
+
+def settle_support_warning(warning, g1, g2, invalid_replicates=False):
+    """``support_warning`` once the estimates are known: an arm without an estimate
+    (no path, or no value of a value or ratio quantity) is ``"no_data"``, nothing
+    to compare whatever the pooled support; a bootstrap row with too many invalid
+    replicates is ``"invalid_replicates"`` unless it is ``"no_data"``.
+
+    Returns ``(warning, no_estimate)``: the settled warnings and the rows that
+    became ``"no_data"`` here (they are not tested).
+    """
+    warning = np.atleast_1d(np.asarray(warning, dtype=object)).copy()
+    g1 = np.atleast_1d(np.asarray(g1, dtype=float))
+    g2 = np.atleast_1d(np.asarray(g2, dtype=float))
+    invalid = np.broadcast_to(np.asarray(invalid_replicates, dtype=bool), warning.shape)
+    no_estimate = (warning != "no_data") & ~(np.isfinite(g1) & np.isfinite(g2))
+    warning[no_estimate] = "no_data"
+    warning[invalid & (warning != "no_data")] = "invalid_replicates"
+    return warning, no_estimate
+
+
+def adjust_p(p, correction: str) -> np.ndarray:
+    """Adjusted p-values of one family (NaN entries are not in it)."""
+    adjust = {
+        "holm": _stats.holm,
+        "bonferroni": _stats.bonferroni,
+        "bh": _stats.benjamini_hochberg,
+        "none": lambda q: np.asarray(q, dtype=float),
+    }[correction]
+    return adjust(np.asarray(p, dtype=float))
+
+
+def mde_alpha_of(alpha: float, m: int, correction: str) -> float:
+    """The level the ``mde`` is computed at: ``alpha / m`` under a correction of
+    ``m`` p-values (the Bonferroni level, whatever the correction), else ``alpha``."""
+    if correction != "none" and m > 1:
+        return round(alpha / m, 12)
+    return alpha
+
+
+def verdicts(p_adjusted, delta, alpha: float, support, descriptive=None) -> np.ndarray:
+    """``verdict`` per row, a pure function of the adjusted p-value.
+
+    ``"increase"`` / ``"decrease"`` when ``p_adjusted < alpha`` (the sign of
+    ``delta``), else ``"inconclusive"``; ``"insufficient_data"`` where ``support``
+    is False and ``"descriptive"`` where ``descriptive`` is True (that one first).
+    """
+    p_adjusted = np.asarray(p_adjusted, dtype=float)
+    delta = np.asarray(delta, dtype=float)
+    with np.errstate(invalid="ignore"):
+        significant = p_adjusted < alpha
+    verdict = np.where(
+        significant, np.where(delta > 0, "increase", "decrease"), "inconclusive"
+    ).astype(object)
+    verdict[~np.asarray(support, dtype=bool)] = "insufficient_data"
+    if descriptive is not None:
+        verdict[np.asarray(descriptive, dtype=bool)] = "descriptive"
+    return verdict
+
+
+def window_text(horizon: pd.Timedelta | None) -> str:
+    """What a whole-window row covers: ``within 28 days of assignment`` with a
+    ``horizon``, ``over the whole observation period`` without one."""
+    if horizon is None:
+        return "over the whole observation period"
+    return f"within {_duration_text(horizon)} of assignment"
+
+
 # ======================================================================= scorecard
 @dataclass
 class ABTest:
@@ -1464,43 +1806,12 @@ class ABTest:
             ("period_population", period_population, PERIOD_POPULATIONS),
             ("bootstrap_weights", bootstrap_weights, BOOTSTRAP_WEIGHTS),
         ):
-            if not isinstance(value, str) or value not in allowed:
-                raise InvalidParameterError(name, value, list(allowed))
-        for name, value, low, allowed in (
-            ("ci_level", ci_level, 0.5, "a float in [0.5, 1), e.g. 0.95"),
-            ("power", power, 0.0, "a float in (0, 1)"),
-        ):
-            if (
-                isinstance(value, bool)
-                or not isinstance(value, (int, float))
-                or not low <= value < 1
-                or value <= 0
-            ):
-                raise InvalidParameterError(name, value, [allowed])
-        if isinstance(min_support, bool) or not isinstance(
-            min_support, (int, np.integer)
-        ):
-            raise InvalidParameterError("min_support", min_support, ["an int >= 1"])
-        if min_support < 1:
-            raise InvalidParameterError("min_support", min_support, ["an int >= 1"])
-        if n_bootstrap != "auto" and (
-            isinstance(n_bootstrap, bool)
-            or not isinstance(n_bootstrap, (int, np.integer))
-            or n_bootstrap < bs.MIN_REPLICATES
-        ):
-            # Fewer replicates give NaN intervals on every bootstrap row.
-            raise InvalidParameterError(
-                "n_bootstrap",
-                n_bootstrap,
-                [f"an int >= {bs.MIN_REPLICATES}", "auto"],
-            )
-        if isinstance(random_state, bool) or not isinstance(
-            random_state, (int, np.integer)
-        ):
-            raise InvalidParameterError("random_state", random_state, ["an int"])
-        path_col = path_col or schema.path_col
-        if path_col not in schema.path_cols:
-            raise InvalidParameterError("path_col", path_col, list(schema.path_cols))
+            check_choice(name, value, allowed)
+        check_levels(ci_level, power)
+        check_min_support(min_support)
+        check_n_bootstrap(n_bootstrap)
+        check_random_state(random_state)
+        path_col = check_path_col(schema, path_col)
         if period is None:
             # mode switches of period rows mean nothing without period= (ADR-0008)
             for name, value, default in (
@@ -1545,32 +1856,14 @@ class ABTest:
                 list(schema.segment_cols) + ["a column of the assignment DataFrame"],
             )
 
-        table = normalize_assignment(assignment) if assignment is not None else None
-        has_time = table is not None and "assigned_at" in table.columns
-        if period_basis == "since_assignment" and not has_time:
-            raise InvalidParameterError(
-                "period_basis",
-                period_basis,
-                [
-                    "'calendar'",
-                    "'since_assignment' with an assignment DataFrame "
-                    "holding an 'assigned_at' column",
-                ],
-            )
-        if horizon is not None and not has_time:
-            raise InvalidParameterError(
-                "horizon",
-                horizon,
-                [
-                    "None",
-                    "a duration with an assignment DataFrame holding 'assigned_at'",
-                ],
-            )
-        if horizon is not None:
-            _fixed_length(horizon, "horizon")
-        table = prepare_assignment(stream, path_col, table)
-        if table is None and _is_segment_diff(diff):
-            check_segment_unit(stream, path_col, diff[0])
+        table = prepare_population(
+            stream,
+            diff,
+            assignment,
+            path_col=path_col,
+            horizon=horizon,
+            period_basis=period_basis,
+        )
         strata_labels = None
         if table_strata:
             # silent assigned paths keep their stratum (rows stay ITT per stratum)
@@ -1947,29 +2240,22 @@ class ABTest:
         else:
             s1 = int(((den > 0) & in1).sum())
             s2 = int(((den > 0) & in2).sum())
-        extra["support"] = s1 + s2 >= self.min_support
-        extra["support_count"] = s1 + s2
-        extra["non_support_count"] = None
-        if spec.kind == "binary":
-            n1, n2 = int(in1.sum()), int(in2.sum())
-            extra["non_support_count"] = (n1 - s1) + (n2 - s2)
-            extra["support"] = extra["support"] and (
-                (n1 - s1) + (n2 - s2) >= self.min_support
-            )
-            extra["q_support"] = min(s1, s2) >= 5 and min(n1 - s1, n2 - s2) >= 5
-        else:
-            extra["q_support"] = min(s1, s2) >= 10
-        # no data: no path of either arm has the behaviour (an event, a non-zero
-        # total or numerator, a value); nothing to compare, whatever the metric type
-        if s1 + s2 == 0:
-            support_warning = "no_data"
-            extra["support"] = False
-        elif min(s1, s2) == 0:
-            support_warning = "one_arm_only"
-        elif test == "bootstrap" and min(s1, s2) < LOW_SUPPORT_PATHS:
-            support_warning = "low_support"
-        else:
-            support_warning = ""
+        rule = support_rule(
+            spec.kind,
+            test,
+            s1,
+            s2,
+            int(in1.sum()),
+            int(in2.sum()),
+            self.min_support,
+        )
+        extra["support"] = bool(rule.support[0])
+        extra["support_count"] = int(rule.count[0])
+        extra["non_support_count"] = (
+            None if rule.non_support is None else int(rule.non_support[0])
+        )
+        extra["q_support"] = bool(rule.q_support[0])
+        support_warning = str(rule.warning[0])
 
         valid = pd.NA
         invalid_replicates = False
@@ -2059,10 +2345,12 @@ class ABTest:
         extra["constant"] = constant
         # an arm with no estimate (no path in the row, or no value for a value or
         # ratio metric): nothing to compare (R2-03), whatever the pooled support
-        if support_warning != "no_data":
-            if not (_finite(g1) and _finite(g2)):
-                support_warning = "no_data"
-                extra["support"] = False
+        settled, no_estimate = settle_support_warning(
+            support_warning, g1, g2, invalid_replicates
+        )
+        support_warning = str(settled[0])
+        if no_estimate[0]:
+            extra["support"] = False
         delta = g1 - g2
         if not (isinstance(g2, float) and g2 > 0):
             rel = rl = rh = nan
@@ -2092,11 +2380,7 @@ class ABTest:
             ci_basis=_CI_BASIS[test],
             p_basis=_P_BASIS[test],
             valid_replicates=valid if test == "bootstrap" else pd.NA,
-            support_warning=(
-                "invalid_replicates"
-                if invalid_replicates and support_warning != "no_data"
-                else support_warning
-            ),
+            support_warning=support_warning,
         )
         return record, extra
 
@@ -2125,12 +2409,6 @@ class ABTest:
     def _adjust(self, rows: pd.DataFrame, extras: list[dict]) -> pd.DataFrame:
         """Apply the correction per family, add ``mde_alpha``, ``mde`` at ``mde_alpha``
         and ``verdict``."""
-        adjust = {
-            "holm": _stats.holm,
-            "bonferroni": _stats.bonferroni,
-            "bh": _stats.benjamini_hochberg,
-            "none": lambda p: np.asarray(p, dtype=float),
-        }[self.correction]
         rows = rows.copy()
         rows["p_value_adjusted"] = np.nan
         rows["correction_family"] = ""
@@ -2141,10 +2419,10 @@ class ABTest:
             families = rows.groupby("metric", sort=False).groups
         for metric, index in families.items():
             p = rows.loc[index, "p_value"].to_numpy(dtype=float)
-            rows.loc[index, "p_value_adjusted"] = adjust(p)
-            m = int(np.isfinite(p).sum())
-            if self.correction != "none" and m > 1:
-                rows.loc[index, "mde_alpha"] = round(self.alpha / m, 12)
+            rows.loc[index, "p_value_adjusted"] = adjust_p(p, self.correction)
+            rows.loc[index, "mde_alpha"] = mde_alpha_of(
+                self.alpha, int(np.isfinite(p).sum()), self.correction
+            )
             rows.loc[index, "correction_family"] = [
                 self._family_label(name) for name in rows.loc[index, "metric"]
             ]
@@ -2165,18 +2443,13 @@ class ABTest:
         if self.correction == "bonferroni":
             rows["delta_ci_low_adj"] = low_adj
             rows["delta_ci_high_adj"] = high_adj
-        significant = rows["p_value_adjusted"] < self.alpha
-        verdict = np.where(
-            significant,
-            np.where(rows["delta"] > 0, "increase", "decrease"),
-            "inconclusive",
-        ).astype(object)
-        for pos, extra in enumerate(extras):
-            if extra["descriptive"]:
-                verdict[pos] = "descriptive"
-            elif not extra["support"]:
-                verdict[pos] = "insufficient_data"
-        rows["verdict"] = verdict
+        rows["verdict"] = verdicts(
+            rows["p_value_adjusted"].to_numpy(dtype=float),
+            rows["delta"].to_numpy(dtype=float),
+            self.alpha,
+            support=np.array([bool(e["support"]) for e in extras], dtype=bool),
+            descriptive=np.array([bool(e["descriptive"]) for e in extras], dtype=bool),
+        )
         return rows
 
     def _strata_columns(
@@ -2269,13 +2542,9 @@ class ABTest:
 
     def _window(self, row: dict) -> str:
         """The window a row reads: the whole period, a horizon, a period row."""
-        horizon = (
-            None
-            if self.horizon is None
-            else f"within {_duration_text(self.horizon)} of assignment"
-        )
+        horizon = None if self.horizon is None else window_text(self.horizon)
         if self.matrix.periods is None:
-            return horizon or "over the whole observation period"
+            return window_text(self.horizon)
         label = row["period"]
         if self.period_basis == "since_assignment":
             hours = label.endswith("h")
@@ -2458,6 +2727,9 @@ def row_reading(
     constant: bool = False,
     correction_scope: str = "metric",
     n_metrics: int = 1,
+    in_pp: bool | None = None,
+    conditional_text: str | None = None,
+    screen: tuple[str, int] | None = None,
 ) -> str:
     """One sentence that reads a scorecard row from its own numbers.
 
@@ -2497,8 +2769,23 @@ def row_reading(
         every row of every metric).
     n_metrics : int
         Number of metrics in the scorecard.
+    in_pp : bool, optional
+        Read the row in percentage points; default: for 0/1 metrics only. A share
+        that is not a 0/1 metric (a transition probability) is read in pp too.
+    conditional_text : str, optional
+        The clause of a ``conditional`` row, in place of the default "a value for
+        ... paths" (a transition probability says which transitions it is a share
+        of, and that they are post-treatment behaviour).
+    screen : tuple of (str, int), optional
+        ``(what, n_tested)`` for a row of an exploratory screen
+        (``get_ab_transitions``, ``get_ab_steps``): ``what`` names the rows
+        (``"edges"``, ``"cells"``). A tested row says the family size; an
+        ``increase`` / ``decrease`` row says it is a screen result to confirm
+        with a declared metric in a new test; an untested row says it is outside
+        the family.
     """
-    scale, unit = (100.0, " pp") if kind == "binary" else (1.0, "")
+    pp = (kind == "binary") if in_pp is None else bool(in_pp)
+    scale, unit = (100.0, " pp") if pp else (1.0, "")
     verdict = row["verdict"]
     adjusted = (
         correction != "none"
@@ -2521,7 +2808,7 @@ def row_reading(
     has_ci = _finite(low, high)
     if has_ci:
         lo, hi = low * scale, high * scale
-        dec = 2 if kind == "binary" else _decimals(lo, hi)
+        dec = 2 if pp else _decimals(lo, hi)
         interval = f"{label} [{_signed(lo, dec)}, {_signed(hi, dec)}]{unit}"
         covers_zero = lo <= 0 <= hi
 
@@ -2607,7 +2894,7 @@ def row_reading(
         mde = row["mde"]
         if _finite(p_adj) and _finite(mde):
             mde_s = mde * scale
-            dec = 2 if kind == "binary" else _decimals(mde_s)
+            dec = 2 if pp else _decimals(mde_s)
             design = (
                 f"the design detects {abs(mde_s):.{dec}f}{unit} at alpha "
                 f"{row['mde_alpha']:.4g}"
@@ -2630,13 +2917,33 @@ def row_reading(
         parts.append("window not complete")
     if bool(row.get("conditional", False)) and not no_data:
         parts.append(
-            f"conditional: a value for {row['group1_support']} of "
-            f"{row['group1_paths']} and {row['group2_support']} of "
-            f"{row['group2_paths']} paths; compares those paths, not the whole arms"
+            conditional_text
+            or (
+                f"conditional: a value for {row['group1_support']} of "
+                f"{row['group1_paths']} and {row['group2_support']} of "
+                f"{row['group2_paths']} paths; compares those paths, not the whole "
+                "arms"
+            )
         )
     warning = row.get("support_warning") or ""
     if warning in _SUPPORT_WARNING_TEXT:
         parts.append(_SUPPORT_WARNING_TEXT[warning])
+    if screen is not None:
+        what, n_tested = screen
+        family = (
+            f"no correction over {n_tested} tested {what}"
+            if correction == "none"
+            else f"{correction} over {n_tested} tested {what}"
+        )
+        if verdict in ("increase", "decrease"):
+            parts.append(
+                f"screen result ({family}): a hypothesis to confirm as the declared "
+                "metric of a new test, not a decision"
+            )
+        elif verdict == "insufficient_data" or not _finite(p_adj):
+            parts.append(f"not tested: outside the screen's family ({family})")
+        else:
+            parts.append(f"screen: {family}")
     if several_metrics:
         if correction == "none":
             parts.append("not corrected across metrics; name one decision metric")

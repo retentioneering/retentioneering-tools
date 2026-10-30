@@ -36,6 +36,25 @@ class TestEngine:
         np.testing.assert_allclose(long.group1[:120], short.group1, rtol=1e-12)
         np.testing.assert_allclose(long.group2[:120], short.group2, rtol=1e-12)
 
+    @pytest.mark.parametrize("weights", ["multinomial", "poisson"])
+    @pytest.mark.parametrize("with_den", [True, False])
+    def test_sparse_input_gives_the_dense_replicates(self, weights, with_den) -> None:
+        from scipy import sparse
+
+        num, den, arm = _toy(cells=5)
+        num[np.random.default_rng(1).random(num.shape) < 0.6] = 0.0
+        num[3, 1] = np.nan  # a missing value is no value in both forms
+        dense = bs.bootstrap_paths(
+            num, den if with_den else None, arm, 250, weights, batch=60
+        )
+        sparse_den = sparse.csr_matrix(den) if with_den else None
+        sparse_res = bs.bootstrap_paths(
+            sparse.csr_matrix(num), sparse_den, arm, 250, weights, batch=60
+        )
+        np.testing.assert_array_equal(sparse_res.group1, dense.group1)
+        np.testing.assert_array_equal(sparse_res.group2, dense.group2)
+        np.testing.assert_array_equal(sparse_res.valid, dense.valid)
+
     def test_replicates_do_not_depend_on_other_cells(self) -> None:
         num, den, arm = _toy(cells=4)
         full = bs.bootstrap_paths(num, den, arm, 200)

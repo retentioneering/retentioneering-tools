@@ -34,7 +34,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
-from scipy import stats
+from scipy import sparse, stats
 
 from retentioneering.exceptions import InvalidParameterError
 
@@ -109,12 +109,16 @@ def bootstrap_paths(
 
     Parameters
     ----------
-    num : ndarray of shape (n_paths, n_cells)
+    num : ndarray or scipy.sparse matrix of shape (n_paths, n_cells)
         Numerator per path and cell (0 for paths outside a stratum/period cell). A
         non-finite entry is treated as "no value": it contributes 0 to the numerator
         and 0 to the denominator of its cell.
-    den : ndarray of shape (n_paths, n_cells) or None
-        Denominator per path and cell; ``None`` means 1 for every path.
+    den : ndarray or scipy.sparse matrix of shape (n_paths, n_cells), or None
+        Denominator per path and cell; ``None`` means 1 for every path. When
+        ``num`` or ``den`` is sparse (per-path transition counts, mostly zeros),
+        both are handled as sparse matrices: the weights are drawn exactly as for
+        dense input, so the replicates are the same, and the weighted sums cost
+        ``batch x nnz`` instead of ``batch x n_paths x n_cells``.
     arm : ndarray of shape (n_paths,)
         0 for group 1, 1 for group 2; other values are ignored.
     n_bootstrap : int, default 1000
@@ -145,12 +149,16 @@ def bootstrap_paths(
         raise InvalidParameterError("n_bootstrap", n_bootstrap, ["an int >= 1"])
     if int(batch) < 1:
         raise InvalidParameterError("batch", batch, ["an int >= 1"])
-    num = np.asarray(num, dtype=np.float64)
-    if num.ndim == 1:
-        num = num[:, None]
-    den = np.ones_like(num) if den is None else np.asarray(den, dtype=np.float64)
-    if den.ndim == 1:
-        den = den[:, None]
+    is_sparse = sparse.issparse(num) or sparse.issparse(den)
+    if is_sparse:
+        num, den = _sparse_pair(num, den)
+    else:
+        num = np.asarray(num, dtype=np.float64)
+        if num.ndim == 1:
+            num = num[:, None]
+        den = np.ones_like(num) if den is None else np.asarray(den, dtype=np.float64)
+        if den.ndim == 1:
+            den = den[:, None]
     arm = np.asarray(arm)
     if den.shape != num.shape or arm.shape != (num.shape[0],):
         raise InvalidParameterError(
@@ -158,10 +166,11 @@ def bootstrap_paths(
             f"{num.shape}/{den.shape}/{arm.shape}",
             ["num and den of shape (n_paths, n_cells), arm of shape (n_paths,)"],
         )
-    missing = ~np.isfinite(num) | ~np.isfinite(den)
-    if missing.any():
-        num = np.where(missing, 0.0, num)
-        den = np.where(missing, 0.0, den)
+    if not is_sparse:
+        missing = ~np.isfinite(num) | ~np.isfinite(den)
+        if missing.any():
+            num = np.where(missing, 0.0, num)
+            den = np.where(missing, 0.0, den)
 
     n_cells = num.shape[1]
     children = np.random.SeedSequence(random_state).spawn(2)
@@ -169,13 +178,23 @@ def bootstrap_paths(
     for g, child in enumerate(children):
         rng = np.random.default_rng(child)
         mask = arm == g
-        stacked = np.hstack([num[mask], den[mask]])
+        if is_sparse:
+            rows = np.flatnonzero(mask)
+            # (2 * n_cells, n) in CSR: the product with the (n, b) weights is a
+            # sparse-times-dense product over the non-zero entries only
+            stacked_t = sparse.hstack([num[rows], den[rows]]).T.tocsr()
+        else:
+            stacked = np.hstack([num[mask], den[mask]])
         n = int(mask.sum())
         values = np.full((n_bootstrap, n_cells), np.nan)
         if n > 0:
             for start in range(0, n_bootstrap, int(batch)):
                 b = min(int(batch), n_bootstrap - start)
-                sums = _draw(rng, weights, b, n) @ stacked
+                draws = _draw(rng, weights, b, n)
+                if is_sparse:
+                    sums = np.asarray(stacked_t @ draws.T).T
+                else:
+                    sums = draws @ stacked
                 top, bottom = sums[:, :n_cells], sums[:, n_cells:]
                 with np.errstate(invalid="ignore", divide="ignore"):
                     values[start : start + b] = np.where(
@@ -184,6 +203,42 @@ def bootstrap_paths(
         out.append(values)
     valid = (np.isfinite(out[0]) & np.isfinite(out[1])).sum(axis=0)
     return BootstrapResult(out[0], out[1], valid, int(n_bootstrap), weights)
+
+
+def _sparse_pair(num, den):
+    """``(num, den)`` as CSR float matrices of shape (n_paths, n_cells), with a
+    non-finite entry of either set to 0 in both (the dense rule)."""
+
+    def _csr(x):
+        if not sparse.issparse(x):
+            x = np.asarray(x, dtype=np.float64)
+            if x.ndim == 1:
+                x = x[:, None]
+        out = sparse.csr_matrix(x, dtype=np.float64)
+        out.sum_duplicates()
+        return out
+
+    num = _csr(num)
+    den = _csr(np.ones(num.shape)) if den is None else _csr(den)
+    if den.shape != num.shape:
+        return num, den  # the caller reports the shapes
+    rows, cols = [], []
+    for matrix in (num, den):
+        nonfinite = ~np.isfinite(matrix.data)
+        if nonfinite.any():
+            coo = matrix.tocoo()
+            rows.append(coo.row[nonfinite])
+            cols.append(coo.col[nonfinite])
+            matrix.data[nonfinite] = 0.0
+    if rows:
+        r, c = np.concatenate(rows), np.concatenate(cols)
+        mask = sparse.csr_matrix((np.ones(len(r)), (r, c)), shape=num.shape)
+        mask.data[:] = 1.0
+        num = (num - num.multiply(mask)).tocsr()
+        den = (den - den.multiply(mask)).tocsr()
+    num.eliminate_zeros()
+    den.eliminate_zeros()
+    return num, den
 
 
 def percentile_ci(

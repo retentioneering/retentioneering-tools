@@ -1008,14 +1008,17 @@ def transitions_payload(frame: Any, diff: Any, edge_weight: str | None) -> dict:
             if _is_segment_diff(diff)
             else None
         )
-        same_column = expected[0] == "arm" or given is None or given[0] == expected[0]
+        # ("arm", g1, g2) names the assignment table's arms (any segment of the
+        # graph may carry them); without a table "arm" is a segment like any other
+        table_arms = expected[0] == "arm" and meta.get("population") == "assignment"
+        same_column = table_arms or given is None or given[0] == expected[0]
         if given is None or not same_column or given[1:] != expected[1:]:
             raise InvalidParameterError(
                 "diff",
                 diff,
                 [
                     tuple(expected)
-                    if expected[0] != "arm"
+                    if not table_arms
                     else ("<segment>",) + tuple(expected[1:])
                 ],
                 reason=(
@@ -1056,7 +1059,10 @@ def transitions_payload(frame: Any, diff: Any, edge_weight: str | None) -> dict:
         "alpha": meta.get("alpha"),
         "ci_level": meta.get("ci_level"),
         "n_tested": meta.get("n_tested"),
+        # rows of the whole frame: fewer edges than this is a filtered frame
+        "n_rows": meta.get("n_rows"),
         "population": meta.get("population"),
+        "horizon": None if meta.get("horizon") is None else str(meta["horizon"]),
         "path_col": meta.get("path_col"),
         "group1_label": meta.get("group1_label"),
         "group2_label": meta.get("group2_label"),

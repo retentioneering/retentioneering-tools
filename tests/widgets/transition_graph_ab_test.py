@@ -128,3 +128,49 @@ def test_state_file_does_not_persist_the_overlay(stream, frame, tmp_path) -> Non
     state = json.loads(path.read_text())["state"]
     assert "ab_transitions" not in state
     assert state["edge_weight"] == "unique_paths"
+
+
+def test_path_pattern_is_refused(stream, frame) -> None:
+    with pytest.raises(InvalidParameterError, match="path_pattern"):
+        stream.transition_graph(diff=DIFF, path_pattern="catalog", ab_transitions=frame)
+
+
+def test_payload_carries_the_population_window_and_frame_size(stream, frame) -> None:
+    payload = json.loads(
+        stream.transition_graph(diff=DIFF, ab_transitions=frame).ab_transitions
+    )
+    assert payload["population"] == "stream" and payload["horizon"] is None
+    assert payload["n_rows"] == len(frame) == len(payload["edges"])
+    assert payload["path_col"] == "user_id"
+    top = frame.head(3)
+    payload = json.loads(
+        stream.transition_graph(diff=DIFF, ab_transitions=top).ab_transitions
+    )
+    assert payload["n_rows"] == len(frame) and len(payload["edges"]) == 3
+
+    table = (
+        stream.get_path_segments("arm")
+        .rename("arm")
+        .to_frame()
+        .assign(assigned_at=pd.Timestamp("2024-01-01"))
+    )
+    itt = stream.get_ab_transitions(("arm", "A", "B"), assignment=table, horizon="2min")
+    payload = json.loads(
+        stream.transition_graph(diff=DIFF, ab_transitions=itt).ab_transitions
+    )
+    assert payload["population"] == "assignment" and payload["horizon"] == "2min"
+
+
+def test_arm_matches_any_segment_only_with_a_table() -> None:
+    df = _stream().to_dataframe()
+    df["other"] = df["arm"]
+    streams = Eventstream(df, {"segment_cols": ["arm", "other"]})
+    on_segment = streams.get_ab_transitions(("arm", "A", "B"))  # no table
+    with pytest.raises(InvalidParameterError, match="diff"):
+        streams.transition_graph(diff=("other", "A", "B"), ab_transitions=on_segment)
+    table = streams.get_path_segments("arm")
+    with_table = streams.get_ab_transitions(("arm", "A", "B"), assignment=table)
+    widget = streams.transition_graph(
+        diff=("other", "A", "B"), ab_transitions=with_table
+    )
+    assert widget.ab_transitions

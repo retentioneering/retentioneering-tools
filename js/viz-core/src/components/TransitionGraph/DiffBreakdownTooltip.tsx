@@ -15,15 +15,19 @@ interface Props {
   isTime?: boolean;
   /** Extra label/value rows below the diff (the A/B significance overlay). */
   extraLines?: { label: string; value: string }[];
+  /** Formatters of the group values and the diff, overriding the defaults (the
+   *  overlay shows the test's shares in % and the delta in pp). */
+  formatValue?: (value: number | null) => string;
+  formatDiff?: (value: number | null) => string;
 }
 
-export function DiffBreakdownTooltip({ title, subtitle, segmentName, value1Label, value2Label, group1Value, group2Value, diffValue, isDark = true, isTime = false, extraLines }: Props) {
+export function DiffBreakdownTooltip({ title, subtitle, segmentName, value1Label, value2Label, group1Value, group2Value, diffValue, isDark = true, isTime = false, extraLines, formatValue, formatDiff }: Props) {
   const formatDuration = (value: number | null) =>
     value === null || !Number.isFinite(value) ? "-" : value === 0 ? "0ms" : formatTime(value);
-  const format = isTime ? formatDuration : formatExactNumber;
-  const signed = (value: number | null) => isTime
+  const format = formatValue ?? (isTime ? formatDuration : formatExactNumber);
+  const signed = formatDiff ?? ((value: number | null) => isTime
     ? `${value !== null && Number.isFinite(value) && value > 0 ? "+" : ""}${formatDuration(value)}`
-    : formatSignedExactNumber(value);
+    : formatSignedExactNumber(value));
   const resolved = resolveDiffValue({ group1Value, group2Value, diffValue });
   const bg = isDark ? "#1f2937" : "#fff";
   const border = isDark ? "#374151" : "#e5e7eb";

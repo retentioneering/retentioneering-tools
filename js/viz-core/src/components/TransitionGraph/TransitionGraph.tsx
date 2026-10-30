@@ -22,6 +22,9 @@ import {
   abEdgeLook,
   abLegendText,
   abTooltipLines,
+  abTooltipValues,
+  formatAbDelta,
+  formatAbValue,
 } from "../../utils/ab-transitions";
 import { withSeededRandom } from "../../utils/seeded-random";
 import { RangeSlider } from "./RangeSlider";
@@ -3263,8 +3266,9 @@ export const TransitionGraph = observer(function TransitionGraph({
           focusDirection={focusDirection}
           abText={abOverlay ? abLegendText(abOverlay) : null}
           // Exported HTML starts with the legend collapsed — reports embed
-          // several widgets and an open legend eats canvas space.
-          defaultCollapsed={host === null}
+          // several widgets and an open legend eats canvas space — unless it
+          // carries the significance overlay, whose legend explains the colours.
+          defaultCollapsed={host === null && !abOverlay}
         />
       </div>
 
@@ -3765,31 +3769,48 @@ export const TransitionGraph = observer(function TransitionGraph({
               isDark={isDark}
             />
           ) : isDifferential ? (
-            <DiffBreakdownTooltip
-              isTime={isTimeValue}
-              title={
-                <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span>{tooltip.from}</span>
-                  <span style={{ color: isDark ? "#9ca3af" : "#6b7280" }}>→</span>
-                  <span>{tooltip.to}</span>
-                </span>
-              }
-              segmentName={diffLabels.segmentName}
-              value1Label={diffLabels.value1Label}
-              value2Label={diffLabels.value2Label}
-              group1Value={tooltip.group1Value}
-              group2Value={tooltip.group2Value}
-              diffValue={tooltip.diffValue}
-              isDark={isDark}
-              extraLines={
-                abOverlay
-                  ? abTooltipLines(
-                      abIndex.get(abEdgeKey(tooltip.from, tooltip.to)),
-                      abOverlay,
-                    )
-                  : undefined
-              }
-            />
+            (() => {
+              // Under the overlay the rows show the test's values (shares for
+              // unique_paths, not the graph's path counts) so the diff row and
+              // the test lines are in the same units.
+              const abStat = abOverlay
+                ? abIndex.get(abEdgeKey(tooltip.from, tooltip.to))
+                : undefined;
+              const abValues = abOverlay ? abTooltipValues(abStat, abOverlay) : null;
+              return (
+                <DiffBreakdownTooltip
+                  isTime={isTimeValue && !abValues}
+                  title={
+                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span>{tooltip.from}</span>
+                      <span style={{ color: isDark ? "#9ca3af" : "#6b7280" }}>→</span>
+                      <span>{tooltip.to}</span>
+                    </span>
+                  }
+                  subtitle={abValues?.subtitle}
+                  segmentName={diffLabels.segmentName}
+                  value1Label={diffLabels.value1Label}
+                  value2Label={diffLabels.value2Label}
+                  group1Value={abValues ? abValues.group1 : tooltip.group1Value}
+                  group2Value={abValues ? abValues.group2 : tooltip.group2Value}
+                  diffValue={abValues ? abValues.delta : tooltip.diffValue}
+                  isDark={isDark}
+                  formatValue={
+                    abValues && abOverlay
+                      ? (v) => formatAbValue(v, abOverlay)
+                      : undefined
+                  }
+                  formatDiff={
+                    abValues && abOverlay
+                      ? (v) => formatAbDelta(v, abOverlay)
+                      : undefined
+                  }
+                  extraLines={
+                    abOverlay ? abTooltipLines(abStat, abOverlay) : undefined
+                  }
+                />
+              );
+            })()
           ) : tooltip.type === "edge" ? (
             <div
               style={{

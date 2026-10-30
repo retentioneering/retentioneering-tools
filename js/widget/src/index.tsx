@@ -104,10 +104,16 @@ export function render({ host, el, isStatic = false }: RenderContext) {
     // get_ab_transitions overlay: drawn only while the graph shows the edge
     // weight and the diff it was computed for (the sidebar can change both)
     const [abPayload, setAbPayload] = React.useState(() => parseAbTransitions(host.get("ab_transitions")));
-    const currentDiff = diffSegment != null && diffValue1 != null && diffValue2 != null
-      ? [diffSegment, diffValue1, diffValue2]
-      : null;
-    const abApplies = abPayloadApplies(abPayload, valuesType, currentDiff);
+    // The graph's diff as the payload holds it: [segment, value1, value2], or
+    // the raw [ids1, ids2] of an id-list diff (no segment to pick in the sidebar)
+    const [rawDiff, setRawDiff] = React.useState<unknown>(() => parseJson<unknown>(host.get("diff") || "null", null));
+    const currentDiff = Array.isArray(rawDiff) && Array.isArray(rawDiff[0])
+      ? rawDiff
+      : diffSegment != null && diffValue1 != null && diffValue2 != null
+        ? [diffSegment, diffValue1, diffValue2]
+        : null;
+    const currentPathCol = pathIdCol || pathCols[0] || null;
+    const abApplies = abPayloadApplies(abPayload, valuesType, currentDiff, currentPathCol);
 
     // Sync event visibility (hidden/pinned) to Python whenever store changes
     React.useEffect(() => {
@@ -172,6 +178,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
       }],
       ["ab_transitions", () => setAbPayload(parseAbTransitions(host.get("ab_transitions")))],
       ["diff", () => {
+        setRawDiff(parseJson<unknown>(host.get("diff") || "null", null));
         const d = parseJson<string[]>(host.get("diff") || "[]", []);
         setDiffSegment(d[0] ?? null); setDiffValue1(d[1] ?? null); setDiffValue2(d[2] ?? null);
       }],
@@ -186,6 +193,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
     const handleDiffChange = React.useCallback(
       (seg: string | null, v1: string | null, v2: string | null) => {
         setDiffSegment(seg); setDiffValue1(v1); setDiffValue2(v2);
+        setRawDiff(seg != null && v1 != null && v2 != null ? [seg, v1, v2] : null);
         // Use != null (not truthy) so segment values like false/0 are handled correctly
         host.set("diff", seg != null && v1 != null && v2 != null && seg !== "" && v1 !== "" && v2 !== ""
           ? JSON.stringify([seg, v1, v2])
@@ -308,8 +316,9 @@ export function render({ host, el, isStatic = false }: RenderContext) {
             padding: "4px 8px", borderRadius: 6, fontSize: 11, color: "#6b7280",
             background: "rgba(243,244,246,0.92)", border: "1px solid #e5e7eb",
           }}>
-            Significance (ab_transitions) is for edge weight {abPayload.edge_weight} and the
-            diff it was computed with; switch back to see it.
+            Significance (ab_transitions) is for edge weight {abPayload.edge_weight}
+            {abPayload.path_col ? `, paths by ${abPayload.path_col}` : ""} and the diff it
+            was computed with; switch back to see it.
           </div>
         )}
         <SidebarToggle onClick={handleToggleSidebar} />

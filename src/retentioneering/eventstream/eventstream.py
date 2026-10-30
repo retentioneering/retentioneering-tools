@@ -3093,12 +3093,17 @@ class Eventstream:
             A `get_ab_transitions` frame (rows may be filtered) to highlight in
             diff mode: significant edges in the colour of their sign and never
             hidden by the edge filter, inconclusive edges grey, untested edges
-            grey and dashed; the edge tooltip adds the delta, its interval, the
-            adjusted p-value and the verdict. Needs the frame's `diff` (the same
-            groups in the same order; a frame computed on `("arm", ...)` with an
-            assignment table matches the arm segment) and its `edge_weight`
-            (the default when `edge_weight` is not given). The frame is the
-            data: there is no `_data` twin. Changing the weight or the diff in
+            grey and dashed, edges the frame has no row for (a filtered frame,
+            or outside its window) faint; under the overlay the edge tooltip
+            shows the test's values (for `unique_paths` the arms' shares, not
+            the graph's path counts), the delta, its interval, the adjusted
+            p-value and the verdict, and the legend names the correction, the
+            family size and the population. Needs the frame's `diff` (the same
+            groups in the same order; a frame computed on `("arm", ...)` with
+            an assignment table matches the arm segment), its `edge_weight`
+            (the default when `edge_weight` is not given) and its `path_col`;
+            `path_pattern` is refused. The frame is the data: there is no
+            `_data` twin. Changing the weight, the diff or the path column in
             the sidebar hides the overlay until they match again.
         state_file : str, optional
             JSON file the widget state is bound to; see
@@ -3123,6 +3128,20 @@ class Eventstream:
             _UNSET,
         )
 
+        if path_pattern is not None and ab_transitions is not None:
+            from retentioneering.exceptions import InvalidParameterError
+
+            raise InvalidParameterError(
+                "path_pattern",
+                path_pattern,
+                ["None with ab_transitions"],
+                reason=(
+                    "ab_transitions was computed on every path of the arms; a graph "
+                    "of the paths matching a pattern draws other numbers, and "
+                    "selecting paths by post-exposure behaviour breaks the "
+                    "randomisation. Cut the paths before both calls instead"
+                ),
+            )
         # Restricting up front rather than passing the pattern down keeps every
         # number the widget derives — event counts, diff splits, the matrix —
         # computed from the same set of paths.

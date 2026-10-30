@@ -37,6 +37,10 @@ export {
   abEdgeClass,
   abEdgeLook,
   abTooltipLines,
+  abTooltipValues,
   abLegendText,
+  abIsFiltered,
+  formatAbValue,
+  formatAbDelta,
 } from "./utils/ab-transitions";
 export type { AbTransitionsPayload, AbEdgeStat, AbEdgeClass } from "./utils/ab-transitions";

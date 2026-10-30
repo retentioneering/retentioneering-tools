@@ -160,7 +160,7 @@ def test_millisecond_diff_hover_and_ego_keep_units(tmp_path, path_groups):
             browser.close()
 
 
-def test_ab_transitions_overlay_styles_edges_and_tooltip(tmp_path):
+def _ab_stream() -> Eventstream:
     rng = np.random.default_rng(0)
     rows = []
     for user in range(200):
@@ -174,10 +174,41 @@ def test_ab_transitions_overlay_styles_edges_and_tooltip(tmp_path):
             rows.append(
                 (user, event, pd.Timestamp("2024-01-01") + pd.Timedelta(i, "min"), arm)
             )
-    stream = Eventstream(
+    return Eventstream(
         pd.DataFrame(rows, columns=["user_id", "event", "timestamp", "arm"]),
         schema={"segment_cols": ["arm"]},
     )
+
+
+_EDGE_LOOKS = """() => {
+    const cy = [...document.querySelectorAll('*')].find(e => e.__cy).__cy;
+    const out = {};
+    cy.edges().forEach(e => {
+        out[e.data('source') + '>' + e.data('target')] = {
+            color: e.data('baseColor'), dashed: !!e.data('abDashed'),
+            size: e.data('edgeSize'), alpha: e.data('baseAlpha'),
+            filtered: e.hasClass('filtered'),
+        };
+    });
+    return out;
+}"""
+
+
+def _open(runtime, export):
+    browser = runtime.chromium.launch(
+        executable_path=os.environ.get("RETENTIONEERING_TEST_CHROME")
+    )
+    page = browser.new_page(viewport={"width": 1280, "height": 850})
+    errors = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    page.goto(export.as_uri())
+    page.locator("#retentioneering-root canvas").first.wait_for(state="visible")
+    _drain_frames(page)
+    return browser, page, errors
+
+
+def test_ab_transitions_overlay_styles_edges_and_tooltip(tmp_path):
+    stream = _ab_stream()
     diff = ("arm", "A", "B")
     frame = stream.get_ab_transitions(diff)
     export = tmp_path / "ab.html"
@@ -185,29 +216,9 @@ def test_ab_transitions_overlay_styles_edges_and_tooltip(tmp_path):
         str(export)
     )
     with playwright.sync_playwright() as runtime:
-        browser = runtime.chromium.launch(
-            executable_path=os.environ.get("RETENTIONEERING_TEST_CHROME")
-        )
+        browser, page, errors = _open(runtime, export)
         try:
-            page = browser.new_page(viewport={"width": 1280, "height": 850})
-            errors = []
-            page.on("pageerror", lambda error: errors.append(str(error)))
-            page.goto(export.as_uri())
-            page.locator("#retentioneering-root canvas").first.wait_for(state="visible")
-            _drain_frames(page)
-            looks = page.evaluate(
-                """() => {
-                    const cy = [...document.querySelectorAll('*')].find(e => e.__cy).__cy;
-                    const out = {};
-                    cy.edges().forEach(e => {
-                        out[e.data('source') + '>' + e.data('target')] = {
-                            color: e.data('baseColor'), dashed: !!e.data('abDashed'),
-                            size: e.data('edgeSize'), filtered: e.hasClass('filtered'),
-                        };
-                    });
-                    return out;
-                }"""
-            )
+            looks = page.evaluate(_EDGE_LOOKS)
             verdicts = {
                 f"{s}>{t}": v
                 for s, t, v in zip(frame["source"], frame["target"], frame["verdict"])
@@ -218,10 +229,14 @@ def test_ab_transitions_overlay_styles_edges_and_tooltip(tmp_path):
             assert verdicts["catalog>path_end"] == "decrease"
             assert looks["catalog>path_end"]["color"] == "59, 130, 246"
             for key, look in looks.items():
-                if verdicts.get(key) in ("insufficient_data", None):
+                if verdicts.get(key) == "insufficient_data":
                     assert look["dashed"], key
+                elif verdicts.get(key) is None:
+                    assert not look["dashed"] and look["alpha"] < 0.1, key
                 elif verdicts[key] == "inconclusive":
                     assert look["color"] == "156, 163, 175" and not look["dashed"]
+            # the exported legend starts open when it explains the overlay
+            playwright.expect(page.locator('[data-testid="ab-legend"]')).to_be_visible()
             point = page.evaluate(
                 """() => {
                     const cy = [...document.querySelectorAll('*')].find(e => e.__cy).__cy;
@@ -241,6 +256,45 @@ def test_ab_transitions_overlay_styles_edges_and_tooltip(tmp_path):
                     has_text="adjusted p"
                 )
             ).to_be_visible()
+            # the rows above are the test's shares, not the graph's path counts
+            share = frame.set_index(["source", "target"]).loc[
+                ("catalog", "quick_add"), "group1_value"
+            ]
+            playwright.expect(page.get_by_text(f"{share * 100:.2f} %")).to_be_visible()
+            assert not errors
+        finally:
+            browser.close()
+
+
+def test_ab_transitions_overlay_draws_for_id_lists_and_filtered_frames(tmp_path):
+    stream = _ab_stream()
+    users = stream.get_path_segments("arm")
+    ids = (
+        users.index[users == "A"].tolist(),
+        users.index[users == "B"].tolist(),
+    )
+    frame = stream.get_ab_transitions(ids)
+    shown = frame[frame["verdict"] != "inconclusive"]
+    export = tmp_path / "ids.html"
+    stream.transition_graph(diff=ids, ab_transitions=shown, height=600).export_html(
+        str(export)
+    )
+    with playwright.sync_playwright() as runtime:
+        browser, page, errors = _open(runtime, export)
+        try:
+            assert page.locator('[data-testid="ab-inactive"]').count() == 0
+            looks = page.evaluate(_EDGE_LOOKS)
+            verdicts = dict(
+                zip(shown["source"] + ">" + shown["target"], shown["verdict"])
+            )
+            assert verdicts["catalog>quick_add"] == "increase"
+            assert looks["catalog>quick_add"]["color"] == "239, 68, 68"
+            for key, look in looks.items():
+                if key not in verdicts:  # filtered out: faint, not "untested"
+                    assert not look["dashed"] and look["alpha"] < 0.1, key
+            playwright.expect(
+                page.locator('[data-testid="ab-legend"]')
+            ).to_contain_text(f"frame filtered to {len(shown)} of {len(frame)} rows")
             assert not errors
         finally:
             browser.close()

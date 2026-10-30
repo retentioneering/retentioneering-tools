@@ -1,0 +1,110 @@
+{% extends "_tool_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+The arms, the population, the unit guard and the window are those of
+[`get_ab_test`](/docs/tools/get-ab-test): `diff` is resolved per path, an
+`assignment` table gives the intention-to-treat population (silent assigned paths
+count with no transition), and `horizon` keeps each path's first days after
+`assigned_at`, leaving paths whose window had not closed out (`immature_paths`).
+Each path's transitions are counted once, with the synthetic `path_start` and
+`path_end` events of the graph, and every edge is compared as a per-path quantity:
+
+| `edge_weight` | Per-path quantity | Arm value | Test |
+|---|---|---|---|
+| `unique_paths` | 1 if the path has the transition | share of paths | pooled z-test, Newcombe interval |
+| `avg_per_path` | the transition's count | mean count per path | Welch's t-test |
+| `proba_out` | count, over the path's transitions out of `source` | ratio of sums | joint path bootstrap |
+| `proba_in` | count, over the path's transitions into `target` | ratio of sums | joint path bootstrap |
+| `share_of_total` | count, over the path's transitions | ratio of sums | joint path bootstrap |
+
+On the stream's paths an arm's value is the number
+[`transition_graph_data`](/docs/widgets/transition-graph) draws for that arm with
+the same `edge_weight` (for `unique_paths` the graph counts paths; the row gives
+their share, and `group1_edge_paths` / `group2_edge_paths` hold the counts). With an
+`assignment` table the per-path weights have the table's denominators, silent paths
+included, so they differ from the graph's. `"count"` raises, because a raw count
+grows with the arm's size (use `"avg_per_path"`); the time weights (`time_median`,
+`time_q95`) are not tested in this release.
+
+The three ratio weights divide by behaviour the treatment may change: a treatment
+that sends more users to `cart` changes who leaves `cart`, and so `proba_out` from
+it, without changing what any one user does there. Their rows carry
+`conditional=True` and their reading says so; they compare transitions, not the
+arms. `unique_paths` and `avg_per_path` are per-path quantities over every path of
+the arm, so their deltas are effects of the assignment.
+
+### The family and the verdict
+
+An edge is tested when its pooled support reaches `min_support`: paths with the
+transition, and for `unique_paths` paths without it too. The rest are reported with
+their estimates, `verdict="insufficient_data"`, and are not in the family. The
+p-values of the tested edges are adjusted together (`correction`,
+Benjamini-Hochberg by default: among the edges called significant, about
+`1 - ci_level` of them are expected to be false discoveries), the verdict reads only
+the adjusted p-value, and `attrs["n_tested"]` and `correction_family` say what the
+family was. The intervals are per edge and not simultaneous; only
+`correction="bonferroni"` adds simultaneous ones (`delta_ci_low_adj`,
+`delta_ci_high_adj`).
+
+The family is every edge with enough support, found after looking at the data: a
+screen. Its discoveries are where the arms differ, not decisions. To confirm one,
+declare it as the metric of a new test (for example `matches_pattern` on the two
+events). Declaring a few edges before the test with `edges=[(source, target),
+...]` makes them the whole family, and their rows the only ones returned.
+
+Simulated under a true null (20 seeds of the synthetic A/A data, about 37 tested
+edges each), no run gave a discovery at `unique_paths`, `avg_per_path`, `proba_out`
+or `share_of_total`, and the raw p-values of `unique_paths`, `avg_per_path` and
+`proba_out` were uniform (share below 0.05: 0.041, 0.043 and 0.051).
+
+### Reading a row
+
+The `reading` column follows `get_ab_test`'s rules and adds the screen. On
+`load_ab_test()` with `diff=("exp_group", "treatment", "control")`, 90 of the 92
+edges are tested:
+
+- **increase / decrease** — `"over the whole observation period: per-comparison
+  interval [-37.36, -33.66] pp excludes 0 (p < 0.0001 after bh); relative -55 %;
+  screen result (bh over 90 tested edges): a hypothesis to confirm as the declared
+  metric of a new test, not a decision"` (`product_view -> add_to_cart`).
+- **inconclusive** — `"...: per-comparison interval [-3.76, +0.12] pp includes 0
+  (p 0.30 after bh); effects outside it are unlikely; the design detects 4.26 pp at
+  alpha 0.0005556 — ...; screen: bh over 90 tested edges"`. The `mde` is computed at
+  `alpha / n_tested`, a conservative level for the screen.
+- **insufficient_data** — `"...: pooled support 8 < min_support 10; estimate shown
+  descriptively; not tested: outside the screen's family (bh over 90 tested
+  edges)"`.
+- a ratio weight adds `conditional on post-treatment behaviour: a share of the
+  transitions out of 'product_view' (4593 of 4828 and 4654 of 4905 paths have one),
+  so it also moves when the treatment changes who reaches 'product_view'; compares
+  those transitions, not the arms` (`edge_weight="proba_out"`).
+
+### Highlighting the graph
+
+`transition_graph(diff=..., ab_transitions=frame)` draws the frame over the diff
+graph: significant edges in their sign's colour (red where group 1 is higher, blue
+where it is lower) at full opacity, inconclusive edges thin and grey, untested ones
+grey and dashed, and the edge tooltip adds the delta, its interval, the adjusted
+p-value and the verdict. A significant edge stays visible whatever the graph's edge
+filter. The frame must have the graph's `diff`, `edge_weight` and `path_col`; when
+the sidebar switches to another weight or diff, the overlay steps aside and says so.
+A filtered frame (`frame[frame["verdict"] != "inconclusive"]`) is accepted.
+
+{% endblock %}
+
+{% block extra_params %}
+### edge_weight
+
+{{ bullets(doc.parameters, "edge_weight") }}
+
+### correction
+
+{{ bullets(doc.parameters, "correction") }}
+
+### bootstrap_weights
+
+{{ bullets(doc.parameters, "bootstrap_weights") }}
+
+{% endblock %}

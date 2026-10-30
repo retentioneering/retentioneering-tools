@@ -170,6 +170,38 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   (numerator and denominator for ratios) — whose per-arm aggregation reproduces
   `get_ab_test`: the starting point for CUPED, regression adjustment or a
   custom test.
+- `get_ab_transitions(diff, edge_weight="unique_paths", *, assignment=None,
+  horizon=None, path_col=None, edges=None, test="auto", correction="bh", ...)`
+  tests every transition-graph edge between two arms: one row per edge with each
+  arm's value, the delta and its per-edge interval, a p-value adjusted over the
+  tested edges (Benjamini–Hochberg by default), a verdict and a `reading`. The
+  arms, population (`assignment=` for ITT), unit guard, `horizon`, support rule
+  and verdict are the scorecard's. `unique_paths` (share of paths with the
+  transition, z-test) and `avg_per_path` (count per path, Welch) are effects of
+  the assignment; `proba_out`, `proba_in` and `share_of_total` are ratios tested
+  with the joint path bootstrap and flagged `conditional=True`, because their
+  denominators are post-treatment behaviour. `count` raises (use
+  `avg_per_path`); the time weights are not tested. `edges=[(source, target),
+  ...]` declared before the test makes a confirmatory family. An arm's value
+  equals `transition_graph_data` for that arm on the stream's paths. An
+  exploratory screen: a discovery's reading calls it a hypothesis for a declared
+  metric of a new test.
+- `get_ab_steps(diff, max_steps=10, *, assignment=None, horizon=None, ...)` does
+  the same for the step matrix: per cell `(event, step)`, the share of each arm's
+  paths whose k-th event is the event (`path_end` for a shorter path), pooled
+  z-test, Benjamini–Hochberg over the tested cells. Values equal
+  `step_matrix_data` per arm on the stream's paths.
+- `transition_graph(diff=..., ab_transitions=frame)` highlights the frame of
+  `get_ab_transitions` on the diff graph: significant edges in their sign's
+  colour (and kept whatever the edge filter), inconclusive ones grey, untested
+  ones dashed, and the edge tooltip adds the delta, its interval, the adjusted
+  p-value and the verdict; the legend names the correction and the family size.
+  The frame must match the graph's `diff`, `edge_weight` and `path_col`; it is
+  carried by the static HTML export and not stored in `state_file`.
+- MCP: `get_ab_transitions` and `get_ab_steps` tools (numbers only: counts per
+  verdict, the family size, group sizes, population and the top rows with their
+  readings). The playbook's A/B scenario places them after the scorecard, as an
+  exploratory screen, never the decision.
 - `add_segment(..., pre_exposure=True)` declares a segment fixed before
   exposure; the declaration is kept in the recipe, and `get_ab_test(strata_col=)`
   reads it as `strata_pre_exposure_source="declared"` without a warning.
@@ -245,7 +277,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   `get_ab_paths`, funnel intervals, the widget and its `ab_test_data` twin, and
   the MCP tools — with a closing cell that asserts every number its prose quotes.
 - Docs: a Tools reference section (`get_ab_test`, `get_ab_bootstrap`,
-  `get_ab_paths`, `get_sample_ratio`) rendered from the docstrings and listed
+  `get_ab_paths`, `get_ab_transitions`, `get_ab_steps`, `get_sample_ratio`) rendered from the docstrings and listed
   in `llms.txt`.
 - Docs: an A/B Testing guide (`docs/guide/ab-testing.md`) — the unit, the
   intention-to-treat population, `diff` and the metrics; a worked example on
@@ -257,8 +289,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   `add_segment(..., pre_exposure=True)`; sample ratio checks per stratum and
   per day; "From scorecard to decision" (decision metric and horizon declared
   up front, guardrails, the SRM gate, an inconclusive interval against the
-  effect that matters, a discovered segment as a follow-up test); eight
-  pitfalls with sources; and what is not available (CUPED, equivalence,
+  effect that matters, a discovered segment as a follow-up test); "Which edges
+  and steps differ: a screen with FDR control" (when to use the transition and
+  step screens, conditional weights, post-exposure selection, per-row
+  intervals); eight pitfalls with sources; and what is not available (CUPED, equivalence,
   sequential tests), with `get_ab_paths` for an adjustment by hand. It has a live funnel demo on the A/B
   dataset, a row in Path Analysis's question table, an "A/B tests" section in
   the README and a note in Agent Skills.

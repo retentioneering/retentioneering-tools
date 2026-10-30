@@ -46,6 +46,8 @@ TITLE_OVERRIDES = {
     "get_ab_test": "A/B Test Scorecard",
     "get_ab_bootstrap": "A/B Bootstrap Replicates",
     "get_ab_paths": "A/B Per-Path Table",
+    "get_ab_transitions": "A/B Transition Screen",
+    "get_ab_steps": "A/B Step Screen",
     "get_sample_ratio": "Sample Ratio Check",
 }
 
@@ -128,6 +130,8 @@ TOOLS = [
     "get_ab_test",
     "get_ab_bootstrap",
     "get_ab_paths",
+    "get_ab_transitions",
+    "get_ab_steps",
     "get_sample_ratio",
 ]
 

@@ -876,12 +876,8 @@ class AnchorSpec:
     def ordinal(self) -> int:
         """`at` as a token ordinal; ``"start"``/``"end"`` are aliases for 0/-1.
 
-        Range-checked here, against the spec's own pattern, so that an `at`
-        pointing outside it is reported the same way whichever end it overruns.
-        `AnchorMatch.at` makes the same check, but only once there is a match to
-        index into — and `_anchor_part` needs the resolved ordinal before that,
-        where an out-of-range negative used to leave it taking `max()` of an
-        empty sequence.
+        Checked against the spec's own pattern, so an `at` past either end is
+        rejected before any query runs (`_anchor_part` needs it in range).
         """
         if self.at == "start":
             return 0
@@ -890,11 +886,16 @@ class AnchorSpec:
         if isinstance(self.at, bool) or not isinstance(self.at, int):
             raise InvalidParameterError("at", self.at, ["start", "end", "an integer"])
         tokens = literal_tokens(self.pattern)
-        resolved = self.at if self.at >= 0 else len(tokens) + self.at
-        if not 0 <= resolved < len(tokens):
-            raise IndexError(
-                f"anchor ordinal {self.at} is out of range for a pattern with "
-                f"{len(tokens)} literal token(s): {tokens}"
+        n = len(tokens)
+        if not -n <= self.at < n:
+            raise InvalidParameterError(
+                "at",
+                self.at,
+                [
+                    "start",
+                    "end",
+                    f"an integer from {-n} to {n - 1} over {', '.join(tokens)}",
+                ],
             )
         return self.at
 

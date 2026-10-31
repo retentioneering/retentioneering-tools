@@ -15,29 +15,34 @@ Data parameters are the twin's; the sidebar edits the few that a reader varies
 while reading (the weight or the number of steps, the correction, the level and
 the support threshold) and recomputes; the others are fixed at construction and
 shown read-only. View parameters (intervals shown, significance filter, colour
-scale, sorting, hidden and pinned events, cell size) live in the browser and are
-saved with ``state_file``.
+scale, sorting, hidden and pinned events, cell size, the "Delta | Data needed"
+switch and its ``target_delta``) live in the browser and are saved with
+``state_file``.
+
+The "data needed" view reads ``power`` (``power_payload``): the frame projected
+to other sizes by the machinery of ``get_ab_transitions_power`` /
+``get_ab_steps_power`` — the curve of testable cells and median MDE against the
+paths (one path is one ``path_col``: a user, or a session), and per row the
+multiple of the paths at which it passes the support rule, its inference status
+and the inputs of the paths a target needs.
 """
 
 from __future__ import annotations
 
-import json
 import math
-import warnings
 from typing import Any
 
-import numpy as np
 import pandas as pd
 import traitlets
 
-from retentioneering.exceptions import RetentioneeringError
-from retentioneering.tools.ab_tables import matrix_axes
-from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
-from retentioneering.widgets.ab_test import (
-    _assignment_info,
-    _duration_str,
-    scorecard_records,
+from retentioneering.tools.ab_power import (
+    DEFAULT_SCALE,
+    power_frame,
+    projection_inputs,
 )
+from retentioneering.tools.ab_tables import KEYS, matrix_axes
+from retentioneering.widgets._ab_widget import ABFrameWidget, jsonable
+from retentioneering.widgets.ab_test import scorecard_records
 
 #: View parameters: set in the browser, saved with ``state_file``, never recomputed.
 VIEW_DEFAULTS: dict[str, Any] = {
@@ -57,6 +62,12 @@ VIEW_DEFAULTS: dict[str, Any] = {
     "cell_size": "auto",
     # '{"<event>": {"isHidden": bool, "isPinned": bool}}'
     "event_visibility": "{}",
+    # "delta" (the difference) or "data_needed" (the MDE, and the users a cell
+    # needs: the payload's ``power``)
+    "view_mode": "delta",
+    # the "data needed" view's goal in the frame's units: a cell shows the
+    # multiple of users its MDE needs to reach it; 0 = none
+    "target_delta": 0.0,
 }
 
 
@@ -150,9 +161,11 @@ def encode_frame(rows: list[dict], columns: list[str]) -> dict:
 
 def decode_payload(payload: dict) -> dict:
     """The widget's ``result`` with ``rows`` (one dict per row of the frame, in its
-    column order) in place of ``frame`` and ``untested_reason`` as a list: what the
-    browser reads (``parsePayload`` in ``js/widget/src/ab_matrix_encoding.ts``).
-    An empty result (``{}``) comes back as it is."""
+    column order) in place of ``frame``, and ``untested_reason`` and
+    ``power["scale_to_test"]``, ``power["inference"]`` and ``power["base"]`` as
+    lists: what the browser reads (``parsePayload``
+    in ``js/widget/src/ab_matrix_encoding.ts``). An empty result (``{}``) comes
+    back as it is."""
     if "frame" not in payload:
         return dict(payload)
     frame = payload["frame"]
@@ -162,58 +175,62 @@ def decode_payload(payload: dict) -> dict:
     decoded = {key: value for key, value in payload.items() if key != "frame"}
     decoded["rows"] = [dict(zip(names, cells)) for cells in zip(*columns)]
     decoded["untested_reason"] = decode_column(payload["untested_reason"], length)
+    if "power" in payload:
+        power = dict(payload["power"])
+        for name in ("scale_to_test", "inference", "base"):
+            power[name] = decode_column(power[name], length)
+        decoded["power"] = power
     return decoded
 
 
-def _jsonable(value: Any) -> Any:
-    if isinstance(value, dict):
-        return {str(k): _jsonable(v) for k, v in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_jsonable(v) for v in value]
-    if isinstance(value, (str, bool, int)) or value is None:
-        return value
-    if isinstance(value, float):
-        return value if math.isfinite(value) else None
-    try:
-        return _jsonable(value.item())  # numpy scalars
-    except AttributeError:
-        return str(value)
+def power_payload(frame: pd.DataFrame, keys: tuple[str, ...], params: dict) -> dict:
+    """What the "data needed" view draws: the projection of the frame to other
+    sizes (``power_frame``, the machinery of ``get_ab_transitions_power`` /
+    ``get_ab_steps_power``).
+
+    ``curve`` is ``attrs["curve"]`` (per scale: the testable cells and the median
+    MDE). Per row of the frame, in its order: ``scale_to_test``, the multiple of
+    the paths at which the row passes the support rule (null when it never joins
+    the family), ``inference`` (``tested``, ``projectable``, ``unknown_spread``,
+    ``no_spread``, ``no_estimate``) and ``base``, its standard error at the current
+    size (null without a spread to project). ``family`` is the projected family as
+    a step function of the scale (``breakpoints``, ``sizes``, ``factors``,
+    ``factor_now``: :func:`~retentioneering.tools.ab_power.family_steps`). The
+    multiple a row needs for a ``target_delta`` is
+    :func:`~retentioneering.tools.ab_power.solve_scale_needed` of those inputs,
+    which the browser computes with the same arithmetic (``scaleNeeded``), so the
+    target stays view state: it equals the power getters' ``scale_needed``."""
+    projected = power_frame(
+        frame,
+        keys,
+        scale=DEFAULT_SCALE,
+        power=params["power"],
+        min_support=params["min_support"],
+    )
+    rows = projection_inputs(
+        frame, power=params["power"], min_support=params["min_support"]
+    )
+
+    def _floats(values) -> list:
+        return [float(v) if math.isfinite(float(v)) else None for v in values]
+
+    attrs = projected.attrs
+    return {
+        "scale": [float(s) for s in attrs["scale"]],
+        "curve": jsonable(attrs["curve"]),
+        "scale_to_test": encode_column(_floats(rows.scale_to_test)),
+        "inference": encode_column([str(v) for v in rows.inference]),
+        "base": encode_column(_floats(rows.base)),
+        "family": rows.steps.payload(),
+        "sizing_basis": attrs["sizing_basis"],
+        "unit_of_paths": attrs.get("path_col"),
+        "level": "alpha / m (Bonferroni; conservative for Benjamini-Hochberg)",
+        "assumption": attrs["assumption"],
+    }
 
 
-def _diff_text(diff: Any) -> Any:
-    """What the read-only sidebar shows of ``diff``: the segment form as it is, an
-    id-list diff as the sizes of its lists."""
-    if isinstance(diff, (list, tuple)) and len(diff) == 3 and isinstance(diff[0], str):
-        return [str(v) for v in diff]
-    try:
-        return {"group1_ids": len(diff[0]), "group2_ids": len(diff[1])}
-    except Exception:
-        return str(diff)
-
-
-class ABMatrixWidget(RetentioneeringWidget):
+class ABMatrixWidget(ABFrameWidget):
     """Common part of ``ABTransitionsWidget`` and ``ABStepsWidget``."""
-
-    # ── data parameters shared by both twins ───────────────────────────────────
-    horizon = traitlets.Unicode("").tag(sync=True)
-    path_col = traitlets.Unicode("").tag(sync=True)
-    correction = traitlets.Unicode("bh").tag(sync=True)
-    ci_level = traitlets.Float(0.95).tag(sync=True)
-    power = traitlets.Float(0.8).tag(sync=True)
-    min_support = traitlets.Int(10).tag(sync=True)
-
-    # ── fixed context ──────────────────────────────────────────────────────────
-    #: the diff, for the read-only sidebar (JSON: the segment form, or list sizes)
-    diff = traitlets.Unicode("").tag(sync=True)
-    #: "" without an assignment table, "arm" / "arm,assigned_at" with one
-    assignment_info = traitlets.Unicode("").tag(sync=True)
-
-    # ── result (is_loading/error are inherited) ───────────────────────────────
-    result = traitlets.Unicode("{}").tag(sync=True)
-
-    # ── display ────────────────────────────────────────────────────────────────
-    height = traitlets.Int(600).tag(sync=True)
-    sidebar_open = traitlets.Bool(True).tag(sync=True)
 
     # ── view (browser-only, persisted) ─────────────────────────────────────────
     show_ci = traitlets.Bool(True).tag(sync=True)
@@ -224,141 +241,15 @@ class ABMatrixWidget(RetentioneeringWidget):
     col_sort = traitlets.Unicode("name").tag(sync=True)
     cell_size = traitlets.Unicode("auto").tag(sync=True)
     event_visibility = traitlets.Unicode("{}").tag(sync=True)
+    view_mode = traitlets.Unicode("delta").tag(sync=True)
+    target_delta = traitlets.Float(0.0).tag(sync=True)
 
-    #: Data parameters with the twin's defaults; set by each subclass.
-    _defaults: dict[str, Any] = {}
-    #: Data parameters the sidebar edits (the others are read-only there).
-    _editable: tuple[str, ...] = ()
     _view_defaults: dict[str, Any] = VIEW_DEFAULTS
-    _display_defaults: dict[str, Any] = {"height": 600, "sidebar_open": True}
     #: ``"get_ab_transitions"`` or ``"get_ab_steps"``.
     _tool: str = ""
 
-    def __init__(
-        self,
-        eventstream,
-        diff,
-        assignment=None,
-        state_file=None,
-        **args,
-    ):
-        known = set(self._defaults) | set(self._display_defaults)
-        unknown = sorted(set(args) - known)
-        if unknown:
-            raise TypeError(
-                f"{type(self).__name__} got unexpected arguments {unknown}; it takes "
-                f"{sorted(known)}"
-            )
-        super().__init__()
-        self._eventstream = eventstream
-        self._diff = diff
-        # A table, not JSON: kept on the instance, never synced or saved.
-        self._assignment = assignment
-        self._initialized = False
-        self._load_state_file(state_file)
-
-        self.diff = json.dumps(_diff_text(diff), default=str)
-        self.assignment_info = _assignment_info(assignment)
-        given = {
-            name: value
-            for name, value in args.items()
-            if value is not _UNSET and value is not None
-        }
-        # The data arguments as the caller wrote them (a traitlet holds a horizon
-        # as text, a level as a float): an error at construction is raised for
-        # these, so it reads as get_ab_transitions' / get_ab_steps' own.
-        self._given = {k: v for k, v in given.items() if k in self._defaults}
-        for name, default in {**self._defaults, **self._display_defaults}.items():
-            try:
-                setattr(self, name, self._to_trait(name, given.get(name, default)))
-            except traitlets.TraitError:
-                if name in self._defaults:
-                    # a value of the wrong type: the twin's own error says what it
-                    # takes (the same message as get_ab_transitions / get_ab_steps)
-                    self._twin(self._params(self._given))
-                raise
-
-        self._apply_saved_state(
-            exclude={name for name, value in args.items() if value is not _UNSET}
-        )
-
-        self._recompute()
-        self._initialized = True
-        self.observe(self._on_params_change, names=list(self._defaults))
-        self._start_state_autosave()
-
-    @property
-    def _data_names(self) -> tuple[str, ...]:
-        return tuple(self._defaults)
-
-    @property
-    def _persist_names(self) -> tuple[str, ...]:  # type: ignore[override]
-        return (
-            tuple(self._defaults)
-            + tuple(self._display_defaults)
-            + tuple(self._view_defaults)
-        )
-
-    def _to_trait(self, name: str, value: Any) -> Any:
-        """A constructor argument as the traitlet holds it."""
-        if isinstance(value, np.generic):
-            value = value.item()  # numpy scalars: the traitlets take Python ones
-        if name == "horizon":
-            return _duration_str(value)
-        if name == "path_col":
-            return value or ""
-        return value
-
-    def _on_params_change(self, _change):
-        if not self._initialized:
-            return
-        self._recompute()
-
-    # ── parameters ─────────────────────────────────────────────────────────────
-
-    def _params(self, overrides: dict | None = None) -> dict:
-        """The data parameters as keyword arguments of the twin (without ``diff``)."""
-        raw = {name: getattr(self, name) for name in self._defaults}
-        raw.update(overrides or {})
-        params = dict(raw)
-        params["horizon"] = raw["horizon"] or None
-        params["path_col"] = raw["path_col"] or None
-        params["assignment"] = self._assignment
-        return params
-
-    # ── computation ────────────────────────────────────────────────────────────
-
-    def _twin(self, params: dict) -> pd.DataFrame:
-        raise NotImplementedError
-
-    def _recompute(self):
-        self.is_loading = True
-        self.error = ""
-        try:
-            self.result = self._encode_result(self._compute_raw(self._params()))
-        except RetentioneeringError as exc:
-            # At construction the caller's arguments are wrong: raise in the cell.
-            # Later the change came from the sidebar: show it in the widget.
-            if not self._initialized:
-                self._twin(self._params(self._given))
-                raise
-            self.error = str(exc)
-            self.result = "{}"
-        except Exception as exc:
-            self.error = str(exc)
-            self.result = "{}"
-        finally:
-            self.is_loading = False
-
     def _binary(self, params: dict) -> bool:
         return True
-
-    def _compute_raw(self, params: dict) -> dict:
-        """The frame of the twin, as the matrix draws it."""
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            frame = self._twin(params)
-        return self._payload(frame, params, [str(w.message) for w in caught])
 
     def _payload(self, frame: pd.DataFrame, params: dict, caught: list[str]) -> dict:
         meta = dict(frame.attrs or {})
@@ -379,7 +270,7 @@ class ABMatrixWidget(RetentioneeringWidget):
                 str(k) if self._tool == "get_ab_transitions" else int(k)
                 for k in cols_axis
             ],
-            "attrs": _jsonable(meta),
+            "attrs": jsonable(meta),
             "group1_label": meta.get("group1_label", "group 1"),
             "group2_label": meta.get("group2_label", "group 2"),
             "alpha": meta.get("alpha", round(1 - params["ci_level"], 12)),
@@ -393,25 +284,9 @@ class ABMatrixWidget(RetentioneeringWidget):
             "min_support": params["min_support"],
             "simultaneous": "delta_ci_low_adj" in frame.columns,
             "warnings": list(dict.fromkeys(caught)),
+            "power": power_payload(frame, KEYS[self._tool], params),
             **self._payload_extra(frame, params),
         }
 
     def _payload_extra(self, frame: pd.DataFrame, params: dict) -> dict:
         return {}
-
-    # ── HTML export ────────────────────────────────────────────────────────────
-
-    def _export_data(self, sidebar_open: bool | None = None) -> dict:
-        data: dict[str, Any] = {
-            "widget_type": self.widget_type,
-            "result": json.loads(self.result or "{}"),
-            "diff": json.loads(self.diff) if self.diff else None,
-            "assignment_info": self.assignment_info,
-        }
-        for name in tuple(self._defaults) + tuple(self._view_defaults):
-            data[name] = getattr(self, name)
-        data["height"] = self.height
-        data["sidebar_open"] = (
-            sidebar_open if sidebar_open is not None else self.sidebar_open
-        )
-        return data

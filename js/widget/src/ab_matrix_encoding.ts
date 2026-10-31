@@ -16,6 +16,15 @@
  *
  * The same rules are written for pandas in `tools/ab_tables.py` (`styled=True`),
  * whose colours and opacity these are (generated, `make export-ab-encoding`).
+ *
+ * The "data needed" view reads the payload's `power` (the machinery of
+ * `get_ab_transitions_power` / `get_ab_steps_power`): the background is the
+ * cell's MDE (or, with a `target_delta`, the multiple of paths the MDE needs to
+ * reach it, with the family projected at that size: `scaleNeeded`, the same
+ * arithmetic as Python's `solve_scale_needed`) on one hue, a cell not testable at
+ * this size is hatched and shows the multiple of paths at which it passes the
+ * support rule, and the header draws the curve of testable cells and median MDE
+ * against the paths. A path is one `path_col` (a user, or a session).
  */
 import * as encoding from "./generated/ab_encoding.generated";
 
@@ -30,6 +39,10 @@ export const OUTLINE_GREY = encoding.MUTED_BORDER;
 export const CROSS_GREY = encoding.MUTED_BORDER;
 export const TEXT_MAIN = encoding.MAIN_TEXT;
 export const TEXT_MUTED = encoding.UNTESTED_TEXT;
+/** The "data needed" view's hue (MDE, or the paths a target needs). */
+export const NEED_HUE = encoding.NEED;
+/** The hatch of a cell that is not testable at the current size. */
+export const HATCH_COLOR = encoding.HATCH;
 /** Width of the wide outline, px; drawn inside the cell so neighbours never overlap. */
 export const OUTLINE_WIDTH = 2.5;
 
@@ -37,6 +50,62 @@ export type CellStatus = "significant" | "not_significant" | "untested" | "empty
 export type SortKey = "name" | "max_abs_delta" | "n_significant";
 export type SignificanceFilter = "all" | "dim" | "hide";
 export type IntervalKind = "per_cell" | "simultaneous";
+export type ViewMode = "delta" | "data_needed";
+
+/** One point of the power curve (`attrs["curve"]` of the power getters). */
+export interface CurvePoint {
+  scale: number;
+  group1_paths: number;
+  group2_paths: number;
+  cells: number;
+  testable: number;
+  family_size: number;
+  mde_alpha: number | null;
+  mde_median: number | null;
+  mde_q25: number | null;
+  mde_q75: number | null;
+  /** Cells that pass the support rule at this scale, and those of them whose
+   *  spread is unknown (counted in the family, testable unknown). */
+  supported?: number;
+  unknown_spread?: number;
+  /** Cells no scale makes testable: constant, or without an estimate. */
+  no_spread?: number;
+  no_estimate?: number;
+}
+
+/** What more paths of the same composition can do for a row (`inference` of the
+ *  power getters). */
+export type Inference = "tested" | "projectable" | "unknown_spread" | "no_spread" | "no_estimate";
+
+/** The projected family as a step function of the scale (`family_steps`): on
+ *  `[breakpoints[k], breakpoints[k + 1])` it has `sizes[k]` rows and an MDE is
+ *  `factors[k] * base / sqrt(scale)`; `breakpoints[0]` is 0. */
+export interface FamilyInfo {
+  breakpoints: number[];
+  sizes: number[];
+  factors: number[];
+  /** The factor at the current size (scale 1). */
+  factor_now: number;
+}
+
+/** The payload's `power` (`power_payload` in `widgets/_ab_matrix.py`), decoded. */
+export interface PowerInfo {
+  scale: number[];
+  curve: CurvePoint[];
+  /** Per row of the frame: the multiple of paths at which it passes the support
+   *  rule (null: it never joins the family). */
+  scale_to_test: (number | null)[];
+  /** Per row: its inference status. */
+  inference?: (Inference | null)[];
+  /** Per row: its standard error at the current size (null: no spread). */
+  base?: (number | null)[];
+  family?: FamilyInfo | null;
+  sizing_basis?: string;
+  /** What one path is (the screen's `path_col`). */
+  unit_of_paths?: string | null;
+  level: string;
+  assumption: string;
+}
 
 /** One row of the frame (every column of `get_ab_transitions` / `get_ab_steps`). */
 export interface MatrixRow {
@@ -117,6 +186,7 @@ export interface MatrixPayload {
   edge_weight?: string;
   edges?: string;
   max_steps?: number;
+  power?: PowerInfo | null;
 }
 
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
@@ -150,8 +220,11 @@ export function parsePayload(raw: unknown): MatrixPayload | null {
     try { value = JSON.parse(raw); } catch { return null; }
   }
   if (!value || typeof value !== "object") return null;
-  const { frame, untested_reason, ...p } = value as Partial<Omit<MatrixPayload, "rows" | "untested_reason">> & {
+  const { frame, untested_reason, power, ...p } = value as Partial<Omit<MatrixPayload, "rows" | "untested_reason" | "power">> & {
     frame?: EncodedFrame; untested_reason?: EncodedColumn;
+    power?: Omit<PowerInfo, "scale_to_test" | "inference" | "base"> & {
+      scale_to_test?: EncodedColumn; inference?: EncodedColumn; base?: EncodedColumn;
+    };
   };
   if (!frame || !Array.isArray(frame.columns) || !Array.isArray(p.row_keys) || !Array.isArray(p.col_keys)) return null;
   return {
@@ -174,6 +247,14 @@ export function parsePayload(raw: unknown): MatrixPayload | null {
     ...p,
     rows: decodeFrame(frame),
     untested_reason: decodeColumn(untested_reason, frame.length) as (string | null)[],
+    power: power && Array.isArray(power.curve)
+      ? {
+        ...power,
+        scale_to_test: decodeColumn(power.scale_to_test, frame.length) as (number | null)[],
+        inference: decodeColumn(power.inference, frame.length) as (Inference | null)[],
+        base: decodeColumn(power.base, frame.length) as (number | null)[],
+      }
+      : null,
   } as MatrixPayload;
 }
 
@@ -452,4 +533,240 @@ export function intervalNote(level: number, kind: IntervalKind, simultaneous: bo
     return `Intervals: Bonferroni simultaneous (all cells at once, ${pct} family-wise).`;
   }
   return `Intervals: ${pct} per cell, not simultaneous; the outline reads the adjusted p-value, so a grey cell's interval may exclude 0.`;
+}
+
+// ── data needed ────────────────────────────────────────────────────────────
+
+/** The suffix minimum of `breakpoints[k] / factors[k]^2` (`solve_scale_needed`),
+ *  once per family. */
+const suffixMins = new WeakMap<FamilyInfo, number[]>();
+function suffixMin(family: FamilyInfo): number[] {
+  let out = suffixMins.get(family);
+  if (!out) {
+    const { breakpoints: b, factors: f } = family;
+    out = new Array(b.length);
+    let low = Infinity;
+    for (let k = b.length - 1; k >= 0; k--) {
+      const g = b[k] / (f[k] * f[k]);
+      if (g < low) low = g;
+      out[k] = low;
+    }
+    suffixMins.set(family, out);
+  }
+  return out;
+}
+
+/** How many of the sorted `values` are below `x` (`side="left"`) or at most `x`
+ *  (`side="right"`): numpy's `searchsorted`. */
+function searchSorted(values: number[], x: number, side: "left" | "right"): number {
+  let lo = 0, hi = values.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (side === "left" ? values[mid] < x : values[mid] <= x) lo = mid + 1; else hi = mid;
+  }
+  return lo;
+}
+
+/** The multiple of the current paths a row needs for its MDE to reach `target`,
+ *  with the family projected at that size: the smallest multiple, never below
+ *  `scaleToTest`, from which `factor(m(s)) * base / sqrt(s) <= target`. The
+ *  same arithmetic as `solve_scale_needed` in `tools/ab_power.py` (the power
+ *  getters' `scale_needed`); a total, not an additional multiple. Null without a
+ *  target, a base spread, a scale to test or the family. */
+export function scaleNeeded(
+  base: number | null | undefined, scaleToTest: number | null | undefined,
+  target: number | null | undefined, family: FamilyInfo | null | undefined,
+): number | null {
+  if (!isNum(target) || !(target > 0) || !isNum(base) || !(base > 0)) return null;
+  if (!isNum(scaleToTest) || scaleToTest < 0 || !family || !family.breakpoints.length) return null;
+  const b = family.breakpoints, f = family.factors;
+  const ratio = base / target;
+  const x = ratio * ratio;
+  // the last interval whose lower end the target size exceeds (b[0] = 0 < x)
+  const last = searchSorted(suffixMin(family), x, "left") - 1;
+  const own = searchSorted(b, scaleToTest, "right") - 1;
+  const ownMisses = x * (f[own] * f[own]) > scaleToTest;
+  const worst = last > own ? last : ownMisses ? own : -1;
+  if (worst < 0) return scaleToTest;
+  const upper = worst + 1 < b.length ? b[worst + 1] : Infinity;
+  return Math.min(x * (f[worst] * f[worst]), upper);
+}
+
+/** What the power section says about one row of the frame. */
+export interface PowerCell {
+  scaleToTest: number | null;
+  base: number | null;
+  inference: Inference | null;
+}
+
+export function powerCell(power: PowerInfo | null | undefined, idx: number | null | undefined): PowerCell {
+  if (!power || idx == null) return { scaleToTest: null, base: null, inference: null };
+  const s = power.scale_to_test?.[idx], b = power.base?.[idx];
+  return { scaleToTest: isNum(s) ? s : null, base: isNum(b) ? b : null, inference: power.inference?.[idx] ?? null };
+}
+
+/** What a cell shows in the "data needed" view. */
+export interface NeedInfo {
+  /** Testable now (it has an adjusted p-value). */
+  testable: boolean;
+  /** The MDE now, in the frame's units (null when not tested). */
+  mde: number | null;
+  /** The multiple of paths: to reach the target (tested) or to pass the support
+   *  rule (not tested); null when unknown or unreachable. */
+  times: number | null;
+  /** What `times` is for: the target, the support rule of a row that is then
+   *  testable ("test"), or of a row whose spread is unknown ("support"). */
+  timesFor: "target" | "test" | "support" | null;
+  /** With a target, the multiple of paths it needs (null without a spread). */
+  forTarget: number | null;
+  inference: Inference | null;
+}
+
+export function needOf(
+  row: MatrixRow | undefined | null,
+  cell: PowerCell,
+  alpha: number,
+  target: number | null | undefined,
+  family: FamilyInfo | null | undefined,
+): NeedInfo {
+  const status = cellStatus(row, alpha);
+  const none = { testable: false, mde: null, times: null, timesFor: null, forTarget: null, inference: cell.inference };
+  if (status === "empty") return none;
+  const forTarget = scaleNeeded(cell.base, cell.scaleToTest, target, family);
+  if (status === "untested") {
+    const known = cell.inference !== "unknown_spread";
+    return {
+      ...none, forTarget,
+      times: cell.scaleToTest,
+      timesFor: cell.scaleToTest == null ? null : known ? "test" : "support",
+    };
+  }
+  const mde = isNum(row?.mde) ? (row?.mde as number) : null;
+  return { ...none, testable: true, mde, times: forTarget, timesFor: forTarget != null ? "target" : null, forTarget };
+}
+
+/** The largest multiple the background distinguishes (×64 and above are full). */
+export const NEED_MAX_TIMES = 64;
+
+/** Opacity of a "data needed" background: with a target, log2 of the multiple
+ *  of paths it needs (none at ×1 or less, full at ×64); without one, the MDE
+ *  over the scale maximum. A cell that is not testable has no fill (it is
+ *  hatched instead). */
+export function needAlpha(need: NeedInfo, mdeScale: number, withTarget: boolean): number {
+  if (!need.testable) return 0;
+  if (withTarget) {
+    if (!isNum(need.times) || need.times <= 1) return 0;
+    return MAX_ALPHA * Math.min(1, Math.log2(need.times) / Math.log2(NEED_MAX_TIMES));
+  }
+  if (!isNum(need.mde) || !(mdeScale > 0)) return 0;
+  return MAX_ALPHA * Math.min(1, need.mde / mdeScale);
+}
+
+export function needBackground(need: NeedInfo, mdeScale: number, withTarget: boolean): string {
+  const a = needAlpha(need, mdeScale, withTarget);
+  return a === 0 ? "transparent" : `rgba(${NEED_HUE}, ${a.toFixed(3)})`;
+}
+
+/** Diagonal hatching for a cell that is not testable at the current size. */
+export function hatchImage(color: string = HATCH_COLOR): string {
+  return `repeating-linear-gradient(135deg, ${color} 0 1.5px, transparent 1.5px 6px)`;
+}
+
+/** The largest MDE among the given rows that are tested (the "data needed"
+ *  view's scale maximum). */
+export function mdeScaleMax(rows: (MatrixRow | undefined)[], alpha: number): number {
+  let top = 0;
+  for (const row of rows) {
+    if (cellStatus(row, alpha) === "untested" || !row) continue;
+    if (isNum(row.mde) && row.mde > top) top = row.mde;
+  }
+  return top;
+}
+
+/** `×2.4`, `×16`, `×1.0`; `≥ ×1000` above a thousand. */
+export function fmtTimes(times: number | null | undefined): string {
+  if (!isNum(times)) return "n/a";
+  if (times >= 1000) return "≥ ×1000";
+  if (times >= 10) return `×${Math.ceil(times)}`;
+  return `×${(Math.ceil(times * 10) / 10).toFixed(1)}`;
+}
+
+/** The cell's two lines in the "data needed" view: the MDE in the frame's shown
+ *  units (a tested cell; "–" otherwise) and the multiple of paths (to reach the
+ *  target, or to pass the support rule: "to test", or "to test?" when whether it
+ *  then has a spread is unknown; "never" when more paths of the same
+ *  composition would not make it testable). */
+export function needText(need: NeedInfo, unit: UnitInfo): { main: string; times: string | null } {
+  if (!need.testable) {
+    if (need.timesFor === "test") return { main: "–", times: `${fmtTimes(need.times)} to test` };
+    if (need.timesFor === "support") return { main: "–", times: `${fmtTimes(need.times)} to test?` };
+    return { main: "–", times: "never" };
+  }
+  const main = need.mde != null ? (need.mde * unit.scale).toFixed(decimalsFor(unit, need.mde)) : "n/a";
+  if (need.timesFor === "target") {
+    return { main, times: need.times != null && need.times <= 1 ? "enough" : `${fmtTimes(need.times)} paths` };
+  }
+  return { main, times: null };
+}
+
+/** What one path is, for the "data needed" texts: "a path is one user_id". */
+export function pathUnitText(payload: Pick<MatrixPayload, "path_col" | "power">): string {
+  const col = payload.power?.unit_of_paths ?? payload.path_col;
+  return col ? `a path is one ${col}` : "a path is one unit of the schema's path_col";
+}
+
+/** Why a cell that is not testable now never becomes testable, or may not. */
+export function inferenceText(inference: Inference | null | undefined): string | null {
+  if (inference === "no_spread") return "never: the value is constant per path, and more paths of the same mix keep it constant";
+  if (inference === "no_estimate") return "never: no estimate to test, and more paths of the same mix do not give one";
+  if (inference === "unknown_spread") return "unknown: no spread estimated now, so more paths may or may not make it testable";
+  return null;
+}
+
+/** The power curve as SVG geometry: the testable cells (left axis) and the median
+ *  MDE (right axis) against the paths (log2 multiples, x), with the current size
+ *  (×1) marked. */
+export interface CurveGeometry {
+  testablePath: string;
+  mdePath: string;
+  points: { x: number; yTestable: number; yMde: number | null; scale: number }[];
+  currentX: number | null;
+  targetY: number | null;
+  maxTestable: number;
+  maxMde: number;
+}
+
+export function curveGeometry(
+  curve: CurvePoint[],
+  width: number,
+  height: number,
+  pad = 4,
+  target: number | null = null,
+): CurveGeometry {
+  const pts = curve.filter((p) => isNum(p.scale) && p.scale > 0);
+  const empty = { testablePath: "", mdePath: "", points: [], currentX: null, targetY: null, maxTestable: 0, maxMde: 0 };
+  if (!pts.length) return empty;
+  const lx = pts.map((p) => Math.log2(p.scale));
+  const x0 = Math.min(...lx), x1 = Math.max(...lx);
+  const xOf = (v: number) => (x1 === x0 ? width / 2 : pad + ((v - x0) / (x1 - x0)) * (width - 2 * pad));
+  const maxTestable = Math.max(1, ...pts.map((p) => p.cells || 0), ...pts.map((p) => p.testable || 0));
+  const mdes = pts.map((p) => p.mde_median).filter(isNum) as number[];
+  const maxMde = Math.max(0, ...mdes, isNum(target) ? target : 0);
+  const yT = (v: number) => height - pad - (v / maxTestable) * (height - 2 * pad);
+  const yM = (v: number) => (maxMde > 0 ? height - pad - (v / maxMde) * (height - 2 * pad) : height - pad);
+  const points = pts.map((p, i) => ({
+    x: xOf(lx[i]), yTestable: yT(p.testable || 0), yMde: isNum(p.mde_median) ? yM(p.mde_median) : null, scale: p.scale,
+  }));
+  const line = (coords: [number, number][]) =>
+    coords.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const current = pts.findIndex((p) => p.scale === 1);
+  return {
+    testablePath: line(points.map((p) => [p.x, p.yTestable])),
+    mdePath: line(points.filter((p) => p.yMde != null).map((p) => [p.x, p.yMde as number])),
+    points,
+    currentX: current >= 0 ? points[current].x : null,
+    targetY: isNum(target) && target > 0 && maxMde > 0 ? yM(target) : null,
+    maxTestable,
+    maxMde,
+  };
 }

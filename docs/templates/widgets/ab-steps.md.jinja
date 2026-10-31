@@ -46,6 +46,18 @@ fewer than k events. Read the matrix as a map of where the arms' paths part,
 not as a count of effects; confirm a hypothesis as the declared metric of a new
 test.
 
+### The Data needed view
+
+**View: Data needed** reads the cells for how much data they need, from the
+projection of [`get_ab_steps_power`](/docs/tools/get-ab-steps-power): the
+background is each tested cell's MDE (or, with a **Target delta**, the multiple
+of the current users its MDE needs to reach it), the text the MDE and `×k users`,
+`×k to test` or `never` for a cell that is not tested, and untested cells are
+hatched. Two small panels above the matrix draw the testable cells and their
+median MDE against the users (×0.25 to ×16), with the current size marked. The
+projection assumes the same mix of paths at every size; it sizes a new test. The
+view and its target are view state.
+
 ### Sidebar and view
 
 The sidebar edits `max_steps`, `correction`, `ci_level` and `min_support`, and

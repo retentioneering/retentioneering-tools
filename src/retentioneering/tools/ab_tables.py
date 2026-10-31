@@ -56,6 +56,11 @@ MUTED_BORDER = "#d1d5db"
 NOT_SIGNIFICANT_TEXT = "#6b7280"
 #: The muted text of an untested cell.
 UNTESTED_TEXT = "#9ca3af"
+#: The matrices' "data needed" view: the hue of a cell's MDE (or of the multiple
+#: of users its ``target_delta`` needs), at most ``MAX_ALPHA`` opaque, and the
+#: hatch of a cell that is not testable at the current size.
+NEED = (217, 119, 6)
+HATCH = "#cbd5e1"
 #: The constants the widgets draw with.
 JS_ENCODING = (
     "RED",
@@ -65,6 +70,8 @@ JS_ENCODING = (
     "MAIN_TEXT",
     "MUTED_BORDER",
     "UNTESTED_TEXT",
+    "NEED",
+    "HATCH",
 )
 
 

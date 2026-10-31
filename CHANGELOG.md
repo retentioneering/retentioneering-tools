@@ -7,6 +7,57 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 
+- How much data an A/B screen needs: `get_ab_transitions_power` and
+  `get_ab_steps_power` project every edge (cell) of `get_ab_transitions` /
+  `get_ab_steps` to `scale` times the current users: whether it would be testable,
+  the family it would belong to, and its MDE there at the family's Bonferroni level
+  (conservative for Benjamini-Hochberg). `target_delta` adds the users each row
+  needs for its MDE to reach an effect; `attrs["curve"]` sums each scale up. At
+  `scale=1` every number is the screen's. The `ab_transitions` and `ab_steps`
+  widgets get a **Data needed** view: each cell's MDE (or the users a target
+  needs), untested cells hatched with the users that would make them testable, and
+  the curve of testable cells and median MDE against the users.
+- `get_ab_compression(diff, screen="transitions" | "steps")` proposes a smaller
+  event vocabulary for a sparse screen, chosen without reading the arms (permuting
+  them leaves the plan identical): it merges chains of events that always follow
+  each other, drops rare events that only interrupt existing transitions,
+  relabels other rare events to `other`, and merges thin synonyms, one step at a
+  time, with the screen's numbers after every step in `attrs["path"]` (testable
+  cells, the share of the observations in cells too thin to test, median MDE,
+  transition mass retained, artificial transitions). By default it takes the
+  earliest step at which that share is near its lowest, with no artificial
+  transition (`target="testable"` and `"mde"` remain), and no drop ever joins two
+  events that never follow each other. Under `max_events` it merges the cheapest
+  pair of direct neighbours rather than dropping a frequent event, and stops
+  short of the cap when none is left; `max_group_size` (default 5) bounds every
+  merged label, a long one is written `first+…+last (k)` with its events in
+  `members`; `target_delta=` adds the users each step's vocabulary needs. Each screen gets its own plan; `by=`
+  builds one per pre-exposure segment with a homogeneity summary (the segment
+  must be constant per path, as `strata_col`, and its levels must differ as
+  text); `keep=` protects the treatment's and the metric's events. Arm blindness
+  keeps the plan from being tuned to the arms; it does not guarantee the
+  compressed screen's false discovery rate, so the docs call that screen
+  exploratory, and `attrs["mde_basis"]` names the plan's MDE as a pooled proxy of
+  the screen's. With no event in the analysed window the plan is empty and
+  `attrs["status"]` is `"no_events_in_window"`.
+- `compress_events(plan)` applies a plan (the frame, its rows, or a
+  `{event: label | None}` mapping) through `edit_events` and `collapse_events`,
+  then checks every path against the plan's own reading and raises rather than
+  return a different compression (events sharing a timestamp can be read in
+  another order by the processors). The three forms are read by one rule: an
+  event mapped to itself is a member of its label, and an event in two rows or
+  a label that is another event of the stream raises. A plan learned within one
+  `by` segment is refused on a stream that holds other segments.
+- The `ab_compression` widget (twin `ab_compression_data`) draws the plan's path,
+  a slider over its steps, the mapping at each step and the numbers before and
+  after; its static export keeps the slider. Its arguments are checked as the
+  getter checks them, and its apply line names the plan's own arguments.
+- MCP: `get_ab_transitions_power`, `get_ab_steps_power` and `get_ab_compression`
+  tools with compact results (the compression result carries a ready
+  `compress_events` preprocessor step with the plan's `path_col`; a `by` plan
+  comes with its segment's scope instead of a step); `compress_events` is a
+  documented preprocessor.
+
 - `add_segment(name, path_values=...)` adds a segment from one value per path —
   a pandas Series indexed by path id or a dict — broadcast to every event of the
   path. It carries an experiment's assignment table onto the event log, or labels
@@ -368,6 +419,29 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- `get_ab_transitions_power` / `get_ab_steps_power`: support is no longer read as
+  inference. A rare transition probability of 1 in both arms (every path's own
+  ratio is 1) was `testable=True` at larger scales, with no MDE, and enlarged the
+  projected family. Every row now has `supported` (the support rule at that
+  scale) and `inference` (`tested`, `projectable`, `unknown_spread`, `no_spread`,
+  `no_estimate`, the same at every scale); `testable` is a nullable boolean, NA
+  where a supported row's spread is unknown; the family counts the supported rows
+  that are tested, projectable or of unknown spread, never a constant one; and
+  `attrs["curve"]` counts `supported`, `unknown_spread`, `no_spread` and
+  `no_estimate` per scale.
+- The paths a target needs (`scale_needed`, `group*_paths_needed`, the matrices'
+  Data needed view and `get_ab_compression`'s `median_scale_needed`) meet their
+  own target: they are solved with the family projected at that size
+  (`attrs["sizing_basis"] = "projected_family"`), the smallest size from which
+  the row's MDE stays at or below the target, and they are totals, the same at every
+  scale. With the family of the displayed scale, a toy with ten rare branches
+  asked for 2,231 users per arm, where the family had grown from 4 to 24 rows and
+  the MDE was 5.87 pp instead of 5; it now asks for 3,073. One solver serves
+  Python, the widgets (the browser repeats its arithmetic on the payload's inputs)
+  and MCP.
+- The A/B sizing texts name their unit: "paths needed", a path being one
+  `path_col` (a session on a session screen, not a user); the MCP power results
+  add `unit_of_paths`, `n_inference`, `sizing_basis` and `sizing`.
 - The source tree no longer carries a zero-byte `datasets/.!51949!ecom.csv.gz`,
   a leftover of an interrupted copy that was tracked next to the real dataset.
 - `time_median` and `time_q95` edge weights in `transition_graph` and

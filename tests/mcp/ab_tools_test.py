@@ -572,6 +572,209 @@ class TestGetAbTransitionsAndSteps:
         assert steps["method"] == "get_ab_steps" and "top cells" in steps["mcp_tool"]
 
 
+@pytest.fixture(scope="module")
+def northwind() -> ReportSession:
+    """The bundled experiment with its assignment table (ITT)."""
+    from retentioneering import datasets
+
+    return ReportSession(
+        datasets.load_ab_test(), {}, assignment=datasets.load_ab_test_assignment()
+    )
+
+
+class TestPowerTools:
+    """The data a screen needs, through MCP: the curve and the nearest rows."""
+
+    def test_transitions_power_is_the_python_frame(self, northwind) -> None:
+        result = tools.get_ab_transitions_power(northwind, DIFF, top=50)
+        json.dumps(result, allow_nan=False)
+        assert "error" not in result, result
+        frame = northwind.active_stream.get_ab_transitions_power(
+            tuple(DIFF), assignment=northwind.assignment
+        )
+        screen = northwind.active_stream.get_ab_transitions(
+            tuple(DIFF), assignment=northwind.assignment
+        )
+        now = frame[frame["scale"] == 1]
+        assert result["n_rows"] == len(now) == len(screen)
+        assert result["n_testable"] == screen.attrs["n_tested"]
+        assert result["population"] == "assignment"
+        curve = frame.attrs["curve"]
+        assert [c["scale"] for c in result["curve"]] == [c["scale"] for c in curve]
+        for sent, ref in zip(result["curve"], curve):
+            assert sent["testable"] == ref["testable"]
+            assert sent["mde_median"] == pytest.approx(ref["mde_median"], abs=1e-6)
+        # the rows not testable now, nearest to the support rule first
+        untestable = now[~now["testable"]]
+        assert len(result["top"]) == len(untestable) > 0
+        assert not any(r["testable"] for r in result["top"])
+        reach = [r["scale_to_test"] for r in result["top"]]
+        assert reach == sorted(reach)
+        assert "Bonferroni" in result["level"] and "NEW test" in result["scope"]
+        # support is not inference; the unit of the paths; the sizing basis
+        assert result["unit_of_paths"] == "user_id" == result["path_col"]
+        counts = now["inference"].value_counts().to_dict()
+        assert {k: v for k, v in result["n_inference"].items() if v} == counts
+        assert result["n_inference"]["tested"] == screen.attrs["n_tested"]
+        assert sum(result["n_inference"].values()) == result["n_rows"]
+        assert "unknown_spread" in result["inference"]
+        assert result["sizing_basis"] == "projected_family"
+        assert "total, not additional" in result["sizing"]
+        for row in result["top"]:
+            assert row["inference"] in result["n_inference"]
+            assert isinstance(row["supported"], bool)
+        for sent, ref in zip(result["curve"], curve):
+            assert sent["supported"] == ref["supported"]
+            assert sent["unknown_spread"] == ref["unknown_spread"]
+
+    def test_steps_power_with_a_target(self, northwind) -> None:
+        result = tools.get_ab_steps_power(
+            northwind, DIFF, max_steps=5, scale=[1, 4], target_delta=0.01, top=5
+        )
+        json.dumps(result, allow_nan=False)
+        assert "error" not in result, result
+        frame = northwind.active_stream.get_ab_steps_power(
+            tuple(DIFF),
+            5,
+            assignment=northwind.assignment,
+            scale=(1, 4),
+            target_delta=0.01,
+        )
+        now = frame[frame["scale"] == 1].set_index(["event", "step"])
+        reached = int((now["scale_needed"] <= 1).sum())
+        assert result["n_reaching_target"] == reached
+        assert [c["scale"] for c in result["curve"]] == [1.0, 4.0]
+        assert "share_reaching_target" in result["curve"][0]
+        needed = [r["scale_needed"] for r in result["top"]]
+        assert all(n is None or n > 1 for n in needed)
+        assert [n for n in needed if n is not None] == sorted(
+            n for n in needed if n is not None
+        )
+        for row in result["top"]:
+            ref = now.loc[(row["event"], row["step"])]
+            assert row["group1_paths_needed"] == int(ref["group1_paths_needed"])
+            assert row["unit"] == "pp"
+        assert result["max_steps"] == 5
+
+    def test_errors_are_returned(self, northwind) -> None:
+        for call in (
+            lambda: tools.get_ab_transitions_power(northwind, DIFF, scale=[0]),
+            lambda: tools.get_ab_steps_power(northwind, DIFF, target_delta=-1),
+            lambda: tools.get_ab_steps_power(northwind, ["arm", "x", "y"]),
+            lambda: tools.get_ab_transitions_power(northwind, DIFF, top=0),
+        ):
+            assert "error" in call()
+
+
+class TestCompressionTool:
+    """The plan through MCP: numbers before and after, the path to the chosen step,
+    the changes with their reasons and a preprocessor step that applies it."""
+
+    ARGS = {"keep": ["quick_add", "cart"], "max_events": 10}
+
+    def test_the_plan_and_its_preprocessor(self, northwind) -> None:
+        result = tools.get_ab_compression(northwind, DIFF, top=3, **self.ARGS)
+        json.dumps(result, allow_nan=False)
+        assert "error" not in result, result
+        plan = northwind.active_stream.get_ab_compression(
+            tuple(DIFF), assignment=northwind.assignment, **self.ARGS
+        )
+        (segment,) = result["segments"]
+        chosen = plan.attrs["chosen_step"]
+        path = plan.attrs["path"].set_index("step")
+        assert segment["chosen_step"] == chosen > 0
+        assert segment["steps"] == path.index.max()
+        assert segment["before"]["testable"] == path.loc[0, "testable"]
+        assert segment["after"]["cells"] == path.loc[chosen, "cells"]
+        assert [r["step"] for r in segment["path"]] == list(
+            range(min(chosen + 1, segment["steps"]) + 1)
+        )
+        changed = plan[plan["action"] != "keep"]
+        assert segment["n_changed"] == len(changed) and len(segment["changes"]) == 3
+        assert all(r["reason"] for r in segment["changes"])
+        assert result["arm_blind"].startswith("the plan reads the pooled paths")
+        assert f"step {chosen} of" in segment["reading"]
+        assert result["target"] == "untestable_share"
+        assert segment["before"]["untestable_share"] == pytest.approx(
+            path.loc[0, "untestable_share"], rel=0.01
+        )
+        assert "observations too thin to test" in segment["reading"]
+        # the step applies the plan: the screen on it has the plan's numbers
+        step = segment["preprocessor"]
+        assert step["type"] == "compress_events"
+        assert {r["event"] for r in step["plan"]} == set(changed["event"])
+        screen = tools.get_ab_transitions(northwind, DIFF, local_preprocessors=[step])
+        assert screen["n_rows"] == segment["after"]["cells"]
+        assert screen["n_tested"] == segment["after"]["testable"]
+        direct = northwind.active_stream.compress_events(plan).get_ab_transitions(
+            tuple(DIFF), assignment=northwind.assignment
+        )
+        assert screen["n_rows"] == len(direct)
+
+    def test_target_delta(self, northwind) -> None:
+        result = tools.get_ab_compression(northwind, DIFF, target_delta=0.02)
+        assert "error" not in result, result
+        (segment,) = result["segments"]
+        assert result["target_delta"] == 0.02
+        assert segment["before"]["median_scale_needed"] > 0
+        assert "scale_to_test_90" in segment["path"][0]
+        assert "error" in tools.get_ab_compression(northwind, DIFF, target_delta=-1)
+
+    def test_an_empty_plan_says_so(self, northwind) -> None:
+        result = tools.get_ab_compression(northwind, DIFF, "steps")
+        assert "error" not in result, result
+        (segment,) = result["segments"]
+        assert segment["chosen_step"] == 0
+        assert segment["preprocessor"]["plan"] == []
+        assert "stays as it is" in segment["reading"]
+        assert segment["before"] == segment["after"]
+
+    def test_segments(self, northwind) -> None:
+        diff = ["exp_group", "treatment", "control"]
+        result = tools.get_ab_compression(
+            northwind, diff, "steps", by="platform", by_pre_exposure=True, top=2
+        )
+        json.dumps(result, allow_nan=False)
+        assert "error" not in result, result
+        plan = northwind.active_stream.get_ab_compression(
+            tuple(diff), "steps", by="platform", by_pre_exposure=True
+        )
+        keys = [s["segment"] for s in result["segments"]]
+        assert keys == list(plan.attrs["mappings"]) and len(keys) > 1
+        for segment in result["segments"]:
+            assert (
+                segment["chosen_step"] == plan.attrs["chosen_step"][segment["segment"]]
+            )
+            assert segment["homogeneity"]["effective_vocabulary"] > 0
+
+    def test_errors_are_returned(self, northwind) -> None:
+        for kwargs in (
+            {"max_steps": 5},
+            {"screen": "graph"},
+            {"keep": ["nope"]},
+            {"top": 0},
+            {"local_preprocessors": [{"type": "nope"}]},
+        ):
+            assert "error" in tools.get_ab_compression(northwind, DIFF, **kwargs)
+
+    def test_documented(self) -> None:
+        index = tools.describe_tool("")
+        assert "compress_events" in index["preprocessors"]
+        for name in (
+            "get_ab_transitions_power",
+            "get_ab_steps_power",
+            "get_ab_compression",
+        ):
+            assert name in index["analysis_tools"]
+            out = tools.describe_tool(name)
+            assert out["method"] == name and "mcp_tool" in out
+            assert name in (tools.describe_tool.__doc__ or "")
+        assert "preprocessor" in tools.describe_tool("compress_events")
+        assert (
+            "compress_events" in tools.describe_tool("get_ab_compression")["mcp_tool"]
+        )
+
+
 class TestDescribeForExperiments:
     def test_levels_values_constant_flags_and_table(self) -> None:
         session = _itt_session()
@@ -665,6 +868,9 @@ class TestServerWrappersInSync:
             "get_ab_bootstrap",
             "get_ab_transitions",
             "get_ab_steps",
+            "get_ab_transitions_power",
+            "get_ab_steps_power",
+            "get_ab_compression",
         ):
             tool_params = list(inspect.signature(getattr(tools, name)).parameters)[1:]
             schema = registered[name].parameters["properties"]

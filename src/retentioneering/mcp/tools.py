@@ -26,6 +26,7 @@ import math
 import warnings
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from retentioneering.eventstream.eventstream import Eventstream
@@ -180,11 +181,12 @@ def describe_tool(tool: str = "") -> dict:
       collapse_events  filter_paths   filter_events   truncate_paths
       rename_events    edit_events    drop_events     add_events
       to_daily_states  add_segment    drop_segment    add_clusters
-      urls_to_events   sample_paths   split_sessions
+      urls_to_events   sample_paths   split_sessions  compress_events
 
     Analysis tools (called directly, not as a preprocessor step):
       get_conversion_rate  get_sample_ratio  get_ab_test  get_ab_bootstrap
-      get_ab_transitions  get_ab_steps
+      get_ab_transitions  get_ab_steps  get_ab_transitions_power
+      get_ab_steps_power  get_ab_compression
 
     Reference topics:
       report_links   (anchor link syntax for analysis text)
@@ -234,6 +236,24 @@ _MCP_RESULT_NOTES = {
         "Through MCP get_ab_steps returns counts (n_tested, n_increase, n_decrease, "
         "...) and the top cells by adjusted p-value (`top`), not the whole table; "
         "each row keeps its reading. See mcp_docs."
+    ),
+    "get_ab_transitions_power": (
+        "Through MCP get_ab_transitions_power returns the curve (testable edges and "
+        "the median mde per scale) and the top edges nearest to being testable (or "
+        "to target_delta), not the whole projected table. See mcp_docs."
+    ),
+    "get_ab_steps_power": (
+        "Through MCP get_ab_steps_power returns the curve (testable cells and the "
+        "median mde per scale) and the top cells nearest to being testable (or to "
+        "target_delta), not the whole projected table. See mcp_docs."
+    ),
+    "get_ab_compression": (
+        "Through MCP get_ab_compression returns, per segment, the numbers before "
+        "and after the chosen step, the path up to it, the top changed events with "
+        "their reasons and a ready preprocessor step ({'type': 'compress_events', "
+        "'plan': [...], 'path_col': ...}) for local_preprocessors, not the plan "
+        "frame. With by there is no ready step: each segment's plan comes with its "
+        "scope, for a session of that segment alone. See mcp_docs."
     ),
     "get_ab_bootstrap": (
         "Through MCP get_ab_bootstrap returns a contrast summary, not the "
@@ -1045,8 +1065,7 @@ def _scope_text(
 ) -> str:
     """What one row's p_value_adjusted and interval are corrected against."""
     tail = (
-        "intervals are per comparison (unadjusted); the verdict reads "
-        "p_value_adjusted"
+        "intervals are per comparison (unadjusted); the verdict reads p_value_adjusted"
     )
     if correction == "none":
         return (
@@ -1767,6 +1786,699 @@ def get_ab_steps(
     if horizon:
         out["horizon"] = horizon
     return out
+
+
+def _power_curve(meta: dict) -> list[dict]:
+    """``attrs["curve"]`` of a power frame, JSON-safe."""
+    curve = []
+    for entry in meta.get("curve") or []:
+        curve.append(
+            {
+                key: (
+                    _json_number(value, 6)
+                    if isinstance(value, float) and key != "scale"
+                    else value
+                )
+                for key, value in entry.items()
+            }
+        )
+    return curve
+
+
+def _power_result(
+    frame: pd.DataFrame, keys: tuple, top: int, unit: str, rows: str, caught
+) -> dict:
+    """The numbers-only view of a power frame: the curve over the scales, the
+    counts now and the rows nearest to being testable (or to the target)."""
+    from retentioneering.tools.ab_power import INFERENCE
+
+    meta = frame.attrs
+    target = meta.get("target_delta")
+    now = frame[frame["scale"] == 1.0]
+    curve = _power_curve(meta)
+    first = next((c for c in curve if c["scale"] == 1.0), None)
+    with_target = target is not None
+    testable_now = now["testable"].fillna(False).astype(bool)
+
+    def _row(row: dict) -> dict:
+        out: dict[str, Any] = {}
+        for column in keys:
+            value = row[column]
+            out[column] = int(value) if column == "step" else str(value)
+        out["pooled_support"] = int(row["pooled_support"])
+        out["supported"] = bool(row["supported"])
+        out["inference"] = str(row["inference"])
+        # null: it passes the support rule, but whether it has a spread is unknown
+        out["testable"] = None if pd.isna(row["testable"]) else bool(row["testable"])
+        for column in ("mde", "rel_mde", "scale_to_test"):
+            out[column] = _json_number(row[column], 6)
+        if with_target:
+            for column in ("group1_paths_needed", "group2_paths_needed"):
+                value = row[column]
+                out[column] = None if pd.isna(value) else int(value)
+            out["scale_needed"] = _json_number(row["scale_needed"], 4)
+        out["unit"] = unit
+        return out
+
+    if with_target:
+        needed = now["scale_needed"].astype(float)
+        pending = now[~(needed <= 1.0)]
+        ordered = pending.assign(_n=needed[pending.index]).sort_values(
+            ["_n", "pooled_support"], ascending=[True, False], na_position="last"
+        )
+        listed = (
+            f"{rows} whose mde does not reach target_delta={target} now, the "
+            "nearest first (scale_needed: the total multiple of the paths, not an "
+            "additional one, from which the mde reaches it with the family "
+            "projected at that size); null: no spread to project (inference "
+            "unknown_spread, no_spread or no_estimate)"
+        )
+    else:
+        pending = now[~testable_now]
+        ordered = pending.sort_values(
+            ["scale_to_test", "pooled_support"],
+            ascending=[True, False],
+            na_position="last",
+        )
+        listed = (
+            f"{rows} not testable now, the nearest to the support rule first "
+            "(scale_to_test: the multiple of the paths at which they pass it; "
+            "testable is null where their spread is unknown until then)"
+        )
+    inference = now["inference"].value_counts()
+    out: dict[str, Any] = {
+        "diff": meta.get("diff"),
+        "path_col": meta.get("path_col"),
+        "unit_of_paths": meta.get("path_col"),
+        "population": meta.get("population"),
+        "correction": meta.get("correction"),
+        "power": meta.get("power"),
+        "min_support": meta.get("min_support"),
+        "target_delta": target,
+        "n_rows": int(len(now)),
+        "n_testable": int(testable_now.sum()),
+        "n_never_testable": int(now["scale_to_test"].isna().sum()),
+        "n_inference": {name: int(inference.get(name, 0)) for name in INFERENCE},
+        "group1_paths": None if first is None else first["group1_paths"],
+        "group2_paths": None if first is None else first["group2_paths"],
+        "curve": curve,
+        "level": (
+            "each mde is at alpha / m, m = the family at that scale: the rows that "
+            "pass the support rule there and are tested, projectable or of unknown "
+            "spread (Bonferroni: conservative for Benjamini-Hochberg)"
+        ),
+        "inference": (
+            "tested: an adjusted p-value now; projectable: a spread known to exist, "
+            "testable once it passes the support rule; unknown_spread: no spread "
+            "estimated now, so whether more paths make it testable is unknown "
+            "(testable null); no_spread: constant, and no_estimate: no estimate "
+            "that more paths of the same mix would give, never testable"
+        ),
+        "sizing_basis": meta.get("sizing_basis"),
+        "sizing": meta.get("sizing"),
+        "assumption": meta.get("assumption"),
+        "scope": (
+            "sizes the data the screen needs; says nothing about the effects it "
+            "will find. A larger sample is a NEW test sized before it starts, "
+            "never this test run longer"
+        ),
+        "listed": listed,
+        "top": [_row(r) for r in ordered.head(int(top)).to_dict("records")],
+        "unit": unit,
+        "warnings": list(dict.fromkeys(str(w.message) for w in caught)),
+    }
+    if with_target:
+        pending_count = int(len(pending))
+        out["n_reaching_target"] = int(len(now)) - pending_count
+    return out
+
+
+def _scale_arg(scale: list | None) -> Any:
+    from retentioneering.tools.ab_power import DEFAULT_SCALE
+
+    return DEFAULT_SCALE if scale is None else scale
+
+
+def get_ab_transitions_power(
+    session: Any,
+    diff: list,
+    edge_weight: str = "unique_paths",
+    edges: list | None = None,
+    horizon: str | None = None,
+    correction: str = "bh",
+    path_col: str | None = None,
+    scale: list | None = None,
+    target_delta: float | None = None,
+    top: int = 15,
+    local_preprocessors: list | None = None,
+) -> dict:
+    """
+    How much data the get_ab_transitions screen needs: its edges at other sizes.
+
+    Each edge of the screen is its own test: an edge with few supporting paths is
+    not tested, and the family is every testable edge. This projects the screen to
+    `scale` times the current paths (both arms alike): per scale, the testable
+    edges and the median minimum detectable effect (mde), and per edge the
+    multiple of the paths that makes it pass the support rule and its inference
+    status (support is not inference: a constant edge never becomes testable).
+    A path is one `unit_of_paths` (the path_col: users, or sessions on a session
+    screen). Sizing, not inference: run it BEFORE a new test (or to explain a
+    screen full of insufficient_data), never to decide whether to run this test
+    longer. Numbers only (no report tab).
+
+    Parameters
+    ----------
+    diff, edge_weight, edges, horizon, correction, path_col, local_preprocessors:
+        As in get_ab_transitions.
+    scale:
+        Multiples of the current paths to project to (default [0.25, 0.5, 1, 2,
+        4, 8, 16]); 1 is always included.
+    target_delta:
+        Optional absolute effect in the screen's units (a share: 0.01 is 1 pp).
+        Adds, per edge, the paths per arm its mde needs to reach it (totals, not
+        additional paths, with the family projected at that size), and per scale
+        the share of testable edges that reach it.
+    top:
+        Rows returned (a positive integer, default 15): the edges not testable now,
+        nearest first; with target_delta, the edges whose mde does not reach it
+        now, nearest first.
+
+    Returns
+    -------
+    diff, path_col, unit_of_paths (the path_col: what one path is), population,
+    correction, power, min_support, target_delta, n_rows (edges seen), n_testable
+    (now), n_never_testable (no scale makes them testable: no spread, no
+    estimate, or never enough support), n_inference (edges per inference status:
+    tested, projectable, unknown_spread, no_spread, no_estimate), group sizes,
+    curve (per scale: group1_paths, group2_paths, cells, supported,
+    unknown_spread, testable, family_size, mde_alpha, mde_median, mde_q25,
+    mde_q75, no_spread, no_estimate and, with target_delta,
+    share_reaching_target), level, inference (the statuses in words),
+    sizing_basis ("projected_family") and sizing, assumption (the same mix of
+    paths at every scale), scope, listed (what top holds), top (source, target,
+    pooled_support, supported, inference, testable (null: supported, spread
+    unknown), mde, rel_mde, scale_to_test and, with target_delta,
+    group1_paths_needed, group2_paths_needed, scale_needed), unit ("pp": shares
+    read in percentage points; "value": counts per path), warnings; with
+    target_delta also n_reaching_target.
+    """
+    if (err := _require_stream(session)) is not None:
+        return err
+    if (err := _check_top(top)) is not None:
+        return err
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
+    try:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            frame = src.get_ab_transitions_power(
+                tuple(diff) if diff else None,
+                edge_weight,
+                assignment=getattr(session, "assignment", None),
+                horizon=horizon or None,
+                path_col=path_col or None,
+                edges=[tuple(e) for e in edges] if edges else None,
+                correction=correction,
+                scale=_scale_arg(scale),
+                target_delta=target_delta,
+            )
+    except Exception as exc:
+        return {"error": _with_table_hint(str(exc), session, horizon, None)}
+    out = _power_result(
+        frame,
+        ("source", "target"),
+        top,
+        "value" if edge_weight == "avg_per_path" else "pp",
+        "edges",
+        caught,
+    )
+    out["edge_weight"] = edge_weight
+    if horizon:
+        out["horizon"] = horizon
+    return out
+
+
+def get_ab_steps_power(
+    session: Any,
+    diff: list,
+    max_steps: int = 10,
+    horizon: str | None = None,
+    correction: str = "bh",
+    path_col: str | None = None,
+    scale: list | None = None,
+    target_delta: float | None = None,
+    top: int = 15,
+    local_preprocessors: list | None = None,
+) -> dict:
+    """
+    How much data the get_ab_steps screen needs: its cells at other sizes.
+
+    As get_ab_transitions_power, for the step-matrix cells (event at step k):
+    per scale the testable cells and their median mde, per cell the multiple of
+    the paths that makes it pass the support rule and its inference status. A
+    path is one unit_of_paths (the path_col). Sizing, not inference. Numbers
+    only.
+
+    Parameters
+    ----------
+    diff, horizon, correction, path_col, scale, target_delta, top,
+    local_preprocessors:
+        As in get_ab_transitions_power.
+    max_steps:
+        Steps compared, from 1 (default 10).
+
+    Returns
+    -------
+    As get_ab_transitions_power, with event and step per row instead of source
+    and target; every row is a share read in percentage points.
+    """
+    if (err := _require_stream(session)) is not None:
+        return err
+    if (err := _check_top(top)) is not None:
+        return err
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
+    try:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            frame = src.get_ab_steps_power(
+                tuple(diff) if diff else None,
+                max_steps,
+                assignment=getattr(session, "assignment", None),
+                horizon=horizon or None,
+                path_col=path_col or None,
+                correction=correction,
+                scale=_scale_arg(scale),
+                target_delta=target_delta,
+            )
+    except Exception as exc:
+        return {"error": _with_table_hint(str(exc), session, horizon, None)}
+    out = _power_result(frame, ("event", "step"), top, "pp", "cells", caught)
+    out["max_steps"] = int(max_steps)
+    if horizon:
+        out["horizon"] = horizon
+    return out
+
+
+#: Columns of a get_ab_compression path row the MCP tool returns.
+_COMPRESSION_PATH_COLUMNS = (
+    "step",
+    "operation",
+    "events",
+    "label",
+    "vocabulary",
+    "cells",
+    "testable",
+    "untestable",
+    "untestable_share",
+    "median_mde",
+    "median_scale_needed",
+    "scale_to_test_90",
+    "mass_retained",
+    "artificial_transitions",
+    "reason",
+)
+
+#: Columns of a get_ab_compression plan row the MCP tool returns.
+_COMPRESSION_PLAN_COLUMNS = (
+    "event",
+    "action",
+    "label",
+    "members",
+    "step",
+    "operation",
+    "path_share",
+    "reason",
+)
+
+
+def _compression_value(value: Any) -> Any:
+    """A plan or path value for JSON: text, a flag, a count or a rounded number
+    (NaN: null)."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value)
+    if isinstance(value, (int, np.integer)):
+        return int(value)
+    return _json_number(value, 8)
+
+
+def _compression_segment(
+    key: str,
+    path: pd.DataFrame,
+    plan: pd.DataFrame,
+    chosen: int,
+    top: int,
+    path_col: str,
+    by: str | None = None,
+) -> dict:
+    """One segment of the compact compression result.
+
+    Without ``by`` the plan comes with a ready ``compress_events`` step that names
+    its grain (``path_col``): replayed without it, runs would collapse at the
+    stream's default grain, across the plan's paths. A segment's plan has no
+    ready step: it was learned on that segment's paths alone, and the session's
+    stream and assignment hold every segment (``scope`` says which one it is)."""
+    rows = path.to_dict("records")
+    by_step = {int(r["step"]): r for r in rows}
+    last = max(by_step) if by_step else 0
+    shown = [
+        {c: _compression_value(r[c]) for c in _COMPRESSION_PATH_COLUMNS if c in r}
+        for r in rows
+        if int(r["step"]) <= min(chosen + 1, last)
+    ]
+
+    def _numbers(row: dict) -> dict:
+        out = {
+            "vocabulary": int(row["vocabulary"]),
+            "cells": int(row["cells"]),
+            "testable": int(row["testable"]),
+            "untestable": int(row["untestable"]),
+            # a small share keeps three significant digits
+            "untestable_share": _json_p_value(row["untestable_share"]),
+            "median_mde": _json_number(row["median_mde"], 6),
+            "mass_retained": _json_number(row["mass_retained"], 6),
+            "artificial_transitions": int(row["artificial_transitions"]),
+        }
+        for name in ("median_scale_needed", "scale_to_test_90"):
+            if name in row:
+                out[name] = _json_number(row[name], 4)
+        return out
+
+    before, after = _numbers(by_step[0]), _numbers(by_step[chosen])
+    changed = plan[plan["action"] != "keep"].sort_values(["step", "event"])
+    steps_plan = [
+        {
+            "event": str(r["event"]),
+            "action": str(r["action"]),
+            "label": None if pd.isna(r["label"]) else str(r["label"]),
+        }
+        for r in changed.to_dict("records")
+    ]
+    if last == 0:
+        reading = (
+            "no step: no chain, rare event or synonym qualifies, so the vocabulary "
+            "stays as it is (an empty plan)"
+        )
+    elif chosen == 0:
+        reading = (
+            f"step 0 of {last}: no step improves the screen by the target, so the "
+            "vocabulary stays as it is (an empty plan); path lists the next step, "
+            "step=k returns the plan at another one"
+        )
+    else:
+        share = (
+            f", observations too thin to test {before['untestable_share']:.3%} -> "
+            f"{after['untestable_share']:.3%}"
+            if before["untestable_share"] is not None
+            and after["untestable_share"] is not None
+            else ""
+        )
+        reading = (
+            f"step {chosen} of {last}: vocabulary {before['vocabulary']} -> "
+            f"{after['vocabulary']}, testable {before['testable']} -> "
+            f"{after['testable']} of {before['cells']} -> {after['cells']} cells, "
+            f"untestable {before['untestable']} -> {after['untestable']}{share}"
+        )
+        if after["artificial_transitions"]:
+            reading += (
+                f"; {after['artificial_transitions']} transitions no path made "
+                "(artificial: a dropped event joined its neighbours)"
+            )
+    return {
+        "segment": key,
+        "chosen_step": int(chosen),
+        "steps": int(last),
+        "before": before,
+        "after": after,
+        "reading": reading,
+        "path": shown,
+        "n_changed": int(len(changed)),
+        "changes": [
+            {c: _compression_value(r[c]) for c in _COMPRESSION_PLAN_COLUMNS}
+            for r in changed.head(int(top)).to_dict("records")
+        ],
+        **_compression_apply(steps_plan, path_col, by, plan),
+    }
+
+
+def _compression_apply(
+    steps_plan: list, path_col: str, by: str | None, plan: pd.DataFrame
+) -> dict:
+    """``preprocessor`` (and, for a segment's plan, ``scope`` and ``apply``)."""
+    if by is None:
+        return {
+            "preprocessor": {
+                "type": "compress_events",
+                "plan": steps_plan,
+                "path_col": path_col,
+            }
+        }
+    value = plan[by].iloc[0] if len(plan) else None
+    return {
+        "preprocessor": None,
+        "scope": {"column": by, "value": _compression_value(value)},
+        "apply": (
+            f"not a ready step: this plan was learned on the paths with {by} == "
+            f"{value!r} alone. Applied to the session's stream it would change the "
+            "other segments' paths too, and filtering the stream would leave their "
+            "assigned users in the analysis as silent paths. Analyse the segment in "
+            "a session (or Python code) whose stream and assignment hold that "
+            "segment alone, then apply these rows there with compress_events "
+            f"(path_col={path_col!r})"
+        ),
+        "plan": steps_plan,
+    }
+
+
+def get_ab_compression(
+    session: Any,
+    diff: list,
+    screen: str = "transitions",
+    edge_weight: str | None = None,
+    max_steps: int | None = None,
+    edges: list | None = None,
+    horizon: str | None = None,
+    min_path_share: float = 0.01,
+    chain_threshold: float = 0.8,
+    synonym_threshold: float = 0.1,
+    bridge_threshold: float = 0.9,
+    max_events: int | None = None,
+    max_group_size: int = 5,
+    target: Any = "untestable_share",
+    step: int | None = None,
+    keep: list | None = None,
+    other: str = "other",
+    by: str | None = None,
+    by_pre_exposure: bool | None = None,
+    correction: str = "bh",
+    path_col: str | None = None,
+    target_delta: float | None = None,
+    top: int = 15,
+    local_preprocessors: list | None = None,
+) -> dict:
+    """
+    Propose a smaller event vocabulary for an A/B screen, chosen without the arms.
+
+    When get_ab_transitions / get_ab_steps leave many rows insufficient_data (rare
+    events, long chains of always-consecutive events), a smaller vocabulary makes
+    more rows testable on the same data. The plan merges chains (an event almost
+    always followed by the next), relabels rare events to `other` or drops them,
+    and merges thin synonyms, one step at a time, and picks the step by `target`.
+    Arm-blind: it reads the pooled paths of both arms and the arm sizes, never
+    which arm a path is in, so it cannot be tuned to where the arms differ. That is
+    a safeguard, not a guarantee that the screen on the compressed stream keeps its
+    false discovery rate: report that screen's findings as exploratory. Apply the
+    plan with the returned preprocessor (compress_events, with its path_col) in
+    local_preprocessors of get_ab_transitions / get_ab_steps. A plan built with by
+    has no ready preprocessor (its scope says which segment it is for). Fix the
+    plan BEFORE reading that screen; never pick a step by the screen's verdicts.
+
+    Parameters
+    ----------
+    diff, horizon, correction, path_col, local_preprocessors:
+        As in get_ab_test.
+    screen:
+        "transitions" (default) or "steps": the screen the plan is for.
+    edge_weight, edges:
+        The transitions screen's (as in get_ab_transitions); refused with "steps".
+    max_steps:
+        The steps screen's (default 10); refused with "transitions".
+    min_path_share:
+        An event in fewer than this share of paths is rare (default 0.01).
+    chain_threshold:
+        Merge A and B when P(next = B | A) and P(previous = A | B) both reach it
+        (default 0.8).
+    synonym_threshold, bridge_threshold:
+        How alike two events' neighbours must be to merge them (Jensen-Shannon
+        distance, default 0.1), and how faithfully a rare event's neighbours join
+        when it is dropped (default 0.9; below it the event is relabelled).
+    max_events:
+        Optional: a cap on the vocabulary. Above it, each step takes the cheapest
+        merge of neighbours (a chain pair, a synonym pair, or one of the rarest
+        events with one of its closest neighbours: the fewest events lost,
+        weighted by the merged label's size); two events merge only when a direct
+        transition between them carries at least 30 % of the runs of one of
+        them. A frequent event is never dropped or relabelled: when no such merge
+        is left the path stops short of the cap, with a warning.
+    max_group_size:
+        The most events one merged label may hold (default 5). A long label is
+        written first+…+last (k); `members` lists its events.
+    target:
+        How the step is picked: "untestable_share" (default: the earliest step
+        whose share of observations in cells too thin to test is near its lowest,
+        among steps without artificial transitions; a dense screen stays at step
+        0), "testable" (the most testable rows, then the fewest untestable),
+        "mde" (the smallest median mde) or a number (the first step whose median
+        mde reaches it).
+    step:
+        Optional: return the plan at this step of the path instead.
+    keep:
+        Events never merged, relabelled or dropped: the treatment's own events and
+        the decision metric's events.
+    other:
+        The label of relabelled rare events (default "other").
+    by, by_pre_exposure:
+        A segment column: one plan per segment (homogeneity per segment). Only a
+        segment fixed before exposure (by_pre_exposure=True when the stream's
+        recipe does not show it).
+    target_delta:
+        Optional: an effect to detect (absolute, the screen's units). Adds per
+        step median_scale_needed (the multiple of the users at which half of the
+        testable rows detect it) and scale_to_test_90 (the multiple at which 90 %
+        of the rows pass the support rule).
+    top:
+        Changed events returned per segment (a positive integer, default 15).
+
+    Returns
+    -------
+    diff, screen, edge_weight, max_steps, path_col, unit_of_paths (what one path
+    is: median_scale_needed is a multiple of these), population, group sizes,
+    target, by, by_pre_exposure, arm_blind, unit, warnings and segments: per
+    segment (one, "all", without by): chosen_step, steps (the path length),
+    before / after (vocabulary, cells, testable, untestable, untestable_share,
+    median_mde, mass_retained, artificial_transitions, and with target_delta
+    median_scale_needed and scale_to_test_90, at step 0 and at the chosen step),
+    reading (quote it), homogeneity (effective_vocabulary, distinct_path_share,
+    ...), path (steps 0 to one after the chosen: operation, events, label, the
+    numbers and the reason), n_changed, changes (the top events whose label
+    changes: action, label, members, step, operation, path_share, reason) and preprocessor
+    ({"type": "compress_events", "plan": [...], "path_col": ...}: the whole plan
+    with the grain it was built on, ready for local_preprocessors). With by,
+    preprocessor is null: the segment's plan comes as plan, with scope (the
+    segment column and value) and apply (how to use it), since the session's
+    stream holds every segment. status is "no_events_in_window" (and
+    preprocessor null) when no compared path has an event in the analysed
+    window. mde_basis: the plan's MDE is a pooled proxy of the screen's.
+    """
+    if (err := _require_stream(session)) is not None:
+        return err
+    if (err := _check_top(top)) is not None:
+        return err
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
+    try:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            plan = src.get_ab_compression(
+                tuple(diff) if diff else None,
+                screen,
+                assignment=getattr(session, "assignment", None),
+                horizon=horizon or None,
+                path_col=path_col or None,
+                edge_weight=edge_weight,
+                max_steps=max_steps,
+                edges=[tuple(e) for e in edges] if edges else None,
+                min_path_share=min_path_share,
+                chain_threshold=chain_threshold,
+                synonym_threshold=synonym_threshold,
+                bridge_threshold=bridge_threshold,
+                max_events=max_events,
+                max_group_size=max_group_size,
+                target=target,
+                step=step,
+                keep=keep,
+                other=other,
+                by=by,
+                by_pre_exposure=by_pre_exposure,
+                correction=correction,
+                target_delta=target_delta,
+            )
+    except Exception as exc:
+        return {"error": _with_table_hint(str(exc), session, horizon, None)}
+    meta = plan.attrs
+    path = meta["path"]
+    chosen = meta["chosen_step"]
+    homogeneity = meta["homogeneity"]
+    if isinstance(homogeneity, dict):
+        homogeneity = [homogeneity]
+    segments = []
+    for key in meta["mappings"]:
+        if by is not None:
+            part = path[path[by].astype(str) == key]
+            rows = plan[plan[by].astype(str) == key]
+            pick = chosen[key]
+        else:
+            part, rows, pick = path, plan, chosen
+        entry = _compression_segment(
+            key, part, rows, int(pick), top, meta.get("path_col"), by
+        )
+        h = next((h for h in homogeneity if str(h.get("segment")) == key), {})
+        entry["homogeneity"] = {
+            name: _compression_value(h.get(name))
+            for name in (
+                "paths",
+                "events",
+                "effective_vocabulary",
+                "transition_entropy",
+                "distinct_path_share",
+            )
+        }
+        if meta.get("status") == "no_events_in_window":
+            entry["reading"] = (
+                "no plan: no event of the compared paths falls in the analysed "
+                "window (assignment and horizon), so there is no vocabulary to learn "
+                "from; check the assignment times and the horizon"
+            )
+            entry["preprocessor"] = None
+        segments.append(entry)
+    weight = meta.get("edge_weight")
+    return {
+        "status": meta.get("status", "ok"),
+        "diff": list(diff),
+        "screen": meta.get("screen"),
+        "edge_weight": weight,
+        "max_steps": meta.get("max_steps"),
+        "path_col": meta.get("path_col"),
+        "unit_of_paths": meta.get("path_col"),
+        "population": meta.get("population"),
+        "group1_paths": meta.get("group1_paths"),
+        "group2_paths": meta.get("group2_paths"),
+        "target": meta.get("target"),
+        "target_delta": meta.get("target_delta"),
+        "by": by,
+        "by_pre_exposure": meta.get("by_pre_exposure"),
+        "mde_basis": meta.get("mde_basis"),
+        "arm_blind": (
+            "the plan reads the pooled paths of both arms and the arm sizes, never "
+            "which arm a path is in, so it is not tuned to the arms' differences. "
+            "That is a safeguard, not a guarantee of the false discovery rate of "
+            "the screen on the compressed stream: report its findings as "
+            "exploratory. Fix the plan before reading that screen"
+        ),
+        "unit": "value" if weight == "avg_per_path" else "pp",
+        "segments": segments,
+        "warnings": list(dict.fromkeys(str(w.message) for w in caught)),
+    }
 
 
 def check_analysis(analysis: str) -> dict:

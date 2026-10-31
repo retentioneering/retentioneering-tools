@@ -25,7 +25,9 @@ interactive Preprocessing Graph (visual no-code pipeline builder), and the `Coho
 `Sequences` tools. `StatTests` is no longer a gap: A/B readouts are covered by `get_ab_test`,
 `get_ab_bootstrap`, `get_sample_ratio`, the `ab_test` widget, the
 `get_ab_transitions` / `get_ab_steps` screens of edges and step cells with their
-`ab_transitions` / `ab_steps` matrix widgets and `get_ab_*_table` exports (`[Unreleased]` in
+`ab_transitions` / `ab_steps` matrix widgets and `get_ab_*_table` exports, the
+`get_ab_*_power` data-sufficiency getters, `get_ab_compression` / `compress_events` and the
+`ab_compression` widget (`[Unreleased]` in
 `CHANGELOG.md`, ADR-0017); `datasets.load_ab_test(name=...)` has six synthetic experiments.
 
 ## Commands

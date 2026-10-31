@@ -33,6 +33,7 @@ from retentioneering.tools.ab_tables import (
     cell_status,
     matrix_axes,
 )
+from retentioneering.tools.ab_power import FamilySteps, solve_scale_needed
 from retentioneering.tools.ab_transitions import EDGE_WEIGHTS
 from retentioneering.widgets._ab_matrix import (
     VIEW_DEFAULTS,
@@ -726,6 +727,103 @@ class TestITTAndHorizon:
 
 
 # ── state file and static export ─────────────────────────────────────────────
+
+
+class TestDataNeeded:
+    """The "Delta | Data needed" view reads ``power``: the projection of the
+    getters' power functions (``get_ab_transitions_power`` /
+    ``get_ab_steps_power``) of the same frame."""
+
+    @pytest.mark.parametrize("kind", ["transitions", "steps"])
+    def test__power_is_the_power_getter(self, stream, transitions, steps, kind) -> None:
+        if kind == "transitions":
+            (_, payload), keys = transitions, ("source", "target")
+            power = stream.get_ab_transitions_power(DIFF)
+        else:
+            (_, payload), keys = steps, ("event", "step")
+            power = stream.get_ab_steps_power(DIFF)
+        assert payload["power"]["curve"] == json.loads(json.dumps(power.attrs["curve"]))
+        assert payload["power"]["scale"] == power.attrs["scale"]
+        assert "conservative for Benjamini-Hochberg" in payload["power"]["level"]
+        one = power[power["scale"] == 1].set_index(list(keys))["scale_to_test"]
+        to_test = payload["power"]["scale_to_test"]
+        assert len(to_test) == len(payload["rows"])
+        for row, value in zip(payload["rows"], to_test):
+            expected = one.loc[tuple(row[k] for k in keys)]
+            if math.isfinite(expected):
+                assert value == pytest.approx(expected)
+            else:
+                assert value is None
+        # a cell untested now and reachable with more paths has a multiple > 1;
+        # a tested cell needs none
+        for row, value in zip(payload["rows"], to_test):
+            if row["p_value_adjusted"] is not None:
+                assert value is None or value <= 1 + 1e-12
+        # the inference status and the base spread, row by row
+        status = power[power["scale"] == 1].set_index(list(keys))["inference"]
+        inference = payload["power"]["inference"]
+        base = payload["power"]["base"]
+        assert len(inference) == len(base) == len(payload["rows"])
+        for row, value, spread in zip(payload["rows"], inference, base):
+            assert value == status.loc[tuple(row[k] for k in keys)]
+            assert (spread is not None) == (value in ("tested", "projectable"))
+        family = payload["power"]["family"]
+        assert family["breakpoints"][0] == 0 and family["sizes"][0] == 0
+        assert sorted(family["breakpoints"]) == family["breakpoints"]
+        now = next(c for c in power.attrs["curve"] if c["scale"] == 1)
+        index = np.searchsorted(family["breakpoints"], 1.0, side="right") - 1
+        assert family["sizes"][index] == now["family_size"]
+        assert family["factor_now"] == family["factors"][index]
+        assert payload["power"]["sizing_basis"] == "projected_family"
+        assert payload["power"]["unit_of_paths"] == "user_id"
+
+    @pytest.mark.parametrize("weight", ["unique_paths", "proba_out"])
+    def test__the_browsers_paths_for_a_target_are_the_getters(
+        self, stream, weight
+    ) -> None:
+        # ab_matrix_encoding.ts solves the payload's base, scale_to_test and family
+        # with solve_scale_needed's arithmetic: the power getter's scale_needed
+        target = 0.01
+        args = {"n_bootstrap": 200} if weight == "proba_out" else {}
+        power = stream.get_ab_transitions_power(
+            DIFF, weight, target_delta=target, **args
+        )
+        payload = _strict(stream.ab_transitions(DIFF, weight, **args).result)
+        family = payload["power"]["family"]
+        steps = FamilySteps(
+            np.array(family["breakpoints"]),
+            np.array(family["sizes"]),
+            np.array(family["factors"]),
+        )
+
+        def floats(values):
+            return np.array([np.nan if v is None else v for v in values], dtype=float)
+
+        browser = solve_scale_needed(
+            floats(payload["power"]["base"]),
+            floats(payload["power"]["scale_to_test"]),
+            steps,
+            target,
+        )
+        one = power[power["scale"] == 1].set_index(["source", "target"])
+        keys = [(row["source"], row["target"]) for row in payload["rows"]]
+        expected = one.loc[keys, "scale_needed"].to_numpy(dtype=float)
+        np.testing.assert_allclose(browser, expected, rtol=1e-12, equal_nan=True)
+        assert np.isfinite(expected).sum() > 10
+
+    def test__view_mode_and_target_are_view_state(self, stream, tmp_path) -> None:
+        assert VIEW_DEFAULTS["view_mode"] == "delta"
+        assert VIEW_DEFAULTS["target_delta"] == 0.0
+        path = tmp_path / "need.json"
+        first = stream.ab_steps(DIFF, state_file=str(path))
+        before = first.result
+        first.view_mode = "data_needed"
+        first.target_delta = 0.02
+        assert first.result == before  # a view change does not recompute
+        second = stream.ab_steps(DIFF, state_file=str(path))
+        assert (second.view_mode, second.target_delta) == ("data_needed", 0.02)
+        data = second._export_data()
+        assert (data["view_mode"], data["target_delta"]) == ("data_needed", 0.02)
 
 
 class TestStateAndExport:

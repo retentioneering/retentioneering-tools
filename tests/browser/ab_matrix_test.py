@@ -369,3 +369,70 @@ def test_sidebar_changes_recompute_through_python(stream, tmp_path):
             assert not errors, errors
         finally:
             browser.close()
+
+
+def test_static_data_needed_view(stream, tmp_path):
+    """The "Delta | Data needed" switch works without a kernel: the MDE in every
+    tested cell, the untestable cells hatched with the paths they need, the curve
+    in the header and, with a target, the paths each tested cell needs (the power
+    getter's projected-family scale_needed, solved in the browser)."""
+    frame = stream.get_ab_transitions(DIFF)
+    power = stream.get_ab_transitions_power(DIFF)
+    export = _export(stream.ab_transitions(DIFF), tmp_path, "transitions_needed")
+    with playwright.sync_playwright() as runtime:
+        browser = _launch(runtime)
+        try:
+            page = browser.new_page(viewport={"width": 1500, "height": 900})
+            errors = []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.goto(export.as_uri())
+            page.locator("[data-testid=ab-matrix]").wait_for(state="visible")
+            assert page.locator("[data-testid=ab-cell][data-mode]").count() == 0
+            page.locator("[data-testid=ab-view-data_needed]").click()
+            page.locator("[data-testid=ab-power-curve]").wait_for(state="visible")
+            cells = page.locator("[data-testid=ab-cell][data-mode=data_needed]")
+            assert cells.count() == page.locator("[data-testid=ab-cell]").count()
+            untested = int(frame["p_value_adjusted"].isna().sum())
+            assert untested > 0
+            hatched = page.locator("[data-testid=ab-cell][data-hatched=true]")
+            assert hatched.count() == untested
+            image = hatched.first.evaluate("td => getComputedStyle(td).backgroundImage")
+            assert "repeating-linear-gradient" in image
+            # the curve: one point per scale for each line, now marked
+            curve = page.locator("[data-testid=ab-power-curve]")
+            assert curve.locator("circle").count() == 2 * len(power.attrs["scale"])
+            assert curve.locator("[data-testid=ab-curve-now]").count() == 2
+            now = next(c for c in power.attrs["curve"] if c["scale"] == 1)
+            assert f"{now['testable']} of {now['cells']} now" in curve.inner_text()
+            counts = page.locator("[data-testid=ab-counts]").inner_text()
+            shown = page.locator("[data-testid=ab-cell][data-idx]").count()
+            assert f"{frame.attrs['n_tested']} of {shown} cells testable now" in counts
+            # a target: the paths each tested cell needs, as the power getter says
+            page.get_by_label("Target delta").fill("1")
+            page.get_by_label("Target delta").press("Enter")
+            page.locator("[data-testid=ab-curve-target]").wait_for(state="attached")
+            target = stream.get_ab_transitions_power(DIFF, target_delta=0.01)
+            one = target[(target["scale"] == 1) & target["testable"]]
+            assert len(one) == frame.attrs["n_tested"]
+            row = one.sort_values("scale_needed").iloc[-1]
+            cell = page.locator(
+                f"[data-testid=ab-cell][data-row='{row['source']}']"
+                f"[data-col='{row['target']}']"
+            )
+            assert float(cell.get_attribute("data-times")) == pytest.approx(
+                row["scale_needed"], rel=1e-9
+            )
+            assert "paths" in cell.inner_text() or "enough" in cell.inner_text()
+            cell.hover()
+            tip = page.locator("[data-testid=ab-tooltip]").inner_text()
+            assert "paths for an MDE of 1.00 pp" in tip
+            assert "a path is one user_id" in tip
+            unit = page.locator("[data-testid=ab-need-unit]").inner_text()
+            assert "a path is one user_id" in unit
+            # back to the delta view
+            page.locator("[data-testid=ab-view-delta]").click()
+            assert page.locator("[data-testid=ab-cell][data-mode]").count() == 0
+            assert "NaN" not in page.locator("body").inner_text()
+            assert not errors, errors
+        finally:
+            browser.close()

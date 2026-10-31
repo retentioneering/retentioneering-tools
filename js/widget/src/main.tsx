@@ -21,6 +21,7 @@ import { render as renderSegmentOverview }  from "./segment_overview";
 import { render as renderClusterAnalysis }  from "./cluster_analysis";
 import { render as renderABTest }           from "./ab_test";
 import { render as renderABMatrix }         from "./ab_matrix";
+import { render as renderABCompression }    from "./ab_compression";
 
 /** Apply a GraphView (object, or a name from the widget's `views` list) to
  *  a rendered transition graph. No-op for widgets that don't expose the
@@ -196,6 +197,7 @@ function dispatch(ctx: RenderContext) {
   if (type === "cluster_analysis")  return renderClusterAnalysis(ctx);
   if (type === "ab_test")           return renderABTest(ctx);
   if (type === "ab_transitions" || type === "ab_steps") return renderABMatrix(ctx);
+  if (type === "ab_compression")    return renderABCompression(ctx);
   return renderTransitionGraph(ctx);
 }
 

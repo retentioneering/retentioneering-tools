@@ -48,6 +48,31 @@ edge, so a grey cell's interval can exclude 0. With `correction="bonferroni"`
 the frame also has simultaneous intervals; **Intervals: Simultaneous** shows
 them in the cells.
 
+### The Data needed view
+
+**View: Data needed** (the switch above the matrix) reads the same cells for how
+much data they need, from the projection of
+[`get_ab_transitions_power`](/docs/tools/get-ab-transitions-power):
+
+- **the background is the MDE** of each tested edge (the smallest effect the
+  screen detects there with `power`, at the family's level `alpha / m`), in one
+  amber hue, darker for a larger MDE; with a **Target delta** in the sidebar, it
+  is the multiple of the current users the edge needs for its MDE to reach the
+  target instead (none at "enough", full at ×64 and above);
+- **the text is the MDE and the users**: `×4.0 users` to reach the target, or,
+  for an edge that is not tested, `×1.3 to test` (the multiple at which it would
+  pass the support rule) or `never` (more users of the same mix would not make it
+  testable);
+- **an untested edge is hatched**, and the outlines are the Delta view's.
+
+Above the matrix, two small panels draw the curve of the screen against the users
+(×0.25 to ×16 of the current ones): the testable edges in one, their median MDE
+in the other, with the current size marked. The tooltip adds the edge's MDE, its
+level and the users it needs. The projection assumes the same mix of paths at
+every size; it sizes a new test, it is not a reason to run this one longer. The
+view and its target are view state: saved with `state_file`, kept in a static
+export.
+
 ### Conditional weights
 
 `proba_out`, `proba_in` and `share_of_total` divide by behaviour the treatment
@@ -101,6 +126,18 @@ assignment table, `load_ab_test_assignment()`, as `assignment`.
 `quick_add` replaces them; `cart -> cart`, a loop only the treatment arm has,
 and `checkout_start -> home` are higher. `checkout_start -> payment` is grey: the
 share of users with a checkout followed by a payment does not move.
+
+### How many users each edge needs
+
+<DemoWidget cmd={`stream.ab_transitions(
+    ("exp_group", "treatment", "control"),
+    assignment=assignment,
+)`} path="/docs-demos/widgets/ab-transitions/data-needed.html" height={640} viewMode={"data_needed"} />
+
+The same screen in its **Data needed** view. Two edges are untested:
+`checkout_start -> search` would pass the support rule with 1.3 times the users,
+`search_filter -> catalog` with ten times. The median MDE of the tested edges is
+2.03 pp; the curve above the matrix halves it at four times the users.
 
 ### Where the transitions out of a source go
 

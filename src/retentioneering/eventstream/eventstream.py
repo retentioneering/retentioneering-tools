@@ -1580,6 +1580,546 @@ ab_steps : The same frame drawn as an interactive matrix.""",
         ],
     )
 
+    @_tracked("get_ab_transitions_power")
+    def get_ab_transitions_power(
+        self,
+        diff: T_Diff,
+        edge_weight: str = "unique_paths",
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
+        path_col: str | None = None,
+        edges: list | None = None,
+        test: str = "auto",
+        correction: str = "bh",
+        ci_level: float = 0.95,
+        power: float = 0.8,
+        n_bootstrap: int = 1000,
+        bootstrap_weights: str = "multinomial",
+        min_support: int = 10,
+        random_state: int = 42,
+        scale=(0.25, 0.5, 1, 2, 4, 8, 16),
+        target_delta: float | None = None,
+    ) -> pd.DataFrame:
+        # The docstring is assembled below from get_ab_transitions'.
+        from retentioneering.tools.ab_power import ab_transitions_power
+
+        return ab_transitions_power(
+            self,
+            diff,
+            edge_weight,
+            scale=scale,
+            target_delta=target_delta,
+            assignment=assignment,
+            horizon=horizon,
+            path_col=path_col,
+            edges=edges,
+            test=test,
+            correction=correction,
+            ci_level=ci_level,
+            power=power,
+            n_bootstrap=n_bootstrap,
+            bootstrap_weights=bootstrap_weights,
+            min_support=min_support,
+            random_state=random_state,
+        )
+
+    @_tracked("get_ab_steps_power")
+    def get_ab_steps_power(
+        self,
+        diff: T_Diff,
+        max_steps: int = 10,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
+        path_col: str | None = None,
+        correction: str = "bh",
+        ci_level: float = 0.95,
+        power: float = 0.8,
+        min_support: int = 10,
+        path_pattern: str | None = None,
+        anchor: str | dict | None = None,
+        scale=(0.25, 0.5, 1, 2, 4, 8, 16),
+        target_delta: float | None = None,
+    ) -> pd.DataFrame:
+        # The docstring is assembled below from get_ab_steps'.
+        from retentioneering.tools.ab_power import ab_steps_power
+
+        return ab_steps_power(
+            self,
+            diff,
+            max_steps,
+            scale=scale,
+            target_delta=target_delta,
+            assignment=assignment,
+            horizon=horizon,
+            path_col=path_col,
+            correction=correction,
+            ci_level=ci_level,
+            power=power,
+            min_support=min_support,
+            path_pattern=path_pattern,
+            anchor=anchor,
+        )
+
+    _POWER_PARAMETERS = """
+scale : list of float, default (0.25, 0.5, 1, 2, 4, 8, 16)
+    Multiples of the current number of paths to project to, the same in both
+    arms; 1 (the data as it is) is always included.
+target_delta : float, optional
+    An absolute effect in the frame's units (a share: `0.01` is 1 pp; for
+    `avg_per_path` transitions per path). Adds the paths per arm a {row} needs to
+    be tested with an `mde` that reaches it, with the family projected at that
+    size, and `attrs["curve"]` the share of testable {rows} that reach it."""
+    _POWER_RETURNS = """pandas.DataFrame
+    One row per {row} of `{getter}` and per `scale`, sorted by {keys} and `scale`;
+    * marks the columns added with `target_delta`.
+
+    - {key_list}; `scale`.
+    - `group1_paths`, `group2_paths`: the projected paths per arm.
+    - `pooled_support`: the projected supporting paths of the support rule (paths
+      with the {what}, both arms).
+    - `supported`: the {row} passes the pooled support rule at this scale.
+    - `inference`: what more paths of the same mix can do for the {row}, the same
+      at every scale: `"tested"` (an adjusted p-value now), `"projectable"` (not
+      tested now, a spread known to exist: a z-test {row}, or a positive
+      `delta_se`), `"unknown_spread"` (not tested now and no spread estimated, so
+      more paths may or may not make it testable), `"no_spread"` (provably
+      constant: a standard error of 0, a share that every path has or none does,
+      or a value in [0, 1] at 0 or 1 in each arm, such as a transition
+      probability of 1) and `"no_estimate"` (it passes the support rule now and
+      is still untested, or an arm has no value: more paths of the same mix keep
+      it so). Support is not inference: passing the rule does not give a constant
+      {row} a spread.
+    - `testable` (nullable boolean): `supported` and tested or projectable; NA
+      when `supported` with an unknown spread; False otherwise. At `scale=1`,
+      exactly the {rows} the getter tests.
+    - `family_size`: the projected family `m` at this scale, the {rows} that are
+      `supported` and tested, projectable or of unknown spread (counted, so the
+      level stays conservative; {rows} that can never be tested are not);
+      `mde_alpha`: `alpha / m`, the Bonferroni level the `mde` is computed at
+      (as the getter's; conservative for Benjamini-Hochberg, which rejects the
+      k-th smallest p-value at `alpha * k / m`, never below `alpha / m`).
+    - `mde`, `rel_mde`: the minimum detectable effect at that level and `power`:
+      the getter's own computation with the standard error scaled by
+      `1 / sqrt(scale)` (the pooled share and the projected arm sizes for a
+      z-test row; `delta_se / sqrt(scale)` for a Welch row and for a bootstrapped
+      one, whose `delta_se` is the bootstrap standard error). At `scale=1` the
+      getter's `mde`.
+    - `delta`, `test`: the getter's, unchanged (for reference).
+    - `scale_to_test`: the smallest multiple of the paths at which the {row}
+      passes the support rule and joins the family (NaN when it never does, and
+      for `"no_spread"` and `"no_estimate"`).
+    - `group1_paths_needed`*, `group2_paths_needed`*, `scale_needed`*: the paths
+      per arm (totals, not additional paths) and their multiple of the current
+      ones from which the {row} passes the support rule and its `mde`, at the
+      level of the family projected at that size, stays at or below `target_delta`
+      (the same at every scale of the {row}; NaN without a spread to project).
+      Plugging `scale_needed` back into `scale` gives an `mde` that reaches the
+      target there.
+
+    `attrs` are the getter's (`path_col` names what one path is: a user, or a
+    session) plus `scale`, `target_delta`, `power`, `min_support`, `family` and
+    `sizing` (what `family_size` and `scale_needed` count, in words),
+    `sizing_basis` (`"projected_family"`), `assumption` and `curve`: one dict per
+    scale with the paths per arm, `cells`, `supported`, `unknown_spread` (among
+    the supported), `testable`, `family_size`, `mde_alpha`, `mde_median`,
+    `mde_q25`, `mde_q75` (over the testable {rows}), `no_spread` and
+    `no_estimate` (the same at every scale) and, with `target_delta`,
+    `share_reaching_target`.
+
+    The projection assumes the same path composition: more paths with the same
+    mix of behaviours, so the same pooled shares and per-path spread. It sizes the
+    data a screen needs; it says nothing about the effects the screen will find."""
+
+    _tp_summary, _tp_sections = _numpydoc_split(get_ab_transitions.__doc__ or "")
+    get_ab_transitions_power.__doc__ = _numpydoc_join(
+        """Return how much data the `get_ab_transitions` screen needs: its edges projected to other sizes.
+
+A screen with many events is data-hungry: each edge is its own test, the family
+is every testable edge, and an edge with few supporting paths is not tested. This
+getter runs `get_ab_transitions(...)` with the same arguments and projects every
+edge to `scale` times the current paths: whether it would pass the support rule,
+whether it could then be tested, the family it would belong to, and the minimum
+detectable effect (`mde`) there. At `scale=1` every number is the getter's. Read
+`attrs["curve"]` for the screen as a whole (testable edges and median MDE against
+the paths; a path is one `path_col`), or draw it with `ab_transitions(...)` in its
+"Data needed" view.""",
+        [
+            (
+                "Parameters",
+                _tp_sections.get("Parameters", "")
+                + _POWER_PARAMETERS.format(row="edge", rows="edges"),
+            ),
+            (
+                "Returns",
+                _POWER_RETURNS.format(
+                    row="edge",
+                    rows="edges",
+                    getter="get_ab_transitions",
+                    keys="`source`, `target`",
+                    key_list="`source`, `target`",
+                    what="transition",
+                ),
+            ),
+            (
+                "Raises",
+                """DiffConfigError, InvalidParameterError, EmptyEventstreamError
+    As in `get_ab_transitions`; a `scale` that is not a list of positive numbers
+    or a `target_delta` that is not a positive number raises
+    `InvalidParameterError`.""",
+            ),
+            (
+                "Examples",
+                """    diff = ("exp_group", "treatment", "control")
+    power = stream.get_ab_transitions_power(diff, assignment=assignment,
+                                            target_delta=0.01)
+    pd.DataFrame(power.attrs["curve"])[["scale", "testable", "mde_median"]]
+    power[power["scale"] == 1].nlargest(5, "scale_needed")""",
+            ),
+            (
+                "See Also",
+                """get_ab_transitions : The screen itself.
+get_ab_compression : A smaller vocabulary for the same paths, so that more edges are testable.""",
+            ),
+        ],
+    )
+    _sp_summary, _sp_sections = _numpydoc_split(get_ab_steps.__doc__ or "")
+    get_ab_steps_power.__doc__ = _numpydoc_join(
+        """Return how much data the `get_ab_steps` screen needs: its cells projected to other sizes.
+
+The step matrix has a cell per event and step, and the later steps split the
+paths over more events, so many cells are thin. This getter runs
+`get_ab_steps(...)` with the same arguments and projects every cell to `scale`
+times the current paths: whether it would pass the support rule, whether it could
+then be tested, the family it would belong to, and its minimum detectable effect
+(`mde`) there. At `scale=1` every number is the getter's. Read `attrs["curve"]`
+for the screen as a whole, or draw it with `ab_steps(...)` in its "Data needed"
+view.""",
+        [
+            (
+                "Parameters",
+                _sp_sections.get("Parameters", "")
+                + _POWER_PARAMETERS.format(row="cell", rows="cells"),
+            ),
+            (
+                "Returns",
+                _POWER_RETURNS.format(
+                    row="cell",
+                    rows="cells",
+                    getter="get_ab_steps",
+                    keys="`event`, `step`",
+                    key_list="`event`, `step`",
+                    what="event at the step",
+                ),
+            ),
+            (
+                "Raises",
+                """DiffConfigError, InvalidParameterError, EmptyEventstreamError
+    As in `get_ab_steps`; a `scale` that is not a list of positive numbers or a
+    `target_delta` that is not a positive number raises `InvalidParameterError`.""",
+            ),
+            (
+                "Examples",
+                """    diff = ("exp_group", "treatment", "control")
+    power = stream.get_ab_steps_power(diff, max_steps=8, assignment=assignment)
+    pd.DataFrame(power.attrs["curve"])[["scale", "cells", "testable", "mde_median"]]""",
+            ),
+            (
+                "See Also",
+                """get_ab_steps : The screen itself.
+get_ab_compression : A smaller vocabulary for the same paths, so that more cells are testable.""",
+            ),
+        ],
+    )
+
+    @_tracked("get_ab_compression")
+    def get_ab_compression(
+        self,
+        diff: T_Diff,
+        screen: str = "transitions",
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
+        path_col: str | None = None,
+        edge_weight: str | None = None,
+        max_steps: int | None = None,
+        edges: list | None = None,
+        min_path_share: float = 0.01,
+        chain_threshold: float = 0.8,
+        synonym_threshold: float = 0.1,
+        bridge_threshold: float = 0.9,
+        max_events: int | None = None,
+        max_group_size: int = 5,
+        target="untestable_share",
+        step: int | None = None,
+        keep: list | None = None,
+        other: str = "other",
+        by: str | None = None,
+        by_pre_exposure: bool | None = None,
+        correction: str = "bh",
+        ci_level: float = 0.95,
+        power: float = 0.8,
+        min_support: int = 10,
+        target_delta: float | None = None,
+    ) -> pd.DataFrame:
+        """
+        Propose a smaller event vocabulary for an A/B screen, chosen without looking at the arms.
+
+        A screen of many events splits the paths over many edges (cells), and most
+        are too thin to test. This plan compresses the vocabulary one operation at
+        a time: it drops a rare event that only interrupts popular transitions,
+        relabels other rare events to one `other` event, merges a chain of events
+        that almost always follow each other into one, and merges synonyms (events
+        with the same neighbours) when that pools thin cells. Every statistic is
+        computed on the pooled paths of both arms — the arm of a path is never
+        read, only the two arm sizes — so the vocabulary is not selected on the
+        outcome. That is a safeguard, not a guarantee that the screen on the
+        compressed stream keeps its false discovery rate: read it as exploratory
+        unless the plan was fixed on other data (see the A/B guide). The
+        transition and step screens get different plans (see
+        `screen`). By default the plan is taken at the earliest step that brings
+        the share of the screen's observations in cells too thin to test close
+        to its lowest (see `target`), so a dense screen keeps its vocabulary.
+        Apply the plan with `compress_events(plan)`.
+
+        Parameters
+        ----------
+        diff : tuple
+            As in `get_ab_transitions`: it defines the compared paths; the plan
+            reads them pooled.
+        screen : {"transitions", "steps"}, default "transitions"
+            The screen the plan is for.
+
+            - `"transitions"` — fewer, richer edges with no artificial
+              transition: a rare event is dropped only when the events around it
+              already follow each other directly in at least `min_support` paths
+              (bridge fidelity), else relabelled `other`; chains are merged first.
+            - `"steps"` — aligned steps: a rare event is dropped when it is an
+              insertion (the paths without it go from the event before to the
+              event after directly at least as often as through one other
+              event), which realigns the later steps, else relabelled `other`,
+              which keeps every position; rare events are handled first, chains
+              last.
+
+            On both screens a drop that would join two events that never follow
+            each other directly (an artificial transition) is a relabel to
+            `other` instead.
+
+            Both read the whole window of every path (the plan applies to the
+            stream, not to the first steps); the cells counted are the screen's.
+        assignment, horizon, path_col
+            As in `get_ab_transitions`: the population and window of the screen.
+        edge_weight : {"unique_paths", "avg_per_path", "proba_out", "proba_in", "share_of_total"}, optional
+            `screen="transitions"` only (default `"unique_paths"`): the weight whose
+            cells are counted. Testable cells and the MDE follow the getter for
+            `"unique_paths"`; the other weights use the pooled spread (a ratio
+            linearised), an arm-blind approximation of the getter's Welch and
+            bootstrap standard errors.
+        max_steps : int, optional
+            `screen="steps"` only (default 10): the steps of the screen.
+        edges : list of tuple, optional
+            `screen="transitions"` only: a declared family of `(source, target)`
+            edges; their events are never changed. This protects their names, not
+            the family's numbers: the plan still counts every cell of the screen,
+            so the declared edges' own MDE can differ from the plan's median.
+        min_path_share : float, default 0.01
+            An event in fewer than this share of the compared paths is rare. A
+            rare event with a synonym (see `synonym_threshold`) is merged into it
+            when that pools its thin cells; otherwise it is dropped or relabelled
+            as `screen` describes.
+        chain_threshold : float, default 0.8
+            `A` and `B` merge into `A+B` when `P(next = B | A)` and `P(prev = A |
+            B)` are both at least this (pooled), with at least `min_support`
+            paths making the transition.
+        synonym_threshold : float, default 0.1
+            Two events merge into `A/B` when the Jensen-Shannon distance (bits)
+            between their outgoing transitions, and between their incoming ones,
+            is at most this, neither has self-loops above 5 % of its transitions,
+            one of them is thin (at least half of the paths through its cells are
+            in cells that are not testable) and the merge leaves fewer untestable
+            cells without losing a testable one: a merge only to pool thin cells,
+            never of two well-measured events.
+        bridge_threshold : float, default 0.9
+            The share of a rare event's runs that must bridge as the screen
+            requires (see `screen`) for it to be dropped rather than relabelled.
+        max_events : int, optional
+            A cap on the vocabulary. After the operations above, while the
+            vocabulary is above it, each step takes the cheapest admissible
+            merge among: the strongest chain pair left (`min(P(next), P(prev))`
+            at least 0.5, below `chain_threshold`), the closest synonym pair
+            within `synonym_threshold`, and each of the three rarest events left
+            with each of its three closest neighbours (`"merge_neighbour"`). A
+            merge is admissible when its label holds at most `max_group_size`
+            events and, but for synonyms, the two are neighbours: a direct
+            transition between them, in at least `min_support` paths, carries at
+            least 30 % of the runs of one of them. Similar contexts alone are no
+            reason to merge. The cost of a merge is the events it loses (the runs
+            of the merged label that hide which of the two happened, plus the
+            repeats its collapsed runs erase; a chain whose every run is `A B`
+            costs nothing) times the merged label's size minus one, so two
+            medium groups win over one growing group. A frequent event is never
+            dropped or relabelled to reach the cap: when no admissible merge is
+            left the path stops, the plan takes the smallest vocabulary reached
+            and a warning says the cap was not reached. Otherwise the chosen step
+            is the best one that fits.
+        max_group_size : int, default 5
+            The most events one merged label may hold, for every merge. A label
+            longer than 40 characters is written `first+…+last (k)`; its events
+            are in the plan's `members` column.
+        target : {"untestable_share", "testable", "mde"} or float, default "untestable_share"
+            Which step of the path the plan is taken at.
+
+            - `"untestable_share"` — the information, not the cell count: the
+              earliest step whose `untestable_share` (the share of the screen's
+              observations in cells too thin to test, see Returns) is within 10 %
+              of the path's lowest share, or within 0.0001 of the observations,
+              whichever is larger, among the steps without an artificial
+              transition (with `max_events`, among the steps that fit, those with
+              the fewest). A merged chain removes a testable cell but no
+              information, so it does not count against a step; a dense screen,
+              whose thin cells hold almost none of the observations, keeps step 0.
+            - `"testable"` — the most testable cells; among those, the fewest
+              untestable cells, then the lowest median MDE, then the earliest
+              step.
+            - `"mde"` — the lowest median MDE of the testable cells.
+            - a positive number — the earliest step whose median MDE is at most
+              it (in the screen's units), else the lowest median MDE.
+        step : int, optional
+            Take the plan at this step of the path instead (0 is the stream as it
+            is), e.g. to reproduce a step shown by the `ab_compression` widget.
+        keep : list of str, optional
+            Events never dropped, relabelled or merged. Declare the events the
+            treatment introduces or changes: the plan cannot see the arms, so it
+            cannot tell a synonym from the treatment's replacement of an event.
+            A kept event keeps its label only: dropping or merging the events
+            around it can still change what comes before or after it, and at
+            which step it stands.
+        other : str, default "other"
+            The label of relabelled rare events; must not be an event already.
+        by : str, optional
+            A segment column fixed before exposure: one plan per segment (each row
+            carries the segment), and `attrs["homogeneity"]` per segment.
+        by_pre_exposure : bool, optional
+            Declare that `by` was fixed before exposure (as `strata_pre_exposure`
+            in `get_ab_test`); without it the recipe is read, and a segment not
+            known to be pre-exposure warns.
+        correction, ci_level, power, min_support
+            As in `get_ab_transitions`: the support rule and the MDE (at
+            `alpha / m`) the plan counts testable cells and median MDE with.
+        target_delta : float, optional
+            An effect to detect, absolute, in the screen's units (a share for
+            `"unique_paths"` edges and step cells). It adds two columns to
+            `attrs["path"]`, projected as `get_ab_transitions_power` projects them
+            (the same path composition, more paths): `median_scale_needed`, the
+            median `scale_needed` of the step's testable cells (the multiple of
+            the current users at which half of them detect `target_delta`), and
+            `scale_to_test_90`, the multiple at which 90 % of the step's cells
+            pass the support rule: how much data a screen of each vocabulary size
+            needs.
+
+        Returns
+        -------
+        pandas.DataFrame
+            The plan at the chosen step: one row per event of the compared paths.
+
+            - `event`; `action`: `"keep"`, `"merge"`, `"drop"` or `"other"`;
+              `label`: its new name (None when dropped); `members`: the events of
+              a merged label, in label order (empty otherwise); `step`: the step of the
+              path that set it (0: kept); `operation`: `"keep"`,
+              `"merge_chain"`, `"merge_synonym"`, `"merge_neighbour"` (above
+              `max_events`: an event merged with one of its closest
+              neighbours), `"drop"` or `"other"`.
+            - `path_share`, `occurrences`, `self_loop_share`: the event's pooled
+              numbers before compression.
+            - The evidence of its operation: `p_next`, `p_prev` (chain),
+              `js_distance` (synonym), `bridge_fidelity` (rare event: the share
+              of its runs that bridge as the screen requires).
+            - `reason`: the decision in words.
+
+            `attrs` holds `path`, the greedy path as a DataFrame — per step:
+            `step`, `operation`, `events`, `label`, `vocabulary`, `cells`,
+            `testable`, `untestable`, `untestable_share` (the share of the
+            screen's observations — path × cell incidences for `"unique_paths"`
+            edges and step cells, transitions for the other weights — in cells
+            with fewer than `min_support` supporting paths, too thin to test; a
+            cell that almost every path has fails the support rule on the other
+            side and is not counted), `median_mde` (of the testable cells, at the
+            projected family's `alpha / m`), `median_scale_needed` and
+            `scale_to_test_90` (with `target_delta`), `transitions`,
+            `mass_retained` (of the original transitions, counted path by path,
+            the share still a transition between two labels and not artificial:
+            how much of the transition structure survives, not how much
+            information; a rare event can carry the effect),
+            `artificial_transitions` (compressed edges no original direct
+            transition maps to, counted once: a pooled structural check, which
+            does not show that each path's route, or a distinction such as
+            submit and success, survives), `artificial_mass` (the
+            transitions on them) and `reason` (the operation's evidence in
+            words) — `status` (`"ok"`, or `"no_events_in_window"` when no
+            compared path has an event in the analysed window: the plan is then
+            empty and a warning says so), `mde_basis`, `chosen_step`, `mappings` (the
+            `{event: label}` of every step), `homogeneity` (effective vocabulary
+            size `exp(entropy)` of the event distribution, transition entropy in
+            bits, distinct-path share, and the numbers before and after) and the
+            arguments.
+
+        Raises
+        ------
+        DiffConfigError, InvalidParameterError, EmptyEventstreamError
+            As in `get_ab_transitions`; an argument of the other screen
+            (`max_steps` with `screen="transitions"`, `edge_weight` or `edges`
+            with `screen="steps"`), an unknown `keep` event or `by` column, a `by`
+            column that changes within a compared path, or whose levels print
+            alike (`1` and `"1"`), none of whose values is on a compared path, or
+            an `other` label that is already an event raise
+            `InvalidParameterError`.
+
+        Examples
+        --------
+            diff = ("exp_group", "treatment", "control")
+            plan = stream.get_ab_compression(diff, assignment=assignment,
+                                             keep=["quick_add"])
+            plan.attrs["path"][["step", "operation", "events", "vocabulary",
+                                "testable", "median_mde"]]
+            compact = stream.compress_events(plan)
+            compact.get_ab_transitions(diff, assignment=assignment)
+
+            # the step matrix needs its own plan
+            stream.get_ab_compression(diff, "steps", max_steps=8,
+                                      assignment=assignment)
+        """
+        from retentioneering.tools.ab_compression import ab_compression
+
+        return ab_compression(
+            self,
+            diff,
+            screen,
+            assignment=assignment,
+            horizon=horizon,
+            path_col=path_col,
+            edge_weight=edge_weight,
+            max_steps=max_steps,
+            edges=edges,
+            min_path_share=min_path_share,
+            chain_threshold=chain_threshold,
+            synonym_threshold=synonym_threshold,
+            bridge_threshold=bridge_threshold,
+            max_events=max_events,
+            max_group_size=max_group_size,
+            target=target,
+            step=step,
+            keep=keep,
+            other=other,
+            by=by,
+            by_pre_exposure=by_pre_exposure,
+            correction=correction,
+            ci_level=ci_level,
+            power=power,
+            min_support=min_support,
+            target_delta=target_delta,
+        )
+
     @_tracked("headless_describe")
     def describe(
         self,
@@ -2407,6 +2947,122 @@ ab_steps : The same frame drawn as an interactive matrix.""",
             path_col=path_col,
         ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
+
+    @_tracked("dp_compress_events")
+    @_op
+    def compress_events(self, plan, path_col: str | None = None) -> "Eventstream":
+        """
+        Apply a vocabulary plan: drop, relabel and merge events in one step.
+
+        The plan maps every event to its new label or to nothing: the frame of
+        `get_ab_compression`, its rows as a list of dicts, or a plain
+        `{event: label | None}` mapping. Nothing is computed here: the step is
+        `edit_events(delete=..., rename=...)` followed by
+        `collapse_events(loops=...)` on the merged labels, so each run of a merged
+        label becomes one event and a merge creates no self-loop. Events the plan
+        does not name, and plan events the stream does not have, are left as they
+        are.
+
+        The result is checked against the plan's own reading of every path (its
+        labels in path order, a run of a merged label as one event), and a
+        mismatch raises instead of returning a stream compressed differently from
+        the plan. Every form of a plan is normalised to the same mapping first,
+        so equivalent plans give the same stream.
+
+        Parameters
+        ----------
+        plan : pandas.DataFrame, list of dict or dict
+            What to do with each event. Each event appears once.
+
+            - a `get_ab_compression` frame (or `frame.to_dict("records")`): its
+              `action` column says it — `"keep"`, `"drop"`, `"merge"` (renamed
+              to `label`; runs of the label collapse into one event) or
+              `"other"` (renamed to `label`, runs kept, so every event keeps its
+              position). A frame built `by` a segment is refused unless it holds
+              one segment's rows, and then only on a stream of that segment alone.
+            - a mapping `{event: label}`: `None` drops the event, a label renames
+              it; a label shared by two or more events is a merge (runs
+              collapse), an event mapped to its own name counting as one of them
+              (`{"A": "B", "B": "B"}` merges `A` and `B`). A label that is already
+              an event of the stream must be named in the plan too. To relabel
+              several events without collapsing their runs, pass a frame with
+              `action="other"` or call `rename_events`.
+        path_col : str, optional
+            The grain within which runs collapse; defaults to `schema.path_col`.
+            A plan frame records the `path_col` it was built on, and a different
+            one raises: pass `path_col=plan.attrs["path_col"]`. A list of rows or
+            a mapping records none, so pass the grain it was built on.
+
+        Examples
+        --------
+            plan = stream.get_ab_compression(("exp_group", "treatment", "control"))
+            compact = stream.compress_events(plan)
+
+            stream.compress_events({"debug_ping": None,
+                                    "add_to_cart_v1": "add_to_cart",
+                                    "add_to_cart_v2": "add_to_cart"})
+        """
+        from retentioneering.data_processors.compress_events import CompressEvents
+
+        recorded = (
+            (plan.attrs or {}).get("path_col")
+            if isinstance(plan, pd.DataFrame)
+            else None
+        )
+        grain = path_col or self.schema.path_col
+        if path_col is not None and path_col not in self.schema.path_cols:
+            from retentioneering.exceptions import InvalidParameterError
+
+            raise InvalidParameterError("path_col", path_col, self.schema.path_cols)
+        if recorded is not None and recorded != grain:
+            from retentioneering.exceptions import InvalidParameterError
+
+            raise InvalidParameterError(
+                "path_col",
+                path_col,
+                [recorded],
+                reason=(
+                    f"the plan was built on path_col='{recorded}', and merged runs "
+                    "collapse within that grain"
+                ),
+            )
+        self._check_plan_scope(plan)
+        new_df, new_schema = CompressEvents(plan, path_col=grain).apply(
+            self._df, self.schema
+        )
+        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+
+    def _check_plan_scope(self, plan) -> None:
+        """A plan learned within one `by` segment applies to a stream of that
+        segment alone: anywhere else it changes paths it was not learned on."""
+        if not isinstance(plan, pd.DataFrame):
+            return
+        by = (plan.attrs or {}).get("by")
+        if by is None or by not in plan.columns or not len(plan):
+            return
+        if plan[by].nunique(dropna=False) > 1:
+            return  # several segments' plans: plan_mapping refuses them
+        value = plan[by].iloc[0]
+        if by not in self._df.columns:
+            return
+        others = [v for v in pd.unique(self._df[by].dropna()) if v != value]
+        if not others:
+            return
+        from retentioneering.exceptions import InvalidParameterError
+
+        shown = ", ".join(repr(v) for v in others[:5])
+        raise InvalidParameterError(
+            "plan",
+            f"the plan of {by} == {value!r}",
+            [f"a stream whose paths are all {by} == {value!r}"],
+            reason=(
+                f"the stream also holds {by} {shown}, whose events the plan was not "
+                "learned on. Analyse the segment on its own: filter the stream, e.g. "
+                f'filter_paths({{"in_segment": {{"segment_name": "{by}", '
+                f'"segment_level": {value!r}, "mode": "all"}}}}), and restrict the '
+                "assignment table to the same paths"
+            ),
+        )
 
     @_tracked("dp_to_daily_states")
     @_op
@@ -4300,7 +4956,17 @@ Hover a cell for both arms' values, the delta and its interval, `rel_delta`,
 supports, `support_warning`, `conditional`, the verdict and the row's `reading`.
 The intervals are per cell, not simultaneous; with `correction="bonferroni"` the
 sidebar can show the simultaneous ones instead. It is an exploratory screen:
-read it after the scorecard, as a map of where the arms' paths part."""
+read it after the scorecard, as a map of where the arms' paths part.
+
+**Data needed**: the "Delta | Data needed" switch above the matrix shows how much
+data the screen needs (the power getters' projection of the same frame): the
+background is the cell's MDE, or with a target delta set in the sidebar the
+multiple of users its MDE needs to reach it; a cell that is not testable at this
+size is hatched and shows the multiple of users at which it would pass the
+support rule; the header draws the testable cells and the median MDE against the
+users (x0.25 to x16), the current size marked. The MDE is at `alpha / m`
+(Bonferroni over the testable cells, conservative for Benjamini-Hochberg), and
+the projection assumes the same path composition."""
     _MATRIX_DISPLAY = """
 height : int, default 600
     Widget height in pixels.
@@ -4310,8 +4976,8 @@ state_file : str, optional
     JSON file the widget state is bound to; see
     [Saving widget state](/docs/widgets#saving-widget-state). It keeps the data
     parameters and the view (intervals, filter, colour scale, sorting, hidden and
-    pinned events); `diff` and the `assignment` table are passed again when you
-    reopen the widget."""
+    pinned events, the "Data needed" view and its target); `diff` and the
+    `assignment` table are passed again when you reopen the widget."""
     ab_transitions.__doc__ = _numpydoc_join(
         """Interactive A/B difference matrix of transitions for Jupyter notebooks.
 
@@ -4390,6 +5056,221 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
             ),
         ],
     )
+
+    @_tracked("widget_ab_compression")
+    def ab_compression(
+        self,
+        diff: T_Diff,
+        screen: str | None = None,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
+        path_col: str | None = None,
+        edge_weight: str | None = None,
+        max_steps: int | None = None,
+        edges: list | None = None,
+        min_path_share: float | None = None,
+        chain_threshold: float | None = None,
+        synonym_threshold: float | None = None,
+        bridge_threshold: float | None = None,
+        max_events: int | None = None,
+        max_group_size: int | None = None,
+        target=None,
+        step: int | None = None,
+        keep: list | None = None,
+        other: str | None = None,
+        by: str | None = None,
+        by_pre_exposure: bool | None = None,
+        correction: str | None = None,
+        ci_level: float | None = None,
+        power: float | None = None,
+        min_support: int | None = None,
+        target_delta: float | None = None,
+        height: int | None = None,
+        sidebar_open: bool | None = None,
+        state_file: str | None = None,
+    ):
+        # The docstring is assembled below from get_ab_compression's; None means
+        # "not passed" (the twin's default, or the saved state).
+        from retentioneering.widgets._base import _UNSET
+        from retentioneering.widgets.ab_compression import ABCompressionWidget
+
+        args = {
+            "screen": screen,
+            "horizon": horizon,
+            "path_col": path_col,
+            "edge_weight": edge_weight,
+            "max_steps": max_steps,
+            "edges": edges,
+            "min_path_share": min_path_share,
+            "chain_threshold": chain_threshold,
+            "synonym_threshold": synonym_threshold,
+            "bridge_threshold": bridge_threshold,
+            "max_events": max_events,
+            "max_group_size": max_group_size,
+            "target": target,
+            "step": step,
+            "keep": keep,
+            "other": other,
+            "by": by,
+            "by_pre_exposure": by_pre_exposure,
+            "correction": correction,
+            "ci_level": ci_level,
+            "power": power,
+            "min_support": min_support,
+            "target_delta": target_delta,
+            "height": height,
+            "sidebar_open": sidebar_open,
+        }
+        return ABCompressionWidget(
+            self,
+            diff,
+            assignment=assignment,
+            state_file=state_file,
+            **{k: v if v is not None else _UNSET for k, v in args.items()},
+        )
+
+    @_tracked("headless_ab_compression")
+    def ab_compression_data(
+        self,
+        diff: T_Diff,
+        screen: str = "transitions",
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
+        path_col: str | None = None,
+        edge_weight: str | None = None,
+        max_steps: int | None = None,
+        edges: list | None = None,
+        min_path_share: float = 0.01,
+        chain_threshold: float = 0.8,
+        synonym_threshold: float = 0.1,
+        bridge_threshold: float = 0.9,
+        max_events: int | None = None,
+        max_group_size: int = 5,
+        target="untestable_share",
+        step: int | None = None,
+        keep: list | None = None,
+        other: str = "other",
+        by: str | None = None,
+        by_pre_exposure: bool | None = None,
+        correction: str = "bh",
+        ci_level: float = 0.95,
+        power: float = 0.8,
+        min_support: int = 10,
+        target_delta: float | None = None,
+    ) -> pd.DataFrame:
+        # The docstring is get_ab_compression's with an alias note, assembled below.
+        return self.get_ab_compression(
+            diff,
+            screen,
+            assignment=assignment,
+            horizon=horizon,
+            path_col=path_col,
+            edge_weight=edge_weight,
+            max_steps=max_steps,
+            edges=edges,
+            min_path_share=min_path_share,
+            chain_threshold=chain_threshold,
+            synonym_threshold=synonym_threshold,
+            bridge_threshold=bridge_threshold,
+            max_events=max_events,
+            max_group_size=max_group_size,
+            target=target,
+            step=step,
+            keep=keep,
+            other=other,
+            by=by,
+            by_pre_exposure=by_pre_exposure,
+            correction=correction,
+            ci_level=ci_level,
+            power=power,
+            min_support=min_support,
+            target_delta=target_delta,
+        )
+
+    _co_summary, _co_sections = _numpydoc_split(get_ab_compression.__doc__ or "")
+    _co_title, _, _co_rest = _co_summary.partition("\n\n")
+    ab_compression_data.__doc__ = _numpydoc_join(
+        f"{_co_title}\n\n"
+        "Documented alias of `get_ab_compression`, under the name of the\n"
+        "`ab_compression` widget's headless twin: the same computation, arguments\n"
+        "and result. The docs use `get_ab_compression`; the widget calls this\n"
+        f"method, so its numbers are the getter's.\n\n{_co_rest}",
+        list(_co_sections.items()),
+    )
+    ab_compression.__doc__ = _numpydoc_join(
+        """Interactive compression path of an A/B screen's vocabulary for Jupyter notebooks.
+
+The plan of `get_ab_compression` drawn step by step, its numbers those of
+`ab_compression_data(...)` (the widget's headless twin, an alias of
+`get_ab_compression`):
+
+- **the path chart**: one point per step of the greedy path, the vocabulary size
+  on x; in panels sharing it, the testable cells, the untestable share (the
+  observations in cells too thin to test, what the default `target` reads), the
+  median MDE of the testable cells and the transition mass retained, and with
+  `target_delta` the users needed (two series: the multiple at which half of the
+  testable cells detect it, and the one at which 90 % of the cells are
+  testable). A step that creates artificial transitions (compressed edges no
+  original direct transition maps to) is marked with a red ring; the chosen
+  step with a dark ring.
+- **the step slider**: picks a step of the path; the chosen step (by `target`,
+  or `step`) is where it starts. It moves in the browser without a recompute,
+  also in a static export.
+- **the mapping table** at that step: every event, its action (`keep`,
+  `merge`, `drop`, `other`), its new label, the step that set it and the reason
+  in words; by default only the events whose label changed.
+- **before and after**: the vocabulary, cells, testable cells, untestable
+  share, median MDE, mass retained and artificial transitions at step 0 and at
+  the selected step.
+
+With `by`, a selector switches between the segments' plans and the header shows
+the segment's homogeneity (effective vocabulary, transition entropy,
+distinct-path share). The plan is chosen without reading the arms; apply the
+plan of a step with
+`stream.compress_events(stream.ab_compression_data(..., step=k))`.
+
+The sidebar edits `screen`, `min_path_share`, `chain_threshold`, `max_events`,
+`target` and `target_delta`, and every change recomputes; the other arguments are fixed at
+construction and shown read-only there. Switching the screen sets aside
+`edge_weight` / `max_steps` of the other one.""",
+        [
+            (
+                "Parameters",
+                _co_sections.get("Parameters", "")
+                + """
+height : int, default 640
+    Widget height in pixels.
+sidebar_open : bool, default True
+    Whether the sidebar starts open.
+state_file : str, optional
+    JSON file the widget state is bound to; see
+    [Saving widget state](/docs/widgets#saving-widget-state). It keeps the data
+    parameters and the view (the selected step, the table filter, the segment);
+    `diff` and the `assignment` table are passed again when you reopen the
+    widget.""",
+            ),
+            (
+                "Examples",
+                """    diff = ("exp_group", "treatment", "control")
+    stream.ab_compression(diff, assignment=assignment, keep=["quick_add"])
+
+    # the step screen's plan, capped at 10 events
+    stream.ab_compression(diff, "steps", max_steps=8, max_events=10,
+                          assignment=assignment)""",
+            ),
+            (
+                "See Also",
+                """get_ab_compression : The plan as a DataFrame (`ab_compression_data` is its alias).
+compress_events : Apply a plan.
+ab_transitions : The transition screen, with its "Data needed" view.
+ab_steps : The step screen, with its "Data needed" view.""",
+            ),
+        ],
+    )
+    del _co_summary, _co_sections, _co_title, _co_rest
+
     del _tr_summary, _tr_sections, _tr_title, _tr_rest
     del _st_summary, _st_sections, _st_title, _st_rest
     del _MATRIX_ENCODING, _MATRIX_DISPLAY, _TABLE_STYLED

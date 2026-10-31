@@ -16,9 +16,10 @@ stream.cluster_analysis()
 stream.ab_test()
 stream.ab_transitions(diff)
 stream.ab_steps(diff)
+stream.ab_compression(diff)
 ```
 
-All parameters are optional, except the arms (`diff`) of the two A/B matrices. You can call any other widget without arguments and configure it interactively using the sidebar that appears on the right side of the widget.
+All parameters are optional, except the arms (`diff`) of the A/B matrices and of the compression widget. You can call any other widget without arguments and configure it interactively using the sidebar that appears on the right side of the widget.
 
 ## Common parameters
 
@@ -105,6 +106,7 @@ Headless methods follow the naming pattern `<widget>_data()`:
 | `stream.ab_test()` | [`stream.ab_test_data()`](/docs/widgets/ab-test#headless-mode) — alias of [`get_ab_test()`](/docs/tools/get-ab-test), the name the A/B docs use |
 | `stream.ab_transitions(diff)` | [`stream.ab_transitions_data(diff)`](/docs/widgets/ab-transitions#headless-mode) — alias of [`get_ab_transitions()`](/docs/tools/get-ab-transitions) |
 | `stream.ab_steps(diff)` | [`stream.ab_steps_data(diff)`](/docs/widgets/ab-steps#headless-mode) — alias of [`get_ab_steps()`](/docs/tools/get-ab-steps) |
+| `stream.ab_compression(diff)` | [`stream.ab_compression_data(diff)`](/docs/widgets/ab-compression#headless-mode) — alias of [`get_ab_compression()`](/docs/tools/get-ab-compression) |
 
 ```python
 # Get transition matrix as a DataFrame
@@ -154,7 +156,17 @@ interval, and a wide outline for the test (black when the adjusted p-value is
 below alpha, grey with a cross when it is not, dashed when the cell was not
 tested). [`get_ab_transitions_table`](/docs/tools/get-ab-transitions-table) and
 [`get_ab_steps_table`](/docs/tools/get-ab-steps-table) return the same cells as a
-table for `to_csv` / `to_excel`.
+table for `to_csv` / `to_excel`. Their **Data needed** view shows how much data
+each cell needs (its MDE, or the users it needs for a target effect, with the
+untested cells hatched and the screen's curve against the users), from
+[`get_ab_transitions_power`](/docs/tools/get-ab-transitions-power) and
+[`get_ab_steps_power`](/docs/tools/get-ab-steps-power).
+
+[`stream.ab_compression(diff)`](/docs/widgets/ab-compression) draws the plan of
+[`get_ab_compression`](/docs/tools/get-ab-compression): a smaller vocabulary for
+a screen too sparse to test, chosen without the arms, step by step (the path
+chart, a slider over its steps, the mapping at each), applied with
+[`compress_events`](/docs/data-processors/compress-events).
 
 ## Exporting to HTML
 

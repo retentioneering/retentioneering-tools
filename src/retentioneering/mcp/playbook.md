@@ -230,6 +230,24 @@ times counts once. For a per-visit figure, carve out the subpopulation with
    compare transitions, not the arms. The intervals are per row, not simultaneous.
    Never filter on post-exposure behaviour (`filter_paths` on a later event) before
    the screen: the arms stop being comparable.
+   A screen with many `insufficient_data` rows (`n_untested`) is short of data, not
+   of effects. `get_ab_transitions_power` / `get_ab_steps_power` say how many paths
+   each row needs to be tested (`scale_to_test`) and the median `mde` per multiple
+   of the paths (`curve`): sizing for a NEW test, never a reason to run this one
+   longer. `get_ab_compression(diff=[...], screen="transitions" | "steps",
+   keep=[the treatment's own events, the metric's events])` proposes a smaller
+   vocabulary (chains merged, rare events relabelled `other` or dropped) chosen
+   without the arms; pass its `preprocessor` in `local_preprocessors` of the screen
+   (with `by` there is none: each segment's plan is for a session of that segment
+   alone). Arm blindness is a safeguard, not a guarantee of the screen's false
+   discovery rate: report the compressed screen as exploratory. Fix the plan
+   before reading that screen, and never choose a step by its verdicts. Quote `reading`; say when the chosen step is 0 (the cells too thin
+   to test hold almost none of the observations: the vocabulary already suits the
+   data). With `max_events` the plan merges direct neighbours, in labels of at
+   most `max_group_size` events, rather than dropping frequent events; when it
+   stops short of the cap it warns: report it, never force the cap. Read the
+   merged labels (`members`) before applying the plan; `target_delta` adds how
+   many users each vocabulary size needs.
 7. Finish: `export_report` needs at least one tab, and the numbers-only tools
    register none. Add the scorecard as a tab with `add_ab_test(label=..., same
    arguments)` (or an `add_segment_overview` by arm) before `check_analysis` and

@@ -9,3 +9,5 @@ export const SIGNIFICANT_BORDER = "#111827";
 export const MAIN_TEXT = "#111827";
 export const MUTED_BORDER = "#d1d5db";
 export const UNTESTED_TEXT = "#9ca3af";
+export const NEED = "217, 119, 6";
+export const HATCH = "#cbd5e1";

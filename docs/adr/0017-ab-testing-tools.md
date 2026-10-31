@@ -286,3 +286,215 @@ The MCP server is unchanged: ADR-0009 asks that renames reach the server and
 that tool results stay compact; nothing is renamed, and the screens' MCP tools of
 the getters' names already return compact summaries. A report tab for the
 matrices is not part of this change.
+
+## Amendment (2026-10): data sufficiency and vocabulary compression
+
+The screens are data-hungry: every edge (cell) is its own test, a row below
+`min_support` is not tested, and the family grows with the vocabulary. Two answers
+are added, all in the A/B group except one general processor.
+
+**C1 — how much data a screen needs.** `get_ab_transitions_power` and
+`get_ab_steps_power` take the screens' arguments plus `scale` (multiples of the
+current paths, both arms alike; 1 always included) and `target_delta`, and return
+one row per (row of the screen, scale). The projection is the screen's own
+machinery with the paths multiplied: the support rule on the projected pooled
+support (`supported`), the family `m` at that scale, and the `mde` at
+`alpha / m` (the screen's MDE level: Bonferroni, conservative for BH, which never
+rejects below `alpha / m`) with the standard error scaled by `1 / sqrt(scale)` —
+the pooled share at the projected arm sizes for a z-test row, `delta_se /
+sqrt(scale)` for a Welch or bootstrapped row. At `scale=1` every number equals the
+getter's (tested). *Support is not inference* (a review round): each row has an
+`inference` status, the same at every scale — `tested`; `projectable` (untested,
+its spread known to exist: a z-test row or a positive `delta_se`);
+`unknown_spread` (untested, no spread estimated now, not provably constant);
+`no_spread` (provably constant: a standard error of 0, a share every path has or
+none does, or a value in [0, 1] at 0 or 1 in each arm — a ratio of sums at 1 means
+every path's own ratio is 1); `no_estimate` (it passes the rule now and is still
+untested, or an arm has no value). `testable` is a nullable boolean: True when
+supported and tested or projectable, NA when supported with an unknown spread,
+False otherwise; the family `m` counts the supported rows that are tested,
+projectable or of unknown spread (unknown rows count, so the level stays
+conservative; rows that can never be tested do not). Before, a rare constant ratio
+became `testable=True` at a larger scale and enlarged the family. With
+`target_delta`, the paths per arm a row needs are solved with the *projected
+family* (`attrs["sizing_basis"] = "projected_family"`): every MDE is separable,
+`F(m) * base / sqrt(scale)` with `F(m)` the normal factor at `alpha / m` and
+`base` the row's standard error now, the family is a step function of the scale
+(`family_steps`, breaking at the rows' `scale_to_test`), and `solve_scale_needed`
+returns the smallest scale, never below the row's `scale_to_test`, from which
+the MDE stays at or below the target (a total, not an additional multiple; the same at
+every scale of a row). Plugging it back into `scale` meets the target with the
+family there. The first version kept the family of the displayed scale: on a toy
+with a common edge and ten rare branches it asked for 2,231 users per arm, at which
+the family grew from 4 to 24 rows and the MDE was 5.87 pp instead of 5; the solver
+asks for 3,073. A size that reaches the target just before a breakpoint and misses
+it after is not returned, so a larger sample keeps the target. `attrs["curve"]` sums each scale up (cells, supported, unknown
+spread among them, testable, family, MDE median and quartiles, no spread and no
+estimate, share reaching the target). A path is one `path_col`: the texts say
+"paths", with the unit named (`unit_of_paths` through MCP).
+The projection assumes the same path composition, and the docs say it sizes a new
+test, never a longer run of this one. The matrix widgets get a **Data needed**
+view (the cell background the MDE or the users a target needs, untested cells
+hatched with `×k to test`, the curve as two small panels — testable cells and
+median MDE against the users, never one chart with two scales); its colours are
+constants of `tools/ab_tables.py`, generated into the widget like the delta
+encoding. The payload carries the curve and, per row, `scale_to_test`,
+`inference` and the base spread, plus the family step function (`breakpoints`,
+`sizes`, `factors`, `factor_now`); the paths a target needs are solved in the
+browser by `scaleNeeded`, the same arithmetic as `solve_scale_needed` (pure
+arithmetic, no statistics; a shared fixture of the Python solver's numbers tests
+both), so the target is view state and needs no recompute.
+
+**C2 — a smaller vocabulary, chosen without the arms.**
+`get_ab_compression(diff, screen="transitions" | "steps", ...)` returns a plan:
+one row per event (`action` keep / merge / drop / other, the new `label`, the
+evidence and a `reason` in words) and, in `attrs["path"]`, the greedy path — one
+operation per step with the screen's numbers after it (vocabulary, cells,
+testable and untestable cells, median MDE, transition mass retained, artificial
+transitions). The operations: merge a chain (`P(next)` and `P(prev)` both at least
+`chain_threshold`); drop a rare event when the screen's bridge rule holds, else
+relabel it `other`; merge synonyms (Jensen–Shannon distance of the in- and
+out-transitions, no self-loops of their own) only when one is thin and the merge
+leaves fewer untestable cells and loses no testable one. `keep` events,
+`path_start` / `path_end` and a declared `edges=` family are never touched.
+
+Arm-blind: every statistic is pooled; the plan reads the two arm sizes (for the
+MDE) and never a path's arm, so permuting the arms or swapping them in `diff`
+leaves it identical (tested). Choosing the vocabulary from arm differences would be
+selection on the outcome. Arm blindness is a safeguard, not a proof of BH
+validity: independent filtering (Bourgon, Gentleman and Huber, 2010) covers
+dropping hypotheses on a statistic independent of the test under the null, while
+a plan also merges and relabels events, moves step positions and changes the
+dependence between cells, and the screen's tests are approximate. The docs call
+the compressed screen exploratory and point to a vocabulary fixed on other data
+(earlier paths, a held-out split of the units) for a confirmatory reading; a
+calibration study under global and mixed nulls is open work. The plan's statistics read each path's whole window,
+not the first `max_steps` steps: the plan applies to the stream.
+
+Deviations from the first design, with their reason:
+
+- `target="testable"` maximises the *count* of testable cells (ties: the fewest
+  untestable cells, the lowest median MDE, the earliest step), not their share: a
+  share rewards a tiny vocabulary with few cells, all testable. It is no longer
+  the default (C7).
+- Synonym merges are gated: one member must be thin (at least half of the paths
+  through its cells in untestable cells) and the merge must reduce the untestable
+  cells without losing a testable one. Ungated, two well-measured events with
+  similar neighbours (`catalog` and `search`) merged and lost real cells.
+- `screen=` takes the other screen's arguments as an error (`max_steps` with
+  `"transitions"`, `edge_weight` / `edges` with `"steps"`), not silently.
+
+**C3 — one plan per screen.** The transition screen wants fewer, richer edges
+and no invented transition: a rare event is dropped only when, for
+`bridge_threshold` of its runs, the events around it already follow each other
+directly in at least `min_support` paths; chains come first. The step screen
+wants aligned steps: a rare event is dropped when it is an insertion (the paths
+without it go from the event before to the event after directly at least as
+often as through one other event), which realigns the later steps; otherwise it
+becomes `other`, which keeps every position; rare events come first, chains last.
+On Northwind with `min_path_share=0.1`, `support_chat` is dropped by the
+transitions plan and relabelled by the steps plan (a test pins the reason).
+
+**C4 — homogeneity.** `by=<segment fixed before exposure>` builds a plan per
+segment (the segment column on every row, `chosen_step` and `mappings` per
+segment), with `attrs["homogeneity"]` per segment: effective vocabulary
+`exp(entropy)`, transition entropy, distinct-path share, and the numbers before
+and after. The pre-exposure rule is the scorecard's: `by_pre_exposure=True`, or
+the recipe shows it; otherwise it warns. Within a segment the arm sizes are the
+segment's paths split in the experiment's arm ratio, so the plan reads no arm.
+
+**C5 — applying a plan.** `compress_events(plan)` is a general data processor (a
+verb, ADR-0008) and adds no transformation: it is `edit_events(delete, rename)`
+followed by `collapse_events(loops=[merged labels])` (ADR-0003: a new stream, the
+step in the recipe, a plan frame recorded as its rows). It takes the plan frame,
+its records, or a `{event: label | None}` mapping. The compressed stream's
+screens reproduce the plan's step in `attrs["path"]` (tested on every step of a
+toy stream and on Northwind).
+
+**C6 — the widget and MCP.** `ab_compression(diff, screen, ...)` with the twin
+`ab_compression_data` (an alias of `get_ab_compression`) draws the path as
+panels sharing the vocabulary axis (testable cells, the observations too thin to
+test, median MDE, mass retained, and with `target_delta` the users needed;
+artificial steps ringed), a step slider, the mapping at the selected step and the
+numbers before and after. The payload holds every step (per event, the steps at
+which its label changes), so the slider works in a static export. The matrix and
+compression widgets share one base (`widgets/_ab_widget.py`). Through MCP,
+`get_ab_transitions_power`, `get_ab_steps_power` and `get_ab_compression` are
+compact-result tools (ADR-0009): the curve and the rows nearest to testable; the
+plan's numbers before and after, the path up to the chosen step, the changed
+events and a ready `compress_events` step for `local_preprocessors`.
+`compress_events` is a documented preprocessor.
+
+**C7 — the information, not the cells; merges under a cap (2026-10, a review
+round).** Four changes after a run on a sparse 115-event simulated store, where
+the default plan was a no-op (step 0) although 33 steps cut the untestable edges
+from 332 to 226 with no artificial transition, and a cap of 40 events dropped
+frequent checkout events with six artificial transitions:
+
+- *The default target reads the information.* Every step records
+  `untestable_share`: the share of the screen's observations (path × cell
+  incidences, the screen's own weight: paths for `"unique_paths"` edges and step
+  cells, transitions for the count weights) in cells too thin to test (below
+  `min_support` paths; a cell that nearly every path has fails the support rule
+  on the other side, no merge can help it, and it does not count). The default
+  `target="untestable_share"` takes the earliest step within a tolerance of the
+  path's lowest share (10 % of it, and at least 0.0001 of the observations),
+  among the steps with the fewest artificial transitions (normally none). A cell
+  count misjudged chains: merging `A -> B`, where `B` always follows `A`,
+  removes a testable cell that carries nothing `A` does not. `"testable"` and
+  `"mde"` remain options.
+- *Under a cap, the cheapest merge of direct neighbours, in small groups.*
+  With `max_events`, once no other operation applies, each step takes the
+  cheapest admissible candidate among: the strongest chain pair left
+  (`min(P(next), P(prev))` at least 0.5), the closest synonym pair within
+  `synonym_threshold`, and each of the three rarest events that have an
+  admissible neighbour with each of its three closest ones (`operation =
+  "merge_neighbour"`). A merge is admissible when its label holds at most
+  `max_group_size` events (default 5, a bound on every merge of the plan) and,
+  but for synonyms, the two are neighbours in the maintainers' sense, "direct
+  transitions between them for many users": a direct transition between them, in
+  at least `min_support` paths, carries at least 30 % of the runs of one of them
+  (`NEIGHBOUR_FLOOR`). A similar context alone is no reason to merge. The cost
+  of a merge is the events it loses, the runs of the merged label that hide which
+  of the two happened (the runs not of the pair's most common composition) plus
+  the repeats its collapsed runs erase, times the merged label's size minus one,
+  so two medium groups win over one growing group. A frequent event (at least
+  `min_path_share` of the paths) is never dropped or relabelled `other`: when no
+  admissible merge is left the path stops, and the plan takes the smallest
+  vocabulary reached with the "no step reaches max_events" warning. A label of
+  three events or more longer than 40 characters is written `first+…+last (k)`
+  (unique; the plan and the path carry the full `members`). The first version
+  of this round had no adjacency floor and no bound: on the 115-event store a
+  cap of 40 built a 17-event label joining `order_success` with help, FAQ and
+  app-open events, the "strange artificial" representation this rule prevents.
+- *No drop invents a transition.* On both screens, a drop that would join two
+  events that never follow each other directly (in the stream with the event
+  removed; collapsible repeats and emptied paths aside) becomes `other`, with the
+  count in the reason.
+- *How much data each vocabulary needs.* `target_delta=` adds two path columns
+  computed by the power machinery of C1 at each step: `median_scale_needed` (the
+  median over the testable cells of their `scale_needed`, solved by
+  `solve_scale_needed` with the step's projected family) and
+  `scale_to_test_90` (the multiple at which 90 % of the cells pass the support
+  rule). At step 0 they equal `get_ab_*_power` (tested). The widget draws them as
+  one panel on a log scale, solid and dashed, with a legend.
+
+Measured: on the bundled experiments every default plan keeps the stream as it
+is (their thin cells hold less than 0.01 % of the observations); no plan, capped
+or not, creates an artificial transition. On Northwind, `max_events=10` with
+`keep=["quick_add", "cart"]` now merges the checkout chain and three pairs of
+direct neighbours (`support_chat+home`, `wishlist_add+collections_view`,
+`product_view+reviews_view`) and drops nothing: 56 of 57 edges testable (90 of 92
+before), mass retained 0.895 (0.755 when four events were dropped), median MDE
+2.67 pp (2.52), the planted edges found under their new labels. On the 115-event store with 40,000
+users the default plan compresses: the transition screen at step 35 of 38 (115
+→ 81 events, 332 → 195 untestable edges, the thin edges' share of the
+observations 0.160 % → 0.112 %), the step screen at step 22 (52 → 30 untestable
+cells); with `max_events=40` both screens reach 40 events with no artificial
+transition, no frequent event dropped and no label of more than 5 events (mass
+retained 0.753 and 0.755). On
+40,000 and 200,000 simulated users of a 79-event store, the projection from
+40,000 to ×5 predicted 1,386 testable edges at a median MDE of 0.106 pp, and the
+200,000-user sample had 1,375 at 0.106 pp; there the default plan takes the
+transition screen to 67 events (264 → 213 untestable edges) and the step screen
+to 64 (61 → 29 cells), with no artificial transition.

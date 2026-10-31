@@ -39,6 +39,7 @@ This is deliberate. A typo in an event name would otherwise turn into a filter t
 - [`rename_events`](/docs/data-processors/rename-events) — rename events using a mapping dict.
 - [`edit_events`](/docs/data-processors/edit-events) — rename and/or delete events in a single operation.
 - [`collapse_events`](/docs/data-processors/collapse-events) — merge a run of events — a self-loop, a group of related events, a column's runs — into a single representative event.
+- [`compress_events`](/docs/data-processors/compress-events) — apply a vocabulary plan (from `get_ab_compression`, or a mapping): drop, relabel and merge events in one step.
 - [`urls_to_events`](/docs/data-processors/urls-to-events) — turn a raw URL column into structured event names using a URL path tree.
 
 ### Filtering, truncating & sampling

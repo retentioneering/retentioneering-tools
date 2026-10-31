@@ -1,0 +1,37 @@
+{% extends "_tool_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+The step screen of [`get_ab_steps`](/docs/tools/get-ab-steps) tests every cell
+`(event, step)`: a cell is tested when its pooled support (paths with the event
+at the step, and paths without it) reaches `min_support`, and the family is
+every tested cell. This getter runs `get_ab_steps` with the same arguments and
+projects every cell to `scale` times the current paths, as
+[`get_ab_transitions_power`](/docs/tools/get-ab-transitions-power) does for the
+edges: the projected support decides whether a cell passes the support rule
+(`supported`), the cells that pass it at a scale form its family `m`, and the
+`mde` is the cell's pooled z-test MDE at the projected arm sizes and the
+Bonferroni level `alpha / m` (conservative for Benjamini-Hochberg). Every cell is
+a 0/1 per-path share, so its spread is known at any size (`inference` is
+`"projectable"` for a rare cell; a cell that every path has, or none, is
+`"no_spread"` and never testable), and its MDE falls as `1 / sqrt(scale)` while
+the family stays the same. At `scale=1` every number is the getter's. With
+`target_delta`, the paths a cell needs are totals, solved with the family
+projected at that size (`sizing_basis = "projected_family"`), and a path is one
+`path_col`.
+
+On `load_ab_test()` with `max_steps=8`, all 93 cells are testable and their
+median MDE is 1.67 pp. A quarter of the users would leave 3 cells untested and
+double the median MDE (3.40 pp); with `target_delta=0.01`, 14 % of the cells can
+detect a 1 pp effect now, 60 % with four times the users and 98 % with sixteen.
+
+The step screen usually needs fewer users than the transition screen of the same
+stream: a path has one event per step, so a step's cells split the paths over
+the vocabulary only, where the edges split them over its pairs. Its cells thin
+out at later steps instead, as the paths end. The projection assumes the same
+path composition, and sizes a new test; it is not a reason to run this one
+longer. The [A/B Steps](/docs/widgets/ab-steps) widget draws it in its **Data
+needed** view.
+
+{% endblock %}

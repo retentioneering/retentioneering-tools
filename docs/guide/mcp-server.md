@@ -84,6 +84,8 @@ See also [Agent Skills](/docs/agent-skills) — instruction packages for coding 
 | `get_ab_test(diff, metrics, strata_col, period, correction, ...)` | Scorecard of an experiment: per metric the delta with its interval, the p-value, the minimum detectable effect and a verdict (`inconclusive` is not "no effect"); the top three strata and per-period rows on request. Numbers only. |
 | `get_ab_transitions(diff, edge_weight, edges, horizon, correction, ...)` | Screen of every transition-graph edge between two arms: per edge the delta with its interval and a p-value adjusted over the tested edges (Benjamini–Hochberg by default); counts per verdict and the top rows. Exploratory, after the scorecard. Numbers only. |
 | `get_ab_steps(diff, max_steps, horizon, correction, ...)` | The same screen over the step-matrix cells (event at step k). Numbers only. |
+| `get_ab_transitions_power(diff, edge_weight, scale, target_delta, ...)` / `get_ab_steps_power(diff, max_steps, ...)` | How much data a screen needs: per multiple of the users, the testable rows and their median MDE, and the rows nearest to being testable (or to `target_delta`). Sizing for a new test. Numbers only. |
+| `get_ab_compression(diff, screen, keep, max_events, ...)` | A smaller vocabulary for a sparse screen, chosen without the arms: the numbers before and after the chosen step, the changed events with their reasons, and a ready `compress_events` step for `local_preprocessors`. Numbers only. |
 | `check_analysis(analysis)` | Validate analysis text before export. |
 | `export_report(title, analysis, path)` | Generate a self-contained HTML report. |
 

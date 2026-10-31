@@ -1,0 +1,81 @@
+{% extends "_tool_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+A transition screen tests every edge on its own: an edge with fewer than
+`min_support` supporting paths (or non-supporting ones, for a share) is not
+tested, and the family the p-values are adjusted over is every tested edge. The
+more events a stream has, the more edges share the same users, and the more of
+them are too thin to test. This getter answers the question before the screen is
+read: how many users would it take?
+
+It runs [`get_ab_transitions`](/docs/tools/get-ab-transitions) with the same
+arguments and projects every edge to `scale` times the current paths, the same
+multiple in both arms:
+
+- **the support rule** is the screen's, on the projected pooled support: an
+  edge with 8 supporting paths at `min_support=10` passes it at `×1.25`
+  (`supported`, `scale_to_test`);
+- **support is not inference.** Passing the rule does not give an edge a spread
+  it does not have, so every edge also has an `inference` status, the same at
+  every scale. A tested edge, or an untested one whose spread is known (a share
+  of the paths, or a positive `delta_se`), is `"projectable"`: `testable` once it
+  passes the rule. A transition probability of 1 in both arms (every path that
+  leaves `A` goes to `B`) is `"no_spread"`: each path's own ratio is 1, so more
+  paths of the same mix keep it constant, and it is never testable. So is an
+  edge with a standard error of 0. An edge that passes the rule now and is still
+  untested, or with no value in an arm, is `"no_estimate"`. A rare edge the
+  getter has no spread for (a bootstrap with too many replicates without its
+  denominator) is `"unknown_spread"`: more paths may or may not make it testable,
+  and `testable` is NA (unknown) once it passes the rule;
+- **the family** at a scale is the number of edges that pass the rule there and
+  are tested, projectable or of unknown spread: an unknown edge counts, so the
+  level stays conservative, and one that can never be tested does not. The
+  `mde` is computed at its Bonferroni level `alpha / m` (`mde_alpha`). That is
+  the screen's own MDE level, and it is conservative for Benjamini-Hochberg,
+  which rejects the k-th smallest p-value at `alpha * k / m`, never below
+  `alpha / m`;
+- **the MDE** is the getter's own computation with the standard error scaled by
+  `1 / sqrt(scale)`: the pooled share and the projected arm sizes for a share
+  (`unique_paths`), the Welch standard error for `avg_per_path`, the bootstrap
+  standard error for the conditional weights. At `scale=1` every number is the
+  getter's.
+
+With `target_delta` (an absolute effect in the screen's units: `0.01` is 1 pp
+of the paths), each edge also gets the paths per arm it needs to be tested with
+an `mde` that reaches the target (`scale_needed`, never below `scale_to_test`),
+and the curve the share of testable edges that reach it. The paths needed are
+totals, not additional paths, and they are solved with the family **projected
+at that size** (`attrs["sizing_basis"] = "projected_family"`): more paths make
+more edges pass the rule, the family grows, its level falls and every MDE rises
+a little, so a size computed with today's family can miss its own target. Every
+MDE is `F(m) * base / sqrt(scale)`, the factor of the family's level times the
+edge's standard error now; the family is a step function of the scale, and the
+answer is the smallest size from which the MDE stays at or below the target.
+Plugging `scale_needed` back into `scale` gives an `mde` that reaches it. On a
+toy with 200 users, a common edge and ten rare branches, a target of 5 pp needs
+3,073 users per arm: the family of 4 edges now would say 2,231, but at that size
+the 20 edges of the ten branches have joined it (24 edges) and the MDE is
+5.87 pp.
+
+A path is one `path_col` (`attrs["path_col"]`): on a session screen, the
+multiples and the paths needed count sessions, not users.
+
+`attrs["curve"]` reads the screen as a whole. On `load_ab_test()` with its
+assignment table (5,000 users per arm), 90 of the 92 edges are testable and the
+median MDE is 2.03 pp; at a quarter of the users, 84 edges are testable at a
+median MDE of 4.30 pp, and at 16 times the users all 92 are, at 0.50 pp. With
+`target_delta=0.01`, 14 % of the testable edges can detect a 1 pp effect now,
+49 % with four times the users and 92 % with sixteen.
+
+The projection assumes **the same path composition**: more users with the same
+mix of behaviours, so the same pooled shares and the same per-path spread. It
+sizes the data a screen needs; it says nothing about the effects the screen
+will find. A larger sample is a new test sized before it starts, not this test
+run longer (peeking). The [A/B Transitions](/docs/widgets/ab-transitions) widget
+draws the same projection in its **Data needed** view, and
+[`get_ab_compression`](/docs/tools/get-ab-compression) is the other way out: a
+smaller vocabulary for the same users.
+
+{% endblock %}

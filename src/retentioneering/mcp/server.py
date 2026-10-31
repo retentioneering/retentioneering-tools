@@ -74,7 +74,8 @@ def serve(
         (a Series path id -> arm, or a DataFrame indexed by path id with column
         `arm` and optionally `assigned_at`). When given, the A/B tools
         (get_sample_ratio, get_ab_test, add_ab_test, get_ab_bootstrap,
-        get_ab_transitions, get_ab_steps) count every assigned path, silent ones included (intention to treat), and `horizon=` /
+        get_ab_transitions, get_ab_steps, get_ab_transitions_power,
+        get_ab_steps_power, get_ab_compression) count every assigned path, silent ones included (intention to treat), and `horizon=` /
         since-assignment periods become available to the agent. The table stays
         in this process; describe() reports its size and arms. Example::
 
@@ -281,11 +282,12 @@ def _build_server(
           collapse_events  filter_paths   filter_events   truncate_paths
           rename_events    edit_events    drop_events     add_events
           to_daily_states  add_segment    drop_segment    add_clusters
-          urls_to_events   sample_paths   split_sessions
+          urls_to_events   sample_paths   split_sessions  compress_events
 
         Analysis tools (called directly, not as a preprocessor step):
           get_conversion_rate  get_sample_ratio  get_ab_test  get_ab_bootstrap
-          get_ab_transitions  get_ab_steps
+          get_ab_transitions  get_ab_steps  get_ab_transitions_power
+          get_ab_steps_power  get_ab_compression
 
         Reference topics:
           report_links   (anchor link syntax for analysis text)
@@ -971,6 +973,232 @@ def _build_server(
             correction,
             ci_level,
             path_col,
+            top,
+            local_preprocessors,
+        )
+        return json.dumps(result, ensure_ascii=False, allow_nan=False)
+
+    @_tool()
+    def get_ab_transitions_power(
+        diff: list,
+        edge_weight: str = "unique_paths",
+        edges: list | None = None,
+        horizon: str | None = None,
+        correction: str = "bh",
+        path_col: str | None = None,
+        scale: list | None = None,
+        target_delta: float | None = None,
+        top: int = 15,
+        local_preprocessors: list | None = None,
+    ) -> str:
+        """
+        How much data the get_ab_transitions screen needs: its edges at other sizes.
+
+        Each edge is its own test: an edge with few supporting paths is not tested,
+        and the family is every testable edge. Projects the screen to `scale` times
+        the current paths (both arms alike): per scale the testable edges and the
+        median mde, per edge the multiple of the paths at which it passes the
+        support rule and its inference status (a constant edge never becomes
+        testable). A path is one unit_of_paths (the path_col). Sizing, not
+        inference: for a NEW test, or to explain a screen full of
+        insufficient_data; never to run this test longer. Numbers only.
+
+        Parameters
+        ----------
+        diff, edge_weight, edges, horizon, correction, path_col, local_preprocessors:
+            As in get_ab_transitions.
+        scale:
+            Multiples of the current paths (default [0.25, 0.5, 1, 2, 4, 8, 16]).
+        target_delta:
+            Optional absolute effect (a share: 0.01 is 1 pp): adds the paths per
+            arm each edge's mde needs to reach it (totals, with the family
+            projected at that size).
+        top:
+            Rows returned (default 15): the edges not testable now (or, with
+            target_delta, not reaching it), nearest first.
+
+        Returns
+        -------
+        JSON with unit_of_paths, n_rows, n_testable, n_never_testable,
+        n_inference, group sizes, curve (per scale: paths per arm, cells,
+        supported, unknown_spread, testable, family_size, mde_alpha, mde_median,
+        mde_q25, mde_q75, no_spread, no_estimate, share_reaching_target), level,
+        inference, sizing_basis, sizing, assumption, scope, listed and top
+        (source, target, pooled_support, supported, inference, testable (null:
+        spread unknown), mde, rel_mde, scale_to_test, *_paths_needed,
+        scale_needed), unit, warnings.
+        """
+        result = tools.get_ab_transitions_power(
+            session,
+            diff,
+            edge_weight,
+            edges,
+            horizon,
+            correction,
+            path_col,
+            scale,
+            target_delta,
+            top,
+            local_preprocessors,
+        )
+        return json.dumps(result, ensure_ascii=False, allow_nan=False)
+
+    @_tool()
+    def get_ab_steps_power(
+        diff: list,
+        max_steps: int = 10,
+        horizon: str | None = None,
+        correction: str = "bh",
+        path_col: str | None = None,
+        scale: list | None = None,
+        target_delta: float | None = None,
+        top: int = 15,
+        local_preprocessors: list | None = None,
+    ) -> str:
+        """
+        How much data the get_ab_steps screen needs: its cells at other sizes.
+
+        As get_ab_transitions_power, for the step-matrix cells (event at step k).
+
+        Parameters
+        ----------
+        diff, horizon, correction, path_col, scale, target_delta, top,
+        local_preprocessors:
+            As in get_ab_transitions_power.
+        max_steps:
+            Steps compared, from 1 (default 10).
+
+        Returns
+        -------
+        JSON as get_ab_transitions_power, with event and step per row (shares, pp).
+        """
+        result = tools.get_ab_steps_power(
+            session,
+            diff,
+            max_steps,
+            horizon,
+            correction,
+            path_col,
+            scale,
+            target_delta,
+            top,
+            local_preprocessors,
+        )
+        return json.dumps(result, ensure_ascii=False, allow_nan=False)
+
+    @_tool()
+    def get_ab_compression(
+        diff: list,
+        screen: str = "transitions",
+        edge_weight: str | None = None,
+        max_steps: int | None = None,
+        edges: list | None = None,
+        horizon: str | None = None,
+        min_path_share: float = 0.01,
+        chain_threshold: float = 0.8,
+        synonym_threshold: float = 0.1,
+        bridge_threshold: float = 0.9,
+        max_events: int | None = None,
+        max_group_size: int = 5,
+        target: str | float = "untestable_share",
+        step: int | None = None,
+        keep: list | None = None,
+        other: str = "other",
+        by: str | None = None,
+        by_pre_exposure: bool | None = None,
+        correction: str = "bh",
+        path_col: str | None = None,
+        target_delta: float | None = None,
+        top: int = 15,
+        local_preprocessors: list | None = None,
+    ) -> str:
+        """
+        Propose a smaller event vocabulary for an A/B screen, chosen without the arms.
+
+        When get_ab_transitions / get_ab_steps leave many rows insufficient_data,
+        a smaller vocabulary makes more rows testable on the same data: merge
+        chains, relabel rare events to `other` or drop them, merge thin synonyms,
+        one step at a time; `target` picks the step. Arm-blind (pooled paths and
+        arm sizes only): a safeguard against tuning the plan to the arms, not a
+        guarantee of the compressed screen's false discovery rate, so report that
+        screen as exploratory. Apply the returned preprocessor (it names its
+        path_col) in local_preprocessors of the screen; with by there is no ready
+        preprocessor (see scope). Fix the plan BEFORE reading that screen.
+
+        Parameters
+        ----------
+        diff, horizon, correction, path_col, local_preprocessors:
+            As in get_ab_test.
+        screen:
+            "transitions" (default) or "steps".
+        edge_weight, edges:
+            The transitions screen's; refused with screen="steps".
+        max_steps:
+            The steps screen's (default 10); refused with "transitions".
+        min_path_share, chain_threshold, synonym_threshold, bridge_threshold:
+            Rare below this share of paths (0.01); chain when P(next) and P(prev)
+            reach 0.8; synonyms within Jensen-Shannon distance 0.1; drop a rare
+            event when its neighbours join faithfully (0.9), else relabel it.
+        max_events:
+            Optional: compress until at most this many events; above it each step
+            takes the cheapest merge of two neighbours (a direct transition
+            between them carries 30 % of the runs of one); a frequent event is
+            never dropped or relabelled, so the path may stop short of the cap.
+        max_group_size:
+            The most events one merged label may hold (default 5).
+        target:
+            "untestable_share" (default: the earliest step whose observations in
+            cells too thin to test are near their lowest, without artificial
+            transitions; a dense screen stays at step 0), "testable", "mde" or a
+            number (the first step whose median mde reaches it).
+        step:
+            Optional: the plan at this step of the path instead.
+        keep:
+            Events never changed: the treatment's own and the metric's events.
+        other:
+            Label of relabelled rare events (default "other").
+        by, by_pre_exposure:
+            One plan per segment fixed before exposure.
+        target_delta:
+            Optional effect to detect: adds per step median_scale_needed and
+            scale_to_test_90 (multiples of the users).
+        top:
+            Changed events returned per segment (default 15).
+
+        Returns
+        -------
+        JSON with screen, population, group sizes, target, arm_blind, unit,
+        warnings and segments: chosen_step, steps, before / after (vocabulary,
+        cells, testable, untestable, untestable_share, median_mde, mass_retained,
+        artificial_transitions), reading (quote it), homogeneity, path (to one
+        step after the chosen), n_changed, changes (event, action, label, members,
+        step, operation, path_share, reason) and preprocessor (compress_events
+        with path_col; null with by, where plan, scope and apply say how to use
+        the segment's plan, and with status "no_events_in_window").
+        """
+        result = tools.get_ab_compression(
+            session,
+            diff,
+            screen,
+            edge_weight,
+            max_steps,
+            edges,
+            horizon,
+            min_path_share,
+            chain_threshold,
+            synonym_threshold,
+            bridge_threshold,
+            max_events,
+            max_group_size,
+            target,
+            step,
+            keep,
+            other,
+            by,
+            by_pre_exposure,
+            correction,
+            path_col,
+            target_delta,
             top,
             local_preprocessors,
         )

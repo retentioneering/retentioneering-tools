@@ -18,10 +18,13 @@ import {
 } from "./widget-utils";
 import {
   type CellStatus, type IntervalKind, type MatrixPayload, type MatrixRow, type SignificanceFilter, type SortKey,
-  axisStats, cellBackground, cellId, cellLook, cellStatus, cellText, crossImage, deltaSign, familyText,
-  fmtArmValue, fmtP, fmtSigned, decimalsFor, indexRows, intervalNote, intervalOf, keepsSignificance,
-  orderKeys, parsePayload, populationText, readingHint, scaleMax, unitInfo,
-  MATRIX_BLUE, MATRIX_RED, MAX_ALPHA, OUTLINE_BLACK, OUTLINE_WIDTH, TEXT_MUTED,
+  type ViewMode, type PowerInfo,
+  axisStats, cellBackground, cellId, cellLook, cellStatus, cellText, crossImage, curveGeometry, deltaSign, familyText,
+  fmtArmValue, fmtP, fmtSigned, fmtTimes, decimalsFor, hatchImage, indexRows, intervalNote, intervalOf, keepsSignificance,
+  inferenceText, mdeScaleMax, needBackground, needOf, needText, orderKeys, parsePayload, pathUnitText, populationText,
+  powerCell, readingHint, scaleMax, unitInfo,
+  HATCH_COLOR, MATRIX_BLUE, MATRIX_RED, MAX_ALPHA, NEED_HUE, NEED_MAX_TIMES, OUTLINE_BLACK, OUTLINE_GREY, OUTLINE_WIDTH,
+  TEXT_MUTED,
 } from "./ab_matrix_encoding";
 
 export type Kind = "transitions" | "steps";
@@ -68,6 +71,9 @@ export interface View {
   cell_size: string;
   visibility: Record<string, { isHidden: boolean; isPinned: boolean }>;
   reading_hint: boolean;
+  view_mode: ViewMode;
+  /** The "data needed" view's goal in the frame's units; 0 = none. */
+  target_delta: number;
 }
 
 function readView(host: RenderContext["host"]): View {
@@ -83,6 +89,8 @@ function readView(host: RenderContext["host"]): View {
     cell_size: (get("cell_size") as string) || "auto",
     visibility: parseJson(get("event_visibility"), {}),
     reading_hint: bool(get("reading_hint"), true),
+    view_mode: get("view_mode") === "data_needed" ? "data_needed" : "delta",
+    target_delta: Math.max(0, Number(get("target_delta")) || 0),
   };
 }
 
@@ -171,8 +179,8 @@ const TipLine = ({ label, value, color }: { label: string; value: React.ReactNod
   </div>
 );
 
-function Tooltip({ apiRef, payload, kind }: {
-  apiRef: React.MutableRefObject<TipApi | null>; payload: MatrixPayload; kind: Kind;
+function Tooltip({ apiRef, payload, kind, mode, target }: {
+  apiRef: React.MutableRefObject<TipApi | null>; payload: MatrixPayload; kind: Kind; mode: ViewMode; target: number;
 }) {
   const [tip, setTip] = React.useState<TipTarget | null>(null);
   React.useEffect(() => {
@@ -194,6 +202,12 @@ function Tooltip({ apiRef, payload, kind }: {
     empty: "never occurs in either arm (no row in the frame)",
   };
   const g1 = payload.group1_label, g2 = payload.group2_label;
+  const need = row && tip.idx != null
+    ? needOf(row, powerCell(payload.power, tip.idx), payload.alpha, target > 0 ? target : null, payload.power?.family)
+    : null;
+  const pathsAt = (times: number | null) =>
+    `${fmtTimes(times)} (${Math.ceil((row?.group1_paths ?? 0) * (times ?? 0) - 1e-9)} / ${Math.ceil((row?.group2_paths ?? 0) * (times ?? 0) - 1e-9)} paths per arm, in total)`;
+  const targetText = `paths for an MDE of ${fmtSigned(target, decimalsFor(unit, target), unit.scale).replace(/^\+/, "")}${unit.suffix ? ` ${unit.suffix}` : ""}`;
   let body: React.ReactNode = null;
   if (row) {
     const [lo, hi] = intervalOf(row, "per_cell");
@@ -226,6 +240,22 @@ function Tooltip({ apiRef, payload, kind }: {
           <TipLine label="verdict" value={String(row.verdict ?? "n/a")} />
           <TipLine label="test" value={String(row.test ?? "n/a")} />
           {status === "untested" && reason && <TipLine label="why not tested" value={reason} />}
+          {mode === "data_needed" && need && (need.timesFor === "test" || need.timesFor === "support") && (
+            <TipLine label="paths to pass the support rule" value={pathsAt(need.times)} />
+          )}
+          {mode === "data_needed" && need && need.timesFor === "support" && (
+            <TipLine label="testable then" value={inferenceText(need.inference) ?? "unknown"} />
+          )}
+          {mode === "data_needed" && need && target > 0 && (need.timesFor === "target" || need.timesFor === "test") && (
+            <TipLine label={targetText}
+              value={need.forTarget == null ? "n/a" : need.forTarget <= 1 ? "enough now" : pathsAt(need.forTarget)} />
+          )}
+          {mode === "data_needed" && status === "untested" && need && need.timesFor === null && (
+            <TipLine label="paths to become testable" value={inferenceText(need.inference) ?? "more paths of the same mix do not make it testable"} />
+          )}
+          {mode === "data_needed" && need && (
+            <TipLine label="unit" value={`${pathUnitText(payload)}; the family is projected at each size`} />
+          )}
         </div>
         {row.reading && (
           <div data-testid="ab-tip-reading" style={{ marginTop: 8, paddingTop: 6, borderTop: "1px solid #e5e7eb", color: "#374151", lineHeight: 1.45 }}>
@@ -266,11 +296,16 @@ export interface MatrixProps {
   onTogglePin: (key: string) => void;
   onToggleHidden: (key: string) => void;
   tipRef: React.MutableRefObject<TipApi | null>;
+  /** The "data needed" view's MDE scale maximum. */
+  mdeScale?: number;
 }
 
 export const Matrix = React.memo(function Matrix({
   payload, kind, rowKeys, colKeys, index, dimRows, dimCols, scale, view, pinned, onTogglePin, onToggleHidden, tipRef,
+  mdeScale = 0,
 }: MatrixProps) {
+  const needed = view.view_mode === "data_needed" && !!payload.power;
+  const target = view.target_delta > 0 ? view.target_delta : null;
   const unit = unitInfo(payload);
   const size = view.cell_size === "auto" ? (colKeys.length > 24 ? "compact" : "normal") : view.cell_size;
   const compact = size === "compact";
@@ -352,9 +387,38 @@ export const Matrix = React.memo(function Matrix({
                 const idx = index.get(cellId(r, c));
                 const row = idx != null ? payload.rows[idx] : undefined;
                 const status = cellStatus(row, payload.alpha);
+                const dim = dimRow || dimCols.has(c);
+                if (needed) {
+                  const need = needOf(row, powerCell(payload.power, idx), payload.alpha, target, payload.power?.family);
+                  const words = row ? needText(need, unit) : null;
+                  const hatched = !!row && !need.testable;
+                  return (
+                    <td key={c} data-testid="ab-cell" data-row={r} data-col={c} data-step={kind === "steps" ? c : undefined}
+                      data-idx={idx != null ? String(idx) : undefined} data-status={status} data-mode="data_needed"
+                      data-hatched={hatched ? "true" : "false"} data-times={need.times != null ? String(need.times) : undefined}
+                      data-dim={dim ? "true" : "false"}
+                      style={{
+                        width: W, minWidth: W, maxWidth: W, height: H, padding: 0, boxSizing: "border-box",
+                        backgroundColor: row ? needBackground(need, mdeScale, target != null) : "#fff",
+                        backgroundImage: hatched ? hatchImage() : undefined,
+                        outline: hatched ? `1px dashed ${OUTLINE_GREY}` : undefined,
+                        outlineOffset: hatched ? "-2px" : undefined,
+                        borderRight: "1px solid #fff", borderBottom: "1px solid #fff",
+                        textAlign: "center", verticalAlign: "middle", color: hatched ? TEXT_MUTED : "#111827",
+                        opacity: dim ? 0.3 : 1, fontVariantNumeric: "tabular-nums", lineHeight: 1.15, overflow: "hidden",
+                        whiteSpace: "nowrap",
+                      }}>
+                      {words && (!compact || need.testable) && (
+                        <div style={{ fontSize: compact ? 10 : 11 }}>{words.main}</div>
+                      )}
+                      {words && words.times && (!compact || !need.testable) && (
+                        <div data-testid="ab-cell-times" style={{ fontSize: compact ? 9 : 9, color: hatched ? TEXT_MUTED : "#4b5563" }}>{words.times}</div>
+                      )}
+                    </td>
+                  );
+                }
                 const look = cellLook(status);
                 const text = row ? cellText(row, unit, view.interval_kind) : null;
-                const dim = dimRow || dimCols.has(c);
                 return (
                   <td key={c} data-testid="ab-cell" data-row={r} data-col={c} data-step={kind === "steps" ? c : undefined}
                     data-idx={idx != null ? String(idx) : undefined} data-status={status} data-sign={deltaSign(row?.delta)}
@@ -388,6 +452,110 @@ export const Matrix = React.memo(function Matrix({
 });
 
 // ── header and legend ──────────────────────────────────────────────────────
+
+/** The header's curve: the testable cells and the median MDE against the paths,
+ *  in two small panels sharing the x axis (one scale each, never two on one). */
+export function PowerCurve({ power, unit, target, pathCol }: {
+  power: PowerInfo; unit: ReturnType<typeof unitInfo>; target: number | null; pathCol?: string | null;
+}) {
+  const unitText = pathUnitText({ path_col: pathCol ?? null, power });
+  const W = 168, H = 46, PAD = 6;
+  const g = curveGeometry(power.curve, W, H, PAD, target);
+  if (!g.points.length) return null;
+  const now = power.curve.find((p) => p.scale === 1);
+  const top = power.curve[power.curve.length - 1];
+  const suffix = unit.suffix ? ` ${unit.suffix}` : "";
+  const fmtMde = (v: number | null | undefined) =>
+    v == null || !Number.isFinite(v) ? "n/a" : `${(v * unit.scale).toFixed(decimalsFor(unit, v))}${suffix}`;
+  const panel = (which: "testable" | "mde", title: string, valueNow: string, valueTop: string) => (
+    <div key={which} style={{ display: "inline-flex", flexDirection: "column", gap: 2 }}>
+      <div style={{ fontSize: 10, color: "#374151" }}>
+        <b>{title}</b>: {valueNow} now, {valueTop} at ×{top?.scale}
+      </div>
+      <svg width={W} height={H + 12} viewBox={`0 0 ${W} ${H + 12}`} role="img" data-testid={`ab-curve-${which}-panel`}
+        aria-label={`${title} against the paths`} style={{ overflow: "visible" }}>
+        <rect x={0} y={0} width={W} height={H} fill="#f9fafb" stroke="#e5e7eb" />
+        {g.currentX != null && <line data-testid="ab-curve-now" x1={g.currentX} x2={g.currentX} y1={0} y2={H} stroke="#9ca3af" strokeWidth={1} />}
+        {which === "mde" && g.targetY != null && (
+          <line data-testid="ab-curve-target" x1={0} x2={W} y1={g.targetY} y2={g.targetY} stroke="#6b7280" strokeDasharray="3 3" strokeWidth={1} />
+        )}
+        <path data-testid={`ab-curve-${which}`} d={which === "testable" ? g.testablePath : g.mdePath} fill="none"
+          stroke={which === "testable" ? "#374151" : `rgb(${NEED_HUE})`} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+        {g.points.map((p, i) => {
+          const y = which === "testable" ? p.yTestable : p.yMde;
+          if (y == null) return null;
+          const point = power.curve[i];
+          return (
+            <g key={p.scale}>
+              <title>{`×${p.scale} paths: ${point.testable} of ${point.cells} cells testable${point.unknown_spread ? ` (${point.unknown_spread} more of unknown spread)` : ""}, median MDE ${fmtMde(point.mde_median)}`}</title>
+              <circle cx={p.x} cy={y} r={p.scale === 1 ? 4 : 3} fill={which === "testable" ? "#374151" : `rgb(${NEED_HUE})`} stroke="#f9fafb" strokeWidth={1.5} />
+            </g>
+          );
+        })}
+        {g.points.map((p) => (
+          <text key={`t${p.scale}`} x={p.x} y={H + 10} fontSize={8} textAnchor="middle" fill={p.scale === 1 ? "#111827" : "#9ca3af"}>{`×${p.scale}`}</text>
+        ))}
+      </svg>
+    </div>
+  );
+  return (
+    <div data-testid="ab-power-curve" style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 14 }}>
+      {panel("testable", "testable cells", `${now?.testable ?? "?"} of ${now?.cells ?? "?"}`, `${top?.testable ?? "?"}`)}
+      {panel("mde", "median MDE", fmtMde(now?.mde_median), fmtMde(top?.mde_median))}
+      <div style={{ fontSize: 10, color: "#6b7280", maxWidth: 220, lineHeight: 1.4 }}>
+        x: paths in both arms as a multiple of now ({unitText}; grey line: now){target != null ? "; dashed: the target" : ""}.
+      </div>
+    </div>
+  );
+}
+
+/** The switch between the two views. */
+export function ViewSwitch({ mode, onChange, available }: { mode: ViewMode; onChange: (m: ViewMode) => void; available: boolean }) {
+  const btn = (m: ViewMode, label: string) => (
+    <button key={m} data-testid={`ab-view-${m}`} aria-pressed={mode === m} disabled={!available && m === "data_needed"}
+      onClick={() => onChange(m)} style={{
+        border: "1px solid #d1d5db", borderLeft: m === "data_needed" ? "none" : "1px solid #d1d5db",
+        borderRadius: m === "delta" ? "6px 0 0 6px" : "0 6px 6px 0", padding: "2px 10px", fontSize: 11, cursor: "pointer",
+        background: mode === m ? "#111827" : "#fff", color: mode === m ? "#fff" : "#374151",
+      }}>{label}</button>
+  );
+  return <div data-testid="ab-view-switch" style={{ display: "inline-flex", marginBottom: 6 }}>{btn("delta", "Delta")}{btn("data_needed", "Data needed")}</div>;
+}
+
+export function NeedLegend({ payload, kind, mdeScale, view }: { payload: MatrixPayload; kind: Kind; mdeScale: number; view: View }) {
+  const unit = unitInfo(payload);
+  const suffix = unit.suffix ? ` ${unit.suffix}` : "";
+  const target = view.target_delta > 0 ? view.target_delta : null;
+  const what = kind === "transitions" ? `edge weight ${payload.edge_weight}` : `steps 1–${payload.max_steps}`;
+  const item = (node: React.ReactNode, text: string, id: string) => (
+    <span key={id} style={{ display: "inline-flex", alignItems: "center", gap: 6, marginRight: 14 }}>{node}<span>{text}</span></span>
+  );
+  const ramp = (
+    <span style={{ display: "inline-block", width: 90, height: 12, borderRadius: 2, background: `linear-gradient(to right, rgba(${NEED_HUE}, 0), rgba(${NEED_HUE}, ${MAX_ALPHA}))` }} />
+  );
+  const fmt = (v: number) => `${(v * unit.scale).toFixed(decimalsFor(unit, v))}${suffix}`;
+  return (
+    <div data-testid="ab-legend" data-mode="data_needed" style={{ fontSize: 11, color: "#374151", lineHeight: 1.5 }}>
+      <div data-testid="ab-header" style={{ fontSize: 12, color: "#111827", marginBottom: 4 }}>
+        <b>Data needed</b>
+        <span style={{ color: "#6b7280" }}> · {what} · {populationText(payload)} · {familyText(payload)} · power {payload.attrs?.power != null ? `${+(Number(payload.attrs.power) * 100).toFixed(0)}%` : "80%"}</span>
+      </div>
+      {payload.power && <PowerCurve power={payload.power} unit={unit} target={target} pathCol={payload.path_col} />}
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", rowGap: 4, marginTop: 4 }}>
+        {item(ramp, target != null
+          ? `background: paths needed for an MDE of ${fmt(target)}, none at ×1 or less … full at ×${NEED_MAX_TIMES}`
+          : `background: MDE (minimum detectable effect), full at ${fmt(mdeScale)}`, "bg")}
+        {item(
+          <span data-testid="ab-legend-hatched" style={{ display: "inline-block", width: 26, height: 16, backgroundImage: hatchImage(), outline: `1px dashed ${HATCH_COLOR}`, outlineOffset: "-1px" }} />,
+          "not testable now: ×k = the paths at which it passes the support rule (“?”: its spread is unknown until then; “never”: constant, or no estimate)", "hatch",
+        )}
+      </div>
+      <div data-testid="ab-need-unit" style={{ color: "#6b7280", fontSize: 10, marginTop: 2 }}>
+        Paths needed: multiples of the current paths, {pathUnitText(payload)}. Cells: MDE in {unit.label}{target != null ? ", ×k paths to reach the target below it (in total, with the family projected at that size)" : ""}. MDE at {payload.power?.level ?? "alpha / m"}; projections assume {payload.power?.assumption ?? "the same path composition"}.
+      </div>
+    </div>
+  );
+}
 
 export function Legend({ payload, kind, scale, view }: { payload: MatrixPayload; kind: Kind; scale: number; view: View }) {
   const unit = unitInfo(payload);
@@ -471,6 +639,20 @@ function ClipInput({ view, unitScale, suffix, autoScale, onCommit }: {
   );
 }
 
+function TargetInput({ view, unitScale, onCommit }: { view: View; unitScale: number; onCommit: (v: number) => void }) {
+  const shown = view.target_delta > 0 ? String(+(view.target_delta * unitScale).toPrecision(4)) : "";
+  const [text, setText] = React.useState(shown);
+  React.useEffect(() => setText(shown), [shown]);
+  const n = Number(text);
+  const valid = text.trim() === "" || (Number.isFinite(n) && n > 0);
+  const commit = () => { if (valid) onCommit(text.trim() === "" ? 0 : n / unitScale); };
+  return (
+    <input aria-label="Target delta" value={text} placeholder="none"
+      onChange={(e) => setText(e.target.value)} onBlur={commit} onKeyDown={(e) => { if (e.key === "Enter") commit(); }}
+      style={{ width: "100%", boxSizing: "border-box", border: `1px solid ${valid ? "#d1d5db" : "#fca5a5"}`, borderRadius: 6, padding: "5px 8px", fontSize: 12, outline: "none" }} />
+  );
+}
+
 function fixedText(key: string, value: unknown): string {
   if (key === "edges") {
     const list = parseJson<unknown[]>(value, []);
@@ -549,7 +731,16 @@ function Sidebar({ kind, host, isStatic, isLoading, params, view, setParam, setV
 
         <Rule />
         <SH>View</SH>
-        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#374151" }}>
+        <Label>Show</Label>
+        <select aria-label="View mode" value={view.view_mode} style={sel} disabled={!payload?.power}
+          onChange={(e) => setView("view_mode", e.target.value as ViewMode)}>
+          <option value="delta">Delta (the difference)</option>
+          <option value="data_needed">Data needed (MDE, paths)</option>
+        </select>
+        <Label>Target delta{unit.suffix ? ` (${unit.suffix})` : ""}</Label>
+        <TargetInput view={view} unitScale={unit.scale} onCommit={(v) => setView("target_delta", v)} />
+        <Hint>Data needed: the paths ({pathUnitText(payload ?? { path_col: null })}) each cell needs for its MDE to reach this; empty = show the MDE.</Hint>
+        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#374151", marginTop: 8 }}>
           <input type="checkbox" aria-label="Show intervals" checked={view.show_ci} onChange={(e) => setView("show_ci", e.target.checked)} />
           Show intervals in the cells
         </label>
@@ -639,6 +830,8 @@ const VIEW_TRAITS: Record<keyof View, string> = {
   cell_size: "cell_size",
   visibility: "event_visibility",
   reading_hint: "reading_hint",
+  view_mode: "view_mode",
+  target_delta: "target_delta",
 };
 
 export function render({ host, el, isStatic = false }: RenderContext) {
@@ -731,7 +924,10 @@ export function render({ host, el, isStatic = false }: RenderContext) {
         index, rowKeys, colKeys, dimRows, dimCols,
         scale: scaleMax(shown, view.color_clip),
         autoScale: scaleMax(shown, 0),
+        mdeScale: mdeScaleMax(shown, payload.alpha),
         nSignificant: shown.filter((row) => cellStatus(row, payload.alpha) === "significant").length,
+        nTestable: shown.filter((row) => { const st = cellStatus(row, payload.alpha); return st === "significant" || st === "not_significant"; }).length,
+        nShown: shown.length,
       };
     }, [payload, view.significance_filter, view.row_sort, view.col_sort, view.color_clip, hidden, pinned]);
 
@@ -749,17 +945,22 @@ export function render({ host, el, isStatic = false }: RenderContext) {
     }, []);
 
     const handleToggle = () => setSidebarOpen((p) => { const n = !p; host.set("sidebar_open", n); return n; });
+    const needed = view.view_mode === "data_needed" && !!payload?.power;
     const hint = kind === "transitions" && payload && view.reading_hint ? readingHint(payload.edge_weight) : null;
 
     return (
       <div data-testid={`ab-matrix-widget-${kind}`} style={{ position: "relative", display: "flex", flexDirection: "row", height, background: "#ffffff", borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0", fontFamily: "system-ui,-apple-system,sans-serif" }}>
         <div style={{ flex: 1, position: "relative", overflow: "hidden", minWidth: 0, display: "flex", flexDirection: "column" }}>
           <SidebarToggle onClick={handleToggle} />
-          <div style={{ padding: "10px 52px 8px 12px", borderBottom: "1px solid #e5e7eb", flexShrink: 0 }}>
-            {payload && layout && <Legend payload={payload} kind={kind} scale={layout.scale} view={view} />}
+          <div style={{ padding: "10px 52px 8px 12px", borderBottom: "1px solid #e5e7eb", flexShrink: 0, maxHeight: "45%", overflowY: "auto" }}>
+            {payload && <ViewSwitch mode={needed ? "data_needed" : "delta"} available={!!payload.power} onChange={(m) => setView("view_mode", m)} />}
+            {payload && layout && !needed && <Legend payload={payload} kind={kind} scale={layout.scale} view={view} />}
+            {payload && layout && needed && <NeedLegend payload={payload} kind={kind} mdeScale={layout.mdeScale} view={view} />}
             {payload && layout && (
               <div data-testid="ab-counts" style={{ fontSize: 10, color: "#6b7280", marginTop: 2 }}>
-                {layout.rowKeys.length} rows × {layout.colKeys.length} columns shown, {layout.nSignificant} significant cells
+                {layout.rowKeys.length} rows × {layout.colKeys.length} columns shown, {needed
+                  ? `${layout.nTestable} of ${layout.nShown} cells testable now`
+                  : `${layout.nSignificant} significant cells`}
               </div>
             )}
             {hint && (
@@ -780,7 +981,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
             {payload && layout && layout.rowKeys.length > 0 && (
               <Matrix payload={payload} kind={kind} rowKeys={layout.rowKeys} colKeys={layout.colKeys} index={layout.index}
                 dimRows={layout.dimRows} dimCols={layout.dimCols} scale={layout.scale} view={view} pinned={pinned}
-                onTogglePin={togglePin} onToggleHidden={toggleHidden} tipRef={tipRef} />
+                onTogglePin={togglePin} onToggleHidden={toggleHidden} tipRef={tipRef} mdeScale={layout.mdeScale} />
             )}
             {payload && layout && layout.rowKeys.length === 0 && (
               <div style={{ padding: 24, color: "#9ca3af", fontSize: 13, textAlign: "center" }}>
@@ -791,7 +992,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
               <div style={{ padding: 24, color: "#9ca3af", fontSize: 13, textAlign: "center" }}>No data</div>
             )}
           </div>
-          {payload && <Tooltip apiRef={tipRef} payload={payload} kind={kind} />}
+          {payload && <Tooltip apiRef={tipRef} payload={payload} kind={kind} mode={needed ? "data_needed" : "delta"} target={view.target_delta} />}
           {isLoading && <ComputingSpinner />}
         </div>
         {sidebarOpen && (

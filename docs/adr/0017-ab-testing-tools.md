@@ -368,7 +368,7 @@ segment), with `attrs["homogeneity"]` per segment: effective vocabulary
 `exp(entropy)`, transition entropy, distinct-path share, and the numbers before
 and after. The pre-exposure rule is the scorecard's: `by_pre_exposure=True`, or
 the recipe shows it; otherwise it warns. Within a segment the arm sizes are the
-segment's.
+segment's paths split in the experiment's arm ratio, so the plan reads no arm.
 
 **C5 — applying a plan.** `compress_events(plan)` is a general data processor (a
 verb, ADR-0008) and adds no transformation: it is `edit_events(delete, rename)`

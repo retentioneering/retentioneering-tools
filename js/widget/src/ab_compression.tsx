@@ -297,11 +297,19 @@ export function Header({ payload, segment }: { payload: CompressionPayload; segm
   const target = typeof payload.target === "number" ? `median MDE ≤ ${payload.target}` : (TARGET_TEXT[String(payload.target)] ?? String(payload.target));
   const who = payload.population === "assignment" ? "ITT: every path of the assignment table" : "the stream's paths";
   const h = homogeneityText(segment.homogeneity);
+  const arms = `${payload.group1_paths ?? "?"} + ${payload.group2_paths ?? "?"} paths`;
+  // a segment's plan pools the segment's paths; its MDE splits them in the
+  // experiment's arm ratio, so the plan still reads no arm
+  const counted = segment.homogeneity?.paths;
+  const segmentPaths = payload.by && typeof counted === "number" ? counted : null;
+  const pooled = segmentPaths != null
+    ? `${segmentPaths} paths of this segment; the MDE splits them in the experiment's arm ratio, ${payload.group1_paths ?? "?"} : ${payload.group2_paths ?? "?"}`
+    : arms;
   return (
     <div data-testid="abc-header" style={{ fontSize: 12, color: INK, lineHeight: 1.5 }}>
       <div><b>Vocabulary compression</b><span style={{ color: MUTED }}> · {screen} · {who}{payload.horizon ? `, horizon ${payload.horizon}` : ""} · target {target} · chosen step {segment.chosen_step} of {segment.path.length - 1}</span></div>
       <div style={{ fontSize: 11, color: MUTED }}>
-        Arm-blind: every number pools both arms ({payload.group1_paths ?? "?"} + {payload.group2_paths ?? "?"} paths); the arm of a path is never read. Testable cells and MDE as the screen counts them (min_support {payload.min_support}, MDE at alpha / m).
+        Arm-blind: every number pools both arms ({pooled}); the arm of a path is never read. Testable cells and MDE as the screen counts them (min_support {payload.min_support}, MDE at alpha / m).
       </div>
       {h && <div data-testid="abc-homogeneity" style={{ fontSize: 11, color: "#374151" }}>{payload.by ? `${payload.by} = ${segment.key}: ` : ""}{h}</div>}
     </div>

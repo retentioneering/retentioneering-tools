@@ -213,6 +213,15 @@ test('the header: the screen, the population, the chosen step, arm-blindness and
   assert.match(html, /target least data too thin to test/);
   assert.match(html, /Arm-blind/);
   assert.match(html, /effective vocabulary 4\.2 of 6 events/);
+  assert.match(html, /pools both arms \(1000 \+ 1000 paths\)/);
+  // a segment's page counts the segment's paths, not the experiment's
+  const seg = renderToStaticMarkup(React.createElement(Header, {
+    payload: { ...PAYLOAD, by: 'platform' },
+    segment: { ...SEGMENT, key: 'ios', homogeneity: { ...SEGMENT.homogeneity, paths: 300 } },
+  }));
+  assert.match(seg, /pools both arms \(300 paths of this segment; the MDE splits them in the experiment&#x27;s arm ratio, 1000 : 1000\)/);
+  assert.match(seg, /platform = ios: /);
+  assert.doesNotMatch(seg, /1000 \+ 1000 paths/);
   const panel = renderToStaticMarkup(React.createElement(PathPanel, {
     path: PATH, measure: 'testable', title: 'Testable cells', unit: 'pp', selected: 1, chosen: 2, onSelect: () => {},
   }));

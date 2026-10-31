@@ -575,10 +575,15 @@ cell.
 (`by_pre_exposure=True`, as for the scorecard's strata), with a summary per
 segment in `attrs["homogeneity"]`: the effective vocabulary (`exp` of the entropy
 of the event distribution), the transition entropy and the share of distinct
-paths. A homogeneous segment, where a few events carry most of the paths, reaches
-enough testable cells with little compression; a heterogeneous one needs more. On
-this experiment desktop and mobile are alike (effective vocabularies of 9.5 and 9.4
-of 15 events, 87 % and 86 % distinct paths) and neither needs compression.
+paths. Within a segment the MDE splits the segment's paths in the experiment's arm
+ratio, so the plan still reads no arm. A segment has fewer paths than the
+experiment, so its cells are thinner, and its size weighs first: a segment too
+small for any vocabulary to leave fewer thin cells keeps its stream as it is. At
+the same size, a homogeneous segment, where a few events and routes carry most of
+the paths, spreads them over fewer cells and needs less compression than a
+heterogeneous one. On this experiment desktop and mobile are alike (effective
+vocabularies of 9.5 and 9.4 of 15 events, 87 % and 86 % distinct paths) and neither
+needs compression.
 
 ## Sample ratio mismatch
 

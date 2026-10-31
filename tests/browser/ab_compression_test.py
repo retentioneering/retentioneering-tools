@@ -154,3 +154,33 @@ def test_static_compression_draws_the_users_needed(tmp_path):
             assert not errors, errors
         finally:
             browser.close()
+
+
+def test_static_compression_counts_the_segment_paths(tmp_path):
+    stream = datasets.load_ab_test()
+    diff = ("exp_group", "treatment", "control")
+    widget = stream.ab_compression(diff, by="platform", by_pre_exposure=True)
+    plan = stream.get_ab_compression(diff, by="platform", by_pre_exposure=True)
+    first = plan.attrs["homogeneity"][0]
+    export = tmp_path / "segments.html"
+    widget.export_html(str(export))
+    with playwright.sync_playwright() as runtime:
+        browser = _launch(runtime)
+        try:
+            page = browser.new_page(viewport={"width": 1400, "height": 900})
+            errors = []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.goto(export.as_uri())
+            header = page.locator("[data-testid=abc-header]")
+            header.wait_for(state="visible")
+            text = header.inner_text()
+            # a segment's page pools the segment's paths, not the experiment's
+            assert f"{first['paths']} paths of this segment" in text, text
+            assert (
+                f"arm ratio, {plan.attrs['group1_paths']} : "
+                f"{plan.attrs['group2_paths']}" in text
+            ), text
+            assert f"platform = {first['segment']}: " in text
+            assert not errors, errors
+        finally:
+            browser.close()

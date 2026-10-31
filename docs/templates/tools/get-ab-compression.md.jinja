@@ -136,9 +136,13 @@ With `by=<a segment fixed before exposure>`, every segment gets its own plan (an
 the segment column on every row), and `attrs["homogeneity"]` a summary per
 segment: the effective vocabulary size (`exp` of the entropy of the event
 distribution), the transition entropy in bits, and the share of distinct paths.
-A homogeneous segment (a few events carry most of the paths, many users share a
-path) reaches enough testable cells with little compression; a heterogeneous
-one needs more. The segment must be fixed before exposure, as for the
+Within a segment the MDE splits the segment's paths in the experiment's arm
+ratio, so the plan still reads no arm. A segment's cells are thinner than the
+experiment's, and its size weighs first: a segment too small for any vocabulary
+to leave fewer thin cells keeps its stream as it is. At the same size, a
+homogeneous segment (a few events carry most of the paths, many users share a
+path) spreads its paths over fewer cells and needs less compression than a
+heterogeneous one. The segment must be fixed before exposure, as for the
 scorecard's strata: pass `by_pre_exposure=True`, or the stream's recipe must
 show it.
 

@@ -1,6 +1,9 @@
+import itertools
+
 import pandas as pd
 import pytest
 
+from retentioneering.data_processors.split_sessions import SplitSessions
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.exceptions import PreprocessingConfigError
 
@@ -345,3 +348,32 @@ class TestSplitSessionsTimeout:
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError):
             stream.split_sessions(timeout="1800")
+
+
+class TestSplitSessionsTiedTimestamps:
+    def test_bounds_follow_the_path_order(self):
+        """Regression: events with the same timestamp were ordered by
+        (timestamp, subindex) alone, so whether X (before the start S, same
+        timestamp) and Y (before the end E, same timestamp) were in the session
+        followed the order DuckDB read the rows in. The index, the event's
+        position in the path, now breaks the tie."""
+        stream = make_stream(
+            [
+                ["u1", "X", "2020-01-01 00:00:00"],
+                ["u1", "S", "2020-01-01 00:00:00"],
+                ["u1", "Y", "2020-01-01 00:01:00"],
+                ["u1", "E", "2020-01-01 00:01:00"],
+                ["u1", "Z", "2020-01-01 00:02:00"],
+            ]
+        )
+        frame, schema = stream._df, stream.schema
+        processor = SplitSessions(bounds={"start_event": "S", "end_event": "E"})
+        results = set()
+        for order in itertools.permutations(range(len(frame))):
+            out, _ = processor.apply(
+                frame.iloc[list(order)].reset_index(drop=True), schema
+            )
+            out = out.sort_values([schema.index, schema.subindex], kind="stable")
+            session = [None if pd.isna(v) else v for v in out["session_id"]]
+            results.add(tuple(zip(out["event"].astype(str), session)))
+        assert results == {(("X", None), ("Y", "u1_1"), ("Z", None))}

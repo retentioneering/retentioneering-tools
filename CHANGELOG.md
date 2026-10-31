@@ -7,6 +7,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- `collapse_events` and `split_sessions` order events that share a timestamp by
+  their position in the path. They used to order by timestamp alone, so on a
+  stream with such ties the runs, the windows and a merged event's "first"
+  values followed the order DuckDB read the rows in, which could change from
+  run to run on a large stream. Results on streams without tied timestamps are
+  unchanged.
 - `time_median` and `time_q95` edge weights in `transition_graph` and
   `transition_graph_data` measure the exact gap between events instead of
   counting whole-second boundaries, so a 125 ms span no longer reads as 0 s or

@@ -1,6 +1,9 @@
+import itertools
+
 import pandas as pd
 import pytest
 
+from retentioneering.data_processors.collapse_events import CollapseEvents
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.exceptions import PreprocessingConfigError
@@ -998,3 +1001,86 @@ class TestCollapseEventsInactivity:
             group_col="session_id", name="burst"
         )
         assert events(res) == ["burst", "burst"]
+
+
+# ---------------------------------------------------------------------------
+# Events that share a timestamp
+# ---------------------------------------------------------------------------
+
+
+def results_over_row_orders(stream, processor, cols):
+    """Apply `processor` to every row order of the stream's frame. DuckDB reads
+    the rows in that order, as it may read a large frame in any order across
+    threads; the result must not depend on it. Returns the distinct results,
+    each as tuples of `cols` in path order."""
+    frame, schema = stream._df, stream.schema
+    results = set()
+    for order in itertools.permutations(range(len(frame))):
+        out, _ = processor.apply(frame.iloc[list(order)].reset_index(drop=True), schema)
+        out = out.sort_values([schema.index, schema.subindex], kind="stable")
+        results.add(tuple(map(tuple, out[cols].astype(str).to_numpy())))
+    return results
+
+
+class TestCollapseEventsTiedTimestamps:
+    """Regression: events with the same timestamp were ordered by
+    (timestamp, subindex) alone, so their order, and with it the runs, the
+    windows and each group's "first" value, followed the order DuckDB read the
+    rows in. On a large stream that changed from run to run. The index, the
+    event's position in the path, now breaks the tie."""
+
+    def tied_stream(self):
+        df = pd.DataFrame(
+            [
+                ["u1", "A", "2020-01-01 00:00:00", "p1", "x"],
+                ["u1", "B", "2020-01-01 00:00:00", "p2", "y"],
+                ["u1", "B", "2020-01-01 00:01:00", "p3", "y"],
+                ["u1", "C", "2020-01-01 00:01:00", "p4", "z"],
+            ],
+            columns=["user_id", "event", "timestamp", "page", "screen"],
+        )
+        return Eventstream(df, {**SCHEMA, "custom_cols": ["page", "screen"]})
+
+    def test_loops_follow_the_path_order(self):
+        stream = self.tied_stream()
+        results = results_over_row_orders(
+            stream, CollapseEvents(loops=True), ["event", "page", "index"]
+        )
+        # B, B is one run; its first event is the one at index 2
+        assert results == {(("A", "p1", "1"), ("B", "p2", "2"), ("C", "p4", "4"))}
+
+    def test_group_col_follows_the_path_order(self):
+        stream = self.tied_stream()
+        results = results_over_row_orders(
+            stream, CollapseEvents(group_col="screen"), ["event", "page"]
+        )
+        assert results == {(("x", "p1"), ("y", "p2"), ("z", "p4"))}
+
+    def windowed_stream(self):
+        return make_stream(
+            [
+                ["u1", "X", "2020-01-01 00:00:00"],
+                ["u1", "S", "2020-01-01 00:00:00"],
+                ["u1", "Y", "2020-01-01 00:01:00"],
+                ["u1", "E", "2020-01-01 00:01:00"],
+                ["u1", "Z", "2020-01-01 00:02:00"],
+            ]
+        )
+
+    def test_event_groups_follow_the_path_order(self):
+        results = results_over_row_orders(
+            self.windowed_stream(),
+            CollapseEvents(event_groups=["X", "S", "Y"], name="grp"),
+            ["event"],
+        )
+        # X, S, Y are consecutive: one window, then E and Z
+        assert results == {(("grp",), ("E",), ("Z",))}
+
+    def test_bounds_follow_the_path_order(self):
+        results = results_over_row_orders(
+            self.windowed_stream(),
+            CollapseEvents(bounds={"start_event": "S", "end_event": "E"}, name="grp"),
+            ["event"],
+        )
+        # X comes before the start S, so it stays out of the window
+        assert results == {(("X",), ("grp",), ("Z",))}

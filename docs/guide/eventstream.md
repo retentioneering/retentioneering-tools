@@ -387,6 +387,8 @@ The family is every edge with enough support, found by looking, so these are scr
 
 The widgets [`ab_transitions()`](/docs/widgets/ab-transitions) and [`ab_steps()`](/docs/widgets/ab-steps) draw the same frames as difference matrices (one cell per row, its background the delta, a wide outline for its adjusted p-value), and [`get_ab_transitions_table()`](/docs/tools/get-ab-transitions-table) / [`get_ab_steps_table()`](/docs/tools/get-ab-steps-table) return them in the shape of the diff matrix, a group of statistic columns per target (step), for `to_csv` and `to_excel`.
 
+A screen of many events is data-hungry. [`get_ab_transitions_power()`](/docs/tools/get-ab-transitions-power) / [`get_ab_steps_power()`](/docs/tools/get-ab-steps-power) project it to more users (testable rows and MDE per multiple of the users; the matrices draw it in their **Data needed** view), and [`get_ab_compression()`](/docs/tools/get-ab-compression) proposes a smaller vocabulary chosen without the arms, applied with [`compress_events()`](/docs/data-processors/compress-events) and drawn by the [`ab_compression()`](/docs/widgets/ab-compression) widget; see the [A/B Testing guide](/docs/ab-testing#when-the-screen-is-too-sparse-how-much-data-and-compressing-the-vocabulary).
+
 ### Reproducing an eventstream
 
 Every processor call is recorded, so a derived eventstream can describe how it was built:

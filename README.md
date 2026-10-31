@@ -311,7 +311,7 @@ stream.get_ab_test(
 )
 ```
 
-`stream.ab_test(...)` takes the same arguments and draws the scorecard as a [widget](https://retentioneering.com/docs/widgets/ab-test): a table and a forest plot of the deltas, with Strata and Periods tabs. The edge and step screens have widgets too, [`ab_transitions`](https://retentioneering.com/docs/widgets/ab-transitions) and [`ab_steps`](https://retentioneering.com/docs/widgets/ab-steps): difference matrices with each cell's delta, interval and an outline for its adjusted p-value.
+`stream.ab_test(...)` takes the same arguments and draws the scorecard as a [widget](https://retentioneering.com/docs/widgets/ab-test): a table and a forest plot of the deltas, with Strata and Periods tabs. The edge and step screens have widgets too, [`ab_transitions`](https://retentioneering.com/docs/widgets/ab-transitions) and [`ab_steps`](https://retentioneering.com/docs/widgets/ab-steps): difference matrices with each cell's delta, interval and an outline for its adjusted p-value, and a Data needed view of the users each cell needs. When too few cells are testable, [`get_ab_compression`](https://retentioneering.com/docs/tools/get-ab-compression) proposes a smaller event vocabulary, chosen without looking at the arms, and [`ab_compression`](https://retentioneering.com/docs/widgets/ab-compression) draws it step by step.
 
 `rete.datasets.list_ab_tests()` names six more practice experiments, some of them broken on purpose; `load_ab_test(name=...)` and `load_ab_test_assignment(name=...)` load one.
 

@@ -583,10 +583,10 @@ class TestEventClassesOnRealData:
 
     def test__adjacent_class_still_requires_adjacency(self, ecom_stream):
         adjacent = anchors.resolve_anchors(
-            ecom_stream.df, ecom_stream.schema, "cart->[^purchase]"
+            ecom_stream.df, ecom_stream.schema, "payment_details->[^purchase]"
         )
         gapped = anchors.resolve_anchors(
-            ecom_stream.df, ecom_stream.schema, "cart->.*->[^purchase]"
+            ecom_stream.df, ecom_stream.schema, "payment_details->.*->[^purchase]"
         )
         assert set(adjacent.paths()) < set(gapped.paths())
 

@@ -186,15 +186,15 @@ def _generate_ecom(n_users: int = 600, seed: int = 42) -> pd.DataFrame:
                 rng, lifecycle, plat, channel, is_anom, is_bug, is_pay
             )
 
-            # Timestamps: random hour of day, ~30-180 s between events
-            base_ts = START + pd.Timedelta(
+            # Timestamps: random hour of day, ~15-180 s between events
+            ts = START + pd.Timedelta(
                 days=int(sess_day),
                 hours=int(rng.integers(8, 22)),
                 minutes=int(rng.integers(0, 59)),
             )
-            for e_idx, ev in enumerate(events):
-                gap = int(rng.integers(15, 180))
-                ts = base_ts + pd.Timedelta(seconds=gap * (e_idx + 1))
+            for ev in events:
+                # Accumulate gaps so timestamp order matches event order
+                ts += pd.Timedelta(seconds=int(rng.integers(15, 180)))
                 records.append(
                     {
                         "user_id": uid,

@@ -409,10 +409,12 @@ class TestWidgetSummaries:
         assert {"from", "to", "diff", "g1", "g2"} <= edge.keys()
 
     def test__step_matrix_summary_has_steps(self, session: ReportSession) -> None:
-        result = tools.add_step_matrix(session, label="Steps", max_steps=5)
+        # purchase sits at the end of the checkout funnel, so a short step
+        # window never reaches it.
+        result = tools.add_step_matrix(session, label="Steps", max_steps=8)
 
         assert result["n_events"] > 0
-        assert result["steps"] == [0, 1, 2, 3, 4, 5]
+        assert result["steps"] == list(range(9))
         assert all(result["top_events_per_step"][str(s)] for s in result["steps"])
         assert "purchase" in result["context_event_rows"]
 

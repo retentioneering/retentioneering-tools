@@ -66,8 +66,9 @@ one query to `(index, subindex)`. This ADR makes the same choice library-wide.
    for equality against ranks (in Python or JS).
 
 4. **One ordering helper.** `engine/dialect.py` provides the within-path order
-   next to `event_position`; every window `ORDER BY`, ordered list
-   aggregation, output `ORDER BY` and pandas sort uses it or the same columns.
+   (`event_order`) next to `event_position`, and `EventstreamSchema.order_cols`
+   gives the same key for pandas; every window `ORDER BY`, ordered list
+   aggregation, output `ORDER BY` and pandas sort uses them or the same columns.
    No code orders events by timestamp. AGENTS.md carries this rule.
 
 5. **Canonical physical order.** `Eventstream(..., preprocess=False)` sorts by

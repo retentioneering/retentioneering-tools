@@ -48,18 +48,35 @@ vocabulary, cells, testable and untestable cells, the observations too thin to
 test, median MDE, transition mass retained and artificial transitions (and, with
 `target_delta`, the users needed).
 
+Under the table, a note gives the denominator of the transition mass retained
+(the original transitions) and says that it measures structure, not information.
+
 The header names the screen, the population, the chosen step and the arm sizes,
 and says that the plan is arm-blind: it reads the pooled paths, never which arm
-a path is in. With `by`, a selector switches between the segments' plans, and
-the header shows the segment's homogeneity (effective vocabulary, transition
-entropy, distinct-path share).
+a path is in. That keeps the plan from being tuned to the arms; it does not
+guarantee the compressed screen's false discovery rate, so the header calls that
+screen exploratory, and its testable cells and MDE pooled proxies of the
+screen's. With `by`, a selector switches between the segments' plans, and the
+header shows the segment's homogeneity (effective vocabulary, transition
+entropy, distinct-path share). When no compared path has an event in the
+analysed window, the widget says so instead of drawing an empty path.
 
-To take the plan at the step shown:
+The line under the slider is the call that reproduces the plan shown: every
+argument that differs from the getter's default, and the step. For example:
 
 ```python
-plan = stream.ab_compression_data(diff, assignment=assignment, step=3)
+plan = stream.ab_compression_data(diff, assignment=assignment, max_events=10,
+                                  keep=["quick_add", "cart"], step=3)
 compact = stream.compress_events(plan)
 ```
+
+With `by`, it applies the segment's rows to a stream of that segment alone
+(`filter_paths` with `in_segment`), since `compress_events` refuses a segment's
+plan on a stream that holds other segments.
+
+The constructor checks its arguments as `get_ab_compression` does: `max_events=0`
+or `step=-2` raise the getter's error, though the sidebar uses `0` for "no cap"
+internally.
 
 ### Sidebar and view
 

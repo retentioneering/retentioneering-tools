@@ -359,6 +359,23 @@ Self-loops are also what [Collapse Events](/docs/data-processors/collapse-events
 draws as a node's edge to itself. Filter on them first if the question is about
 the users who loop, collapse them if the loops are noise.
 
+To **mark** each loop in place, put an event at its start with
+[`occurrence="non_overlapping"`](#occurrencenon_overlapping):
+
+```python
+for e in events:
+    stream = stream.add_events(
+        f"{e}_loop",
+        anchor={"pattern": f"({e}){{3,}}", "at": "start", "occurrence": "non_overlapping"},
+    )
+# B, B, B, C, B, B, D, B, B, B, B, B, E
+#   -> B_loop, B, B, B, C, B, B, D, B_loop, B, B, B, B, B, E
+```
+
+Each run of three or more gets exactly one marker, wherever it is in the path —
+including at its very start. `"all"` would mark every `B` a run of three can
+start on, and `"first"` only the first loop of the path.
+
 ## Examples
 
 **One position, negated or alternated:**
@@ -566,6 +583,60 @@ some valid match. On `A, B, A, B` the `A` token of `A->.*->B` resolves to both
 Because it returns several positions per path, the rows no longer describe one
 match, and anything needing a single position rejects it. `truncate_paths` does:
 a window bound has to be one place to cut. `add_events` is what it is for.
+
+### `occurrence="non_overlapping"`
+
+`"all"` answers "where can this token be?", and overlapping matches all
+contribute. To count or mark each *instance* of a pattern, the question is
+different: take the leftmost match, resume after it, repeat. That is what
+`re.finditer` does, and `"non_overlapping"` does exactly that — the pattern is
+compiled to a Python regex over the path, one character per event, so leftmost,
+non-overlapping and backtracking behave as in regex.
+
+On `B, B, B, B, B` with `(B){3,}`:
+
+| `occurrence` | `at="start"` lands on | Why |
+|---|---|---|
+| `"first"` | step 1 | one position per path |
+| `"all"` | steps 1, 2, 3 | a run of three can start on any of them |
+| `"non_overlapping"` | step 1 | one match, which takes the whole run |
+
+Two rules turn the regex translation into what an analyst expects:
+
+- **A repeated group is greedy.** `(B){3,}` takes the whole run, so `B×5` is one
+  match. A closed count is not: `(B){3}` on `B×6` is two matches of three. The
+  group's first copy is the run's first repetition and its other copies the
+  run's last ones — `at="start"` is where the run begins, `at="end"` where it
+  ends. With `+` there is only one copy, the first repetition, so to address a
+  run's end use `{2,}`.
+- **A gap is lazy** (regex `.*?`). `A->.*->B` pairs each `A` with the *next*
+  `B`: on `A, x, B, A, B` it finds two matches. A greedy gap would find one,
+  from the first `A` to the last `B`. Matches still do not overlap, so on
+  `A, A, B` there is one match — it starts on the first `A`, and the second is
+  inside it.
+
+**A greedy group swallows what its gap allows.** Inside a repeated group, a
+`.*` admits any event — including the one meant to close the match. On
+`pv, pv, order, pv, pv, pv, order`, the pattern
+`(product_view->.*){2,}->order_success` finds **one** match: the group's
+repetitions run straight through the first order to the last one. To get one
+match per order, keep the closing event out of the group's gap:
+
+```python
+"(product_view->[^order_success]*){2,}->order_success"   # two matches, one per order
+```
+
+The same pattern without `non_overlapping` is unaffected — "does it match" and
+"where is the first match" come out the same either way.
+
+It costs somewhat more than the other modes — on a million paths, about
+1.3–1.7× the time of `"all"` on the same pattern. DuckDB still numbers and
+sorts the events in parallel; only the regex scan itself runs in Python, and
+that is the cheap part.
+
+Like `"all"`, it returns several positions per path, so `truncate_paths`, Step
+Matrix and Step Sankey reject it; `add_events` is what it is for, and
+`get_conversion_rate` counts each path once however many matches it has.
 
 ## Turning a position into an event
 

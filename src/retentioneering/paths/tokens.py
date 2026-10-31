@@ -100,7 +100,9 @@ __all__ = [
     "Token",
     "check_class_spans",
     "describe_unknown_token",
+    "Group",
     "expand_groups",
+    "read_items",
     "gap_violation_sql",
     "has_anchor",
     "is_gap",
@@ -358,10 +360,18 @@ def check_class_spans(tokens: list[str]) -> None:
 
 
 def is_plain_gap(token: str | None) -> bool:
-    """Whether `token` is ``.*`` in effect — a gap that admits any run at all."""
+    """Whether `token` is ``.*`` in effect — a gap that admits any run at all.
+
+    Safe on raw tokens before groups are unrolled: a group's closing half such
+    as ``[^X]*){2,}`` does not parse on its own, and it is not a plain gap
+    either. Its syntax is checked when the group itself is read.
+    """
     if token is None:
         return False
-    parsed = parse_token(token)
+    try:
+        parsed = parse_token(token)
+    except PatternSyntaxError:
+        return False
     return isinstance(parsed, Gap) and parsed.is_plain
 
 
@@ -397,6 +407,33 @@ def expand_groups(tokens: list[str], pattern: str) -> list[str]:
     readings.
     """
     out: list[str] = []
+    for item in read_items(tokens, pattern):
+        if isinstance(item, Group):
+            for _ in range(item.copies):
+                out.extend(item.body)
+        else:
+            out.append(item)
+    return out
+
+
+@dataclass(frozen=True)
+class Group:
+    """A quantified group, validated but not yet unrolled.
+
+    Only :func:`expand_groups` and the non-overlapping matcher see one: the
+    first unrolls it into `copies` copies of `body`, the second compiles it to
+    a regex repetition, greedy when `open` (``{k,}`` / ``+``).
+    """
+
+    body: tuple[str, ...]
+    copies: int
+    open: bool
+    raw: str
+
+
+def read_items(tokens: list[str], pattern: str) -> list[Union[str, Group]]:
+    """Split a token list into plain tokens and validated :class:`Group` items."""
+    items: list[Union[str, Group]] = []
     i = 0
     while i < len(tokens):
         token = tokens[i]
@@ -408,20 +445,21 @@ def expand_groups(tokens: list[str], pattern: str) -> list[str]:
         ):
             body, quantifier, end = _read_group(tokens, i, pattern)
         else:
-            out.append(token)
+            items.append(token)
             i += 1
             continue
 
         raw = PATH_DELIMITER.join(tokens[i : end + 1])
         if any(not t for t in body):
             raise PatternSyntaxError(f"Empty token inside the group {raw!r}.")
-        left = out[-1] if out else None
+        previous = items[-1] if items else None
+        left = previous.body[-1] if isinstance(previous, Group) else previous
         right = tokens[end + 1] if end + 1 < len(tokens) else None
         copies = _repetitions(body, quantifier, raw, left, right, pattern)
-        for _ in range(copies):
-            out.extend(body)
+        _, max_len = parse_quantifier(quantifier, raw)
+        items.append(Group(tuple(body), copies, max_len is None, raw))
         i = end + 1
-    return out
+    return items
 
 
 def _single_token_group(token: str) -> tuple[str, str] | None:

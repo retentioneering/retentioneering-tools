@@ -21,6 +21,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 
+- `occurrence="non_overlapping"` for anchor specs: a pattern's matches one after
+  another, left to right and without overlap, as `re.finditer` finds them. A
+  repeated group is greedy and a gap lazy, so
+  `add_events("B_loop", anchor={"pattern": "(B){3,}", "at": "start",
+  "occurrence": "non_overlapping"})` puts one marker at the start of every run of
+  three or more `B` — where `"all"` marks every `B` such a run could start on.
+  `at="end"` is the run's last repetition. Rejected where one position per path
+  is needed (`truncate_paths`, Step Matrix and Step Sankey anchors), like `"all"`.
 - Path patterns accept the regex quantifier family on gaps: `.{m,n}`, `{n}`,
   `{m,}`, `{,n}`, `+` and `?` after `.` or a class, alongside `*`. Bounds are
   inclusive and count the events strictly between the anchors, so
@@ -64,6 +72,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- A group ending in a restricted or bounded gap — `(product_view->[^order_success]*){2,}`
+  — raised `PatternSyntaxError: Unbalanced brackets`. The check for redundant
+  `.*` read the group's closing token (`[^order_success]*){2,}`) on its own,
+  before the group was unrolled.
 - A condition node with no `op` that is not a shorthand leaf now raises
   `PreprocessingConfigError` naming the node, instead of
   `AttributeError: 'NoneType' object has no attribute 'upper'`.

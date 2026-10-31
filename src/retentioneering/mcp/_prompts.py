@@ -113,6 +113,9 @@ _ANALYSIS_METHODS = frozenset(
         "get_ab_bootstrap",
         "get_ab_transitions",
         "get_ab_steps",
+        "get_ab_transitions_power",
+        "get_ab_steps_power",
+        "get_ab_compression",
     }
 )
 
@@ -130,6 +133,7 @@ def _tool_docs_index() -> dict:
             "filter_paths",
             "add_segment",
             "collapse_events",
+            "compress_events",
             "truncate_paths",
             "rename_events",
             "edit_events",
@@ -304,6 +308,9 @@ def _static_instructions(tail: str = "") -> str:
         "  Which transitions or steps changed: get_ab_transitions / get_ab_steps, an",
         "  exploratory screen AFTER the scorecard (FDR over the tested edges); a",
         "  significant edge is a hypothesis for the next test, never the decision.",
+        "  Too many insufficient_data rows: get_ab_transitions_power / get_ab_steps_power",
+        "  (the data the screen needs) and get_ab_compression (an arm-blind smaller",
+        "  vocabulary; its preprocessor goes in local_preprocessors of the screen).",
         "",
         "### Conversion drop-off analysis (why is conversion from A to B dropping?)",
         "Use add_segment with funnel_events to create an N+1 level funnel segment.",
@@ -369,7 +376,7 @@ def _system_instructions(
         header.append(
             "An experiment assignment table is attached (see describe()['assignment']): "
             "get_sample_ratio, get_ab_test, add_ab_test, get_ab_bootstrap, "
-            "get_ab_transitions and get_ab_steps count every assigned user, silent ones included (intention to treat); horizon= and "
+            "get_ab_transitions, get_ab_steps, their _power tools and get_ab_compression count every assigned user, silent ones included (intention to treat); horizon= and "
             "period_basis='since_assignment' use its assigned_at."
         )
     if context.get("description"):

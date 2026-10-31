@@ -23,6 +23,85 @@ from retentioneering.metrics.metric_builder import (
 FORBIDDEN_IN_CONDITIONS = {"has_event_bulk", "event_count_bulk", "in_segment_bulk"}
 
 
+# 0/1 metrics, the only ones a shorthand leaf may name: for them `= True` is
+# the one comparison anyone means, while `{"length": {}}` would be a guess.
+BOOLEAN_METRICS = {
+    "has_event",
+    "has_any_event",
+    "has_all_events",
+    "matches_pattern",
+    "in_segment",
+}
+
+# The argument a scalar shorthand fills, for 0/1 metrics that have exactly one
+# required argument — with the type that argument must have.
+_SCALAR_ARG = {
+    "has_event": ("event", str),
+    "matches_pattern": ("pattern", str),
+    "has_any_event": ("events", list),
+    "has_all_events": ("events", list),
+}
+
+_NODE_KEYS = {"op", "args", "metric", "metric_args", "value"}
+
+
+def expand_node(node: Any, processor_name: str) -> Dict[str, Any]:
+    """
+    Rewrite one node's shorthand into the full form; anything else is returned as is.
+
+    Two shorthands, both for a 0/1 metric compared with `True`:
+
+    * `{"matches_pattern": {"pattern": "A->B"}}` — the metric name as the only
+      key, its `metric_args` as the value;
+    * `{"matches_pattern": "A->B"}` — for a metric with exactly one required
+      argument, that argument alone (`has_event`, `matches_pattern`, and
+      `has_any_event` / `has_all_events` with a list).
+
+    A list is the existing shorthand for `and`. Only the node itself is
+    rewritten; callers walking the tree expand each child as they reach it.
+    """
+    if isinstance(node, list):
+        return {"op": "and", "args": node}
+    if isinstance(node, dict) and "op" in node:
+        return node
+    if not isinstance(node, dict) or len(node) != 1 or set(node) & _NODE_KEYS:
+        raise PreprocessingConfigError(
+            processor_name,
+            f"Cannot read condition node {node!r}: a node needs an 'op' "
+            f"(a comparison, or 'and' / 'or' / 'not'), or is a shorthand with "
+            f"a 0/1 metric as its only key, e.g. {{'matches_pattern': 'A->.*->B'}}.",
+        )
+
+    ((metric, payload),) = node.items()
+    if metric not in BOOLEAN_METRICS:
+        raise PreprocessingConfigError(
+            processor_name,
+            f"{{{metric!r}: ...}} is shorthand for '= True', which only 0/1 "
+            f"metrics support ({', '.join(sorted(BOOLEAN_METRICS))}). Write the "
+            f"comparison out, e.g. {{'op': '>', 'metric': {metric!r}, 'value': ...}}.",
+        )
+
+    if isinstance(payload, dict):
+        metric_args = payload
+    elif metric in _SCALAR_ARG:
+        arg, kind = _SCALAR_ARG[metric]
+        if not isinstance(payload, kind):
+            raise PreprocessingConfigError(
+                processor_name,
+                f"{{{metric!r}: {payload!r}}}: the shorthand value is its "
+                f"'{arg}', which must be a {kind.__name__}, or a dict of "
+                f"metric_args.",
+            )
+        metric_args = {arg: payload}
+    else:
+        raise PreprocessingConfigError(
+            processor_name,
+            f"{{{metric!r}: {payload!r}}}: '{metric}' takes more than one "
+            f"argument, so its shorthand value must be a dict of metric_args.",
+        )
+    return {"op": "=", "metric": metric, "metric_args": metric_args, "value": True}
+
+
 def check_not_forbidden_in_condition(metric: str, processor_name: str) -> None:
     if metric in FORBIDDEN_IN_CONDITIONS:
         singular = metric.replace("_bulk", "")
@@ -156,6 +235,7 @@ def extract_metric_configs(
     seen_keys: Set[str] = set()
 
     def walk(n: Dict[str, Any]):
+        n = expand_node(n, processor_name)
         op = n.get("op")
         if op.upper() in {"AND", "OR"}:
             for a in n.get("args", []):
@@ -201,6 +281,7 @@ def _literal_sql(value: Any, processor_name: str) -> str:
 
 
 def ast_to_sql(node: Dict[str, Any], processor_name: str) -> str:
+    node = expand_node(node, processor_name)
     op = node.get("op")
     if op == "==":  # Python-style equality is accepted as an alias for "="
         op = "="

@@ -10,7 +10,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "demo:rest-host": "esbuild demo/rest-host-demo.ts --bundle --platform=node --format=esm --jsx=automatic --packages=external --outfile=demo/.rest-host-demo.out.mjs && node demo/.rest-host-demo.out.mjs",
-    "test": "esbuild test/anywidget-host.test.ts --bundle --platform=node --format=esm --outfile=test/.anywidget-host.test.out.mjs && node --test test/.anywidget-host.test.out.mjs"
+    "test": "esbuild test/*.test.ts --bundle --platform=node --format=esm --outdir=test --out-extension:.js=.out.mjs && node --test test/*.test.out.mjs"
   },
   "dependencies": {
     "@retentioneering/viz-core": "*",

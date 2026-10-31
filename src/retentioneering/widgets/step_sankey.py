@@ -3,6 +3,7 @@ import json
 import traitlets
 
 from retentioneering.exceptions import RetentioneeringError
+from retentioneering.paths import anchors
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
 from retentioneering.widgets._utils import max_steps_for_window as _max_steps_for_window
 from retentioneering.widgets._utils import parse_diff as _parse_diff
@@ -265,6 +266,13 @@ class StepSankeyWidget(RetentioneeringWidget):
             "matrices": matrices,
             "event_counts": event_counts,
             "anchor_event": _anchor_event(None if path_pattern else anchor),
+            # The pattern the blocks were computed from: groups unrolled, so
+            # the JS layout splits it into the same blocks Python produced.
+            "layout_pattern": (
+                anchors.normalize_pattern(path_pattern, warn=False)
+                if path_pattern
+                else None
+            ),
         }
 
     # ── HTML export (export_html/render_static: see RetentioneeringWidget) ────

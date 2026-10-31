@@ -138,6 +138,8 @@ export const SettingsSidebar = observer(function SettingsSidebar({
     setLocalVal2(diffValue2   ?? "");
   }, [diffSegment, diffValue1, diffValue2]);
 
+  // The two-group diff form carries arrays of path IDs, not a segment name.
+  const pathGroupsDiff = Array.isArray(localSeg);
   const localLevels = localSeg ? (segmentLevels[localSeg] ?? []) : [];
 
   const handleLocalSegChange = (col: string) => {
@@ -225,22 +227,27 @@ export const SettingsSidebar = observer(function SettingsSidebar({
 
         {/* Diff by Segment */}
         <div style={{ marginBottom: 24 }}>
-          <FieldLabel tooltip="Compare two groups. Positive values (red edges) = more transitions in group 2. Negative (blue) = more in group 1.">
+          <FieldLabel tooltip="Compare two groups: group 1 minus group 2. Positive differences are red; negative differences are blue.">
             Diff by Segment
           </FieldLabel>
 
           {/* Segment column selector — "None" applies immediately */}
           <select
-            value={localSeg}
+            value={pathGroupsDiff ? "__path_id_groups__" : localSeg}
             onChange={(e) => handleLocalSegChange(e.target.value)}
             style={{ ...selectStyle, marginBottom: localSeg ? 8 : 0 }}
             disabled={isLoading || isStatic}
           >
             <option value="">— None</option>
+            {pathGroupsDiff && <option value="__path_id_groups__" disabled>Path ID groups</option>}
             {segmentCols.map((col) => <option key={col} value={col}>{col}</option>)}
           </select>
 
-          {localSeg && localLevels.length >= 2 && (
+          {pathGroupsDiff && (
+            <p style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>Comparing Group 1 − Group 2 from supplied path IDs.</p>
+          )}
+
+          {!pathGroupsDiff && localSeg && localLevels.length >= 2 && (
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1, minWidth: 0 }}>
@@ -289,7 +296,7 @@ export const SettingsSidebar = observer(function SettingsSidebar({
             </>
           )}
 
-          {localSeg && localLevels.length < 2 && (
+          {!pathGroupsDiff && localSeg && localLevels.length < 2 && (
             <p style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>Not enough values in this segment.</p>
           )}
         </div>

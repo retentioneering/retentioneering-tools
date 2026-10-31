@@ -361,7 +361,9 @@ def _build_server(
         diff:
             Optional diff: [segment_col, value1, value2].
         path_pattern:
-            Filter paths, e.g. "add_to_cart->.*->purchase".
+            Filter paths, e.g. "add_to_cart->.*->purchase",
+            "add_to_cart->.{0,4}->purchase" (at most four events between),
+            "(cart->.*){2}->purchase" (a repeated sequence, one block per copy).
         path_col:
             Override the path ID column.
 

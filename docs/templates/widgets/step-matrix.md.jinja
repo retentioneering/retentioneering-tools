@@ -69,6 +69,15 @@ so you can follow a multi-step funnel across blocks.
 
 <DemoWidget cmd={`stream.step_matrix(path_pattern="payment_details->.*->shipping_details->.*->purchase", step_window=2)`} path="/docs-demos/widgets/step-matrix/path_pattern_funnel.html" height={660} sidebarOpen={false} />
 
+### Path pattern - a repeated step
+Blocks follow the pattern's gaps: every run of adjacent tokens between two gaps
+is one block, whatever the gap says — `.*`, a restricted `[^cart]*` or a bounded
+`.{0,4}` all separate blocks the same way. A [repeated group](/docs/path-patterns#repeating-a-sequence)
+is unrolled first, so `(add_to_cart->.*){2}` contributes one block per copy:
+here the first and the second add to cart get a matrix block each.
+
+<DemoWidget cmd={`stream.step_matrix(path_pattern="catalog->.*->(add_to_cart->.*){2}->purchase", step_window=2)`} path="/docs-demos/widgets/step-matrix/path_pattern_repeated.html" height={660} sidebarOpen={false} />
+
 ### Path pattern - drop-off points
 `path_pattern="path_end"` centers on where paths end, so the columns to the left show
 what users tend to do right before dropping off (or completing their path).

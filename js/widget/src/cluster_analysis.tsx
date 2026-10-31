@@ -1,5 +1,6 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
+import { buildAddClustersCode } from "./cluster_analysis_code";
 import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes, useHostSubscriptions, type RenderContext } from "./widget-utils";
 import { MetricRow, validateMetricCfg, InfoTip } from "./metric_config_row";
 import {
@@ -447,40 +448,7 @@ function MetricsOverlay({ metrics, events, segmentCols, segmentLevels, onMetrics
 interface SaveResult { ok?: boolean; segment_name?: string; error?: string; }
 
 // ── client-side add_clusters(...) code preview ──────────────────────────────
-// Pure templating from state already available in the browser — kept in sync
-// with the form on every render instead of round-tripping through Python.
-
-function pyRepr(v: any): string {
-  if (v === null || v === undefined) return "None";
-  if (typeof v === "boolean") return v ? "True" : "False";
-  if (typeof v === "number") return String(v);
-  if (typeof v === "string") return `'${v.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
-  if (Array.isArray(v)) return `[${v.map(pyRepr).join(", ")}]`;
-  if (typeof v === "object") return `{${Object.entries(v).map(([k, val]) => `${pyRepr(k)}: ${pyRepr(val)}`).join(", ")}}`;
-  return JSON.stringify(v);
-}
-
-function buildAddClustersCode(streamVarName: string, name: string, features: any[], method: string, scaler: string, params: Record<string, any>, pathCol: string, rename: Record<string, string>): string {
-  // `params` is chosen_params: already add_clusters-shaped (method / method_args /
-  // scaler / nmf_components), so this renders it rather than reassembling it.
-  const usedMethod = (params.method as string) || method;
-  const usedScaler = params.scaler !== undefined ? params.scaler : scaler;
-  const methodArgs = (params.method_args ?? {}) as Record<string, any>;
-
-  const lines = [`    name=${pyRepr(name)},`, `    features=${pyRepr(features)},`, `    method=${pyRepr(usedMethod)},`];
-  if (Object.keys(methodArgs).length > 0) lines.push(`    method_args=${pyRepr(methodArgs)},`);
-  if (usedScaler) lines.push(`    scaler=${pyRepr(usedScaler)},`);
-  if (params.nmf_components !== undefined && params.nmf_components !== null) {
-    lines.push(`    nmf_components=${pyRepr(params.nmf_components)},`);
-  }
-  if (pathCol) lines.push(`    path_col=${pyRepr(pathCol)},`);
-
-  let code = `${streamVarName}_new = ${streamVarName}.add_clusters(\n${lines.join("\n")}\n)`;
-  if (Object.keys(rename).length > 0) {
-    code += `.rename_segment_levels(\n    ${pyRepr(name)},\n    ${pyRepr(rename)},\n)`;
-  }
-  return code;
-}
+// Pure templating from the successful analysis snapshot and editable save options.
 
 function SaveClustersOverlay({ segments, initialRename, streamVarName, features, method, scaler, chosenParams, pathCol, onApplyInplace, onClose, saveResult }: {
   segments: string[];
@@ -515,7 +483,7 @@ function SaveClustersOverlay({ segments, initialRename, streamVarName, features,
     return rename;
   };
 
-  // Always current — recomputed every render straight from live form/widget state.
+  // Segment name and renames remain editable; the pipeline comes from chosenParams.
   const currentCode = buildAddClustersCode(streamVarName, name.trim() || "cluster", features, method, scaler, chosenParams, pathCol, computeRename());
 
   const copyCode = async (code: string) => {
@@ -737,7 +705,7 @@ function Sidebar({ features, method, scaler, nClustersRaw, nmfEnabled, nmfKRaw,
           </div>
         </SidebarSection>
 
-        {!isStatic && hasResult && (
+        {!isStatic && hasResult && !isLoading && (
           <SidebarSection title="Save Clusters">
             <SaveClustersTriggerButton onClick={onOpenSave} />
           </SidebarSection>
@@ -832,7 +800,15 @@ export function render({ host, el, isStatic = false }: RenderContext) {
       const r = parseJson<SaveResult>(host.get("save_result"), {});
       return r && Object.keys(r).length > 0 ? r : null;
     });
-    const [chosenParams,  setChosenParams]   = React.useState<Record<string, any>>(() => parseJson(host.get("chosen_params"), {}));
+    const getSaveParams = () => {
+      const snapshot = host.get("save_params");
+      // Older Python bundles expose only chosen_params. An explicit empty
+      // save_params invalidates a failed/empty result and must not fall back.
+      return parseJson<Record<string, any>>(
+        snapshot === undefined ? host.get("chosen_params") : snapshot, {},
+      );
+    };
+    const [chosenParams, setChosenParams] = React.useState<Record<string, any>>(getSaveParams);
     // Cluster renames typed directly into the heatmap header — cleared on every new
     // result since "cluster_0" may refer to a different cluster after re-clustering.
     const [headerRename,  setHeaderRename]   = React.useState<Record<string, string>>(
@@ -879,7 +855,8 @@ export function render({ host, el, isStatic = false }: RenderContext) {
         const r = parseJson<SaveResult>(host.get("save_result"), {});
         setSaveResult(r && Object.keys(r).length > 0 ? r : null);
       }],
-      ["chosen_params", () => setChosenParams(parseJson(host.get("chosen_params"), {}))],
+      ["save_params", () => setChosenParams(getSaveParams())],
+      ["chosen_params", () => setChosenParams(getSaveParams())],
     ]);
 
     const setFeatures   = (f: any[]) => { setFeaturesState(f); host.set("features", JSON.stringify(f)); };
@@ -946,7 +923,8 @@ export function render({ host, el, isStatic = false }: RenderContext) {
     if (result.nmf)         tabs.push("H-matrix");
     if (result.nmf?.W_cluster_means && Object.keys(result.nmf.W_cluster_means).length > 0) tabs.push("W Cluster Means");
     const tab = tabs.includes(activeTab) ? activeTab : (tabs[0] || "Overview");
-    const hasResult = !!(result.overview || result.silhouette || result.nmf);
+    const hasResult = !!(result.overview || result.silhouette || result.nmf)
+                   && Object.keys(chosenParams).length > 0;
 
     return (
       <div ref={rootRef} style={{ position: "relative", display: "flex", flexDirection: "row", height, background: "#fff", borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0", fontFamily: "system-ui,-apple-system,sans-serif" }}>
@@ -1022,7 +1000,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
           />
         )}
 
-        {!isStatic && saveOpen && (
+        {!isStatic && saveOpen && hasResult && !isLoading && (
           <SaveClustersOverlay
             segments={(result.overview?.segments ?? []).filter((s): s is string => s !== null)}
             initialRename={headerRename}

@@ -1,0 +1,1774 @@
+<script>
+// Custom slide logic, kept out of slides.ipynb so the notebook's markdown stays
+// plain (no Quarto attribute syntax). Colors and sizes live in custom.scss.
+//
+// Theme conventions, applied to every slide:
+//   # Heading                    → section slide, background from --section-bg
+//   ## Slide + ### Question      → centered question slide
+//   ## 2.1 Title (nothing else)  → subsection divider
+//   Question · Shape events · …  → workflow roadmap, **bold** steps highlighted
+//   > blockquote                 → takeaway box (pure CSS, see custom.scss)
+//
+// Slide illustrations, applied only to the slide they are registered for in
+// SLIDES below (by the id Quarto derives from the slide title). Each one adds
+// a `slide-…` class to its slide, which custom.scss scopes its styles to.
+(function () {
+  var SLIDES = {
+    "the-funnel-shows-where-not-why": { cls: "slide-widget-points", build: buildFunnel },
+    "clustering-six-ways-not-to-order": { cls: "slide-widget-points slide-cluster-graphs points-centered", build: buildClusterGraphs },
+    "the-error-clusters-point-at-one-build": { cls: "slide-widget-points points-centered", build: buildClusterBuilds },
+    "step-matrix-android-4.12.0-against-the-rest": { cls: "slide-matrices", build: buildMatrixRow },
+    // Styles only, no markup changes:
+    "select-reached-payment-never-ordered": { cls: "slide-idea", build: buildIdeaBody },
+    "cut-a-window-after-the-payment-screen": { cls: "slide-idea", build: buildWindowGraphs },
+    "what-happened-to-the-payment-drop-offs": { cls: "slide-final", build: buildIdeaBody },
+    "what-we-called": { cls: "slide-calls" },
+  };
+
+  var ROADMAP = "Question · Shape events · Look · Compare · Check · Claim";
+
+  // ── Slide: About us ────────────────────────────────────────────────────────
+  // `### Name` + photo + list, repeated → one card per person, in a row.
+  function buildAboutUsCards(slide) {
+    var row = document.createElement("div");
+    row.className = "people";
+    var card = null;
+    Array.prototype.slice.call(slide.children).forEach(function (el) {
+      if (el.tagName === "H3") {
+        card = document.createElement("div");
+        card.className = "person";
+        row.appendChild(card);
+      }
+      if (card && !el.matches("aside")) card.appendChild(el);
+    });
+    slide.appendChild(row);
+  }
+
+  // ── Slide: UX research ─────────────────────────────────────────────────────
+  // The table becomes a matrix of method cards: column and row headers are the
+  // axes (`Axis: hint`), each body cell a card of comma-separated items. An item
+  // `Text ← note` gets the note as a tag, shown on the next click.
+  function buildUxResearchMatrix(slide) {
+    var table = slide.querySelector("table");
+    var head = table.querySelectorAll("thead th");
+
+    function axisLabel(cls, text) {
+      var div = document.createElement("div");
+      var i = text.indexOf(":");
+      div.className = cls;
+      div.textContent = (i < 0 ? text : text.slice(0, i)).trim();
+      if (i >= 0) {
+        var hint = document.createElement("small");
+        hint.textContent = text.slice(i + 1).trim();
+        div.appendChild(hint);
+      }
+      return div;
+    }
+
+    function addTag(li) {
+      var parts = li.innerHTML.split("←");
+      if (parts.length < 2) return;
+      li.innerHTML = parts[0].trim() + ' <span class="tag fragment"></span>';
+      li.lastChild.textContent = parts.slice(1).join("←").trim();
+    }
+
+    var matrix = document.createElement("div");
+    matrix.className = "matrix";
+    matrix.style.setProperty("--cols", head.length - 1);
+    matrix.appendChild(document.createElement("div"));
+    for (var c = 1; c < head.length; c++) {
+      matrix.appendChild(axisLabel("matrix-col col-" + c, head[c].textContent));
+    }
+    table.querySelectorAll("tbody tr").forEach(function (tr) {
+      var cells = tr.children;
+      matrix.appendChild(axisLabel("matrix-row", cells[0].textContent));
+      for (var c = 1; c < cells.length; c++) {
+        var card = document.createElement("div");
+        card.className = "matrix-cell col-" + c;
+        var ul = document.createElement("ul");
+        cells[c].innerHTML.split(",").forEach(function (item) {
+          var li = document.createElement("li");
+          li.innerHTML = item.trim();
+          ul.appendChild(li);
+          addTag(li);
+        });
+        card.appendChild(ul);
+        matrix.appendChild(card);
+      }
+    });
+    table.replaceWith(matrix);
+  }
+
+  // ── Column frames (shared by Event-log data and Eventstream) ─────────────
+  // A frame is drawn around a group of table columns, with a label underneath.
+  // Optional columns: a group of only optional columns is framed dashed in the
+  // "optional" color, an optional column inside a required group gets an inner
+  // dashed frame. Frames are reveal.js fragments.
+
+  function tableHeaders(table) {
+    return Array.prototype.map.call(table.querySelectorAll("thead th"), function (th) {
+      return th.textContent.trim();
+    });
+  }
+
+  // Wrap the table in a positioned box the frames are laid out in.
+  function wrapForColumnFrames(table) {
+    var wrap = document.createElement("div");
+    wrap.className = "columns-wrap";
+    table.replaceWith(wrap);
+    wrap.appendChild(table);
+    return wrap;
+  }
+
+  // cols: [{index, optional}] — header indexes of the framed columns.
+  function addColumnFrame(wrap, cols, label) {
+    var idx = cols.map(function (c) { return c.index; });
+    var optionalGroup = cols.every(function (c) { return c.optional; });
+    var frame = document.createElement("div");
+    frame.className = "frame fragment" + (optionalGroup ? " optional" : "");
+    frame.dataset.first = Math.min.apply(null, idx);
+    frame.dataset.last = Math.max.apply(null, idx);
+    var caption = document.createElement("div");
+    caption.className = "frame-label";
+    caption.textContent = label;
+    frame.appendChild(caption);
+    cols.forEach(function (c) {
+      if (!c.optional || optionalGroup) return;
+      var inner = document.createElement("div");
+      inner.className = "frame-inner";
+      inner.dataset.col = c.index;
+      frame.appendChild(inner);
+    });
+    wrap.appendChild(frame);
+    return frame;
+  }
+
+  // Position the frames over their columns. Uses offset* (layout pixels, not
+  // affected by reveal's scaling), so it only works on a displayed slide: run
+  // on every slide change and resize.
+  function layoutColumnFrames(slide) {
+    if (!slide) return;
+    slide.querySelectorAll(".columns-wrap").forEach(function (wrap) {
+      var table = wrap.querySelector("table");
+      var head = table.querySelectorAll("thead th");
+      var body = table.querySelector("tbody");
+      var top = table.offsetTop;
+      var height = body.offsetTop + body.offsetHeight;
+      var x = function (i) { return table.offsetLeft + head[i].offsetLeft; };
+      var w = function (i) { return head[i].offsetWidth; };
+      // Frames are inset by GAP so neighbouring ones don't touch; inner frames
+      // by INNER from their column's edges.
+      var GAP = 4, INNER = 6;
+      wrap.querySelectorAll(".frame").forEach(function (frame) {
+        var first = +frame.dataset.first, last = +frame.dataset.last;
+        var left = x(first) + GAP;
+        frame.style.left = left + "px";
+        frame.style.top = top + "px";
+        frame.style.width = x(last) + w(last) - GAP - left + "px";
+        frame.style.height = height + "px";
+        frame.querySelectorAll(".frame-inner").forEach(function (inner) {
+          var c = +inner.dataset.col;
+          inner.style.left = x(c) + INNER - left - 3 + "px";
+          inner.style.width = w(c) - 2 * INNER + "px";
+        });
+      });
+    });
+  }
+
+  // ── Slide: Event-log data ──────────────────────────────────────────────────
+  // The list under the table, `- label: col, *col*`, becomes column frames,
+  // one per click, in list order. *Italic* columns are optional.
+  function buildEventLogColumnGroups(slide) {
+    var table = slide.querySelector("table");
+    var list = table.nextElementSibling;
+    var caption = table.previousElementSibling;  // "Event log table", if any
+    var headers = tableHeaders(table);
+    var wrap = wrapForColumnFrames(table);
+    if (caption && caption.tagName === "P") {  // goes right above the table
+      caption.classList.add("table-caption");
+      wrap.insertBefore(caption, table);
+    }
+    Array.prototype.forEach.call(list.children, function (li) {
+      var i = li.textContent.indexOf(":");
+      var cols = li.innerHTML.slice(li.innerHTML.indexOf(":") + 1).split(",").map(function (html) {
+        var tmp = document.createElement("span");
+        tmp.innerHTML = html;
+        return { index: headers.indexOf(tmp.textContent.trim()), optional: /<em>/.test(html) };
+      }).filter(function (c) {
+        return c.index >= 0;
+      });
+      if (i < 0 || !cols.length) return;
+      addColumnFrame(wrap, cols, li.textContent.slice(0, i).trim());
+    });
+    list.remove();
+  }
+
+  // ── Slide: Eventstream ─────────────────────────────────────────────────────
+  // Each click on the schema code highlights one line (Quarto clones the code
+  // block into one fragment per step); frame the columns that line names, on
+  // the same click, with the schema key as the label. Only the current frame
+  // shows, like the highlighted line. Segment and custom columns are optional.
+  var OPTIONAL_SCHEMA_KEYS = ["segment_cols", "custom_cols"];
+
+  function buildEventstreamSchemaFrames(slide) {
+    var table = slide.querySelector("table");
+    var headers = tableHeaders(table);
+    var wrap = wrapForColumnFrames(table);
+    slide.querySelectorAll("code.has-line-highlights.fragment").forEach(function (step) {
+      var line = step.querySelector(".highlight-line");
+      var m = line && line.textContent.match(/"(\w+)"\s*:(.*)/);
+      if (!m) return;
+      var optional = OPTIONAL_SCHEMA_KEYS.indexOf(m[1]) >= 0;
+      var cols = (m[2].match(/"[^"]+"/g) || []).map(function (q) {
+        return { index: headers.indexOf(q.slice(1, -1)), optional: optional };
+      }).filter(function (c) {
+        return c.index >= 0;
+      });
+      if (!cols.length) return;
+      var frame = addColumnFrame(wrap, cols, m[1]);
+      frame.classList.add("current-visible");
+      frame.dataset.fragmentIndex = step.dataset.fragmentIndex;
+    });
+
+    // Put the two code blocks (read the CSV | the schema) side by side above
+    // the table, so the whole slide fits and the highlighted schema line sits
+    // right above its frame. Spacer paragraphs (`<br>`) are no longer needed.
+    var cells = slide.querySelectorAll(":scope > .cell");
+    if (cells.length === 2) {
+      var row = document.createElement("div");
+      row.className = "code-row";
+      row.appendChild(cells[0].querySelector(".code-copy-outer-scaffold"));
+      row.appendChild(cells[1].querySelector(".code-copy-outer-scaffold"));
+      cells[0].insertBefore(row, cells[0].firstChild);
+      cells[1].remove();
+    }
+    slide.querySelectorAll(":scope > p").forEach(function (p) {
+      if (!p.textContent.trim() && p.querySelector("br")) p.remove();
+    });
+  }
+
+  // ── Slide: Data accessor: Eventstream.df ───────────────────────────────────
+  // On the first click, frame the technical columns Eventstream adds and show
+  // the list under the table that explains them.
+  var TECHNICAL_COLUMNS = ["event_type", "subindex", "index"];
+
+  function buildStreamDfTechnicalFrame(slide) {
+    var table = slide.querySelector("table");
+    var headers = tableHeaders(table);
+    var cols = TECHNICAL_COLUMNS.map(function (name) {
+      return { index: headers.indexOf(name), optional: false };
+    }).filter(function (c) {
+      return c.index >= 0;
+    });
+    var frame = addColumnFrame(wrapForColumnFrames(table), cols, "added by Eventstream");
+    frame.dataset.fragmentIndex = 0;
+    var list = slide.querySelector(":scope > ul");
+    if (list) {
+      list.classList.add("fragment");
+      list.dataset.fragmentIndex = 0;
+    }
+  }
+
+  // ── Slides: collapse_events, truncate_paths, Anchors, add_events ──────────
+  // The toy paths first show in full ("before"); on the next click, whatever
+  // the processor removed fades out ("after"). The figure is a fragment that
+  // stays visible: custom.scss only fades the dropped beads once it is shown.
+  function buildPathBeadsStep(slide) {
+    var figure = slide.querySelector(".path-beads");
+    if (figure) figure.classList.add("fragment");
+    return figure;
+  }
+
+  // ── Slide: Funnels: the traditional view ───────────────────────────────────
+  // The list under the funnel figure ("what a funnel can't see") comes one item
+  // per click; the current item lights up the path it names first ("D→B→E"),
+  // matched against the rows' data-path (see syncFunnelSpots).
+  var PATH_IN_TEXT = /[A-Za-z_]+(?:→[A-Za-z_]+)+/;
+
+  function buildFunnelBlindSpots(slide) {
+    slide.querySelectorAll(":scope > ul > li").forEach(function (li) {
+      li.classList.add("fragment");
+      var m = li.textContent.match(PATH_IN_TEXT);
+      if (m) li.dataset.path = m[0];
+    });
+  }
+
+  function syncFunnelSpots(slide) {
+    if (!slide || !slide.classList.contains("slide-funnel")) return;
+    var current = slide.querySelector("li.current-fragment");
+    var path = current && current.dataset.path;
+    slide.querySelectorAll(".path-row").forEach(function (row) {
+      row.classList.toggle("spot", !!path && row.dataset.path === path);
+    });
+  }
+
+  // ── Slide: Transition graph: count adjacent pairs ──────────────────────────
+  // Paths and pair counts come as one figure (toy.pairs_figure, which also sets
+  // up the per-click frames); the graph widget is the next cell's output. Put
+  // it in as the third column.
+  function buildPairsLayout(slide) {
+    var layout = slide.querySelector(".pairs-layout");
+    var iframe = slide.querySelector("iframe[srcdoc]");
+    if (!layout || !iframe) return;
+    var column = document.createElement("div");
+    column.className = "pairs-graph";
+    column.appendChild(iframe.closest(".cell-output-display") || iframe);
+    layout.appendChild(column);
+  }
+
+  // The pair framed in the list (toy.pairs_figure's data-pair on its row) is
+  // also spotlighted on the graph: its edge and its two nodes.
+  function syncPairsSpot(slide) {
+    if (!slide || !slide.classList.contains("slide-pairs")) return;
+    var frame = slide.querySelector(".pair-frame.visible");
+    var pair = frame ? frame.closest(".pair-row").dataset.pair.split("->") : null;
+    var f = slide.querySelector(".pairs-graph iframe[srcdoc]");
+    if (!f) return;
+    whenGraphReady(f, function (cy) { spotEdge(cy, pair); });
+  }
+
+  // Spotlight edges (`[source, target]` pairs; spotEdge: one, or null for
+  // none) on a graph: the edges and their ends in orange, the rest faded.
+  function spotEdge(cy, pair) {
+    spotEdges(cy, pair ? [pair] : []);
+  }
+
+  function spotEdges(cy, pairs) {
+    if (!cy.scratch("spotStyle")) {
+      cy.scratch("spotStyle", true);
+      cy.style()
+        .selector(".spot-dim").style({ opacity: 0.15 })
+        .selector("node.spot-hit").style({
+          "underlay-color": "#f97316", "underlay-opacity": 0.35, "underlay-padding": 10, "underlay-shape": "ellipse",
+        })
+        .selector("edge.spot-hit").style({
+          "underlay-color": "#f97316", "underlay-opacity": 0.35, "underlay-padding": 5,
+        })
+        .update();
+    }
+    cy.elements().removeClass("spot-dim spot-hit");
+    if (!pairs.length) return;
+    var edges = cy.edges().filter(function (e) {
+      return pairs.some(function (p) { return e.data("source") === p[0] && e.data("target") === p[1]; });
+    });
+    var on = edges.union(edges.connectedNodes());
+    on.addClass("spot-hit");
+    cy.elements().not(on).addClass("spot-dim");
+  }
+
+  // ── Slides: Step matrix: count events at each step, Tree vs. step matrix ──
+  // Tables made by toy.py carry `data-spotlight="1,2,3"`: the steps that get a
+  // click each. The k-th listed step gets a column frame (the shared column
+  // frame machinery) shown only on click k; the tree SVG sets up its own.
+  function buildStepSpotlight(slide) {
+    slide.querySelectorAll("table[data-spotlight]").forEach(function (table) {
+      var steps = table.dataset.spotlight.split(",").filter(Boolean);
+      if (!steps.length) return;
+      var headers = tableHeaders(table);
+      var wrap = wrapForColumnFrames(table);
+      steps.forEach(function (step, k) {
+        var index = headers.indexOf(step.trim());
+        if (index < 0) return;
+        var frame = addColumnFrame(wrap, [{ index: index, optional: false }], "");
+        frame.classList.add("current-visible");
+        frame.dataset.fragmentIndex = k;
+      });
+    });
+  }
+
+  // ── Slide: Chaining data processors ────────────────────────────────────────
+  // The code steps through the chain line by line; each step brings in the
+  // figure column with the paths after that processor (column 0 is the source,
+  // always shown).
+  function buildChainingResult(slide) {
+    var steps = slide.querySelectorAll("code.has-line-highlights.fragment");
+    slide.querySelectorAll(".chain-col").forEach(function (col, k) {
+      if (!k || !steps[k - 1]) return;
+      col.classList.add("fragment");
+      col.dataset.fragmentIndex = steps[k - 1].dataset.fragmentIndex;
+    });
+  }
+
+  // ── Slide: Path patterns ───────────────────────────────────────────────────
+  // `### Syntax` + list and `### Examples` + list become two columns; the
+  // examples column appears on the next click. Anything after the second list
+  // (the closing note) stays below, full width, and comes with the examples.
+  function buildPathPatternsColumns(slide) {
+    var row = document.createElement("div");
+    row.className = "pattern-columns";
+    var column = null;
+    var columns = [];
+    Array.prototype.slice.call(slide.children).forEach(function (el) {
+      if (el.tagName === "H3") {
+        column = document.createElement("div");
+        column.className = "pattern-column";
+        columns.push(column);
+        row.appendChild(column);
+      }
+      if (!column || el.matches("aside")) return;
+      if (el.tagName === "H3" || el.tagName === "UL") {
+        column.appendChild(el);
+      } else if (columns.length > 1) {
+        el.classList.add("fragment");
+        el.dataset.fragmentIndex = 0;
+      }
+    });
+    var title = slide.querySelector(":scope > h2");
+    title.insertAdjacentElement("afterend", row);
+    if (columns[1]) {
+      columns[1].classList.add("fragment");
+      columns[1].dataset.fragmentIndex = 0;
+    }
+  }
+
+  // ── Slide: Types of data processors ────────────────────────────────────────
+  // The nested list becomes a tree: the single top item is the root, its
+  // sub-items the branches (cards side by side), their sub-items the leaves.
+  function buildDataProcessorsTree(slide) {
+    var ul = slide.querySelector(":scope > ul");
+    var root = ul && ul.children.length === 1 && ul.firstElementChild;
+    var branchList = root && root.querySelector(":scope > ul");
+    if (!branchList) return;
+
+    // An item's own text, without its nested list.
+    function ownText(li) {
+      var copy = li.cloneNode(true);
+      copy.querySelectorAll("ul, ol").forEach(function (l) { l.remove(); });
+      return copy.textContent.trim();
+    }
+
+    var tree = document.createElement("div");
+    tree.className = "tree";
+    tree.style.setProperty("--branches", branchList.children.length);
+    var rootBox = document.createElement("div");
+    rootBox.className = "tree-root";
+    rootBox.textContent = ownText(root);
+    var branches = document.createElement("div");
+    branches.className = "tree-branches";
+    Array.prototype.forEach.call(branchList.children, function (li) {
+      var card = document.createElement("div");
+      card.className = "tree-branch";
+      var title = document.createElement("div");
+      title.className = "tree-title";
+      title.textContent = ownText(li);
+      card.appendChild(title);
+      var leaves = li.querySelector(":scope > ul, :scope > ol");
+      if (leaves) card.appendChild(leaves);
+      branches.appendChild(card);
+    });
+    tree.appendChild(rootBox);
+    tree.appendChild(branches);
+    ul.replaceWith(tree);
+  }
+
+  // ── Slide: Why event-log analysis is challenging ──────────────────────────
+  // The numbered list becomes a stepper: items on the left, their sub-lists
+  // stacked on the right. Item k and sub-list k share a fragment index, so each
+  // click highlights the next item (only while current) and swaps in its
+  // sub-list.
+  function buildChallengesStepper(slide) {
+    var ol = slide.querySelector(":scope > ol");
+    var stepper = document.createElement("div");
+    stepper.className = "stepper";
+    var details = document.createElement("div");
+    details.className = "stepper-details";
+    Array.prototype.forEach.call(ol.children, function (li, i) {
+      var sub = li.querySelector(":scope > ul, :scope > ol");
+      li.classList.add("fragment", "stepper-item");
+      li.dataset.fragmentIndex = i;
+      if (!sub) return;
+      sub.classList.add("fragment", "current-visible");
+      sub.dataset.fragmentIndex = i;
+      details.appendChild(sub);
+    });
+    ol.replaceWith(stepper);
+    stepper.appendChild(ol);
+    stepper.appendChild(details);
+  }
+
+  // ── Slide: Events and the happy path ──────────────────────────
+  // Each table column is a stage; its events become chips in the stage's color
+  // (custom.scss), and the happy path's events take the color of their column.
+  function buildTaskboardStageChips(slide) {
+    var stageOf = {};
+    slide.querySelectorAll("tbody td").forEach(function (td) {
+      var code = td.querySelector("code");
+      if (!code) return;
+      code.className = "chip stage-" + td.cellIndex;
+      stageOf[code.textContent] = td.cellIndex;
+    });
+    slide.querySelectorAll(":scope > p code").forEach(function (code) {
+      if (code.textContent in stageOf) code.className = "chip stage-" + stageOf[code.textContent];
+    });
+  }
+
+  // ── Slides: What kind of visit was it? / Who are the users? / Who is Timeline for? ─
+  // The cluster table on the left, a line per cluster on the right; the names
+  // become pills, in their stage's color where they have one (custom.scss).
+  //
+  // The widget's value columns have a fixed width; here they size to their
+  // content, so all the clusters fit in two thirds of the slide.
+  var NARROW_TABLE_CSS =
+    "td, th { width: auto !important; min-width: 0 !important; max-width: none !important; " +
+    "padding-left: 4px !important; padding-right: 4px !important; } " +
+    "tr > :first-child { width: 104px !important; min-width: 104px !important; max-width: 104px !important; }";
+
+  function buildClusterTableLayout(slide) {
+    var iframe = slide.querySelector("iframe[srcdoc]");
+    iframe.dataset.widgetCss = NARROW_TABLE_CSS;
+    var widget = iframe.closest(".cell");
+    var list = slide.querySelector(":scope > ul");
+    var layout = document.createElement("div");
+    layout.className = "cluster-table-layout";
+    widget.before(layout);
+    layout.appendChild(widget);
+    layout.appendChild(list);
+    list.querySelectorAll("code").forEach(function (code) {
+      code.classList.add("chip");
+      code.dataset.visit = code.textContent;
+    });
+  }
+
+  // ── Slide: What kind of session was it? ─────────────────────────────────
+  // The cluster table, then two clicks: a frame around one cluster's column,
+  // then frames around the rows of the events that make it. The table is
+  // inside the widget's iframe, so the frames are drawn in there (over the
+  // table, clipped to its scroll box) whenever a click or a reload changes it.
+  var CLUSTER_SPOTS = [
+    { column: "teamwork" },
+    { rows: ["accept_invite", "assign_task", "comment", "mention"] },
+  ];
+
+  function buildSessionClusterSpots(slide) {
+    buildClusterTableLayout(slide);
+    CLUSTER_SPOTS.forEach(function (spot, k) {
+      var marker = document.createElement("span");
+      marker.className = "fragment cluster-spot";
+      marker.dataset.fragmentIndex = k;
+      slide.appendChild(marker);
+    });
+    var f = slide.querySelector("iframe[srcdoc]");
+    f.addEventListener("load", function () { syncClusterSpots(slide); });
+  }
+
+  function syncClusterSpots(slide) {
+    var markers = slide && slide.querySelectorAll(".cluster-spot");
+    if (!markers || !markers.length) return;
+    var f = slide.querySelector("iframe[srcdoc]");
+    var on = Array.prototype.map.call(markers, function (m) { return m.classList.contains("visible"); });
+    var tries = 0;
+    (function draw() {
+      var doc = f.contentDocument;
+      var table = doc && !f.dataset.loading && doc.querySelector("table");
+      if (!table || !table.rows.length) {
+        if (++tries < 100) setTimeout(draw, 100);
+        return;
+      }
+      doc.querySelectorAll(".deck-spot").forEach(function (el) { el.remove(); });
+      var win = doc.defaultView;
+      // The table's scroll box: frames don't reach past it.
+      var clip = table.getBoundingClientRect();
+      for (var el = table.parentElement; el && el !== doc.body; el = el.parentElement) {
+        var oy = win.getComputedStyle(el).overflowY;
+        if (oy === "auto" || oy === "scroll" || oy === "hidden") { clip = el.getBoundingClientRect(); break; }
+      }
+      function frame(cellsToFrame) {
+        if (!cellsToFrame.length) return;
+        var r = { left: 1e9, top: 1e9, right: -1e9, bottom: -1e9 };
+        cellsToFrame.forEach(function (c) {
+          var b = c.getBoundingClientRect();
+          r.left = Math.min(r.left, b.left); r.top = Math.min(r.top, b.top);
+          r.right = Math.max(r.right, b.right); r.bottom = Math.max(r.bottom, b.bottom);
+        });
+        r.top = Math.max(r.top, clip.top); r.bottom = Math.min(r.bottom, clip.bottom);
+        if (r.bottom <= r.top) return;
+        var box = doc.createElement("div");
+        box.className = "deck-spot";
+        box.style.cssText = "position:absolute;pointer-events:none;z-index:50;box-sizing:border-box;" +
+          "border:4px solid #111827;border-radius:4px;" +
+          "box-shadow:0 0 0 2px #fff, inset 0 0 0 2px #fff;" +
+          "left:" + (r.left + win.scrollX - 1) + "px;top:" + (r.top + win.scrollY - 1) + "px;" +
+          "width:" + (r.right - r.left + 2) + "px;height:" + (r.bottom - r.top + 2) + "px;";
+        doc.body.appendChild(box);
+      }
+      var rows = Array.prototype.slice.call(table.rows);
+      var label = function (tr) { return tr.cells[0] ? tr.cells[0].textContent.trim() : ""; };
+      CLUSTER_SPOTS.forEach(function (spot, k) {
+        if (!on[k]) return;
+        if (spot.column) {
+          var head = rows.find(function (tr) {
+            return Array.prototype.some.call(tr.cells, function (c) { return c.textContent.trim() === spot.column; });
+          });
+          if (!head) return;
+          var col = Array.prototype.findIndex.call(head.cells, function (c) { return c.textContent.trim() === spot.column; });
+          frame(rows.map(function (tr) { return tr.cells.length === head.cells.length ? tr.cells[col] : null; })
+            .filter(Boolean));
+        }
+        (spot.rows || []).forEach(function (name) {
+          var tr = rows.find(function (tr) { return label(tr) === name; });
+          if (tr) frame(Array.prototype.slice.call(tr.cells));
+        });
+      });
+    })();
+  }
+
+  // ── Slide: What it looks like in Retentioneering code ─────────────────────
+  // The code on the left, what it does on the right: each highlight step of
+  // the code (`#| code-line-numbers`, a fragment per step, made by Quarto's
+  // line-highlight plugin) adds the point about it, in the same fragment,
+  // under the points before.
+  function buildCodeSteps(slide) {
+    var cell = slide.querySelector(":scope > .cell");
+    var list = slide.querySelector(":scope > ul");
+    var layout = document.createElement("div");
+    layout.className = "code-steps-layout";
+    cell.before(layout);
+    layout.appendChild(cell);
+    layout.appendChild(list);
+    cell.querySelectorAll("pre code.fragment").forEach(function (step, i) {
+      step.dataset.fragmentIndex = i;
+    });
+    Array.prototype.forEach.call(list.children, function (li, i) {
+      li.classList.add("fragment");
+      li.dataset.fragmentIndex = i;
+    });
+  }
+
+  // ── Slide: Step matrix: diff mode ─────────────────────────────────────────
+  // The code and its widget on the left, the points on the right.
+  // Diff mode colors the first group red, the second blue; so do the slides'
+  // **bold** group names.
+  var DIFF_GROUPS = { "android 4.12.0": "diff-1", "the rest": "diff-2" };
+
+  function colorDiffGroups(slide) {
+    slide.querySelectorAll("li strong").forEach(function (b) {
+      var cls = DIFF_GROUPS[b.textContent.trim().toLowerCase()];
+      if (cls) b.classList.add("diff-group", cls);
+    });
+  }
+
+  function buildWidgetAndPoints(slide) {
+    colorDiffGroups(slide);
+    layoutWidgetAndPoints(slide);
+  }
+
+  // The layout alone, with no diff colors on the points.
+  function layoutWidgetAndPoints(slide) {
+    slide.querySelectorAll("iframe[srcdoc]").forEach(tightWidget);
+    var cells = slide.querySelectorAll(":scope > .cell");
+    var list = slide.querySelector(":scope > ul");
+    var layout = document.createElement("div");
+    layout.className = "widget-points-layout";
+    cells[0].before(layout);
+    var left = document.createElement("div");
+    left.className = "widget-points-main";
+    layout.appendChild(left);
+    cells.forEach(function (cell) { left.appendChild(cell); });
+    layout.appendChild(list);
+  }
+
+  // ── Slide: The funnel shows where, not why ────────────────────────────────
+  // The widget and the points; on the funnel chart, a long dashed line from
+  // the top of the payment-screen bar and one from the top of the order bar,
+  // a bracket between them and the drop: −12%.
+  function buildFunnel(slide) {
+    buildWidgetAndPoints(slide);
+    var f = slide.querySelector("iframe[srcdoc]");
+    f.addEventListener("load", function () { drawFunnelDrop(f); });
+  }
+
+  function drawFunnelDrop(f) {
+    var tries = 0, lastTop = null;
+    (function draw() {
+      var doc = f.contentDocument;
+      var bars = doc ? Array.prototype.filter.call(doc.querySelectorAll("svg rect[fill]"), function (r) {
+        return r.getBoundingClientRect().width > 20;
+      }) : [];
+      if (bars.length < 3) {
+        if (++tries < 100) setTimeout(draw, 100);
+        return;
+      }
+      bars.sort(function (a, b) { return a.getBoundingClientRect().left - b.getBoundingClientRect().left; });
+      var top = bars[1].getBoundingClientRect().top;
+      if (top !== lastTop && ++tries < 100) {   // wait until the chart stops moving
+        lastTop = top;
+        setTimeout(draw, 150);
+        return;
+      }
+      doc.querySelectorAll(".deck-drop").forEach(function (el) { el.remove(); });
+      var win = doc.defaultView;
+      var pay = bars[1].getBoundingClientRect(), order = bars[2].getBoundingClientRect();
+      var x0 = pay.left - 6 + win.scrollX, x1 = order.right + 150 + win.scrollX;
+      function add(css, text) {
+        var el = doc.createElement("div");
+        el.className = "deck-drop";
+        el.style.cssText = "position:absolute;pointer-events:none;z-index:50;" + css;
+        if (text) el.textContent = text;
+        doc.body.appendChild(el);
+      }
+      [pay.top, order.top].forEach(function (y) {
+        add("left:" + x0 + "px;top:" + (y + win.scrollY - 1) + "px;width:" + (x1 - x0) +
+          "px;border-top:2px dashed #ef4444;");
+      });
+      add("left:" + x1 + "px;top:" + (pay.top + win.scrollY) + "px;height:" + (order.top - pay.top) +
+        "px;width:6px;border:2px solid #ef4444;border-left:none;");
+      add("left:" + (x1 + 12) + "px;top:" + ((pay.top + order.top) / 2 + win.scrollY - 11) +
+        "px;font:700 16px system-ui,sans-serif;color:#ef4444;white-space:nowrap;", "−12%");
+    })();
+  }
+
+  // ── Slides: Select… / Cut a window… ───────────────────────────────────────
+  // Everything under the title in one box, centered vertically in the space
+  // the title leaves (custom.scss); the title stays where every title is.
+  function buildIdeaBody(slide) {
+    var h2 = slide.querySelector(":scope > h2");
+    var body = document.createElement("div");
+    body.className = "idea-body";
+    Array.prototype.slice.call(slide.children).forEach(function (el) {
+      if (el !== h2 && !el.matches("aside")) body.appendChild(el);
+    });
+    h2.after(body);
+  }
+
+  // ── Widget stacks ─────────────────────────────────────────────────────────
+  // Cells shown one at a time in the same place, each with a caption. With
+  // `firstShown`, the first cell is there before any click and leaves on the
+  // first one; otherwise every cell comes with a click. Returns the stack.
+  function stackCells(cells, captions, firstShown) {
+    var stack = document.createElement("div");
+    stack.className = "graph-stack";
+    cells[0].before(stack);
+    var height = 0;
+    cells.forEach(function (cell, k) {
+      stack.appendChild(cell);
+      var f = cell.querySelector("iframe[srcdoc]");
+      if (f) height = Math.max(height, parseFloat(f.style.height) || 0);
+      if (firstShown && k === 0) {
+        cell.classList.add("fragment", "fade-out");
+        cell.dataset.fragmentIndex = 0;
+      } else {
+        cell.classList.add("fragment", "current-visible");
+        cell.dataset.fragmentIndex = firstShown ? k - 1 : k;
+      }
+      if (firstShown && k === 1) cell.dataset.fragmentIndex = 0;
+      var caption = document.createElement("div");
+      caption.className = "graph-caption";
+      caption.textContent = captions[k];
+      cell.prepend(caption);
+    });
+    if (height) stack.style.height = height + "px";
+    return stack;
+  }
+
+  // ── Slide: Cut a window after the payment screen ──────────────────────────
+  // The graphs first, side by side: the graph of whole paths on its own, the
+  // reason to cut; one click brings the cut (the pattern, the idea, the cut
+  // path, under the graphs) and the graph after it.
+  function buildWindowGraphs(slide) {
+    buildIdeaBody(slide);
+    var body = slide.querySelector(".idea-body");
+    var cells = body.querySelectorAll(":scope > .cell");
+    var graphs = Array.prototype.slice.call(cells, -2);
+    var pair = document.createElement("div");
+    pair.className = "graph-pair";
+    var text = document.createElement("div");
+    text.className = "idea-text fragment";
+    text.dataset.fragmentIndex = 0;
+    Array.prototype.slice.call(body.children).forEach(function (el) {
+      if (graphs.indexOf(el) < 0) text.appendChild(el);
+    });
+    ["Before the cut: whole paths", "After the cut: the windows"].forEach(function (caption, k) {
+      var label = document.createElement("div");
+      label.className = "graph-caption";
+      label.textContent = caption;
+      graphs[k].prepend(label);
+      pair.appendChild(graphs[k]);
+    });
+    graphs[1].classList.add("fragment");
+    graphs[1].dataset.fragmentIndex = 0;
+    body.appendChild(pair);
+    body.appendChild(text);
+  }
+
+  // ── Slide: Step matrix: android 4.12.0 against the rest ──────────────────
+  // Three matrices side by side, each under its caption: android 4.12.0 from
+  // the start, then the rest, then the diff, a click each; they stay. The
+  // points go under the row.
+  // A narrow event column (long names end in an ellipsis) and no settings
+  // button: the matrix takes just the width of its seven step columns.
+  var NARROW_MATRIX_CSS =
+    "tr > :first-child { width: 116px !important; min-width: 116px !important; max-width: 116px !important; " +
+    "overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; } " +
+    "button[title='Toggle settings'] { display: none !important; }";
+
+  function buildMatrixRow(slide) {
+    colorDiffGroups(slide);
+    slide.querySelectorAll("iframe[srcdoc]").forEach(function (f) {
+      f.dataset.widgetCss = NARROW_MATRIX_CSS;
+      tightWidget(f);
+    });
+    var cells = Array.prototype.slice.call(slide.querySelectorAll(":scope > .cell"));
+    var row = document.createElement("div");
+    row.className = "matrix-row";
+    cells[0].before(row);
+    ["android 4.12.0", "the rest", "diff: android 4.12.0 − the rest"].forEach(function (text, k) {
+      var caption = document.createElement("div");
+      caption.className = "matrix-caption" + (k === 2 ? " diff" : "");
+      caption.textContent = text;
+      cells[k].prepend(caption);
+      if (k) {
+        cells[k].classList.add("fragment");
+        cells[k].dataset.fragmentIndex = k - 1;
+      }
+      row.appendChild(cells[k]);
+    });
+  }
+
+  // ── Slide: Clustering: six ways not to order ─────────────────────────────
+  // The profile table's columns size to their content (cluster names and
+  // metric names in full), then the widget-and-points layout.
+  var CONTENT_WIDTH_TABLE_CSS =
+    "td, th { width: auto !important; min-width: 0 !important; max-width: none !important; " +
+    "padding-left: 6px !important; padding-right: 6px !important; white-space: nowrap !important; } " +
+    "td *, th * { overflow: visible !important; text-overflow: clip !important; max-width: none !important; }";
+
+  function buildClusterProfile(slide) {
+    slide.querySelector("iframe[srcdoc]").dataset.widgetCss = CONTENT_WIDTH_TABLE_CSS;
+    layoutWidgetAndPoints(slide);
+  }
+
+  // ── Slide: Clustering: six ways not to order ─────────────────────────────
+  // The table, then a transition graph per cluster (the next six cells),
+  // stacked under it: click k shows the k-th graph alone and frames that
+  // cluster's column in the table. The clusters come in the table's order
+  // (talk.CLUSTER_ORDER).
+  var CLUSTER_ORDER = ["payment · gone", "review · gone", "error · gone",
+                       "payment · back", "review · back", "error · back"];
+
+  function buildClusterGraphs(slide) {
+    var table = slide.querySelector("iframe[srcdoc]");
+    table.dataset.widgetCss = CONTENT_WIDTH_TABLE_CSS;
+    layoutWidgetAndPoints(slide);
+    // The graph of every window on the first click, then a cluster per click.
+    var cells = Array.prototype.slice.call(slide.querySelectorAll(".widget-points-main > .cell"), 1);
+    stackCells(cells, ["all the clusters"].concat(CLUSTER_ORDER), false);
+    slide._tableSpots = CLUSTER_ORDER.map(function (name, k) { return { column: name, fragment: k + 1 }; });
+    table.addEventListener("load", function () { syncTableSpots(slide); });
+  }
+
+  // ── Slide: The error clusters point at one build ──────────────────────────
+  // The same table with the build rows added; those rows and the two error
+  // columns framed.
+  function buildClusterBuilds(slide) {
+    var table = slide.querySelector("iframe[srcdoc]");
+    table.dataset.widgetCss = CONTENT_WIDTH_TABLE_CSS;
+    layoutWidgetAndPoints(slide);
+    // The build rows and the two error columns: the red values sit where
+    // they cross.
+    slide._tableSpots = [
+      { rowsMatching: /in_segment_bulk|^android /, fragment: null },
+      { column: "error · gone", fragment: null },
+      { column: "error · back", fragment: null },
+    ];
+    table.addEventListener("load", function () { syncTableSpots(slide); });
+  }
+
+  // Frames over a static segment overview table (the slide's first widget),
+  // drawn inside its iframe: a spot frames a column (`column`, by its header)
+  // or a set of rows (`rowsMatching`, by their label). A spot with a
+  // `fragment` index shows only while that click is the current one; with
+  // `fragment: null`, always.
+  function syncTableSpots(slide) {
+    var spots = slide && slide._tableSpots;
+    if (!spots) return;
+    var f = slide.querySelector("iframe[srcdoc]");
+    var current = slide === Reveal.getCurrentSlide() ? Reveal.getIndices().f : undefined;
+    if (typeof current !== "number") current = -1;
+    var tries = 0;
+    var lastTop = null;
+    (function draw() {
+      var doc = f.contentDocument;
+      var table = doc && !f.dataset.loading && doc.querySelector("table");
+      if (!table || !table.rows.length) {
+        if (++tries < 100) setTimeout(draw, 100);
+        return;
+      }
+      // The widget may still be laying itself out (a chart above the table
+      // renders later and moves it): wait until the table stops moving.
+      var top = table.getBoundingClientRect().top;
+      if (top !== lastTop && ++tries < 100) {
+        lastTop = top;
+        setTimeout(draw, 150);
+        return;
+      }
+      doc.querySelectorAll(".deck-spot").forEach(function (el) { el.remove(); });
+      var win = doc.defaultView;
+      function frame(cells) {
+        if (!cells.length) return;
+        var r = { left: 1e9, top: 1e9, right: -1e9, bottom: -1e9 };
+        cells.forEach(function (c) {
+          var b = c.getBoundingClientRect();
+          r.left = Math.min(r.left, b.left); r.top = Math.min(r.top, b.top);
+          r.right = Math.max(r.right, b.right); r.bottom = Math.max(r.bottom, b.bottom);
+        });
+        // The frame is placed in the body: relative to the body itself when the
+        // body is positioned (a static widget's page may make it so), else to
+        // the document.
+        var origin = win.getComputedStyle(doc.body).position === "static"
+          ? { left: -win.scrollX, top: -win.scrollY }
+          : doc.body.getBoundingClientRect();
+        var box = doc.createElement("div");
+        box.className = "deck-spot";
+        box.style.cssText = "position:absolute;pointer-events:none;z-index:50;box-sizing:border-box;" +
+          "border:4px solid #111827;border-radius:4px;" +
+          "box-shadow:0 0 0 2px #fff, inset 0 0 0 2px #fff;" +
+          "left:" + (r.left - origin.left - 1) + "px;top:" + (r.top - origin.top - 1) + "px;" +
+          "width:" + (r.right - r.left + 2) + "px;height:" + (r.bottom - r.top + 2) + "px;";
+        doc.body.appendChild(box);
+      }
+      var rows = Array.prototype.slice.call(table.rows);
+      var label = function (tr) { return tr.cells[0] ? tr.cells[0].textContent.trim() : ""; };
+      spots.forEach(function (spot) {
+        if (spot.fragment !== null && spot.fragment !== current) return;
+        if (spot.column) {
+          var head = rows.find(function (tr) {
+            return Array.prototype.some.call(tr.cells, function (c) { return c.textContent.trim() === spot.column; });
+          });
+          if (!head) return;
+          var col = Array.prototype.findIndex.call(head.cells, function (c) { return c.textContent.trim() === spot.column; });
+          frame(rows.map(function (tr) { return tr.cells.length === head.cells.length ? tr.cells[col] : null; })
+            .filter(Boolean));
+        }
+        if (spot.rowsMatching) {
+          var cells = [];
+          rows.forEach(function (tr) {
+            if (spot.rowsMatching.test(label(tr))) cells = cells.concat(Array.prototype.slice.call(tr.cells));
+          });
+          frame(cells);
+        }
+      });
+    })();
+  }
+
+  // ── Slide: In this workshop ───────────────────────────────────────────────
+  // A card per part, one per click: the point, and under it its illustration
+  // (the k-th .part-fig of the cell's output).
+  function buildWorkshopParts(slide) {
+    var list = slide.querySelector(":scope > ul");
+    var figs = slide.querySelectorAll(".part-fig");
+    var cards = document.createElement("div");
+    cards.className = "part-cards";
+    Array.prototype.forEach.call(list.children, function (li, k) {
+      var card = document.createElement("div");
+      card.className = "part-card fragment";
+      card.dataset.fragmentIndex = k;
+      var text = document.createElement("div");
+      text.className = "part-text";
+      text.innerHTML = li.innerHTML;
+      card.appendChild(text);
+      if (figs[k]) card.appendChild(figs[k]);
+      cards.appendChild(card);
+    });
+    list.replaceWith(cards);
+    var cell = slide.querySelector(":scope > .cell");
+    if (cell) cell.remove();
+  }
+
+  // ── Slide: Step matrix: one row per event ────────────────────────────────
+  // The code on top; under it, the Part 1 tree diagrams (small) on the left,
+  // the step matrix of the same users on the right.
+  function buildTreesAndMatrix(slide) {
+    var cells = slide.querySelectorAll(":scope > .cell");
+    var row = document.createElement("div");
+    row.className = "trees-matrix";
+    cells[1].before(row);
+    row.appendChild(cells[1]);
+    row.appendChild(cells[2]);
+  }
+
+  // ── Slide: Ask, and get a report ──────────────────────────────────────────
+  // The question across the slide; under it, the points on the left, the
+  // report on the right.
+  function buildReportAsk(slide) {
+    var cell = slide.querySelector(":scope > .cell");
+    var layout = document.createElement("div");
+    layout.className = "report-ask-layout";
+    var text = document.createElement("div");
+    text.className = "report-ask-text";
+    slide.querySelectorAll(":scope > ul").forEach(function (el) {
+      text.appendChild(el);
+    });
+    cell.before(layout);
+    layout.appendChild(text);
+    layout.appendChild(cell);
+  }
+
+  // ── Static transition graphs: reaching into the widget ─────────────────────
+  // A static widget is a same-origin iframe, and the widget keeps its
+  // Cytoscape instance on the graph container's parent as `__cy`. reloadWidget
+  // reloads an iframe (to refit it, see refitWidgets); whenGraphReady runs `fn`
+  // with the graph once the (re)loaded widget has drawn it.
+  function reloadWidget(f) {
+    f.dataset.refitted = "1";
+    f.dataset.loading = "1";
+    if (!f.dataset.watched) {
+      f.dataset.watched = "1";
+      f.addEventListener("load", function () { delete f.dataset.loading; });
+    }
+    f.srcdoc = withPixelRatio(f.srcdoc, f.dataset.widgetCss);
+  }
+
+  function findCy(f) {
+    var doc = f.contentDocument;
+    if (!doc || f.dataset.loading) return null;
+    var els = doc.querySelectorAll("div");
+    for (var i = 0; i < els.length; i++) if (els[i].__cy) return els[i].__cy;
+    return null;
+  }
+
+  function whenGraphReady(f, fn) {
+    var tries = 0;
+    (function poll() {
+      var cy = findCy(f);
+      if (cy && !cy.destroyed() && cy.nodes().length) { setTimeout(function () { fn(cy); }, 150); return; }
+      if (++tries < 150) setTimeout(poll, 100);
+    })();
+  }
+
+  // ── Slides: Even the transition graph is tangled / Eight visit types ──────
+  // stage_graph() (toy.py) places the events stage by stage and leaves a
+  // {stage: [events]} map next to the widget; on the first click each stage
+  // gets a frame around its nodes, labeled in its color, redrawn whenever the
+  // graph is panned or zoomed.
+  function buildStageFrames(slide) {
+    slide.querySelectorAll("script.stage-groups").forEach(function (script) {
+      var layer = stageFramesLayer(script);
+      if (layer) layer.classList.add("fragment");
+    });
+  }
+
+  // The frames for one stage_graph() output (its script tag): a layer over
+  // the widget, filled in once the graph is ready. Returns the layer (null if
+  // the script has no widget next to it).
+  function stageFramesLayer(script) {
+    var cell = script.closest(".cell");
+    var f = cell && cell.querySelector("iframe[srcdoc]");
+    if (!f) return null;
+    var groups = JSON.parse(script.textContent);
+    var host = f.parentElement;
+    host.classList.add("stage-frames-host");
+    var layer = document.createElement("div");
+    layer.className = "stage-frames";
+    host.appendChild(layer);
+    f.addEventListener("load", function () {
+      whenGraphReady(f, function (cy) {
+        function redraw() {
+          var box = cy.container().getBoundingClientRect();
+          layer.innerHTML = "";
+          Object.keys(groups).forEach(function (stage) {
+            if (stage === "path_start" || stage === "path_end") return;
+            var nodes = cy.collection();
+            groups[stage].forEach(function (id) { nodes = nodes.union(cy.getElementById(id)); });
+            if (!nodes.length || groups[stage].length < 2) return;
+            var bb = nodes.renderedBoundingBox({ includeLabels: true });
+            var frame = document.createElement("div");
+            frame.className = "stage-frame stage-" + stage;
+            frame.style.left = f.offsetLeft + box.left + bb.x1 - 8 + "px";
+            frame.style.top = f.offsetTop + box.top + bb.y1 - 8 + "px";
+            frame.style.width = bb.w + 16 + "px";
+            frame.style.height = bb.h + 16 + "px";
+            frame.innerHTML = "<span>" + stage + "</span>";
+            layer.appendChild(frame);
+          });
+          // A label that lands on one before it goes to its frame's bottom.
+          var placed = [];
+          layer.querySelectorAll(".stage-frame > span").forEach(function (label) {
+            var r = label.getBoundingClientRect();
+            var hit = placed.some(function (p) {
+              return r.left < p.right && p.left < r.right && r.top < p.bottom && p.top < r.bottom;
+            });
+            if (hit) {
+              label.style.top = "auto";
+              label.style.bottom = "-0.75em";
+              r = label.getBoundingClientRect();
+            }
+            placed.push(r);
+          });
+        }
+        redraw();
+        cy.on("viewport position", redraw);
+      });
+    });
+    return layer;
+  }
+
+  // The visits graph on the left; on the right, one story per click (the
+  // stories pile up, the current one is highlighted on the graph). A story's
+  // `names` become pills in their stage's color (custom.scss), and the graph
+  // dims everything but those nodes and the edges the story walks: `a` → `b`,
+  // or, for an arrow not right after a name, from the story's first name. The
+  // last click replaces the stories with the raw event graph (the slide's
+  // second widget), captioned by the list's last item.
+  function buildVisitsBeforeAfter(slide) {
+    var cells = slide.querySelectorAll(":scope > .cell");
+    var list = slide.querySelector(":scope > ul");
+    var items = Array.prototype.slice.call(list.children);
+    var caption = items.pop();
+    var layout = document.createElement("div");
+    layout.className = "visits-layout";
+    cells[0].before(layout);
+    layout.appendChild(cells[0]);
+    var side = document.createElement("div");
+    side.className = "visits-side";
+    layout.appendChild(side);
+    side.appendChild(list);
+    side.appendChild(cells[1]);
+    items.forEach(function (li, i) {
+      li.classList.add("fragment", "story");
+      li.dataset.fragmentIndex = i;
+      li.querySelectorAll("code").forEach(function (code) {
+        code.classList.add("chip");
+        code.dataset.visit = code.textContent;
+      });
+    });
+    list.classList.add("fragment", "fade-out");
+    list.dataset.fragmentIndex = items.length;
+    cells[1].classList.add("fragment", "graph-before");
+    cells[1].dataset.fragmentIndex = items.length;
+    var p = document.createElement("p");
+    p.className = "graph-caption";
+    p.innerHTML = caption.innerHTML;
+    caption.remove();
+    cells[1].appendChild(p);
+    var after = document.createElement("p");
+    after.className = "graph-caption fragment";
+    after.dataset.fragmentIndex = items.length;
+    after.textContent = "After: the same paths, session by session";
+    cells[0].appendChild(after);
+  }
+
+  function storyWalk(li) {
+    var names = [], edges = [], first = null, last = null, afterName = false;
+    li.childNodes.forEach(function (n) {
+      if (n.nodeName === "CODE") {
+        var name = n.textContent;
+        if (first === null) first = name;
+        if (last && last.pending) edges.push([last.from, name]);
+        names.push(name);
+        last = { name: name };
+        afterName = true;
+        return;
+      }
+      var text = n.textContent;
+      var arrow = text.indexOf("→");
+      if (arrow >= 0) {
+        var from = afterName && !text.slice(0, arrow).trim() ? last.name : first;
+        if (/\bany\b/i.test(text.slice(0, arrow))) from = "*";  // every edge in
+        last = { name: last && last.name, pending: true, from: from };
+      }
+      if (text.trim()) afterName = false;
+    });
+    return { names: names, edges: edges };
+  }
+
+  function highlightStory(cy, li) {
+    if (!cy.scratch("storyStyle")) {
+      cy.scratch("storyStyle", true);
+      cy.style()
+        .selector(".story-dim").style({ opacity: 0.12 })
+        .selector("node.story-on").style({
+          "underlay-color": "#f97316", "underlay-opacity": 0.35, "underlay-padding": 10, "underlay-shape": "ellipse",
+        })
+        .selector("edge.story-on").style({
+          "underlay-color": "#f97316", "underlay-opacity": 0.35, "underlay-padding": 5,
+        })
+        .update();
+    }
+    cy.elements().removeClass("story-dim story-on");
+    if (!li) return;
+    var walk = storyWalk(li);
+    var on = cy.collection();
+    walk.names.forEach(function (name) { on = on.union(cy.getElementById(name)); });
+    walk.edges.forEach(function (e) {
+      on = on.union(cy.edges().filter(function (edge) {
+        return (e[0] === "*" || edge.data("source") === e[0]) && edge.data("target") === e[1];
+      }));
+    });
+    on = on.union(on.edges().connectedNodes());
+    cy.elements().not(on).addClass("story-dim");
+    on.addClass("story-on");
+    return on;
+  }
+
+  // Called on every slide and fragment change: zoom the visits graph to fit
+  // its half of the slide, and highlight the latest story shown.
+  function syncVisitsSlide(slide) {
+    if (!slide || !slide.classList.contains("slide-visits-graph")) return;
+    var f = slide.querySelector(".visits-layout > .cell iframe[srcdoc]");
+    var story = null;
+    slide.querySelectorAll("li.story").forEach(function (li) {
+      li.classList.remove("story-current");
+      if (li.classList.contains("visible")) story = li;
+    });
+    // With the raw graph up (the last click), the stories are over.
+    var before = slide.querySelector(".graph-before");
+    if (before && before.classList.contains("visible")) story = null;
+    if (story) story.classList.add("story-current");
+    whenGraphReady(f, function (cy) {
+      if (!cy.scratch("fitted")) {
+        cy.scratch("fitted", true);
+        cy.fit(undefined, 20);
+      }
+      highlightStory(cy, story);
+    });
+  }
+
+  // ── Title slide ───────────────────────────────────────────────────────────
+  // A photo and a role next to each author's name. The photos are data URIs
+  // (img/*.jpg, 160 px), so a self-contained export keeps them.
+  var AUTHOR_PHOTOS = {
+    "Vladimir Kukushkin": "data:image/jpeg;base64,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",
+    "Maxim Godzi": "data:image/jpeg;base64,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",
+  };
+
+  function addTitlePhotos() {
+    document.querySelectorAll("#title-slide .quarto-title-author").forEach(function (author) {
+      var name = author.querySelector(".quarto-title-author-name");
+      if (!name || author.querySelector(".author-photo")) return;
+      var key = name.textContent.trim();
+      if (AUTHOR_PHOTOS[key]) {
+        var img = document.createElement("img");
+        img.className = "author-photo";
+        img.alt = key;
+        img.src = AUTHOR_PHOTOS[key];
+        author.prepend(img);
+      }
+      var role = document.createElement("div");
+      role.className = "author-role";
+      role.textContent = "Co-founder of Retentioneering";
+      name.after(role);
+    });
+  }
+
+  // ── Slide: What Retentioneering is ────────────────────────────────────────
+  // Four quadrants: the event log top left, the three tools it feeds (the
+  // slide's next three widgets) in the others, an arrow from the log to each.
+  var WHAT_TOOLS = ["Transition graph", "Step matrix", "Cluster analysis"];
+  var ARROW_SVG =
+    '<svg viewBox="0 0 44 20" aria-hidden="true"><path d="M2 10 H38 M30 3 L40 10 L30 17"/></svg>';
+
+  // A static widget's page puts a 24px margin and a grey background around
+  // the widget; drop them, and the iframe's room for them.
+  var TIGHT_WIDGET_CSS =
+    "body { background: transparent !important; } #retentioneering-root { margin: 0 !important; }";
+
+  function tightWidget(f) {
+    f.dataset.widgetCss = (f.dataset.widgetCss || "") + TIGHT_WIDGET_CSS;
+    var h = parseFloat(f.style.height);
+    if (h) f.style.height = h - 48 + "px";
+    var box = f.closest(".cell-output-display");
+    if (box) box.classList.add("tight-widget");
+  }
+
+  // Hide a widget's controls: for every button, its outermost wrapper that
+  // doesn't hold `keep` (the chart).
+  function hideWidgetChrome(doc, keep) {
+    doc.querySelectorAll("button").forEach(function (el) {
+      if (keep.contains(el)) return;
+      while (el.parentElement && !el.parentElement.contains(keep)) el = el.parentElement;
+      el.style.visibility = "hidden";
+    });
+  }
+
+  function buildWhatGrid(slide) {
+    var cells = slide.querySelectorAll(":scope > .cell");
+    if (cells.length < 4) throw new Error("expected the log and three widgets");
+    var grid = document.createElement("div");
+    grid.className = "what-grid";
+    cells[0].before(grid);
+    Array.prototype.forEach.call(cells, function (cell, i) {
+      cell.classList.add("what-q", "what-q" + i);
+      if (i) {
+        var label = document.createElement("div");
+        label.className = "what-tool";
+        label.textContent = WHAT_TOOLS[i - 1];
+        cell.prepend(label);
+      }
+      grid.appendChild(cell);
+    });
+    // Small as they are here, the widgets show only their chart: no search,
+    // filter or sidebar buttons, no margin around it.
+    Array.prototype.slice.call(cells, 1).forEach(function (cell) {
+      var f = cell.querySelector("iframe[srcdoc]");
+      if (!f) return;
+      tightWidget(f);
+      f.addEventListener("load", function () {
+        if (cell.classList.contains("what-q1")) {
+          whenGraphReady(f, function (cy) {
+            hideWidgetChrome(f.contentDocument, cy.container());
+            // The whole graph, after the widget's own fit, which leaves room
+            // for the controls.
+            setTimeout(function () { cy.fit(undefined, 6); }, 600);
+            // Lighter dimming than the widget's default (opacity 0.1): the
+            // rest of the graph stays readable behind the highlighted path.
+            // Set after the widget's own fade-in has finished.
+            setTimeout(function () { cy.$(".dimmed").style("opacity", 0.2); }, 1200);
+          });
+          return;
+        }
+        var tries = 0;
+        (function wait() {
+          var table = f.contentDocument && f.contentDocument.querySelector("table");
+          if (table) hideWidgetChrome(f.contentDocument, table);
+          else if (++tries < 100) setTimeout(wait, 100);
+        })();
+      });
+    });
+    ["right", "down", "diag"].forEach(function (dir) {
+      var arrow = document.createElement("div");
+      arrow.className = "what-arrow what-arrow-" + dir;
+      arrow.innerHTML = ARROW_SVG;
+      grid.appendChild(arrow);
+    });
+  }
+
+  // ── Slide: Retentioneering history ───────────────────────────────────────────────
+  // The logo, the years and their caption (the paragraphs before the list)
+  // become an emblem on the left of the list.
+  function buildHistory(slide) {
+    var list = slide.querySelector(":scope > ul");
+    var paras = Array.prototype.slice.call(slide.querySelectorAll(":scope > p"))
+      .filter(function (p) { return !p.querySelector("img"); });
+    var emblem = document.createElement("div");
+    emblem.className = "history-emblem";
+    var layout = document.createElement("div");
+    layout.className = "history-layout";
+    list.before(layout);
+    layout.appendChild(emblem);
+    layout.appendChild(list);
+    var img = slide.querySelector("img");
+    var figure = img && (img.closest(".quarto-figure") || img.closest("p") || img);
+    if (figure) emblem.appendChild(figure);
+    paras.slice(1, 3).forEach(function (p) { emblem.appendChild(p); });
+    paras[0].classList.add("history-lead");
+  }
+
+  // ── Slide: The transition graph ───────────────────────────────────────────
+  // The slide's figures side by side (a tree, the graph of the same paths),
+  // the points under them.
+  // The last point is a click that spotlights its event (its first `code`)
+  // everywhere: in the paths and the tree, every occurrence with the steps
+  // out of it and the events they lead to; in the graph, its one node with
+  // the transitions out of it.
+  function buildSideBySide(slide) {
+    var cells = slide.querySelectorAll(":scope > .cell");
+    var row = document.createElement("div");
+    row.className = "side-by-side";
+    cells[0].before(row);
+    cells.forEach(function (cell) { row.appendChild(cell); });
+    var spot = slide.querySelector(":scope > ul > li:last-child");
+    var code = spot && spot.querySelector("code");
+    if (!code) return;
+    spot.classList.add("fragment", "spot-point");
+    spot.dataset.node = code.textContent;
+  }
+
+  function syncTreeGraphSpot(slide) {
+    var spot = slide && slide.querySelector("li.spot-point");
+    if (!spot) return;
+    var name = spot.dataset.node;
+    var on = spot.classList.contains("visible");
+    slide.querySelectorAll("svg.prefix-tree, .short-paths").forEach(function (svg) {
+      svg.classList.toggle("spot-on", on);
+      svg.querySelectorAll("[data-event], [data-from]").forEach(function (el) {
+        var hit = el.dataset.event === name || el.dataset.from === name;
+        var next = el.dataset.parent === name;
+        el.classList.toggle("spot-hit", on && hit);
+        el.classList.toggle("spot-next", on && next && !hit);
+      });
+    });
+    var f = slide.querySelector(".side-by-side iframe[srcdoc]");
+    if (!f) return;
+    whenGraphReady(f, function (cy) {
+      if (!cy.scratch("spotStyle")) {
+        cy.scratch("spotStyle", true);
+        cy.style()
+          .selector(".spot-dim").style({ opacity: 0.15 })
+          .selector("node.spot-hit").style({
+            "underlay-color": "#f97316", "underlay-opacity": 0.35, "underlay-padding": 10, "underlay-shape": "ellipse",
+          })
+          .selector("edge.spot-hit").style({
+            "underlay-color": "#f97316", "underlay-opacity": 0.35, "underlay-padding": 5,
+          })
+          .update();
+      }
+      cy.elements().removeClass("spot-dim spot-hit");
+      if (!on) return;
+      var node = cy.getElementById(name);
+      var edges = node.outgoers("edge");
+      node.union(edges).addClass("spot-hit");
+      cy.elements().not(node.union(edges).union(edges.connectedNodes())).addClass("spot-dim");
+    });
+  }
+
+  // ── Slide: Even the graph is tangled on real data ─────────────────────────
+  // The first paragraph on top. Under it, two graphs side by side: on the
+  // left, always the graph as it is; on the right, stacked in one place, what
+  // each operation makes of it. The text goes underneath. Each point of the
+  // list is a click that brings its own graph up on the right (the lead-in
+  // comes with the first one). With the grouped graph (one node per group:
+  // stage_graph's groups all of one event, named after it), the left graph
+  // shows those groups framed. A paragraph after the list is the last click.
+  function buildGraphSwitcher(slide) {
+    var cells = Array.prototype.slice.call(slide.querySelectorAll(":scope > .cell"));
+    var list = slide.querySelector(":scope > ul");
+    var intro = slide.querySelector(":scope > p");
+    if (!list) throw new Error("no list of points (a blank line before it?)");
+    var top = document.createElement("div");
+    top.className = "graph-switch-top";
+    cells[0].before(top);
+    if (intro) {
+      top.before(intro);
+      intro.classList.add("graph-switch-intro");
+    }
+    var before = document.createElement("div");
+    before.className = "graph-switch-before";
+    var stack = document.createElement("div");
+    stack.className = "graph-switch-stack";
+    top.appendChild(before);
+    top.appendChild(stack);
+    var text = document.createElement("div");
+    text.className = "graph-switch-text";
+    top.after(text);
+    // Everything after the intro, in order: the lead-in, the list, the close.
+    var leadIn = [], close = [];
+    for (var el = list.previousElementSibling; el && el !== intro; el = el.previousElementSibling) {
+      if (el.tagName === "P") leadIn.unshift(el);
+    }
+    var question = null;
+    for (el = list.nextElementSibling; el; el = el.nextElementSibling) {
+      if (el.tagName === "P") close.push(el);
+      if (el.tagName === "H3") question = el;
+    }
+    leadIn.concat([list], close).forEach(function (node) { text.appendChild(node); });
+    before.appendChild(cells[0]);
+    var points = Array.prototype.slice.call(list.children);
+    var framesAt = null;
+    cells.slice(1).forEach(function (cell, i) {
+      stack.appendChild(cell);
+      cell.classList.add("fragment", "graph-switch-next");
+      cell.dataset.fragmentIndex = i;
+      if (points[i]) {
+        points[i].classList.add("fragment", "switch-point");
+        points[i].dataset.fragmentIndex = i;
+      }
+      if (isGroupedGraph(cell)) framesAt = i;
+    });
+    leadIn.forEach(function (p) {
+      p.classList.add("fragment");
+      p.dataset.fragmentIndex = 0;
+    });
+    var last = cells.length - 1;
+    close.forEach(function (p) {
+      p.classList.add("fragment", "graph-switch-close");
+      p.dataset.fragmentIndex = last;
+    });
+    // The question (`### …` after the list): one more click, in large type
+    // over the text.
+    if (question) {
+      question.classList.add("fragment", "graph-switch-question");
+      question.dataset.fragmentIndex = last + 1;
+      text.appendChild(question);
+    }
+    // The left graph's groups, framed while the grouped graph is on.
+    var script = cells[0].querySelector("script.stage-groups");
+    var layer = framesAt !== null && script && stageFramesLayer(script);
+    if (layer) {
+      var shown = document.createElement("div");
+      shown.className = "stage-frames-window fragment fade-out";
+      shown.dataset.fragmentIndex = framesAt + 1;
+      layer.before(shown);
+      shown.appendChild(layer);
+      layer.classList.add("fragment");
+      layer.dataset.fragmentIndex = framesAt;
+    }
+  }
+
+  // A graph whose every node is a group of its own (the events renamed to
+  // their groups).
+  function isGroupedGraph(cell) {
+    var script = cell.querySelector("script.stage-groups");
+    if (!script) return false;
+    var groups = JSON.parse(script.textContent);
+    var names = Object.keys(groups).filter(function (g) { return g !== "path_start" && g !== "path_end"; });
+    return names.length > 2 && names.every(function (g) {
+      return groups[g].length === 1 && groups[g][0] === g;
+    });
+  }
+
+  // The point shown last is the current one, until the closing paragraph.
+  function syncGraphSwitcher(slide) {
+    if (!slide || !slide.classList.contains("slide-graph-switch")) return;
+    var current = null;
+    slide.querySelectorAll("li.switch-point").forEach(function (li) {
+      li.classList.remove("switch-current");
+      if (li.classList.contains("visible")) current = li;
+    });
+    // Once the closing paragraph is up, no point is the current one.
+    var close = slide.querySelector(".graph-switch-close");
+    if (close && close.classList.contains("visible")) current = null;
+    if (current) current.classList.add("switch-current");
+  }
+
+  // ── Slide: Idea: one visit, one event ─────────────────────────────────────
+  // The figure (toy.py visits_as_events_figure) builds up a row per click,
+  // fragments 0, 1, 2; the first point goes with its first row, each next
+  // point is the click that brings up the next row.
+  function buildVisitsIdea(slide) {
+    var points = slide.querySelectorAll(":scope > ul > li");
+    Array.prototype.forEach.call(points, function (li, i) {
+      if (i === 0) return;
+      li.classList.add("fragment");
+      li.dataset.fragmentIndex = i - 1;
+    });
+  }
+
+  // ── Slide: A tree hides what the graph shows ──────────────────────────────
+  // Each point is a click that spotlights its transition (`a` → `b`, read as
+  // the stories are) on the tree, the sunburst and the icicle: every segment
+  // of `b` right after `a` (toy.py branching_figure's data-event and
+  // data-parent), the rest faded.
+  function buildTreeSpot(slide) {
+    slide.querySelectorAll(":scope > ul > li").forEach(function (li) {
+      li.classList.add("fragment", "tree-spot");
+      li.querySelectorAll("code").forEach(function (code) {
+        code.classList.add("chip");
+        code.dataset.visit = code.textContent;
+      });
+    });
+  }
+
+  function syncTreeSpot(slide) {
+    if (!slide || !slide.classList.contains("slide-tree-spot")) return;
+    var current = null;
+    slide.querySelectorAll("li.tree-spot").forEach(function (li) {
+      if (li.classList.contains("visible")) current = li;
+    });
+    var edges = current ? storyWalk(current).edges : [];
+    slide.querySelectorAll(".branching svg").forEach(function (svg) {
+      svg.classList.toggle("spot-on", edges.length > 0);
+      svg.querySelectorAll("[data-event]").forEach(function (el) {
+        var hit = edges.some(function (e) {
+          return el.dataset.parent === e[0] && el.dataset.event === e[1];
+        });
+        el.classList.toggle("spot-hit", hit);
+      });
+    });
+  }
+
+  // ── Slides: Through the funnel, and back / Digging deeper: a loop ─────────
+  // A graph on the left; on the right, the slide's other widget if it has one
+  // (a step matrix), and the points. The graph highlights the walk in the
+  // first point (`teamwork` → `solo`, `view_timeline` → `view_timeline`), the
+  // same way the Part 1 stories do; with `zoom`, it zooms in on the walk
+  // (a loop on one node in a graph of 31 events), otherwise it fits the graph.
+  function graphAndPoints(zoom) {
+    return function (slide) { buildGraphAndPoints(slide, zoom); };
+  }
+
+  function buildGraphAndPoints(slide, zoom) {
+    var cells = slide.querySelectorAll(":scope > .cell");
+    var list = slide.querySelector(":scope > ul");
+    var layout = document.createElement("div");
+    layout.className = "graph-points-layout";
+    cells[0].before(layout);
+    var side = document.createElement("div");
+    side.className = "graph-points-side";
+    layout.appendChild(cells[0]);
+    layout.appendChild(side);
+    if (cells[1]) side.appendChild(cells[1]);
+    side.appendChild(list);
+    colorDiffGroups(slide);
+    // The story: the first point that walks the graph (`a` → `b`); its
+    // events become chips.
+    var story = Array.prototype.find.call(list.children, function (li) {
+      return storyWalk(li).edges.length > 0;
+    }) || list.children[0];
+    story.querySelectorAll("code").forEach(function (code) {
+      code.classList.add("chip");
+      code.dataset.visit = code.textContent;
+    });
+    var graph = cells[0].querySelector("iframe[srcdoc]");
+    graph.addEventListener("load", function () {
+      whenGraphReady(graph, function (cy) {
+        // Zoomed, the padding keeps some of the graph around the walk in view.
+        var on = highlightStory(cy, story);
+        if (zoom) cy.fit(on.nodes(), 110);
+        else cy.fit(undefined, 20);
+      });
+    });
+  }
+
+  // ── Theme conventions ──────────────────────────────────────────────────────
+  function applyThemeConventions() {
+    var sectionBg = getComputedStyle(document.documentElement).getPropertyValue("--section-bg").trim();
+    document.querySelectorAll(".reveal .slides section.level1").forEach(function (s) {
+      if (sectionBg) s.setAttribute("data-background-color", sectionBg);
+    });
+
+    document.querySelectorAll(".reveal .slides section.level2").forEach(function (s) {
+      if (SLIDES[s.id]) return;
+      if (s.querySelector(":scope > h3")) s.classList.add("center", "question-slide");
+    });
+
+    // `## 2.1 Title` alone on a slide → subsection divider, number set apart.
+    document.querySelectorAll(".reveal .slides section.level2").forEach(function (s) {
+      var h2 = s.querySelector(":scope > h2");
+      var m = h2 && h2.textContent.trim().match(/^(\d+\.\d+)\s+(.+)$/);
+      var content = Array.prototype.filter.call(s.children, function (el) {
+        return el !== h2 && !el.matches("aside");
+      });
+      if (!m || content.length) return;
+      s.classList.add("center", "subsection-slide");
+      h2.innerHTML = '<span class="subsection-number"></span> <span></span>';
+      h2.firstChild.textContent = m[1];
+      h2.lastChild.textContent = m[2];
+    });
+
+    document.querySelectorAll(".reveal .slides section.level2 > p").forEach(function (p) {
+      if (p.textContent.trim() !== ROADMAP) return;
+      p.classList.add("map");
+      p.innerHTML = ROADMAP.split(" · ").map(function (step) {
+        var on = Array.prototype.some.call(p.querySelectorAll("strong"), function (b) {
+          return b.textContent.trim() === step;
+        });
+        return '<span class="' + (on ? "on" : "") + '">' + step + "</span>";
+      }).join("");
+    });
+  }
+
+  function applySlideIllustrations() {
+    addTitlePhotos();
+    Object.keys(SLIDES).forEach(function (id) {
+      var slide = document.getElementById(id);
+      if (!slide) {
+        console.warn("deck.html: no slide with id '" + id + "' (was its title renamed?)");
+        return;
+      }
+      SLIDES[id].cls.split(" ").forEach(function (c) { slide.classList.add(c); });
+      // One slide's builder failing (say, its markdown changed shape) must
+      // not leave every slide after it unbuilt.
+      try {
+        if (SLIDES[id].build) SLIDES[id].build(slide);
+      } catch (err) {
+        console.error("deck.html: building slide '" + id + "' failed", err);
+      }
+    });
+  }
+
+  // Static widgets are iframes that lay themselves out once, on load. Reveal
+  // loads every slide up front, so a widget on a slide (or fragment) that isn't
+  // on screen yet fits its graph to the wrong viewport. Reload each widget the
+  // first time it actually becomes visible.
+  // Reveal scales the whole slide up to the screen, but a graph's canvas
+  // inside the iframe is drawn for the iframe's unscaled size, so on a big
+  // screen it comes out blurry. Cytoscape sizes its canvas by
+  // devicePixelRatio, so the reloaded iframe reports one that includes the
+  // slide's scale (and at least 3, in case the window grows later).
+  // A slide can also hand a widget extra CSS (`data-widget-css` on the iframe),
+  // e.g. to override the widget's own inline sizes with !important.
+  function withPixelRatio(srcdoc, css) {
+    var ratio = Math.max(3, Math.ceil((window.devicePixelRatio || 1) * Reveal.getScale()));
+    var patch = "<script>Object.defineProperty(window, 'devicePixelRatio', { get: function () { return " +
+      ratio + "; } });<\/script>";
+    if (css) patch += "<style>" + css + "</style>";
+    return srcdoc.indexOf(patch) >= 0 ? srcdoc : srcdoc.replace("<head>", "<head>" + patch);
+  }
+
+  function refitWidgets(slide) {
+    if (!slide) return;
+    slide.querySelectorAll("iframe[srcdoc]").forEach(function (f) {
+      if (f.dataset.refitted || f.closest(".fragment:not(.visible):not(.fade-out)")) return;
+      reloadWidget(f);
+    });
+    // An exported report (an iframe with a src) lays out its graphs once too.
+    slide.querySelectorAll("iframe.report-frame").forEach(function (f) {
+      if (f.dataset.refitted) return;
+      f.dataset.refitted = "1";
+      f.src = f.getAttribute("src");
+    });
+  }
+
+  function onReady() {
+    applySlideIllustrations();
+    applyThemeConventions();
+    Reveal.sync();
+    Reveal.layout();
+    refitWidgets(Reveal.getCurrentSlide());
+    layoutColumnFrames(Reveal.getCurrentSlide());
+    syncGraphSwitcher(Reveal.getCurrentSlide());
+  }
+
+  // Export mode (export.py opens slides.html?export): still frames, so no
+  // transitions and no controls (custom.scss).
+  if (/[?&]export\b/.test(location.search)) {
+    document.documentElement.classList.add("export-mode");
+    Reveal.configure({ transition: "none", backgroundTransition: "none", controls: false, progress: false });
+  }
+
+  if (Reveal.isReady()) onReady(); else Reveal.on("ready", onReady);
+
+  // Served by serve.py (./render.sh preview): reload once a new render lands.
+  // Anywhere else /__mtime doesn't exist and the first failed poll stops this.
+  if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+    var seen = null;
+    (function poll() {
+      fetch("/__mtime", { cache: "no-store" })
+        .then(function (r) { if (!r.ok) throw r; return r.json(); })
+        .then(function (d) {
+          if (seen !== null && d.mtime !== seen) location.reload();
+          seen = d.mtime;
+          setTimeout(poll, 1500);
+        })
+        .catch(function () {});
+    })();
+  }
+  Reveal.on("slidechanged", function (e) {
+    syncClusterSpots(e.currentSlide);
+    syncTableSpots(e.currentSlide);
+    syncPairsSpot(e.currentSlide);
+    syncFunnelSpots(e.currentSlide);
+    syncTreeSpot(e.currentSlide);
+    syncTreeGraphSpot(e.currentSlide);
+    syncGraphSwitcher(e.currentSlide);
+    syncVisitsSlide(e.currentSlide);
+    refitWidgets(e.currentSlide);
+    layoutColumnFrames(e.currentSlide);
+  });
+  Reveal.on("fragmentshown", function () {
+    syncClusterSpots(Reveal.getCurrentSlide());
+    syncTableSpots(Reveal.getCurrentSlide());
+    syncPairsSpot(Reveal.getCurrentSlide());
+    syncVisitsSlide(Reveal.getCurrentSlide());
+    syncTreeSpot(Reveal.getCurrentSlide());
+    syncTreeGraphSpot(Reveal.getCurrentSlide());
+    syncGraphSwitcher(Reveal.getCurrentSlide());
+    refitWidgets(Reveal.getCurrentSlide());
+    syncFunnelSpots(Reveal.getCurrentSlide());
+  });
+  Reveal.on("fragmenthidden", function () {
+    syncClusterSpots(Reveal.getCurrentSlide());
+    syncTableSpots(Reveal.getCurrentSlide());
+    syncPairsSpot(Reveal.getCurrentSlide());
+    syncVisitsSlide(Reveal.getCurrentSlide());
+    syncTreeSpot(Reveal.getCurrentSlide());
+    syncTreeGraphSpot(Reveal.getCurrentSlide());
+    syncGraphSwitcher(Reveal.getCurrentSlide());
+    syncFunnelSpots(Reveal.getCurrentSlide());
+  });
+  Reveal.on("resize", function () { layoutColumnFrames(Reveal.getCurrentSlide()); });
+  if (document.fonts) {
+    document.fonts.ready.then(function () { layoutColumnFrames(Reveal.getCurrentSlide()); });
+  }
+})();
+</script>

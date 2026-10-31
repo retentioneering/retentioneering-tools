@@ -1,5 +1,0 @@
-user_id,session_id,event,timestamp,country,platform,n_session
-user_0042,sess_0042_1,home,2024-03-13 10:21:14,US,desktop,1
-user_0042,sess_0042_1,catalog,2024-03-13 10:21:28,US,desktop,1
-user_0042,sess_0042_1,product_view,2024-03-13 10:22:12,US,desktop,1
-user_0042,sess_0042_2,cart,2024-03-15 19:02:40,US,mobile,2

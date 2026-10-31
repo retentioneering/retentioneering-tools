@@ -20,7 +20,7 @@ import retentioneering as rete
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 BUILD = HERE / "_build"
-IMG = HERE.parent / "img"
+IMG = HERE.parent / "workshop" / "img"  # the speakers' portraits
 CHROME = os.environ.get(
     "CHROME_PATH", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 )

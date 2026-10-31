@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script>{const dpr=window.devicePixelRatio||1;Object.defineProperty(window,'devicePixelRatio',{get:()=>Math.max(3,dpr)});}</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lumeo v8.4 · 02_user_profiles</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f8fafc; display: flex; align-items: center;
+           justify-content: center; min-height: 100vh; }
+    #retentioneering-root { width: 100%; max-width: 1400px; margin: 24px; }
+  </style>
+  <style>/* Retentioneering widget styles */
+
+:root {
+  --retentioneering-yellow: hsl(45, 93%, 58%);
+}
+</style>
+<style>html,body{overflow:hidden;min-height:0!important;height:100%}body{display:block!important;align-items:flex-start!important}#retentioneering-root{max-width:none!important;margin:8px!important;width:calc(100% - 16px)}</style><style>#retentioneering-root table{width:100%!important;table-layout:fixed!important}#retentioneering-root table th{font-size:18px!important;padding:7px 8px!important}#retentioneering-root table td{font-size:17px!important;padding:4px 8px!important}#retentioneering-root table th:first-child,#retentioneering-root table td:first-child{width:320px!important;min-width:320px!important;font-size:16px!important}#retentioneering-root table [data-segment]{width:calc((100% - 320px)/6)!important;min-width:0!important;max-width:none!important}#retentioneering-root button[title="Toggle settings"]{top:auto!important;bottom:8px!important}</style><style>html,body{background:white!important}#retentioneering-root{margin:3px!important;width:calc(100% - 6px)!important}button{cursor:pointer}</style></head>
+<body>
+  <div id="retentioneering-root"></div>
+  <script>window.__HS_DATA__ = {"widget_type": "segment_overview", "result": {"metrics": ["segment_size", "segment_share", "event_count_collections_mean", "event_count_wishlist_add_mean", "event_count_pdp_reviews_view_mean", "event_count_search_mean", "event_count_catalog_sale_mean", "event_count_help_center_mean", "event_count_product_view_mean", "active_days_mean"], "segments": ["cluster_0", "cluster_1", "cluster_2", "cluster_3", "cluster_4", "cluster_5"], "values": [[2842.0, 28210.0, 1407.0, 4743.0, 1244.0, 1554.0], [0.07105, 0.70525, 0.035175, 0.118575, 0.0311, 0.03885], [0.3884588318085855, 0.21006735200283588, 4.622601279317697, 0.2928526249209361, 0.15755627009646303, 0.575933075933076], [0.2325826882477129, 0.09524991137894363, 4.046908315565032, 0.3818258486190175, 0.05064308681672026, 1.1093951093951093], [0.7005629838142153, 0.30382842963488127, 0.9680170575692963, 3.5407969639468693, 0.2821543408360129, 11.282496782496782], [0.1748768472906404, 0.2214817440623892, 0.6993603411513859, 2.4005903436643474, 0.20337620578778134, 3.996138996138996], [4.485573539760732, 0.36207018787663947, 0.24449182658137883, 0.21505376344086022, 0.22990353697749197, 0.5688545688545689], [0.025686136523574946, 0.0, 0.0, 0.020029517183217372, 1.1680064308681672, 0.08558558558558559], [7.492962702322308, 2.062531017369727, 11.570717839374556, 6.219270503900485, 1.462218649517685, 18.424710424710426], [3.3817733990147785, 1.20538816022687, 2.728500355366027, 2.394897744043854, 1.9983922829581993, 4.481981981981982]]}, "segment_col": "behaviour", "path_col": "user_id", "metrics": [{"metric": "event_count", "metric_args": {"event": "collections"}, "agg": "mean"}, {"metric": "event_count", "metric_args": {"event": "wishlist_add"}, "agg": "mean"}, {"metric": "event_count", "metric_args": {"event": "pdp_reviews_view"}, "agg": "mean"}, {"metric": "event_count", "metric_args": {"event": "search"}, "agg": "mean"}, {"metric": "event_count", "metric_args": {"event": "catalog_sale"}, "agg": "mean"}, {"metric": "event_count", "metric_args": {"event": "help_center"}, "agg": "mean"}, {"metric": "event_count", "metric_args": {"event": "product_view"}, "agg": "mean"}, {"metric": "active_days", "agg": "mean"}], "segment_cols": ["exp_group", "device", "platform", "channel", "behaviour"], "segment_levels": {"exp_group": ["control", "treatment"], "device": ["desktop", "mobile"], "platform": ["android", "ios", "web"], "channel": ["direct", "email", "organic", "paid", "push", "referral"], "behaviour": ["cluster_0", "cluster_1", "cluster_2", "cluster_3", "cluster_4", "cluster_5"]}, "path_cols": ["user_id", "session_id"], "event_list": ["account", "address_edit", "app_open", "banner_click", "banner_view", "cart", "cart_qty_change", "cart_remove", "catalog_bath", "catalog_decor", "catalog_furniture", "catalog_kids", "catalog_kitchen", "catalog_lighting", "catalog_new_in", "catalog_outdoor", "catalog_sale", "catalog_storage", "catalog_tableware", "catalog_textiles", "chat_open", "chat_start", "checkout_delivery", "checkout_payment", "checkout_review", "checkout_start", "collections", "contact_form", "delivery_info", "delivery_slot_select", "delivery_slot_unavailable", "delivery_tracking", "email_open", "faq_view", "filter_apply", "help_center", "home", "legal", "login", "login_error", "logout", "order_confirmation_view", "order_status_view", "order_success", "order_track", "orders_view", "payment_error", "pdp_delivery_info", "pdp_gallery_click", "pdp_gallery_swipe", "pdp_reviews_view", "pdp_size_guide", "pdp_variant_select", "product_view", "promo_apply", "promo_error", "push_open", "quick_view", "reorder", "return_request", "returns_policy", "review_submit", "search", "search_no_results", "search_results", "share_product", "signup", "sort_change", "stock_notify_submit", "stock_unavailable", "wishlist_add", "wishlist_view"], "height": 460, "sidebar_open": false};</script>
+  <script>/*WIDGET_STATIC_JS*/</script>
+  <script>
+    (function () {
+      var override = new URLSearchParams(location.search).get('sidebar_open');
+      if (override !== null) window.__HS_DATA__.sidebar_open = override === 'true';
+      // #view=<base64url> — GraphView from the URL fragment ("Copy view
+      // link" button produces these); decoded by the widget itself.
+      var vm = location.hash.match(/[#&]view=([A-Za-z0-9_-]+)/);
+      if (vm) window.__HS_DATA__.view = vm[1];
+    })();
+window.__HS_DATA__.height=Math.max(260,window.innerHeight-8);
+    RetentioneeringWidget.renderStatic(window.__HS_DATA__, document.getElementById('retentioneering-root'));
+    // Embedded in a render_static() iframe: report our real content
+    // height to the parent page so it can size the iframe to fit (see
+    // render_static_html()'s listener) instead of leaving a fixed height
+    // that scrolls or clips. No-op when opened directly (window.parent ===
+    // window) or in browsers without ResizeObserver.
+    if (window.parent !== window && window.ResizeObserver) {
+      var __root = document.getElementById('retentioneering-root');
+      var __lastSent = -1;
+      var __pending = null;
+      var __send = function () {
+        var cs = getComputedStyle(__root);
+        var h = Math.ceil(
+          __root.getBoundingClientRect().height +
+          parseFloat(cs.marginTop) + parseFloat(cs.marginBottom)
+        );
+        if (h && h !== __lastSent) {
+          __lastSent = h;
+          window.parent.postMessage({ source: 'retentioneering-widget', height: h }, '*');
+        }
+      };
+      // Debounced: React mounts in stages (empty root -> content), so the
+      // observer's first callbacks fire against a still-growing tree. Firing
+      // postMessage on every one of those flashes the iframe down to ~0 and
+      // back up as the parent applies each intermediate size in turn.
+      // Waiting for 120ms of quiet before reporting only ever sends the
+      // settled height.
+      var __debounced = function () {
+        if (__pending) clearTimeout(__pending);
+        __pending = setTimeout(__send, 120);
+      };
+      new ResizeObserver(__debounced).observe(__root);
+    }
+  </script>
+<script>addEventListener('keydown',function(e){if(e.key==='Escape')parent.postMessage({source:'workshop-example',action:'close'},'*');});</script></body>
+</html>

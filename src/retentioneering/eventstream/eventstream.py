@@ -1825,7 +1825,7 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
         synonym_threshold: float = 0.1,
         bridge_threshold: float = 0.9,
         max_events: int | None = None,
-        target="testable",
+        target="untestable_share",
         step: int | None = None,
         keep: list | None = None,
         other: str = "other",
@@ -1835,6 +1835,7 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
         ci_level: float = 0.95,
         power: float = 0.8,
         min_support: int = 10,
+        target_delta: float | None = None,
     ) -> pd.DataFrame:
         """
         Propose a smaller event vocabulary for an A/B screen, chosen without looking at the arms.
@@ -1848,7 +1849,10 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
         computed on the pooled paths of both arms — the arm of a path is never
         read, only the two arm sizes — so the vocabulary is not selected on the
         outcome. The transition and step screens get different plans (see
-        `screen`). Apply the plan with `compress_events(plan)`.
+        `screen`). By default the plan is taken at the earliest step that brings
+        the share of the screen's observations in cells too thin to test close
+        to its lowest (see `target`), so a dense screen keeps its vocabulary.
+        Apply the plan with `compress_events(plan)`.
 
         Parameters
         ----------
@@ -1868,6 +1872,10 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
               event), which realigns the later steps, else relabelled `other`,
               which keeps every position; rare events are handled first, chains
               last.
+
+            On both screens a drop that would join two events that never follow
+            each other directly (an artificial transition) is a relabel to
+            `other` instead.
 
             Both read the whole window of every path (the plan applies to the
             stream, not to the first steps); the cells counted are the screen's.
@@ -1905,16 +1913,35 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             The share of a rare event's runs that must bridge as the screen
             requires (see `screen`) for it to be dropped rather than relabelled.
         max_events : int, optional
-            A cap on the vocabulary: after the operations above, the rarest events
-            left are dropped or relabelled one by one until the vocabulary fits,
-            and the chosen step is the best one that fits.
-        target : {"testable", "mde"} or float, default "testable"
+            A cap on the vocabulary. After the operations above, while the
+            vocabulary is above it, each step takes the cheapest merge of
+            neighbours among: the strongest chain pair left (`min(P(next),
+            P(prev))` at least 0.5, below `chain_threshold`), the closest synonym
+            pair (Jensen-Shannon distance at most 0.5), and each of the three
+            rarest events left with each of its three closest neighbours (the
+            labels next to it in most of its runs). The cost of a merge is the
+            events it loses: the runs of the merged label that hide which of the
+            two happened, plus the repeats its collapsed runs erase (a chain whose
+            every run is `A B` costs nothing). A frequent event is never dropped
+            or relabelled while a merge is left; only when none is left is the
+            rarest event dropped (relabelled `other` only below
+            `min_path_share`), its artificial transitions counted. The chosen
+            step is then the best one that fits.
+        target : {"untestable_share", "testable", "mde"} or float, default "untestable_share"
             Which step of the path the plan is taken at.
 
+            - `"untestable_share"` — the information, not the cell count: the
+              earliest step whose `untestable_share` (the share of the screen's
+              observations in cells too thin to test, see Returns) is within 10 %
+              of the path's lowest share, or within 0.0001 of the observations,
+              whichever is larger, among the steps without an artificial
+              transition (with `max_events`, among the steps that fit, those with
+              the fewest). A merged chain removes a testable cell but no
+              information, so it does not count against a step; a dense screen,
+              whose thin cells hold almost none of the observations, keeps step 0.
             - `"testable"` — the most testable cells; among those, the fewest
               untestable cells, then the lowest median MDE, then the earliest
-              step. On a screen that is already testable this is step 0: the
-              stream as it is.
+              step.
             - `"mde"` — the lowest median MDE of the testable cells.
             - a positive number — the earliest step whose median MDE is at most
               it (in the screen's units), else the lowest median MDE.
@@ -1937,6 +1964,16 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
         correction, ci_level, power, min_support
             As in `get_ab_transitions`: the support rule and the MDE (at
             `alpha / m`) the plan counts testable cells and median MDE with.
+        target_delta : float, optional
+            An effect to detect, absolute, in the screen's units (a share for
+            `"unique_paths"` edges and step cells). It adds two columns to
+            `attrs["path"]`, projected as `get_ab_transitions_power` projects them
+            (the same path composition, more paths): `median_scale_needed`, the
+            median `scale_needed` of the step's testable cells (the multiple of
+            the current users at which half of them detect `target_delta`), and
+            `scale_to_test_90`, the multiple at which 90 % of the step's cells
+            pass the support rule: how much data a screen of each vocabulary size
+            needs.
 
         Returns
         -------
@@ -1946,7 +1983,9 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             - `event`; `action`: `"keep"`, `"merge"`, `"drop"` or `"other"`;
               `label`: its new name (None when dropped); `step`: the step of the
               path that set it (0: kept); `operation`: `"keep"`,
-              `"merge_chain"`, `"merge_synonym"`, `"drop"` or `"other"`.
+              `"merge_chain"`, `"merge_synonym"`, `"merge_neighbour"` (above
+              `max_events`: an event merged with one of its closest
+              neighbours), `"drop"` or `"other"`.
             - `path_share`, `occurrences`, `self_loop_share`: the event's pooled
               numbers before compression.
             - The evidence of its operation: `p_next`, `p_prev` (chain),
@@ -1956,8 +1995,15 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
 
             `attrs` holds `path`, the greedy path as a DataFrame — per step:
             `step`, `operation`, `events`, `label`, `vocabulary`, `cells`,
-            `testable`, `untestable`, `median_mde` (of the testable cells, at the
-            projected family's `alpha / m`), `transitions`, `mass_retained` (the
+            `testable`, `untestable`, `untestable_share` (the share of the
+            screen's observations — path × cell incidences for `"unique_paths"`
+            edges and step cells, transitions for the other weights — in cells
+            with fewer than `min_support` supporting paths, too thin to test; a
+            cell that almost every path has fails the support rule on the other
+            side and is not counted), `median_mde` (of the testable cells, at the
+            projected family's `alpha / m`), `median_scale_needed` and
+            `scale_to_test_90` (with `target_delta`), `transitions`,
+            `mass_retained` (the
             share of the original transitions still transitions, not artificial),
             `artificial_transitions` (compressed edges no original direct
             transition maps to, counted once), `artificial_mass` (the
@@ -2017,6 +2063,7 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             ci_level=ci_level,
             power=power,
             min_support=min_support,
+            target_delta=target_delta,
         )
 
     @_tracked("headless_describe")
@@ -4940,6 +4987,7 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
         ci_level: float | None = None,
         power: float | None = None,
         min_support: int | None = None,
+        target_delta: float | None = None,
         height: int | None = None,
         sidebar_open: bool | None = None,
         state_file: str | None = None,
@@ -4971,6 +5019,7 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
             "ci_level": ci_level,
             "power": power,
             "min_support": min_support,
+            "target_delta": target_delta,
             "height": height,
             "sidebar_open": sidebar_open,
         }
@@ -4999,7 +5048,7 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
         synonym_threshold: float = 0.1,
         bridge_threshold: float = 0.9,
         max_events: int | None = None,
-        target="testable",
+        target="untestable_share",
         step: int | None = None,
         keep: list | None = None,
         other: str = "other",
@@ -5009,6 +5058,7 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
         ci_level: float = 0.95,
         power: float = 0.8,
         min_support: int = 10,
+        target_delta: float | None = None,
     ) -> pd.DataFrame:
         # The docstring is get_ab_compression's with an alias note, assembled below.
         return self.get_ab_compression(
@@ -5035,6 +5085,7 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
             ci_level=ci_level,
             power=power,
             min_support=min_support,
+            target_delta=target_delta,
         )
 
     _co_summary, _co_sections = _numpydoc_split(get_ab_compression.__doc__ or "")
@@ -5055,18 +5106,23 @@ The plan of `get_ab_compression` drawn step by step, its numbers those of
 `get_ab_compression`):
 
 - **the path chart**: one point per step of the greedy path, the vocabulary size
-  on x; in three panels sharing it, the testable cells, the median MDE of the
-  testable cells and the transition mass retained. A step that creates
-  artificial transitions (compressed edges no original direct transition maps
-  to) is marked with a red ring; the chosen step with a dark ring.
+  on x; in panels sharing it, the testable cells, the untestable share (the
+  observations in cells too thin to test, what the default `target` reads), the
+  median MDE of the testable cells and the transition mass retained, and with
+  `target_delta` the users needed (two series: the multiple at which half of the
+  testable cells detect it, and the one at which 90 % of the cells are
+  testable). A step that creates artificial transitions (compressed edges no
+  original direct transition maps to) is marked with a red ring; the chosen
+  step with a dark ring.
 - **the step slider**: picks a step of the path; the chosen step (by `target`,
   or `step`) is where it starts. It moves in the browser without a recompute,
   also in a static export.
 - **the mapping table** at that step: every event, its action (`keep`,
   `merge`, `drop`, `other`), its new label, the step that set it and the reason
   in words; by default only the events whose label changed.
-- **before and after**: the vocabulary, cells, testable cells, median MDE, mass
-  retained and artificial transitions at step 0 and at the selected step.
+- **before and after**: the vocabulary, cells, testable cells, untestable
+  share, median MDE, mass retained and artificial transitions at step 0 and at
+  the selected step.
 
 With `by`, a selector switches between the segments' plans and the header shows
 the segment's homogeneity (effective vocabulary, transition entropy,
@@ -5074,8 +5130,8 @@ distinct-path share). The plan is chosen without reading the arms; apply the
 plan of a step with
 `stream.compress_events(stream.ab_compression_data(..., step=k))`.
 
-The sidebar edits `screen`, `min_path_share`, `chain_threshold`, `max_events` and
-`target`, and every change recomputes; the other arguments are fixed at
+The sidebar edits `screen`, `min_path_share`, `chain_threshold`, `max_events`,
+`target` and `target_delta`, and every change recomputes; the other arguments are fixed at
 construction and shown read-only there. Switching the screen sets aside
 `edge_weight` / `max_steps` of the other one.""",
         [

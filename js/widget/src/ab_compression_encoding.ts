@@ -18,7 +18,14 @@ export interface PathStep {
   cells: number;
   testable: number;
   untestable: number;
+  /** The share of the screen's observations in cells too thin to test. */
+  untestable_share: number | null;
   median_mde: number | null;
+  /** With `target_delta`: the multiple of the users at which half of the
+   *  testable cells detect it, and the one at which 90 % of the cells pass the
+   *  support rule. */
+  median_scale_needed?: number | null;
+  scale_to_test_90?: number | null;
   transitions: number;
   mass_retained: number | null;
   artificial_transitions: number;
@@ -47,6 +54,7 @@ export interface CompressionPayload {
   max_steps: number | null;
   unit: "pp" | "per_path";
   target: unknown;
+  target_delta: number | null;
   other: string;
   keep: string[] | null;
   by: string | null;
@@ -83,7 +91,7 @@ export function parseCompression(raw: unknown): CompressionPayload | null {
   if (!value || typeof value !== "object") return null;
   const p = value as Partial<CompressionPayload>;
   if (!Array.isArray(p.segments) || !p.segments.length) return null;
-  return { warnings: [], other: "other", unit: "pp", ...p } as CompressionPayload;
+  return { warnings: [], other: "other", unit: "pp", target_delta: null, ...p } as CompressionPayload;
 }
 
 /** The selected step: the view's, within the path, or the chosen one (-1). */
@@ -154,13 +162,67 @@ export function actionCounts(segment: Segment, step: number, other: string): Rec
 
 // ── the path chart ─────────────────────────────────────────────────────────
 
-/** The three panels of the path chart: what each draws and how it reads. */
-export type Measure = "testable" | "median_mde" | "mass_retained";
+/** The panels of the path chart, one measure each: what each draws and how it
+ *  reads. With `target_delta` a last panel draws the users needed. */
+export type Measure = "testable" | "untestable_share" | "median_mde" | "mass_retained";
 export const MEASURES: { key: Measure; title: string }[] = [
   { key: "testable", title: "Testable cells" },
+  { key: "untestable_share", title: "Observations too thin to test" },
   { key: "median_mde", title: "Median MDE" },
   { key: "mass_retained", title: "Transition mass retained" },
 ];
+
+/** The two series of the "users needed" panel (one unit: a multiple of the
+ *  current users, on a log scale). */
+export type Need = "median_scale_needed" | "scale_to_test_90";
+export const NEEDS: { key: Need; title: string }[] = [
+  { key: "median_scale_needed", title: "half of the testable cells detect the target" },
+  { key: "scale_to_test_90", title: "90 % of the cells are testable" },
+];
+
+/** Whether the path carries the users-needed columns (`target_delta`). */
+export function hasNeeds(path: PathStep[]): boolean {
+  return path.some((p) => isNum(p.median_scale_needed) || isNum(p.scale_to_test_90));
+}
+
+export interface NeedPanel {
+  lines: Record<Need, string>;
+  points: Record<Need, { step: number; x: number; y: number | null; value: number | null; artificial: boolean }[]>;
+  min: number;
+  max: number;
+}
+
+/** The users-needed panel: both series on one log scale (a multiple of the
+ *  current users; 1 is the data as it is). */
+export function needGeometry(path: PathStep[], width: number, height: number, pad = 6): NeedPanel {
+  const x = xScale(path, width, pad);
+  const all = path.flatMap((p) => NEEDS.map(({ key }) => p[key])).filter((v): v is number => isNum(v) && v > 0);
+  let min = all.length ? Math.min(...all, 1) : 0.5;
+  let max = all.length ? Math.max(...all, 1) : 2;
+  if (max === min) { min /= 2; max *= 2; }
+  const lo = Math.log10(min), hi = Math.log10(max);
+  const y = (v: number) => height - pad - ((Math.log10(v) - lo) / (hi - lo)) * (height - 2 * pad);
+  const lines = {} as Record<Need, string>;
+  const points = {} as NeedPanel["points"];
+  for (const { key } of NEEDS) {
+    const pts = path.map((p) => {
+      const v = p[key];
+      const ok = isNum(v) && v > 0;
+      return { step: p.step, x: x(p.vocabulary), y: ok ? y(v as number) : null, value: ok ? (v as number) : null, artificial: (p.artificial_transitions ?? 0) > 0 };
+    });
+    points[key] = pts;
+    lines[key] = pts.filter((p) => p.y != null).map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)},${(p.y as number).toFixed(1)}`).join(" ");
+  }
+  return { lines, points, min, max };
+}
+
+/** A multiple of the current users: "×2.4". */
+export function fmtScale(value: number | null | undefined): string {
+  if (!isNum(value)) return "n/a";
+  if (value >= 100) return `×${Math.round(value)}`;
+  if (value >= 10) return `×${value.toFixed(1)}`;
+  return `×${value.toFixed(2)}`;
+}
 
 export interface Panel {
   measure: Measure;
@@ -216,6 +278,7 @@ export function fmtShare(value: number | null | undefined, digits = 1): string {
 export function fmtMeasure(step: PathStep, measure: Measure, unit: "pp" | "per_path"): string {
   if (measure === "median_mde") return fmtMde(step.median_mde, unit);
   if (measure === "mass_retained") return fmtShare(step.mass_retained, 2);
+  if (measure === "untestable_share") return fmtShare(step.untestable_share, 3);
   return `${step.testable} of ${step.cells}`;
 }
 
@@ -228,9 +291,16 @@ export function beforeAfter(path: PathStep[], step: number, unit: "pp" | "per_pa
     ["cells", String(a.cells), String(b.cells)],
     ["testable cells", String(a.testable), String(b.testable)],
     ["untestable cells", String(a.untestable), String(b.untestable)],
+    ["observations too thin to test", fmtShare(a.untestable_share, 3), fmtShare(b.untestable_share, 3)],
     ["median MDE", fmtMde(a.median_mde, unit), fmtMde(b.median_mde, unit)],
     ["transition mass retained", fmtShare(a.mass_retained, 2), fmtShare(b.mass_retained, 2)],
     ["artificial transitions", String(a.artificial_transitions), String(b.artificial_transitions)],
+    ...(hasNeeds(path)
+      ? ([
+        ["users for half the cells to detect the target", fmtScale(a.median_scale_needed), fmtScale(b.median_scale_needed)],
+        ["users for 90 % testable cells", fmtScale(a.scale_to_test_90), fmtScale(b.scale_to_test_90)],
+      ] as [string, string, string][])
+      : []),
   ];
 }
 
@@ -240,6 +310,7 @@ export function stepText(step: PathStep): string {
   const what: Record<string, string> = {
     merge_chain: "merge a chain",
     merge_synonym: "merge synonyms",
+    merge_neighbour: "merge with a neighbour",
     drop: "drop",
     other: "relabel to other",
   };

@@ -2057,7 +2057,10 @@ _COMPRESSION_PATH_COLUMNS = (
     "cells",
     "testable",
     "untestable",
+    "untestable_share",
     "median_mde",
+    "median_scale_needed",
+    "scale_to_test_90",
     "mass_retained",
     "artificial_transitions",
     "reason",
@@ -2086,7 +2089,7 @@ def _compression_value(value: Any) -> Any:
         return bool(value)
     if isinstance(value, (int, np.integer)):
         return int(value)
-    return _json_number(value, 6)
+    return _json_number(value, 8)
 
 
 def _compression_segment(
@@ -2097,21 +2100,27 @@ def _compression_segment(
     by_step = {int(r["step"]): r for r in rows}
     last = max(by_step) if by_step else 0
     shown = [
-        {c: _compression_value(r[c]) for c in _COMPRESSION_PATH_COLUMNS}
+        {c: _compression_value(r[c]) for c in _COMPRESSION_PATH_COLUMNS if c in r}
         for r in rows
         if int(r["step"]) <= min(chosen + 1, last)
     ]
 
     def _numbers(row: dict) -> dict:
-        return {
+        out = {
             "vocabulary": int(row["vocabulary"]),
             "cells": int(row["cells"]),
             "testable": int(row["testable"]),
             "untestable": int(row["untestable"]),
+            # a small share keeps three significant digits
+            "untestable_share": _json_p_value(row["untestable_share"]),
             "median_mde": _json_number(row["median_mde"], 6),
             "mass_retained": _json_number(row["mass_retained"], 6),
             "artificial_transitions": int(row["artificial_transitions"]),
         }
+        for name in ("median_scale_needed", "scale_to_test_90"):
+            if name in row:
+                out[name] = _json_number(row[name], 4)
+        return out
 
     before, after = _numbers(by_step[0]), _numbers(by_step[chosen])
     changed = plan[plan["action"] != "keep"].sort_values(["step", "event"])
@@ -2135,11 +2144,18 @@ def _compression_segment(
             "step=k returns the plan at another one"
         )
     else:
+        share = (
+            f", observations too thin to test {before['untestable_share']:.3%} -> "
+            f"{after['untestable_share']:.3%}"
+            if before["untestable_share"] is not None
+            and after["untestable_share"] is not None
+            else ""
+        )
         reading = (
             f"step {chosen} of {last}: vocabulary {before['vocabulary']} -> "
             f"{after['vocabulary']}, testable {before['testable']} -> "
             f"{after['testable']} of {before['cells']} -> {after['cells']} cells, "
-            f"untestable {before['untestable']} -> {after['untestable']}"
+            f"untestable {before['untestable']} -> {after['untestable']}{share}"
         )
         if after["artificial_transitions"]:
             reading += (
@@ -2176,7 +2192,7 @@ def get_ab_compression(
     synonym_threshold: float = 0.1,
     bridge_threshold: float = 0.9,
     max_events: int | None = None,
-    target: Any = "testable",
+    target: Any = "untestable_share",
     step: int | None = None,
     keep: list | None = None,
     other: str = "other",
@@ -2184,6 +2200,7 @@ def get_ab_compression(
     by_pre_exposure: bool | None = None,
     correction: str = "bh",
     path_col: str | None = None,
+    target_delta: float | None = None,
     top: int = 15,
     local_preprocessors: list | None = None,
 ) -> dict:
@@ -2221,11 +2238,17 @@ def get_ab_compression(
         distance, default 0.1), and how faithfully a rare event's neighbours join
         when it is dropped (default 0.9; below it the event is relabelled).
     max_events:
-        Optional: keep merging and relabelling until at most this many events.
+        Optional: a cap on the vocabulary. Above it, each step takes the cheapest
+        merge of neighbours (a chain pair, a synonym pair, or one of the rarest
+        events with one of its closest neighbours: the fewest events lost); a
+        frequent event is never dropped or relabelled while a merge is left.
     target:
-        How the step is picked: "testable" (default: the most testable rows, then
-        the fewest untestable), "mde" (the smallest median mde) or a number (the
-        first step whose median mde reaches it).
+        How the step is picked: "untestable_share" (default: the earliest step
+        whose share of observations in cells too thin to test is near its lowest,
+        among steps without artificial transitions; a dense screen stays at step
+        0), "testable" (the most testable rows, then the fewest untestable),
+        "mde" (the smallest median mde) or a number (the first step whose median
+        mde reaches it).
     step:
         Optional: return the plan at this step of the path instead.
     keep:
@@ -2237,6 +2260,11 @@ def get_ab_compression(
         A segment column: one plan per segment (homogeneity per segment). Only a
         segment fixed before exposure (by_pre_exposure=True when the stream's
         recipe does not show it).
+    target_delta:
+        Optional: an effect to detect (absolute, the screen's units). Adds per
+        step median_scale_needed (the multiple of the users at which half of the
+        testable rows detect it) and scale_to_test_90 (the multiple at which 90 %
+        of the rows pass the support rule).
     top:
         Changed events returned per segment (a positive integer, default 15).
 
@@ -2245,8 +2273,9 @@ def get_ab_compression(
     diff, screen, edge_weight, max_steps, path_col, population, group sizes,
     target, by, by_pre_exposure, arm_blind, unit, warnings and segments: per
     segment (one, "all", without by): chosen_step, steps (the path length),
-    before / after (vocabulary, cells, testable, untestable, median_mde,
-    mass_retained, artificial_transitions at step 0 and at the chosen step),
+    before / after (vocabulary, cells, testable, untestable, untestable_share,
+    median_mde, mass_retained, artificial_transitions, and with target_delta
+    median_scale_needed and scale_to_test_90, at step 0 and at the chosen step),
     reading (quote it), homogeneity (effective_vocabulary, distinct_path_share,
     ...), path (steps 0 to one after the chosen: operation, events, label, the
     numbers and the reason), n_changed, changes (the top events whose label
@@ -2286,6 +2315,7 @@ def get_ab_compression(
                 by=by,
                 by_pre_exposure=by_pre_exposure,
                 correction=correction,
+                target_delta=target_delta,
             )
     except Exception as exc:
         return {"error": _with_table_hint(str(exc), session, horizon, None)}
@@ -2327,6 +2357,7 @@ def get_ab_compression(
         "group1_paths": meta.get("group1_paths"),
         "group2_paths": meta.get("group2_paths"),
         "target": meta.get("target"),
+        "target_delta": meta.get("target_delta"),
         "by": by,
         "by_pre_exposure": meta.get("by_pre_exposure"),
         "arm_blind": (

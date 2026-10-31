@@ -28,10 +28,21 @@ Design (ADR-0017, amendment "Data sufficiency and vocabulary compression")
   event with such a synonym is merged into it before it is dropped or relabelled.
   Two well-measured events with the same neighbours stay apart: merging them
   would hide a treatment that moves the paths from one to the other.
-* **The default step keeps what is testable.** ``target="testable"`` takes the
-  step with the most testable cells (then the fewest untestable ones), so a
-  screen that is already testable keeps its vocabulary: merges and drops remove
-  cells, and only pooling thin cells adds testable ones.
+* **The default step measures information, not cells.** Every step records
+  ``untestable_share``, the share of the screen's observations (path x cell
+  incidences, or transitions for count weights) in cells with fewer than
+  ``min_support`` supporting paths. ``target="untestable_share"`` takes the
+  earliest step within a tolerance of its lowest value, among the steps without
+  artificial transitions. A merged chain ``A -> B`` removes a testable cell that
+  carries no information of its own, so it no longer counts as a loss; a dense
+  screen, whose thin cells hold almost none of the observations, keeps step 0.
+  ``"testable"`` (the most testable cells) and ``"mde"`` remain.
+* **Above max_events, merge neighbours.** When the vocabulary is above the cap
+  and no regular operation applies, the step takes the cheapest merge of
+  neighbours (a chain pair, a synonym pair, or a rare event and one of its
+  closest neighbours), by the events the merge loses; a frequent event is never
+  dropped or relabelled while a merge is left, and a drop never leaves an
+  artificial transition while one is.
 * **Through the processors.** A plan is a mapping ``event -> label | None``
   applied by ``compress_events``: ``edit_events`` deletes and renames, then
   ``collapse_events(loops=...)`` collapses each run of a merged label into one
@@ -77,12 +88,25 @@ __all__ = [
 
 #: The screens a plan is built for.
 SCREENS = ("transitions", "steps")
-#: Named targets (a positive number is a median-MDE goal).
-TARGETS = ("testable", "mde")
+#: Named targets (a positive number is a median-MDE goal); the first is the default.
+TARGETS = ("untestable_share", "testable", "mde")
+#: ``target="untestable_share"`` takes the earliest step whose untestable share is
+#: within a tolerance of the lowest one: ``TARGET_TOLERANCE`` of the lowest share,
+#: and at least ``TARGET_TOLERANCE_MIN`` of the screen's observations (a gain
+#: smaller than that is not worth an operation, so a dense screen keeps step 0).
+TARGET_TOLERANCE = 0.1
+TARGET_TOLERANCE_MIN = 0.0001
 #: ``action`` of a plan row.
 ACTIONS = ("keep", "merge", "drop", "other")
 #: ``operation`` of a path row (``start`` is step 0, the stream as it is).
-OPERATIONS = ("start", "merge_chain", "merge_synonym", "drop", "other")
+OPERATIONS = (
+    "start",
+    "merge_chain",
+    "merge_synonym",
+    "merge_neighbour",
+    "drop",
+    "other",
+)
 #: Edge weights the transitions plan sizes its cells by.
 _EDGE_WEIGHTS = (
     "unique_paths",
@@ -124,7 +148,10 @@ PATH_COLUMNS: tuple[str, ...] = (
     "cells",
     "testable",
     "untestable",
+    "untestable_share",
     "median_mde",
+    "median_scale_needed",
+    "scale_to_test_90",
     "transitions",
     "mass_retained",
     "artificial_transitions",
@@ -262,6 +289,11 @@ class _Screen:
     alpha: float
     power: float
     correction: str
+    target_delta: float | None = None
+
+
+#: The share of the cells that ``scale_to_test_90`` makes testable.
+TESTABLE_QUANTILE = 0.9
 
 
 def _rule(support, non_support, min_support):
@@ -298,6 +330,7 @@ def _cell_numbers(
         support = np.concatenate([support, ended[ended > 0]]).astype(float)
         non_support = n - support
         cells = len(support)
+        observations = support
     else:
         src, dst, path = _transitions(lab, pid, n_labels)
         width = n_labels + 2
@@ -307,10 +340,16 @@ def _cell_numbers(
         support = np.bincount(inverse, minlength=len(cell_keys)).astype(float)
         cells = len(cell_keys)
         weight = screen.edge_weight
+        # what a cell counts: its paths (unique_paths) or its transitions
+        observations = (
+            support
+            if weight == "unique_paths"
+            else np.bincount(inverse, weights=counts, minlength=cells).astype(float)
+        )
         if weight == "unique_paths":
             non_support = n - support
         elif weight == "avg_per_path":
-            total = np.bincount(inverse, weights=counts, minlength=cells)
+            total = observations
             squares = np.bincount(
                 inverse, weights=counts.astype(float) ** 2, minlength=cells
             )
@@ -380,14 +419,79 @@ def _cell_numbers(
         mde = _stats.mde_proportion(support / n, n1, n2, level, screen.power)
     else:
         mde = _stats.mde_from_se(se, level, screen.power)
-    mde = np.asarray(mde, dtype=float)[testable]
+    mde_all = np.asarray(mde, dtype=float)
+    mde = mde_all[testable]
     mde = mde[np.isfinite(mde)]
-    return {
+    # the observations in cells too thin to test: a cell that (nearly) every path
+    # has fails the support rule on the other side, and pooling cannot help it
+    total_obs = float(observations.sum())
+    thin_cells = ~testable & (support < screen.min_support)
+    numbers = {
         "cells": int(cells),
         "testable": m,
         "untestable": int(cells - m),
+        "untestable_share": (
+            float(observations[thin_cells].sum() / total_obs)
+            if total_obs > 0
+            else float("nan")
+        ),
         "_thin": thin_share,
         "median_mde": float(np.median(mde)) if mde.size else float("nan"),
+    }
+    if screen.target_delta is not None:
+        numbers.update(
+            _data_needed(
+                support,
+                non_support,
+                se,
+                testable,
+                mde_all,
+                screen.min_support,
+                screen.target_delta,
+            )
+        )
+    return numbers
+
+
+def _data_needed(
+    support: np.ndarray,
+    non_support: np.ndarray | None,
+    se: np.ndarray | None,
+    testable: np.ndarray,
+    mde: np.ndarray,
+    min_support: int,
+    target_delta: float,
+) -> dict:
+    """The multiples of the users a screen needs, as ``get_ab_*_power`` projects
+    them (the same path composition, more paths): ``median_scale_needed``, the
+    median ``scale_needed`` of the testable cells (half of them reach
+    ``target_delta``), and ``scale_to_test_90``, the multiple at which 90 % of the
+    cells pass the support rule (``scale_to_test``)."""
+    with np.errstate(invalid="ignore", divide="ignore"):
+        need = np.where(support > 0, min_support / support, np.inf)
+        if non_support is not None:
+            need = np.maximum(
+                need, np.where(non_support > 0, min_support / non_support, np.inf)
+            )
+    if se is not None:
+        # no spread or no estimate: more paths of the same composition do not help
+        need = np.where(np.isfinite(se) & (se > 0), need, np.inf)
+    cells = len(need)
+    if cells:
+        ordered = np.sort(need)
+        at = ordered[max(math.ceil(TESTABLE_QUANTILE * cells) - 1, 0)]
+        to_test = float(at) if np.isfinite(at) else float("nan")
+    else:
+        to_test = float("nan")
+    with np.errstate(invalid="ignore", divide="ignore"):
+        needed = (mde[testable] / target_delta) ** 2
+    needed = np.maximum(needed, need[testable])
+    needed = needed[np.isfinite(needed)]
+    return {
+        "median_scale_needed": (
+            float(np.median(needed)) if needed.size else float("nan")
+        ),
+        "scale_to_test_90": to_test,
     }
 
 
@@ -579,14 +683,37 @@ def _gap_paths(
     return np.bincount(uniq_keys, minlength=width * width).reshape(width, width)
 
 
+def _new_artificial(
+    prev: np.ndarray,
+    nxt: np.ndarray,
+    n_labels: int,
+    collapsible: np.ndarray,
+    supported: np.ndarray,
+) -> int:
+    """How many distinct artificial transitions dropping a label would leave: the
+    ``previous -> next`` pairs around its runs that no original direct transition
+    maps to (``supported``: :func:`_supported_pairs` with the label dropped). A pair
+    of one merged label (``A x A``) collapses into one event and joins nothing."""
+    width = n_labels + 2
+    joins = ~(
+        (prev == nxt) & (prev < n_labels) & collapsible[np.minimum(prev, n_labels - 1)]
+    )
+    joins &= ~((prev == n_labels) & (nxt == n_labels + 1))  # an emptied path
+    keys = np.unique(prev[joins] * width + nxt[joins])
+    return int((~np.isin(keys, supported)).sum())
+
+
 def _rare_decision(
     st: _Stats,
     u: int,
     n_labels: int,
     screen: _Screen,
     bridge_threshold: float,
+    collapsible: np.ndarray,
+    supported: np.ndarray,
 ) -> tuple[str, dict, str]:
-    """``("drop" | "other", evidence, reason)`` for a rare label ``u``."""
+    """``("drop" | "other", evidence, reason)`` for a rare label ``u``
+    (``supported``: the pairs a compressed edge may be once ``u`` is dropped)."""
     lab, pid = st.lab, st.pid
     prev, nxt = _runs(lab, pid, u, n_labels)
     runs = len(prev)
@@ -625,6 +752,17 @@ def _rare_decision(
             "relabelled instead",
         )
     if fidelity >= bridge_threshold:
+        artificial = _new_artificial(prev, nxt, n_labels, collapsible, supported)
+        if artificial:
+            return (
+                "other",
+                evidence,
+                f"{share} (>= {bridge_threshold:.0%}), but dropping it would join "
+                f"{artificial} pair(s) of events that never follow each other "
+                f"directly ({artificial} artificial "
+                f"{'transition' if artificial == 1 else 'transitions'}), so it is "
+                "relabelled instead",
+            )
         if screen.name == "transitions":
             tail = "dropping it joins transitions that already exist"
         else:
@@ -644,6 +782,71 @@ def _rare_decision(
             "else; relabelled, it keeps its position"
         )
     return "other", evidence, f"{share} (< {bridge_threshold:.0%}): {tail}"
+
+
+# ======================================================================= forced mode
+#: Above ``max_events``, a chain pair is a merge candidate from this strength
+#: (``min(P(next), P(prev))``) and a synonym pair up to ``1 -`` this distance.
+FORCED_FLOOR = 0.5
+
+
+def _merge_cost(
+    lab: np.ndarray, pid: np.ndarray, u: int, v: int
+) -> tuple[int, int, int]:
+    """``(hidden, collapsed, runs)`` of a merge of ``u`` and ``v``, what it loses.
+
+    The merged label has ``runs`` runs (each collapses into one event). ``hidden``
+    are the runs that are not of its most common composition (``u`` alone, ``v``
+    alone, ``u`` then ``v``, ``v`` then ``u``): the label hides which of the two
+    happened in them. ``collapsed`` are the events a run loses beyond its
+    composition (``u u v`` keeps ``u v``): repeats and returns that the
+    collapse erases. A chain whose every run is ``u v`` costs nothing."""
+    hit = (lab == u) | (lab == v)
+    if not hit.any():
+        return 0, 0, 0
+    same_prev = np.r_[False, pid[1:] == pid[:-1]]
+    start = hit & ~(np.r_[False, hit[:-1]] & same_prev)
+    run_of = np.cumsum(start) - 1
+    runs = int(start.sum())
+    r, own = run_of[hit], lab[hit]
+    has_u = np.bincount(r, weights=(own == u), minlength=runs) > 0
+    has_v = np.bincount(r, weights=(own == v), minlength=runs) > 0
+    length = np.bincount(r, minlength=runs)
+    first_u = lab[start] == u
+    both = has_u & has_v
+    kind = np.where(both, np.where(first_u, 2, 3), np.where(has_u, 0, 1))
+    hidden = runs - int(np.bincount(kind, minlength=4).max())
+    collapsed = int((length - np.where(both, 2, 1)).sum())
+    return hidden, collapsed, runs
+
+
+#: Above ``max_events``, a merge considers the ``FORCED_RAREST`` rarest events
+#: left, each with its ``FORCED_NEIGHBOURS`` closest neighbours.
+FORCED_RAREST = 3
+FORCED_NEIGHBOURS = 3
+
+
+def _closest_neighbours(st: _Stats, mergeable: np.ndarray, w: int) -> list:
+    """``[(x, share, w_first), ...]``: the mergeable labels next to ``w`` in most
+    of its runs, closest first, at most ``FORCED_NEIGHBOURS`` (``share``: the
+    larger of ``P(next = x | w)`` and ``P(prev = x | w)``; ``w_first``: ``w``
+    comes first)."""
+    n = len(mergeable)
+    out_w = st.count[w, :].sum()
+    in_w = st.count[:, w].sum()
+    with np.errstate(invalid="ignore", divide="ignore"):
+        after = st.count[w, :n] / out_w if out_w else np.zeros(n)
+        before = st.count[:n, w] / in_w if in_w else np.zeros(n)
+    ok = mergeable.copy()
+    ok[w] = False
+    after, before = np.where(ok, after, 0.0), np.where(ok, before, 0.0)
+    best = np.maximum(after, before)
+    order = np.lexsort((np.arange(n), -best))  # the lowest label id on a tie
+    return [
+        (int(x), float(best[x]), bool(after[x] >= before[x]))
+        for x in order[:FORCED_NEIGHBOURS]
+        if best[x] > 0
+    ]
 
 
 # ======================================================================= the path
@@ -669,7 +872,7 @@ def _apply(state: _State, op: _Op, other_id: int | None, other_name: str, taken:
             other_id = len(new.names) - 1
         new.label_of[new.label_of == u] = other_id
         return new, other_name, other_id
-    joiner = "+" if op.operation == "merge_chain" else "/"
+    joiner = "/" if op.operation == "merge_synonym" else "+"
     name = _label_name(state, op.labels, joiner, taken)
     new.names.append(name)
     new.kinds.append("merged")
@@ -718,10 +921,19 @@ def _build_path(
 
     A rare event (the rarest first) is merged into a synonym when one pools its
     thin cells, else dropped or relabelled ``other`` by the screen's rule
-    (:func:`_rare_decision`); a merge of synonyms needs a thin member and must
-    leave fewer untestable cells without losing a testable one. With
-    ``max_events`` the rarest events left are then handled the same way until the
-    vocabulary fits.
+    (:func:`_rare_decision`; a drop never leaves an artificial transition); a
+    merge of synonyms needs a thin member and must leave fewer untestable cells
+    without losing a testable one.
+
+    With ``max_events``, while the vocabulary is above it and none of these
+    applies, each step takes the cheapest merge of neighbours among three: the
+    strongest chain pair left (strength at least ``FORCED_FLOOR``), the closest
+    synonym pair (distance at most ``1 - FORCED_FLOOR``), and each of the
+    ``FORCED_RAREST`` rarest events left with each of its ``FORCED_NEIGHBOURS``
+    closest neighbours. The cost is the runs of the merged label
+    that hide which of the two happened (:func:`_hidden_runs`). Only when no
+    merge is left is the rarest event dropped (``other`` takes only events below
+    ``min_path_share``), and its artificial transitions are counted.
     """
     n_orig = len(data.events)
     state = _State(
@@ -808,11 +1020,133 @@ def _build_path(
             merge.evidence["path_share"] = float(st.path_share[u])
             merge.reason = f"{why_rare}; it is merged into its synonym: {merge.reason}"
             return merge
+        dropped = state.copy()
+        dropped.label_of[dropped.label_of == u] = -1
         action, evidence, why = _rare_decision(
-            st, u, len(state.names), screen, bridge_threshold
+            st,
+            u,
+            len(state.names),
+            screen,
+            bridge_threshold,
+            state.collapsible,
+            _supported_pairs(data, dropped),
         )
         evidence["path_share"] = float(st.path_share[u])
         return _Op(action, (u,), evidence, f"{why_rare}; {why}")
+
+    def forced_op(st, mergeable, vocabulary) -> _Op | None:
+        """Above ``max_events``: the cheapest merge of neighbours, else a drop."""
+        names = state.names
+        why = f"the vocabulary ({vocabulary}) is above max_events {max_events}"
+        candidates = []
+        chains = _chain_candidates(st, mergeable, FORCED_FLOOR, screen.min_support)
+        if chains:
+            _, u, v, p_next, p_prev = chains[0]
+            candidates.append(
+                (
+                    "merge_chain",
+                    (u, v),
+                    {"p_next": p_next, "p_prev": p_prev},
+                    f"'{names[u]}' -> '{names[v]}' is the strongest chain left "
+                    f"(P(next = {names[v]} | {names[u]}) = {p_next:.2f}, "
+                    f"P(prev = {names[u]} | {names[v]}) = {p_prev:.2f}, both >= "
+                    f"{FORCED_FLOOR:g})",
+                )
+            )
+        synonyms = _synonym_candidates(st, mergeable, 1 - FORCED_FLOOR)
+        if synonyms:
+            distance, u, v, loop_u, loop_v = synonyms[0]
+            if st.occurrences[v] > st.occurrences[u]:
+                u, v = v, u
+            candidates.append(
+                (
+                    "merge_synonym",
+                    (u, v),
+                    {"js_distance": distance, "self_loop_share": max(loop_u, loop_v)},
+                    f"'{names[u]}' and '{names[v]}' are the closest synonyms left "
+                    f"(Jensen-Shannon distance {distance:.3f} <= "
+                    f"{1 - FORCED_FLOOR:g})",
+                )
+            )
+        left = np.flatnonzero(mergeable)
+        share = st.path_share
+        rarest = left[np.lexsort((left, share[left]))]
+        w = int(rarest[0]) if len(rarest) else None
+        pairs = [
+            (int(r), x, adjacent, w_first)
+            for r in rarest[:FORCED_RAREST]
+            for x, adjacent, w_first in _closest_neighbours(st, mergeable, int(r))
+        ]
+        seen = set()
+        for r, x, adjacent, w_first in pairs:
+            if frozenset((r, x)) in seen:
+                continue
+            seen.add(frozenset((r, x)))
+            u, v = (r, x) if w_first else (x, r)
+            out_u, in_v = st.count[u, :].sum(), st.count[:, v].sum()
+            candidates.append(
+                (
+                    "merge_neighbour",
+                    (u, v),
+                    {
+                        "p_next": float(st.count[u, v] / out_u) if out_u else np.nan,
+                        "p_prev": float(st.count[u, v] / in_v) if in_v else np.nan,
+                        "path_share": float(share[r]),
+                    },
+                    f"'{names[r]}' is one of the {FORCED_RAREST} rarest events left "
+                    f"({share[r]:.2%} of paths) and '{names[x]}' one of its "
+                    f"{FORCED_NEIGHBOURS} closest neighbours "
+                    f"({'after' if w_first else 'before'} it in {adjacent:.0%} of "
+                    "its runs)",
+                )
+            )
+        if candidates:
+            scored = [
+                (_merge_cost(st.lab, st.pid, *c[1]), i, c)
+                for i, c in enumerate(candidates)
+            ]
+            (hidden, collapsed, runs), _, (operation, labels, evidence, what) = min(
+                scored, key=lambda t: (t[0][0] + t[0][1], t[1])
+            )
+            return _Op(
+                operation,
+                labels,
+                evidence,
+                (
+                    f"{why}; {what}: the cheapest merge of neighbours ("
+                    f"{hidden + collapsed} events lost: the merged label hides which "
+                    f"of the two happened in {hidden} of its {runs} runs and its runs "
+                    f"collapse {collapsed} repeated events)"
+                ),
+            )
+        if w is None:
+            return None
+        # no merge left: the rarest event is dropped (or, below min_path_share,
+        # relabelled), its artificial transitions counted
+        if share[w] < min_path_share:
+            return rare_op(
+                st,
+                mergeable,
+                current,
+                w,
+                f"{why} and it is the rarest event left ({share[w]:.2%} of paths)",
+            )
+        dropped = state.copy()
+        dropped.label_of[dropped.label_of == w] = -1
+        prev, nxt = _runs(st.lab, st.pid, w, len(names))
+        artificial = _new_artificial(
+            prev, nxt, len(names), state.collapsible, _supported_pairs(data, dropped)
+        )
+        return _Op(
+            "drop",
+            (w,),
+            {"path_share": float(share[w])},
+            (
+                f"{why}, no merge of neighbours is left and it is the rarest event "
+                f"left ({share[w]:.2%} of paths); dropping it leaves {artificial} "
+                f"artificial {'transition' if artificial == 1 else 'transitions'}"
+            ),
+        )
 
     while True:
         st = _stats_of(data, state, None)
@@ -855,18 +1189,8 @@ def _build_path(
                 break
         if op is None and max_events is not None:
             vocabulary = rows[-1]["vocabulary"]
-            left = np.flatnonzero(mergeable)
-            if vocabulary > max_events and len(left):
-                share = st.path_share
-                u = int(left[np.lexsort((left, share[left]))][0])
-                op = rare_op(
-                    st,
-                    mergeable,
-                    current,
-                    u,
-                    f"the vocabulary ({vocabulary}) is above max_events {max_events} "
-                    f"and it is the rarest event left ({share[u]:.2%} of paths)",
-                )
+            if vocabulary > max_events:
+                op = forced_op(st, mergeable, vocabulary)
         if op is None:
             break
         names = [state.names[i] for i in op.labels]
@@ -911,7 +1235,24 @@ def _choose(rows: list[dict], target: Any, max_events: int | None) -> int:
         value = row["median_mde"]
         return value if math.isfinite(value) else math.inf
 
-    if target == "testable":
+    def share(row):
+        value = row["untestable_share"]
+        return value if math.isfinite(value) else math.inf
+
+    if target == "untestable_share":
+        # among the steps without an artificial transition (or, when every step
+        # that fits max_events has one, those with the fewest), the earliest
+        # whose untestable share is within TARGET_TOLERANCE of the lowest
+        fewest = min(r["artificial_transitions"] for r in candidates)
+        clean = [r for r in candidates if r["artificial_transitions"] == fewest]
+        lowest = min(share(r) for r in clean)
+        within = lowest + max(TARGET_TOLERANCE * lowest, TARGET_TOLERANCE_MIN)
+        best = min(
+            (r for r in clean if share(r) <= within),
+            key=lambda r: r["step"],
+            default=min(clean, key=lambda r: r["step"]),
+        )
+    elif target == "testable":
         # the most testable cells; among those, the fewest untestable ones, then
         # the lowest median MDE, then the earliest step
         best = max(
@@ -1188,7 +1529,7 @@ def ab_compression(
     synonym_threshold: float = DEFAULT_SYNONYM_THRESHOLD,
     bridge_threshold: float = DEFAULT_BRIDGE_THRESHOLD,
     max_events: int | None = None,
-    target: Any = "testable",
+    target: Any = "untestable_share",
     step: int | None = None,
     keep=None,
     other: str = "other",
@@ -1198,9 +1539,13 @@ def ab_compression(
     ci_level: float = 0.95,
     power: float = 0.8,
     min_support: int = 10,
+    target_delta: float | None = None,
 ) -> pd.DataFrame:
     """The plan of ``Eventstream.get_ab_compression`` (see its docstring)."""
+    from retentioneering.tools.ab_power import check_target_delta
     from retentioneering.tools.ab_transitions import _check_edges, _population
+
+    target_delta = check_target_delta(target_delta)
 
     check_choice("screen", screen, SCREENS)
     if screen == "transitions":
@@ -1347,6 +1692,7 @@ def ab_compression(
         alpha=alpha,
         power=float(power),
         correction=correction,
+        target_delta=target_delta,
     )
     params = dict(
         protected=protected,
@@ -1424,6 +1770,8 @@ def ab_compression(
             cells_after=rows[pick]["cells"],
             testable_before=rows[0]["testable"],
             testable_after=rows[pick]["testable"],
+            untestable_share_before=rows[0]["untestable_share"],
+            untestable_share_after=rows[pick]["untestable_share"],
             median_mde_before=rows[0]["median_mde"],
             median_mde_after=rows[pick]["median_mde"],
         )
@@ -1459,6 +1807,7 @@ def ab_compression(
         "bridge_threshold": bridge_threshold,
         "max_events": params["max_events"],
         "target": target,
+        "target_delta": target_delta,
         "other": other,
         "keep": keep_events,
         "edges": [list(p) for p in declared] if declared else None,

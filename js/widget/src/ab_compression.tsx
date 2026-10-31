@@ -16,17 +16,24 @@ import {
 } from "./widget-utils";
 import {
   type CompressionPayload, type Measure, type PathStep, type Segment,
-  MEASURES, actionCounts, beforeAfter, fmtMeasure, fmtShare, mappingAt, panelGeometry, parseCompression, stepOf,
-  stepText,
+  MEASURES, NEEDS, actionCounts, beforeAfter, fmtMeasure, fmtScale, fmtShare, hasNeeds, mappingAt, needGeometry,
+  panelGeometry, parseCompression, stepOf, stepText,
 } from "./ab_compression_encoding";
 
 const DATA_KEYS = [
   "screen", "horizon", "path_col", "edge_weight", "max_steps", "edges", "min_path_share", "chain_threshold",
   "synonym_threshold", "bridge_threshold", "max_events", "target", "step", "keep", "other", "by",
-  "by_pre_exposure", "correction", "ci_level", "power", "min_support",
+  "by_pre_exposure", "correction", "ci_level", "power", "min_support", "target_delta",
 ];
 
 const SIDEBAR_W = 264;
+
+/** The named targets, as the sidebar and the header say them. */
+const TARGET_TEXT: Record<string, string> = {
+  untestable_share: "least data too thin to test",
+  testable: "most testable cells",
+  mde: "lowest median MDE",
+};
 const INK = "#111827";
 const MUTED = "#6b7280";
 const LINE = "#374151";
@@ -76,6 +83,7 @@ function readParams(host: RenderContext["host"]): Record<string, any> {
 function rangeText(min: number, max: number, measure: Measure, unit: "pp" | "per_path"): string {
   if (measure === "testable") return `${Math.round(min)}–${Math.round(max)}`;
   if (measure === "mass_retained") return `${fmtShare(min, 0)}–${fmtShare(max, 0)}`;
+  if (measure === "untestable_share") return `${fmtShare(min, 3)}–${fmtShare(max, 3)}`;
   const f = (v: number) => (unit === "pp" ? (v * 100).toFixed(2) : v.toFixed(3));
   return `${f(min)}–${f(max)}${unit === "pp" ? " pp" : ""}`;
 }
@@ -118,8 +126,56 @@ export function PathPanel({ path, measure, title, unit, selected, chosen, onSele
   );
 }
 
-function PathChart({ segment, unit, step, onSelect }: {
-  segment: Segment; unit: "pp" | "per_path"; step: number; onSelect: (s: number) => void;
+/** The users-needed panel (with `target_delta`): two series in one unit, a
+ *  multiple of the current users on a log scale; the line at ×1 is the data as
+ *  it is. A legend names the series (solid and dashed, not colour alone). */
+export function NeedPanelView({ path, targetDelta, unit, selected, chosen, onSelect }: {
+  path: PathStep[]; targetDelta: number | null; unit: "pp" | "per_path"; selected: number; chosen: number;
+  onSelect: (step: number) => void;
+}) {
+  const g = needGeometry(path, PANEL_W, PANEL_H, 8);
+  const current = path[Math.min(selected, path.length - 1)];
+  const lo = Math.log10(g.min), hi = Math.log10(g.max);
+  const yOne = PANEL_H - 8 - ((0 - lo) / (hi - lo)) * (PANEL_H - 16);
+  const dash: Record<string, string | undefined> = { median_scale_needed: undefined, scale_to_test_90: "5 3" };
+  const target = targetDelta == null ? "the target" : unit === "pp" ? `${(targetDelta * 100).toFixed(2)} pp` : String(targetDelta);
+  return (
+    <div data-testid="abc-panel-needed" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <svg width={PANEL_W} height={PANEL_H} viewBox={`0 0 ${PANEL_W} ${PANEL_H}`} role="img" aria-label="Users needed along the compression path"
+        style={{ flexShrink: 0, overflow: "visible" }}>
+        <rect x={0} y={0} width={PANEL_W} height={PANEL_H} fill="#f9fafb" stroke="#e5e7eb" />
+        {yOne >= 0 && yOne <= PANEL_H && <line x1={0} x2={PANEL_W} y1={yOne} y2={yOne} stroke="#d1d5db" strokeDasharray="2 3" />}
+        {NEEDS.map(({ key }) => (
+          <path key={key} data-testid={`abc-need-${key}`} d={g.lines[key]} fill="none" stroke={LINE} strokeWidth={2}
+            strokeDasharray={dash[key]} strokeLinejoin="round" strokeLinecap="round" />
+        ))}
+        {NEEDS.map(({ key, title }) => g.points[key].map((p) => p.y == null ? null : (
+          <g key={`${key}-${p.step}`} data-testid="abc-need-point" data-series={key} data-step={p.step}
+            onClick={() => onSelect(p.step)} style={{ cursor: "pointer" }}>
+            <title>{`${stepText(path[p.step])} · users for ${title}: ${fmtScale(p.value)}`}</title>
+            <circle cx={p.x} cy={p.y} r={9} fill="transparent" />
+            {p.artificial && <circle cx={p.x} cy={p.y} r={7} fill="none" stroke={ARTIFICIAL} strokeWidth={2} />}
+            <circle cx={p.x} cy={p.y} r={p.step === selected ? 5 : 3.5} fill={p.step === selected ? SELECTED : LINE} stroke="#f9fafb" strokeWidth={2} />
+            {p.step === chosen && <circle cx={p.x} cy={p.y} r={8} fill="none" stroke={INK} strokeWidth={1.25} strokeDasharray="2 2" />}
+          </g>
+        )))}
+      </svg>
+      <div style={{ fontSize: 11, color: "#374151", lineHeight: 1.4, minWidth: 0 }}>
+        <div style={{ fontWeight: 600, color: INK }}>Users needed (× now)</div>
+        {NEEDS.map(({ key, title }) => (
+          <div key={key} data-testid={`abc-value-${key}`} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <svg width={18} height={6}><line x1={0} x2={18} y1={3} y2={3} stroke={LINE} strokeWidth={2} strokeDasharray={dash[key]} /></svg>
+            <span>{current ? fmtScale(current[key]) : "n/a"}: {key === "median_scale_needed" ? `half of the testable cells detect ${target}` : title}</span>
+          </div>
+        ))}
+        <div style={{ fontSize: 10, color: MUTED }}>{`path range ${fmtScale(g.min)}–${fmtScale(g.max)}, log scale; the dotted line is ×1`}</div>
+      </div>
+    </div>
+  );
+}
+
+function PathChart({ segment, unit, targetDelta, step, onSelect }: {
+  segment: Segment; unit: "pp" | "per_path"; targetDelta: number | null; step: number; onSelect: (s: number) => void;
 }) {
   const vocab = segment.path.map((p) => p.vocabulary);
   const lo = Math.min(...vocab), hi = Math.max(...vocab);
@@ -130,6 +186,10 @@ function PathChart({ segment, unit, step, onSelect }: {
         <PathPanel key={key} path={segment.path} measure={key} title={title} unit={unit} selected={step}
           chosen={segment.chosen_step} onSelect={onSelect} />
       ))}
+      {hasNeeds(segment.path) && (
+        <NeedPanelView path={segment.path} targetDelta={targetDelta} unit={unit} selected={step}
+          chosen={segment.chosen_step} onSelect={onSelect} />
+      )}
       <div style={{ width: PANEL_W, display: "flex", justifyContent: "space-between", fontSize: 10, color: MUTED }}>
         <span>{lo} events</span><span>vocabulary size →</span><span>{hi} events</span>
       </div>
@@ -151,6 +211,13 @@ const ACTION_STYLE: Record<string, { bg: string; fg: string }> = {
   drop: { bg: "#fee2e2", fg: "#991b1b" },
   other: { bg: "#fef3c7", fg: "#92400e" },
 };
+
+/** A merged label breaks after its joiners (`+`, `/`): a label of many events
+ *  wraps in its column instead of pushing the reasons out of view. */
+function Breakable({ label }: { label: string }) {
+  const parts = label.split(/(?<=[+/])/);
+  return <>{parts.map((part, i) => <React.Fragment key={i}>{part}{i < parts.length - 1 && <wbr />}</React.Fragment>)}</>;
+}
 
 function MappingTable({ segment, step, other, changedOnly }: { segment: Segment; step: number; other: string; changedOnly: boolean }) {
   const rows = mappingAt(segment, step, other, changedOnly);
@@ -175,9 +242,9 @@ function MappingTable({ segment, step, other, changedOnly }: { segment: Segment;
             <td style={td}>
               <span style={{ display: "inline-block", padding: "0 6px", borderRadius: 4, fontSize: 10, background: ACTION_STYLE[r.action].bg, color: ACTION_STYLE[r.action].fg }}>{r.action}</span>
             </td>
-            <td style={{ ...td, whiteSpace: "nowrap" }}>{r.label === null ? <span style={{ color: MUTED }}>(dropped)</span> : r.label}</td>
+            <td style={{ ...td, minWidth: 180, maxWidth: 320 }}>{r.label === null ? <span style={{ color: MUTED }}>(dropped)</span> : <Breakable label={r.label} />}</td>
             <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{r.since || ""}</td>
-            <td style={{ ...td, color: "#374151", lineHeight: 1.4 }}>{r.reason}</td>
+            <td style={{ ...td, color: "#374151", lineHeight: 1.4, minWidth: 240, overflowWrap: "anywhere" }}>{r.reason}</td>
           </tr>
         ))}
       </tbody>
@@ -222,7 +289,7 @@ export function Header({ payload, segment }: { payload: CompressionPayload; segm
   const screen = payload.screen === "steps"
     ? `step screen, steps 1–${payload.max_steps}`
     : `transition screen, ${payload.edge_weight}`;
-  const target = typeof payload.target === "number" ? `median MDE ≤ ${payload.target}` : String(payload.target);
+  const target = typeof payload.target === "number" ? `median MDE ≤ ${payload.target}` : (TARGET_TEXT[String(payload.target)] ?? String(payload.target));
   const who = payload.population === "assignment" ? "ITT: every path of the assignment table" : "the stream's paths";
   const h = homogeneityText(segment.homogeneity);
   return (
@@ -284,8 +351,9 @@ function Sidebar({ host, isStatic, isLoading, params, view, setParam, setView, p
   const diff = parseJson<unknown>(host.get("diff"), null);
   const diffText = Array.isArray(diff) && diff.length === 3 ? `${diff[0]}: ${diff[1]} vs ${diff[2]}` : String(diff ?? "");
   const assignment = (host.get("assignment_info") as string) || "";
-  const target = String(params.target ?? "testable");
-  const targets = ["testable", "mde", ...(["testable", "mde"].includes(target) ? [] : [target])];
+  const target = String(params.target ?? "untestable_share");
+  const named = Object.keys(TARGET_TEXT);
+  const targets = [...named, ...(named.includes(target) ? [] : [target])];
   const fixedKeys = [
     "horizon", "path_col", params.screen === "steps" ? "max_steps" : "edge_weight", ...(params.screen === "steps" ? [] : ["edges"]),
     "synonym_threshold", "bridge_threshold", "keep", "other", "by", "by_pre_exposure", "step", "correction", "ci_level", "power", "min_support",
@@ -320,9 +388,16 @@ function Sidebar({ host, isStatic, isLoading, params, view, setParam, setView, p
         <Label>Chosen step by</Label>
         <select aria-label="Target" value={target} disabled={disabled} style={sel} onChange={(e) => setParam("target", e.target.value)}>
           {targets.map((t) => (
-            <option key={t} value={t}>{t === "testable" ? "most testable cells" : t === "mde" ? "lowest median MDE" : `median MDE ≤ ${t}`}</option>
+            <option key={t} value={t}>{TARGET_TEXT[t] ?? `median MDE ≤ ${t}`}</option>
           ))}
         </select>
+        <Hint>{target === "untestable_share"
+          ? "The earliest step whose observations in cells too thin to test are near their lowest, without artificial transitions: the information, not the number of cells."
+          : target === "testable" ? "The step with the most testable cells: a merged chain counts as a lost cell." : "The step with the lowest median MDE of the testable cells."}</Hint>
+        <Label>Target effect (users needed)</Label>
+        <NumberField label="Target effect" value={Number(params.target_delta) || null} percent={payload?.unit !== "per_path"} emptyIsNone disabled={disabled}
+          onCommit={(v) => setParam("target_delta", v ?? 0)} />
+        <Hint>{payload?.unit === "per_path" ? "Per path, absolute" : "Percentage points, absolute"}: adds the users-needed panel.</Hint>
         {isStatic && <Hint>A static export has no kernel: these are the values it was computed with.</Hint>}
 
         <Rule />
@@ -380,7 +455,7 @@ export function CompressionBody({ payload, segment, view, onStep }: {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-start" }}>
-        <PathChart segment={segment} unit={payload.unit} step={step} onSelect={onStep} />
+        <PathChart segment={segment} unit={payload.unit} targetDelta={payload.target_delta ?? null} step={step} onSelect={onStep} />
         <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 260 }}>
           <BeforeAfter segment={segment} step={step} unit={payload.unit} />
           <div data-testid="abc-actions" style={{ fontSize: 11, color: "#374151" }}>

@@ -3,7 +3,8 @@
 The widget draws one frame of its headless twin, `Eventstream.ab_compression_data`
 (an alias of `get_ab_compression`, ADR-0006/ADR-0017): the compression path as a
 chart (vocabulary size on x; testable cells, median MDE and transition mass
-retained on y; steps that create artificial transitions marked), a step slider,
+retained, the untestable share and, with ``target_delta``, the users needed on
+y; steps that create artificial transitions marked), a step slider,
 the mapping of every event at the selected step (its new label, dropped or
 `other`, with the reason) and the screen's numbers before and after.
 
@@ -23,6 +24,7 @@ from typing import Any
 import pandas as pd
 import traitlets
 
+from retentioneering.tools.ab_compression import TARGETS
 from retentioneering.widgets._ab_widget import ABFrameWidget, jsonable
 from retentioneering.widgets._base import _UNSET
 
@@ -38,7 +40,7 @@ _DEFAULTS: dict[str, Any] = {
     "synonym_threshold": 0.1,
     "bridge_threshold": 0.9,
     "max_events": 0,
-    "target": "testable",
+    "target": "untestable_share",
     "step": -1,
     "keep": "",
     "other": "other",
@@ -48,6 +50,7 @@ _DEFAULTS: dict[str, Any] = {
     "ci_level": 0.95,
     "power": 0.8,
     "min_support": 10,
+    "target_delta": 0.0,
 }
 
 #: View parameters: set in the browser, saved with ``state_file``.
@@ -70,7 +73,10 @@ PATH_FIELDS = (
     "cells",
     "testable",
     "untestable",
+    "untestable_share",
     "median_mde",
+    "median_scale_needed",
+    "scale_to_test_90",
     "transitions",
     "mass_retained",
     "artificial_transitions",
@@ -131,8 +137,8 @@ class ABCompressionWidget(ABFrameWidget):
     synonym_threshold = traitlets.Float(0.1).tag(sync=True)
     bridge_threshold = traitlets.Float(0.9).tag(sync=True)
     max_events = traitlets.Int(0).tag(sync=True)
-    # "testable", "mde" or a number as text
-    target = traitlets.Unicode("testable").tag(sync=True)
+    # "untestable_share", "testable", "mde" or a number as text
+    target = traitlets.Unicode("untestable_share").tag(sync=True)
     step = traitlets.Int(-1).tag(sync=True)
     # "" | JSON list of events
     keep = traitlets.Unicode("").tag(sync=True)
@@ -140,6 +146,8 @@ class ABCompressionWidget(ABFrameWidget):
     by = traitlets.Unicode("").tag(sync=True)
     # "" (not declared), "true" or "false"
     by_pre_exposure = traitlets.Unicode("").tag(sync=True)
+    # 0 = no target effect (no "users needed" columns)
+    target_delta = traitlets.Float(0.0).tag(sync=True)
 
     # ── view (browser-only, persisted) ─────────────────────────────────────────
     selected_step = traitlets.Int(-1).tag(sync=True)
@@ -147,7 +155,14 @@ class ABCompressionWidget(ABFrameWidget):
     segment = traitlets.Unicode("").tag(sync=True)
 
     _defaults = _DEFAULTS
-    _editable = ("screen", "min_path_share", "chain_threshold", "max_events", "target")
+    _editable = (
+        "screen",
+        "min_path_share",
+        "chain_threshold",
+        "max_events",
+        "target",
+        "target_delta",
+    )
     _view_defaults = VIEW_DEFAULTS
     _display_defaults: dict[str, Any] = {"height": 640, "sidebar_open": True}
     _tool = "get_ab_compression"
@@ -184,6 +199,8 @@ class ABCompressionWidget(ABFrameWidget):
             return value or ""
         if name in ("max_steps", "max_events"):
             return value or 0
+        if name == "target_delta":
+            return float(value) if value else 0.0
         if name == "step":
             return -1 if value is None else value
         if name == "target":
@@ -218,8 +235,9 @@ class ABCompressionWidget(ABFrameWidget):
             "ci_level": raw["ci_level"],
             "power": raw["power"],
             "min_support": raw["min_support"],
+            "target_delta": raw["target_delta"] or None,
         }
-        if params["target"] not in ("testable", "mde"):
+        if params["target"] not in TARGETS:
             try:
                 params["target"] = float(params["target"])
             except (TypeError, ValueError):
@@ -293,6 +311,7 @@ class ABCompressionWidget(ABFrameWidget):
                 "max_steps": meta.get("max_steps"),
                 "unit": "per_path" if weight == "avg_per_path" else "pp",
                 "target": meta.get("target"),
+                "target_delta": meta.get("target_delta"),
                 "other": other,
                 "keep": meta.get("keep"),
                 "by": by,

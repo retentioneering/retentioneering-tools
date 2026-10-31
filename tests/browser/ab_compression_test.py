@@ -53,13 +53,15 @@ def test_static_compression_follows_the_plan_at_every_step(tmp_path):
             page.on("pageerror", lambda error: errors.append(str(error)))
             page.goto(export.as_uri())
             page.locator("[data-testid=abc-chart]").wait_for(state="visible")
-            # three panels, one point per step each (a step without an MDE has none)
-            for measure in ("testable", "mass_retained"):
+            # four panels, one point per step each (a step without an MDE has none)
+            for measure in ("testable", "untestable_share", "mass_retained"):
                 points = page.locator(
                     f"[data-testid=abc-panel-{measure}] [data-testid=abc-point]"
                 )
                 assert points.count() == len(path)
-            assert page.locator("[data-testid=abc-chosen]").count() == 3
+            assert page.locator("[data-testid=abc-chosen]").count() == 4
+            # no target_delta: no users-needed panel
+            assert page.locator("[data-testid=abc-panel-needed]").count() == 0
             header = page.locator("[data-testid=abc-header]").inner_text()
             assert f"chosen step {chosen} of {len(path) - 1}" in header
             assert "Arm-blind" in header
@@ -99,6 +101,55 @@ def test_static_compression_follows_the_plan_at_every_step(tmp_path):
             # a static export locks the data controls
             assert page.get_by_label("Screen").is_disabled()
             assert not page.get_by_label("Changed events only").is_disabled()
+            assert "NaN" not in page.locator("body").inner_text()
+            assert not errors, errors
+        finally:
+            browser.close()
+
+
+def _scale(value: float) -> str:
+    """``fmtScale`` of ab_compression_encoding.ts."""
+    if value >= 100:
+        return f"×{round(value)}"
+    if value >= 10:
+        return f"×{value:.1f}"
+    return f"×{value:.2f}"
+
+
+def test_static_compression_draws_the_users_needed(tmp_path):
+    stream = datasets.load_ab_test()
+    table = datasets.load_ab_test_assignment()
+    args = {**ARGS, "target_delta": 0.02}
+    widget = stream.ab_compression(DIFF, assignment=table, **args)
+    path = stream.get_ab_compression(DIFF, assignment=table, **args).attrs["path"]
+    export = tmp_path / "needed.html"
+    widget.export_html(str(export))
+    with playwright.sync_playwright() as runtime:
+        browser = _launch(runtime)
+        try:
+            page = browser.new_page(viewport={"width": 1400, "height": 1000})
+            errors = []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.goto(export.as_uri())
+            panel = page.locator("[data-testid=abc-panel-needed]")
+            panel.wait_for(state="visible")
+            for name in ("median_scale_needed", "scale_to_test_90"):
+                drawn = panel.locator(
+                    f"[data-testid=abc-need-point][data-series={name}]"
+                )
+                assert drawn.count() == int(path[name].gt(0).sum()), name
+            # the legend reads the selected step's numbers
+            slider = page.get_by_label("Step")
+            for step in (0, len(path) - 1):
+                slider.fill(str(step))
+                row = path.set_index("step").loc[step]
+                text = page.locator(
+                    "[data-testid=abc-value-median_scale_needed]"
+                ).inner_text()
+                assert text.startswith(_scale(row["median_scale_needed"])), text
+                assert "2.00 pp" in text
+            counts = page.locator("[data-testid=abc-before-after]").inner_text()
+            assert "users for half the cells to detect the target" in counts
             assert "NaN" not in page.locator("body").inner_text()
             assert not errors, errors
         finally:

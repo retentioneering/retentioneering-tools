@@ -679,6 +679,11 @@ class TestCompressionTool:
         assert all(r["reason"] for r in segment["changes"])
         assert result["arm_blind"].startswith("the plan reads the pooled paths")
         assert f"step {chosen} of" in segment["reading"]
+        assert result["target"] == "untestable_share"
+        assert segment["before"]["untestable_share"] == pytest.approx(
+            path.loc[0, "untestable_share"], rel=0.01
+        )
+        assert "observations too thin to test" in segment["reading"]
         # the step applies the plan: the screen on it has the plan's numbers
         step = segment["preprocessor"]
         assert step["type"] == "compress_events"
@@ -690,6 +695,15 @@ class TestCompressionTool:
             tuple(DIFF), assignment=northwind.assignment
         )
         assert screen["n_rows"] == len(direct)
+
+    def test_target_delta(self, northwind) -> None:
+        result = tools.get_ab_compression(northwind, DIFF, target_delta=0.02)
+        assert "error" not in result, result
+        (segment,) = result["segments"]
+        assert result["target_delta"] == 0.02
+        assert segment["before"]["median_scale_needed"] > 0
+        assert "scale_to_test_90" in segment["path"][0]
+        assert "error" in tools.get_ab_compression(northwind, DIFF, target_delta=-1)
 
     def test_an_empty_plan_says_so(self, northwind) -> None:
         result = tools.get_ab_compression(northwind, DIFF, "steps")

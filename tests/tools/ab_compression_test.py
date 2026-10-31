@@ -21,7 +21,11 @@ import pytest
 from retentioneering import datasets
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.exceptions import InvalidParameterError
-from retentioneering.tools.ab_compression import plan_mapping
+from retentioneering.tools.ab_compression import (
+    TARGET_TOLERANCE,
+    TARGET_TOLERANCE_MIN,
+    plan_mapping,
+)
 
 ARM = ("arm", "treatment", "control")
 TOY = ("arm", "a", "b")
@@ -188,16 +192,188 @@ class TestOperations:
         assert path.set_index("step").loc[plan.attrs["chosen_step"], "vocabulary"] <= 6
         assert "max_events" in " ".join(plan["reason"])
 
+    def test_default_target_reads_the_thin_observations(self, toy):
+        # the earliest step within the tolerance of the lowest untestable share,
+        # among the steps without an artificial transition
+        plan = toy.get_ab_compression(TOY)
+        path = plan.attrs["path"]
+        clean = path[path["artificial_transitions"] == 0]
+        lowest = clean["untestable_share"].min()
+        within = lowest + max(TARGET_TOLERANCE * lowest, TARGET_TOLERANCE_MIN)
+        best = int(clean.loc[clean["untestable_share"] <= within, "step"].min())
+        assert plan.attrs["chosen_step"] == best > 0
+        assert plan.attrs["target"] == "untestable_share"
+        # the chain merge removes a testable cell but no thin observation
+        chain = path.set_index("step").loc[1]
+        assert chain["operation"] == "merge_chain"
+        assert chain["testable"] < path.loc[0, "testable"]
+
+    def test_untestable_share_is_the_screens_thin_observations(self, toy):
+        # path x cell incidences in cells with fewer than min_support paths, as
+        # the screens count them (a cell every path has is not thin)
+        frame = toy.get_ab_transitions(TOY)
+        support = frame["group1_edge_paths"] + frame["group2_edge_paths"]
+        share = support[support < 10].sum() / support.sum()
+        path = toy.get_ab_compression(TOY).attrs["path"]
+        assert path.loc[0, "untestable_share"] == pytest.approx(share)
+        steps = toy.get_ab_steps(TOY, 10)
+        support = np.rint(
+            steps["group1_value"] * steps["group1_paths"]
+            + steps["group2_value"] * steps["group2_paths"]
+        )
+        share = support[support < 10].sum() / support.sum()
+        path = toy.get_ab_compression(TOY, "steps").attrs["path"]
+        assert path.loc[0, "untestable_share"] == pytest.approx(share)
+
     def test_target_picks_a_step(self, toy):
         path = toy.get_ab_compression(TOY).attrs["path"]
         most = path[path["testable"] == path["testable"].max()]
         fewest = most[most["untestable"] == most["untestable"].min()]
         best = int(fewest.sort_values(["median_mde", "step"])["step"].iloc[0])
-        assert toy.get_ab_compression(TOY).attrs["chosen_step"] == best
+        chosen = toy.get_ab_compression(TOY, target="testable").attrs["chosen_step"]
+        assert chosen == best
         by_mde = toy.get_ab_compression(TOY, target="mde").attrs["chosen_step"]
         assert by_mde == int(path.loc[path["median_mde"].idxmin(), "step"])
         goal = float(path["median_mde"].max()) + 1
         assert toy.get_ab_compression(TOY, target=goal).attrs["chosen_step"] == 0
+
+
+def _stream_of(templates: list[tuple[list[str], int]]) -> Eventstream:
+    """A stream of the given paths, each repeated, the arms alternating."""
+    rows = []
+    start = pd.Timestamp("2026-01-01")
+    user = 0
+    for events, count in templates:
+        for _ in range(count):
+            for k, event in enumerate(events):
+                rows.append(
+                    {
+                        "user_id": user,
+                        "event": event,
+                        "timestamp": start + pd.Timedelta(minutes=user * 100 + k),
+                        "arm": "a" if user % 2 == 0 else "b",
+                    }
+                )
+            user += 1
+    return Eventstream(pd.DataFrame(rows), {"segment_cols": ["arm"]})
+
+
+class TestNoArtificialDrop:
+    def test_a_drop_that_would_join_unseen_neighbours_is_other(self):
+        # V bridges catalog -> product (a frequent direct edge) in 9 of its 10 runs,
+        # its bridge fidelity reaches 0.9, but its tenth run sits between home and
+        # cart, which never follow each other directly: dropping it would invent
+        # home -> cart, so both screens relabel it (product and cart kept: their
+        # chain merge would otherwise join V's neighbours first)
+        stream = _stream_of(
+            [
+                (["home", "catalog", "product", "cart"], 300),
+                (["home", "product", "cart"], 300),
+                (["home", "catalog", "V", "product", "cart"], 9),
+                (["home", "V", "cart"], 1),
+            ]
+        )
+        for screen in ("transitions", "steps"):
+            plan = _last(stream, screen, min_path_share=0.05, keep=["product", "cart"])
+            row = plan.set_index("event").loc["V"]
+            assert row["action"] == "other", screen
+            assert row["bridge_fidelity"] == pytest.approx(0.9)
+            assert "1 artificial transition" in row["reason"], screen
+            path = plan.attrs["path"]
+            assert (path["artificial_transitions"] == 0).all(), screen
+
+
+class TestForcedMode:
+    """Above max_events: the cheapest merge of neighbours, never a drop or an
+    ``other`` of a frequent event while a merge is left."""
+
+    TEMPLATES = [
+        (["home", "A", "B", "cart"], 400),
+        (["home", "B", "cart"], 150),
+        (["home", "C", "cart"], 200),
+        (["home", "D", "product"], 150),
+        (["home", "product", "cart"], 100),
+    ]
+
+    @pytest.fixture(scope="class")
+    def stream(self):
+        return _stream_of(self.TEMPLATES)
+
+    def test_frequent_events_merge_with_neighbours(self, stream):
+        diff = ("arm", "a", "b")
+        plan = stream.get_ab_compression(diff, max_events=4)
+        path = plan.attrs["path"]
+        chosen = plan.attrs["chosen_step"]
+        assert path.loc[chosen, "vocabulary"] <= 4
+        changed = plan[plan["action"] != "keep"]
+        # every event is in at least 10 % of the paths: none is dropped or `other`
+        assert (plan["path_share"] >= 0.1).all()
+        assert set(changed["action"]) == {"merge"}
+        assert set(path["operation"].iloc[1:]) <= {
+            "merge_chain",
+            "merge_synonym",
+            "merge_neighbour",
+        }
+        assert (path["artificial_transitions"] == 0).all()
+        assert path.loc[chosen, "mass_retained"] > 0.5
+
+    def test_the_cheapest_merge_first(self, stream):
+        # no regular operation applies (no rare event, A -> B is a chain in one
+        # direction only: P(prev = A | B) = 0.73), so step 1 is forced. Merging D
+        # with product hides 100 runs (product without D); the strongest chain,
+        # A -> B, hides the 150 runs of B without A; so D and product go first
+        path = stream.get_ab_compression(("arm", "a", "b"), max_events=4).attrs["path"]
+        first = path.set_index("step").loc[1]
+        assert first["operation"] == "merge_neighbour"
+        assert first["label"] == "D+product"
+        assert "the cheapest merge of neighbours" in first["reason"]
+        assert "hides which of the two happened in 100 of" in first["reason"]
+
+    def test_a_drop_only_when_no_merge_is_left(self, stream):
+        # every other event kept: D has no neighbour it may merge with, so it is
+        # dropped (it is not rare: never `other`), its joins counted
+        keep = ["home", "A", "B", "C", "cart", "product"]
+        plan = stream.get_ab_compression(("arm", "a", "b"), keep=keep, max_events=6)
+        row = plan.set_index("event").loc["D"]
+        assert row["action"] == "drop"
+        assert "no merge of neighbours is left" in row["reason"]
+        assert "leaves 0 artificial transitions" in row["reason"]
+
+
+# ======================================================================= data needed
+class TestDataNeeded:
+    @pytest.mark.parametrize("screen", ["transitions", "steps"])
+    def test_the_power_getters_numbers(self, toy, screen):
+        target = 0.05
+        path = toy.get_ab_compression(TOY, screen, target_delta=target).attrs["path"]
+        if screen == "transitions":
+            power = toy.get_ab_transitions_power(TOY, scale=(1,), target_delta=target)
+        else:
+            power = toy.get_ab_steps_power(TOY, 10, scale=(1,), target_delta=target)
+        testable = power[power["testable"]]
+        first = path.iloc[0]
+        assert first["median_scale_needed"] == pytest.approx(
+            testable["scale_needed"].median()
+        )
+        need = np.sort(power["scale_to_test"].fillna(np.inf).to_numpy())
+        at = need[int(np.ceil(0.9 * len(need))) - 1]
+        # NaN: more than 10 % of the cells never pass the support rule (a cell
+        # that every path has, at any scale)
+        expected = at if np.isfinite(at) else np.nan
+        assert first["scale_to_test_90"] == pytest.approx(expected, nan_ok=True)
+        # a smaller target needs more users, at every step
+        smaller = toy.get_ab_compression(TOY, screen, target_delta=target / 2)
+        more = smaller.attrs["path"]["median_scale_needed"]
+        assert (more >= path["median_scale_needed"] - 1e-12).all()
+        assert smaller.attrs["target_delta"] == target / 2
+
+    def test_only_with_a_target(self, toy):
+        path = toy.get_ab_compression(TOY).attrs["path"]
+        assert "median_scale_needed" not in path.columns
+        assert "scale_to_test_90" not in path.columns
+        for bad in (0, -0.1, "big", float("nan")):
+            with pytest.raises(InvalidParameterError):
+                toy.get_ab_compression(TOY, target_delta=bad)
 
 
 # ======================================================================= processors
@@ -398,6 +574,9 @@ class TestBundled:
             path = plan.attrs["path"]
             # no artificial transition at any step of a default plan
             assert (path["artificial_transitions"] == 0).all(), (name, screen)
+            # dense screens: their thin cells hold almost none of the observations
+            assert plan.attrs["chosen_step"] == 0, (name, screen)
+            assert path.loc[0, "untestable_share"] < 0.001, (name, screen)
             for event in keep:
                 assert plan.set_index("event").loc[event, "action"] == "keep"
             compact = stream.compress_events(plan, **_unit(name))
@@ -474,9 +653,12 @@ class TestBundled:
         name = "session_assignment"
         stream = datasets.load_ab_test(name)
         table = datasets.load_ab_test_assignment(name)
-        plan = stream.get_ab_compression(
-            _diff_of(name), "steps", assignment=table, path_col="session_id"
-        )
+        diff = _diff_of(name)
+        kw = dict(assignment=table, path_col="session_id")
+        # the merged cells hold no thin observation (session_start -> home is a
+        # cell almost every session has), so the default target keeps step 0
+        assert stream.get_ab_compression(diff, "steps", **kw).attrs["chosen_step"] == 0
+        plan = stream.get_ab_compression(diff, "steps", target="testable", **kw)
         path = plan.attrs["path"].set_index("step")
         chosen = plan.attrs["chosen_step"]
         assert chosen >= 1
@@ -669,7 +851,11 @@ class TestScale:
             path = plan.attrs["path"].set_index("step")
             chosen = plan.attrs["chosen_step"]
             assert path.loc[chosen, "vocabulary"] <= 40
-            assert path.loc[chosen, "untestable"] <= path.loc[0, "untestable"]
+            # a forced merge may leave a thin cell where there was none (the step
+            # screen has none at step 0), but not more thin data than the tolerance
+            share = path["untestable_share"]
+            assert share.loc[chosen] <= share.loc[0] + TARGET_TOLERANCE_MIN
+            assert (path["artificial_transitions"] == 0).all()
             # the plan's numbers are the compressed stream's screen
             frame = _screen(wide.compress_events(plan), diff, screen, plan)
             tested = np.isfinite(frame["p_value_adjusted"].to_numpy(dtype=float))

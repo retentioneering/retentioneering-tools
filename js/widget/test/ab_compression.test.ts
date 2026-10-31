@@ -3,23 +3,23 @@ import assert from 'node:assert/strict';
 import React from 'react';
 import { createRequire } from 'node:module';
 import {
-  actionCounts, actionOf, beforeAfter, fmtMde, labelAt, mappingAt, panelGeometry, parseCompression, stepOf, stepText,
-  xScale, type CompressionPayload, type PathStep, type Segment,
+  actionCounts, actionOf, beforeAfter, fmtMde, fmtScale, hasNeeds, labelAt, mappingAt, needGeometry, panelGeometry,
+  parseCompression, stepOf, stepText, xScale, MEASURES, type CompressionPayload, type PathStep, type Segment,
 } from '../src/ab_compression_encoding';
-import { CompressionBody, Header, PathPanel, type View } from '../src/ab_compression';
+import { CompressionBody, Header, NeedPanelView, PathPanel, type View } from '../src/ab_compression';
 
 const { renderToStaticMarkup } = createRequire(import.meta.url)('react-dom/server');
 
 // A path as `get_ab_compression` builds it (attrs["path"]), in the payload's shape.
 const step = (s: Partial<PathStep>): PathStep => ({
   step: 0, operation: 'start', events: '', label: null, vocabulary: 8, cells: 30, testable: 20, untestable: 10,
-  median_mde: 0.03, transitions: 1000, mass_retained: 1, artificial_transitions: 0, artificial_mass: 0,
+  untestable_share: 0.004, median_mde: 0.03, transitions: 1000, mass_retained: 1, artificial_transitions: 0, artificial_mass: 0,
   reason: 'the stream as it is', ...s,
 });
 const PATH: PathStep[] = [
   step({}),
   step({ step: 1, operation: 'merge_chain', events: 'checkout, pay', label: 'checkout+pay', vocabulary: 7, cells: 29, testable: 19, untestable: 10, mass_retained: 0.98, reason: 'P(next = pay | checkout) = 1.00' }),
-  step({ step: 2, operation: 'other', events: 'r1', label: 'other', vocabulary: 7, cells: 28, testable: 20, untestable: 8, median_mde: 0.025, mass_retained: 0.98, reason: 'in 0.4% of paths' }),
+  step({ step: 2, operation: 'other', events: 'r1', label: 'other', vocabulary: 7, cells: 28, testable: 20, untestable: 8, untestable_share: 0.0025, median_mde: 0.025, mass_retained: 0.98, reason: 'in 0.4% of paths' }),
   step({ step: 3, operation: 'drop', events: 'X', label: null, vocabulary: 6, cells: 26, testable: 19, untestable: 7, median_mde: null, mass_retained: 0.97, artificial_transitions: 1, artificial_mass: 3, reason: 'bridges' }),
 ];
 const SEGMENT: Segment = {
@@ -35,7 +35,7 @@ const SEGMENT: Segment = {
 };
 const PAYLOAD: CompressionPayload = parseCompression(JSON.stringify({
   tool: 'get_ab_compression', screen: 'transitions', edge_weight: 'unique_paths', max_steps: null, unit: 'pp',
-  target: 'testable', other: 'other', keep: null, by: null, by_pre_exposure: null, min_path_share: 0.01,
+  target: 'untestable_share', other: 'other', keep: null, by: null, by_pre_exposure: null, min_path_share: 0.01,
   chain_threshold: 0.8, synonym_threshold: 0.1, bridge_threshold: 0.9, max_events: null, min_support: 10,
   correction: 'bh', ci_level: 0.95, power: 0.8, population: 'assignment', horizon: null, path_col: 'user_id',
   group1_paths: 1000, group2_paths: 1000, segments: [SEGMENT],
@@ -106,21 +106,67 @@ test('numbers: the MDE in percentage points, the before / after rows, a step in 
   const rows = beforeAfter(PATH, 2, 'pp');
   assert.deepEqual(rows[0], ['vocabulary', '8', '7']);
   assert.deepEqual(rows[2], ['testable cells', '20', '20']);
-  assert.deepEqual(rows[4], ['median MDE', '3.00 pp', '2.50 pp']);
+  assert.deepEqual(rows[4], ['observations too thin to test', '0.400 %', '0.250 %']);
+  assert.deepEqual(rows[5], ['median MDE', '3.00 pp', '2.50 pp']);
+  assert.equal(rows.length, 8);  // no users-needed rows without target_delta
   assert.equal(stepText(PATH[1]), 'step 1: merge a chain checkout, pay → checkout+pay');
   assert.equal(stepText(PATH[0]), 'step 0: the stream as it is');
+  assert.equal(stepText(step({ step: 4, operation: 'merge_neighbour', events: 'D, product', label: 'D+product' })),
+    'step 4: merge with a neighbour D, product → D+product');
+  assert.deepEqual(MEASURES.map((m) => m.key), ['testable', 'untestable_share', 'median_mde', 'mass_retained']);
+});
+
+// The same path with target_delta: the users-needed columns.
+const NEEDED: PathStep[] = PATH.map((p, i) => ({ ...p, median_scale_needed: [4, 3.5, 2, 2.2][i], scale_to_test_90: [12, 10, 6, null][i] }));
+
+test('users needed: two series on one log scale, ×1 inside the range, the rows of the before / after table', () => {
+  assert.equal(hasNeeds(PATH), false);
+  assert.equal(hasNeeds(NEEDED), true);
+  const g = needGeometry(NEEDED, 300, 64, 8);
+  assert.equal(g.min, 1);  // the range holds ×1, the data as it is
+  assert.equal(g.max, 12);
+  assert.equal(g.points.scale_to_test_90[3].y, null);  // no value at that step: no point
+  assert.equal(g.lines.scale_to_test_90.split('L').length, 3);
+  assert.equal(g.lines.median_scale_needed.split('L').length, 4);
+  // a larger multiple sits higher; log scale: ×12 at the top, ×1 at the bottom
+  assert.equal(g.points.scale_to_test_90[0].y, 8);
+  assert.equal(g.points.median_scale_needed[2].y! > g.points.median_scale_needed[0].y!, true);
+  assert.equal(fmtScale(2.345), '×2.35');
+  assert.equal(fmtScale(12.3), '×12.3');
+  assert.equal(fmtScale(250.4), '×250');
+  assert.equal(fmtScale(null), 'n/a');
+  const rows = beforeAfter(NEEDED, 2, 'pp');
+  assert.deepEqual(rows.slice(-2), [
+    ['users for half the cells to detect the target', '×4.00', '×2.00'],
+    ['users for 90 % testable cells', '×12.0', '×6.00'],
+  ]);
+  const html = renderToStaticMarkup(React.createElement(NeedPanelView, {
+    path: NEEDED, targetDelta: 0.01, unit: 'pp', selected: 2, chosen: 2, onSelect: () => {},
+  }));
+  assert.match(html, /data-testid="abc-need-median_scale_needed"/);
+  assert.match(html, /data-testid="abc-need-scale_to_test_90"[^>]*stroke-dasharray="5 3"/);
+  assert.match(html, /×2\.00: half of the testable cells detect 1\.00 pp/);
+  assert.match(html, /×6\.00: 90 % of the cells are testable/);
+  assert.match(html, /log scale/);
 });
 
 test('the body draws the chart, the slider at the chosen step, the counts and the table', () => {
   const html = renderToStaticMarkup(React.createElement(CompressionBody, { payload: PAYLOAD, segment: SEGMENT, view, onStep: () => {} }));
-  for (const id of ['abc-panel-testable', 'abc-panel-median_mde', 'abc-panel-mass_retained', 'abc-slider', 'abc-before-after', 'abc-mapping']) {
+  for (const id of ['abc-panel-testable', 'abc-panel-untestable_share', 'abc-panel-median_mde', 'abc-panel-mass_retained', 'abc-slider', 'abc-before-after', 'abc-mapping']) {
     assert.match(html, new RegExp(`data-testid="${id}"`), id);
   }
+  assert.doesNotMatch(html, /abc-panel-needed/);  // no target_delta: no users-needed panel
   assert.match(html, /data-testid="abc-step"[^>]*>2 \/ 3</);
   assert.equal((html.match(/data-testid="abc-mapping-row"/g) ?? []).length, 3);
   assert.match(html, /data-event="r1" data-action="other"/);
   // one point per panel; the MDE panel has none at step 3 (no MDE there)
-  assert.equal((html.match(/data-artificial="true"/g) ?? []).length, 2);
+  assert.equal((html.match(/data-artificial="true"/g) ?? []).length, 3);
+  const needed = { ...SEGMENT, path: NEEDED };
+  const withNeeds = renderToStaticMarkup(React.createElement(CompressionBody, {
+    payload: { ...PAYLOAD, target_delta: 0.01, segments: [needed] }, segment: needed, view, onStep: () => {},
+  }));
+  assert.match(withNeeds, /data-testid="abc-panel-needed"/);
+  assert.match(withNeeds, /users for 90 % testable cells/);
   assert.match(html, /step=2\)\)/);
   assert.match(html, /3 kept, 2 merged, 0 dropped, 1 relabelled other/);
   // another step, every event listed
@@ -141,6 +187,7 @@ test('the header: the screen, the population, the chosen step, arm-blindness and
   assert.match(html, /transition screen, unique_paths/);
   assert.match(html, /ITT: every path of the assignment table/);
   assert.match(html, /chosen step 2 of 3/);
+  assert.match(html, /target least data too thin to test/);
   assert.match(html, /Arm-blind/);
   assert.match(html, /effective vocabulary 4\.2 of 6 events/);
   const panel = renderToStaticMarkup(React.createElement(PathPanel, {

@@ -1093,7 +1093,7 @@ def _build_server(
         synonym_threshold: float = 0.1,
         bridge_threshold: float = 0.9,
         max_events: int | None = None,
-        target: str | float = "testable",
+        target: str | float = "untestable_share",
         step: int | None = None,
         keep: list | None = None,
         other: str = "other",
@@ -1101,6 +1101,7 @@ def _build_server(
         by_pre_exposure: bool | None = None,
         correction: str = "bh",
         path_col: str | None = None,
+        target_delta: float | None = None,
         top: int = 15,
         local_preprocessors: list | None = None,
     ) -> str:
@@ -1130,10 +1131,14 @@ def _build_server(
             reach 0.8; synonyms within Jensen-Shannon distance 0.1; drop a rare
             event when its neighbours join faithfully (0.9), else relabel it.
         max_events:
-            Optional: compress until at most this many events.
+            Optional: compress until at most this many events; above it each step
+            takes the cheapest merge of neighbours, and a frequent event is never
+            dropped or relabelled while a merge is left.
         target:
-            "testable" (default), "mde" or a number (the first step whose median
-            mde reaches it).
+            "untestable_share" (default: the earliest step whose observations in
+            cells too thin to test are near their lowest, without artificial
+            transitions; a dense screen stays at step 0), "testable", "mde" or a
+            number (the first step whose median mde reaches it).
         step:
             Optional: the plan at this step of the path instead.
         keep:
@@ -1142,6 +1147,9 @@ def _build_server(
             Label of relabelled rare events (default "other").
         by, by_pre_exposure:
             One plan per segment fixed before exposure.
+        target_delta:
+            Optional effect to detect: adds per step median_scale_needed and
+            scale_to_test_90 (multiples of the users).
         top:
             Changed events returned per segment (default 15).
 
@@ -1149,7 +1157,7 @@ def _build_server(
         -------
         JSON with screen, population, group sizes, target, arm_blind, unit,
         warnings and segments: chosen_step, steps, before / after (vocabulary,
-        cells, testable, untestable, median_mde, mass_retained,
+        cells, testable, untestable, untestable_share, median_mde, mass_retained,
         artificial_transitions), reading (quote it), homogeneity, path (to one
         step after the chosen), n_changed, changes (event, action, label, step,
         operation, path_share, reason) and preprocessor (compress_events).
@@ -1175,6 +1183,7 @@ def _build_server(
             by_pre_exposure,
             correction,
             path_col,
+            target_delta,
             top,
             local_preprocessors,
         )

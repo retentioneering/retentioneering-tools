@@ -115,8 +115,10 @@ class TestPayloadIsThePlan:
         path = plan.attrs["path"]
         assert len(segment["path"]) == len(path) > 4
         for sent, row in zip(segment["path"], path.to_dict("records")):
-            assert set(sent) == set(PATH_FIELDS)
-            for field in PATH_FIELDS:
+            # the users-needed columns come with target_delta only
+            assert set(sent) == set(PATH_FIELDS) & set(row)
+            assert "untestable_share" in sent
+            for field in set(PATH_FIELDS) & set(row):
                 value = row[field]
                 if isinstance(value, float) and value != value:
                     assert sent[field] is None
@@ -213,6 +215,23 @@ class TestWidget:
         params = w._params()
         assert params["target"] == 0.05 and params["keep"] == ["quick_add"]
         assert params["max_events"] == 9 and params["step"] is None
+
+    def test__target_delta_adds_the_users_needed(self, stream, assignment) -> None:
+        w = stream.ab_compression(DIFF, assignment=assignment, target_delta=0.02)
+        payload = _strict(w.result)
+        plan = stream.get_ab_compression(DIFF, assignment=assignment, target_delta=0.02)
+        assert payload["target_delta"] == 0.02
+        assert payload["target"] == "untestable_share"
+        path = plan.attrs["path"]
+        for sent, row in zip(payload["segments"][0]["path"], path.to_dict("records")):
+            for name in ("median_scale_needed", "scale_to_test_90"):
+                assert sent[name] == pytest.approx(row[name], nan_ok=True), name
+        # the sidebar clears it (0: none) and the columns go
+        w.target_delta = 0.0
+        cleared = _strict(w.result)
+        assert cleared["target_delta"] is None
+        assert "median_scale_needed" not in cleared["segments"][0]["path"][0]
+        assert "target_delta" in ABCompressionWidget._editable
 
     def test__dispatch_compute(self, stream, widget) -> None:
         raw = widget.dispatch_compute("ab_compression_data", {})

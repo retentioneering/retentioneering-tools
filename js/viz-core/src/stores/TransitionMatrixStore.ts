@@ -3,6 +3,9 @@ import { makeAutoObservable } from "mobx";
 export type HeatmapType = "overall" | "row-wise" | "column-wise";
 export type TransitionViewMode = "graph" | "table";
 
+const LABEL_SCALE_MIN = 0.5;
+const LABEL_SCALE_MAX = 3;
+
 interface EventState {
   id: string;
   isPinned: boolean;
@@ -117,6 +120,15 @@ export class TransitionMatrixStore {
   focusDimStrength = 0.9;
   setFocusDimStrength = (value: number) => {
     this.focusDimStrength = Math.min(1, Math.max(0, value));
+  };
+  // Multiplier on every node/edge label font size in the graph canvas
+  // (1 = default). Exists for slides/screenshots, where the default sizes
+  // read too small once the canvas is scaled down. Set only from Python
+  // (label_scale=); there is deliberately no sidebar control yet.
+  labelScale = 1;
+  setLabelScale = (value: number) => {
+    if (!Number.isFinite(value)) return;
+    this.labelScale = Math.min(LABEL_SCALE_MAX, Math.max(LABEL_SCALE_MIN, value));
   };
   private shouldResetOnData = false;
   // True once the user has moved the Event Count slider manually.

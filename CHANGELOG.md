@@ -5,6 +5,68 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Fixed
+
+- `time_median` and `time_q95` edge weights in `transition_graph` and
+  `transition_graph_data` measure the exact gap between events instead of
+  counting whole-second boundaries, so a 125 ms span no longer reads as 0 s or
+  1 s depending on where it starts. Time-weighted results computed before this
+  release can shift by up to a second per transition.
+- Time-weighted graph and Ego-view diff tooltips display duration units for both
+  groups and their signed difference, including millisecond values.
+- Graph settings identify path-ID-group comparisons instead of showing a missing
+  segment warning; the diff help text states the group 1 minus group 2 direction.
+- A `path_cols`, `event_col`, `timestamp_col` or `segment_cols` entry naming a
+  column the DataFrame does not have raises `SchemaConfigError` naming the
+  schema key, the missing name and the available columns — as `custom_cols`
+  already did. The other four used to surface as pandas' bare
+  `KeyError: 'user_di'`, which said neither which schema key was wrong nor what
+  the columns were
+  ([#197](https://github.com/retentioneering/retentioneering-tools/issues/197)).
+- An anchor spec's `at` is range-checked at either end. A value past the start
+  of the pattern — `{"pattern": "a->b->.*->c", "at": -4}` — used to surface as
+  the internal `ValueError: max() iterable argument is empty`, while a value
+  past the other end already named the pattern and its positions
+  ([#194](https://github.com/retentioneering/retentioneering-tools/issues/194)).
+
+## [5.3.0] - 2026-10-27
+
+### Added
+
+- Path patterns accept the regex quantifier family on gaps: `.{m,n}`, `{n}`,
+  `{m,}`, `{,n}`, `+` and `?` after `.` or a class, alongside `*`. Bounds are
+  inclusive and count the events strictly between the anchors, so
+  `add_to_cart->.{0,4}->purchase` is "bought within five steps", and
+  `cart->[shipping|payment]+->purchase` no longer matches an adjacent
+  cart/purchase the way `*` does. A bounded gap takes no ordinal, so `at=` and
+  Step Matrix centring are unchanged (#110).
+- Round-bracket groups repeat a sequence: `(B->.*->C->.*){2}` is unrolled into
+  two copies before matching. `{k,}` and `+` are accepted where a `.*` absorbs
+  the extra repetitions; an upper bound is rejected with the `NOT` condition
+  that expresses it, and a group whose copies would be glued back to back
+  despite a gap inside (`(B->.*->C){2}`) is rejected with both readings.
+  Step Sankey lays its blocks out from the unrolled pattern, so each copy gets
+  a block of its own.
+- Condition leaves for 0/1 metrics have a shorthand: `{"has_event": "purchase"}`,
+  `{"matches_pattern": "A->.*->B"}`, `{"has_any_event": ["A", "B"]}`, or
+  `{metric: metric_args}` for any of `has_event`, `has_any_event`,
+  `has_all_events`, `matches_pattern`, `in_segment`. Each means
+  `{"op": "=", "metric": ..., "metric_args": ..., "value": True}`, and works
+  in `filter_paths`, in MCP `filter_paths` steps, and in `collapse_events` name
+  cases for the 0/1 metrics those support (`has_event`, `has_any_event`,
+  `has_all_events`).
+- `method_args` of the `"kmeans"` method accepts `n_init` (`"auto"` or a positive
+  int, default `"auto"`) and `random_state` (int or None, default 42) on all three
+  clustering surfaces (`add_clusters`, `cluster_analysis_data`, `cluster_analysis`).
+  The library used to hard-code scikit-learn's single k-means++ run, so the same
+  features clustered under another seed could land in a different local optimum
+  and there was no way to ask for more initialisations; `n_init=10` now does
+  that. The values you pass are carried into `best_params`, so the saved
+  `add_clusters` call reproduces the split. Defaults are unchanged.
+- `transition_graph(label_scale=...)` scales every node and edge label on the
+  canvas (0.5–3, default 1), since the default sizes read too small on slides
+  and in screenshots. HTML exports keep the scale.
+
 ### Changed
 
 - Segment Overview and Cluster Analysis tables group the rows of a bulk metric
@@ -14,11 +76,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
-- An anchor spec's `at` is range-checked at either end. A value past the start
-  of the pattern — `{"pattern": "a->b->.*->c", "at": -4}` — used to surface as
-  the internal `ValueError: max() iterable argument is empty`, while a value
-  past the other end already named the pattern and its positions
-  ([#194](https://github.com/retentioneering/retentioneering-tools/issues/194)).
+- A condition node with no `op` that is not a shorthand leaf now raises
+  `PreprocessingConfigError` naming the node, instead of
+  `AttributeError: 'NoneType' object has no attribute 'upper'`.
+
+- Cluster Analysis Save/Copy use the features and path column from the displayed
+  analysis even after sidebar edits. Copied code explicitly preserves
+  `scaler=None`, and clearing a result also clears its saved call.
+
+- Cluster Analysis records the realized seed for `random_state=None` in
+  `best_params`, so saving clusters replays the displayed split. The widget
+  persists its KMeans settings and current seed in `state_file`; grid selection
+  and restoration reuse that seed, while a new Apply chooses a fresh one.
+
+- `describe()["segments"]` reports the events that have no value for a segment
+  column under the `<MISSING>` sentinel, the same level `get_segment_levels`
+  lists. Those events used to be dropped, and because `share` was normalized
+  over the remaining rows it still summed to 1.0 — a segment built with
+  `add_segment(func=...)` that left 3 of 5 events unassigned reported a 50/50
+  split instead of 20/20/60, with nothing marking the table as partial. The
+  docstring now states that these counts are over events, not paths
+  ([#188](https://github.com/retentioneering/retentioneering-tools/issues/188)).
 - `get_conversion_rate` counts paths rather than anchor positions when an anchor
   spec uses `occurrence="all"`. `paths_with_start` used to count one per
   occurrence, and a `within` window counted matching `(start, end)` pairs, so a

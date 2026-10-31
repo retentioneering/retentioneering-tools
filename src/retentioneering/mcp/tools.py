@@ -341,7 +341,9 @@ def add_step_matrix(
     path_pattern:
         Filter paths by an event sequence: "add_to_cart->.*->purchase", or
         "add_to_cart->[^support_chat]*->purchase" for the same without support
-        in between. Full syntax: the Path Patterns docs page.
+        in between, "add_to_cart->.{0,4}->purchase" for at most four events in
+        between, "(cart->.*){2}->purchase" for two carts before it (each copy is
+        its own block). Full syntax: the Path Patterns docs page.
     path_col:
         Override the path ID column.
 

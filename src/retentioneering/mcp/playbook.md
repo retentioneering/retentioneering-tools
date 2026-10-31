@@ -179,8 +179,7 @@ behaved. Cut both groups to a window that is defined the same way for each.
    the same window — at C, or the same number of events past B, whichever is sooner.
    The non-converters have no C, so the step bound is what applies to them:
    ```json
-   {"type": "filter_paths", "op": "=", "value": true,
-    "metric": "matches_pattern", "metric_args": {"pattern": "A->.*->B"}}
+   {"type": "filter_paths", "matches_pattern": "A->.*->B"}
    ```
    ```json
    {"type": "truncate_paths",

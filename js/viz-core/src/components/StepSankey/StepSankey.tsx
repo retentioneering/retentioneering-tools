@@ -1,7 +1,7 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
 import { StepMatrixStore } from "../../stores/StepMatrixStore";
-import { PatternStore } from "../../stores/PatternStore";
+import { PatternStore, isGapToken } from "../../stores/PatternStore";
 import { StepColumn } from "./StepColumn";
 import { ConnectionLayer } from "./ConnectionLayer";
 import { GapSeparator } from "./GapSeparator";
@@ -107,7 +107,7 @@ export const StepSankey = observer(({
     }
 
     return displayPattern.split("->").reduce((acc, token) => {
-      if (token === ".*") {
+      if (isGapToken(token)) {
         acc.push([]);
       } else {
         if (acc.length === 0) acc.push([]);

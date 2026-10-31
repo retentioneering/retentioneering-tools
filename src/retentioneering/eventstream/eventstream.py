@@ -164,6 +164,24 @@ class Eventstream:
         schema = self.schema
         event_types = EventTypes()
 
+        # Before anything indexes into the frame. `custom_cols` is checked in
+        # `_post_init`; without this the other four keys surfaced only as the
+        # bare `KeyError` pandas raises at the first use of the name, which
+        # names neither the schema key that was wrong nor the columns on offer.
+        declared = [
+            ("event_col", [schema.event_col]),
+            ("timestamp_col", [schema.timestamp_col]),
+            ("path_cols", list(schema.path_cols)),
+            ("segment_cols", list(schema.segment_cols)),
+        ]
+        for key, names in declared:
+            missing = [c for c in names if c not in df.columns]
+            if missing:
+                raise SchemaConfigError(
+                    f"{key} column(s) not found in the DataFrame: {missing}. "
+                    f"Available columns: {list(df.columns)}."
+                )
+
         df[schema.timestamp_col] = _to_datetime_auto(df[schema.timestamp_col])
 
         for col in schema.path_cols:
@@ -407,7 +425,10 @@ class Eventstream:
               count/mean/std/min/percentiles/max rows and `length`/`duration`
               columns
             - `segments`: DataFrame of segment_col/value/count/share, one row
-              per segment level across all segment columns
+              per segment level across all segment columns. `count` is the number
+              of events carrying the value and `share` its fraction of all events,
+              per column. Events with no value are reported under the `<MISSING>`
+              level `get_segment_levels` uses.
 
         Examples
         --------
@@ -513,7 +534,11 @@ class Eventstream:
             `nmf_components` are not method arguments — they are pipeline steps
             applied before clustering, so they stay outside this dict.
 
-            - `"kmeans"` — `n_clusters` (int, required).
+            - `"kmeans"` — `n_clusters` (int, required); optionally `n_init`
+              (`"auto"` or a positive int, default `"auto"`: how many k-means++
+              initialisations to run, keeping the best) and `random_state`
+              (int or None, default 42). More starts can reduce sensitivity to
+              the seed; a fixed seed makes a run repeatable.
             - `"hdbscan"` — `min_cluster_size` (int, default 5),
               `cluster_selection_epsilon` (float, default 0.0).
         scaler : str or None, default "minmax"
@@ -674,7 +699,12 @@ class Eventstream:
               - `metric_args` (optional) — dict of extra arguments for the metric.
                 `has_event`/`event_count` take a single `event` string; for a
                 multi-event AND/OR condition use `has_all_events`/`has_any_event`
-                with an `event_groups` list.
+                with an `events` list.
+            A leaf comparing a 0/1 metric (`has_event`, `has_any_event`,
+            `has_all_events`, `matches_pattern`, `in_segment`) with `True` may be
+            written as `{metric: metric_args}`, or as `{metric: value}` for a metric
+            with one required argument: `{"has_event": "purchase"}`,
+            `{"matches_pattern": "A->.*->B"}`, `{"has_any_event": ["A", "B"]}`.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
 
@@ -686,6 +716,9 @@ class Eventstream:
             # Keep paths that contain a promo_view or a discount_applied event
             stream.filter_paths({"op": "=", "metric": "has_any_event", "value": True,
                                   "metric_args": {"events": ["promo_view", "discount_applied"]}})
+
+            # The same, with the shorthand for a 0/1 metric compared with True
+            stream.filter_paths({"has_any_event": ["promo_view", "discount_applied"]})
 
             # Keep paths longer than 3 events that match a funnel pattern
             # (a top-level list means AND)
@@ -1047,7 +1080,8 @@ class Eventstream:
               plain string used as the fallback for groups no case matched.
               A condition is the `filter_paths` condition tree, over the metrics
               `has_event`, `event_count`, `has_all_events`, `has_any_event`,
-              `duration`, `length`, `time_between`, `active_days`.
+              `duration`, `length`, `time_between`, `active_days`, including its
+              shorthand leaves (`{"has_event": "purchase"}`).
         agg : dict, optional
             Aggregation rules for non-event columns when rows are merged, as a
             `{column: agg_func}` dict. `agg_func` is one of `"first"` (default),
@@ -2026,6 +2060,7 @@ class Eventstream:
         path_pattern=None,
         height=None,
         sidebar_open=None,
+        label_scale=None,
         views=None,
         view=None,
         state_file=None,
@@ -2061,6 +2096,9 @@ class Eventstream:
             Widget height in pixels.
         sidebar_open : bool, default True
             Whether the sidebar starts open.
+        label_scale : float, default 1.0
+            Multiplier on node and edge label font sizes, from 0.5 to 3.
+            Raise it for slides and screenshots.
         views : list of dict, optional
             Named visual presets rendered as pills above the graph. Each view
             is a dict with the keys `name`, `focus`, `edgeFilter`,
@@ -2109,6 +2147,7 @@ class Eventstream:
             path_col=path_col if path_col is not None else _UNSET,
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
+            label_scale=label_scale if label_scale is not None else _UNSET,
             views=views if views is not None else _UNSET,
             view=view if view is not None else _UNSET,
             state_file=state_file,
@@ -2454,7 +2493,11 @@ class Eventstream:
 
             - `"kmeans"` — `n_clusters` (int, list of int, or a range string like
               `"3-8"`; a list or range runs a silhouette-scored grid search).
-              Defaults to `"3-8"`.
+              Defaults to `"3-8"`. Optionally `n_init` and `random_state`, which
+              the sidebar has no fields for either: they apply to every Apply
+              and travel into the saved `add_clusters` call. With
+              `random_state=None`, each Apply chooses a fresh seed; selecting
+              a grid point or restoring `state_file` reuses the current seed.
             - `"hdbscan"` — `min_cluster_size`, `cluster_selection_epsilon`.
         scaler : {"minmax", "std"}, optional
             Feature scaler applied before clustering; default `"minmax"`.
@@ -2491,6 +2534,12 @@ class Eventstream:
         state_file : str, optional
             JSON file the widget state is bound to; see
             [Saving widget state](/docs/widgets#saving-widget-state).
+
+        Notes
+        -----
+        Save Clusters and Copy code use the last displayed analysis, including
+        its features, path column, and scaler. Sidebar edits take effect after
+        Apply; copied code preserves an explicitly disabled scaler (`None`).
 
         Examples
         --------
@@ -2574,7 +2623,13 @@ class Eventstream:
             rather than being ignored.
 
             - `"kmeans"` — `n_clusters` (int, list of int, or a range string like
-              `"3-8"`). Defaults to `"3-8"`, i.e. a grid search.
+              `"3-8"`). Defaults to `"3-8"`, i.e. a grid search. Optionally
+              `n_init` (`"auto"` or a positive int, default `"auto"`) and
+              `random_state` (int or None, default 42): settings, not grid
+              coordinates — every fit of the search uses them, and the ones you
+              pass are carried into `best_params`. `random_state=None` chooses
+              one random seed per call and returns that integer in `best_params`
+              so the resulting split can be replayed.
             - `"hdbscan"` — `min_cluster_size` (int, default 5),
               `cluster_selection_epsilon` (float, default 0.0).
         scaler : {"minmax", "std"}, optional

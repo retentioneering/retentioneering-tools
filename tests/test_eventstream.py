@@ -49,6 +49,41 @@ def test_schema_unknown_key_raises_with_suggestion(simple_df):
         Eventstream(simple_df, {"timestamp": "timestamp"})
 
 
+@pytest.mark.parametrize(
+    "schema, key",
+    [
+        ({"path_cols": ["user_di"]}, "path_cols"),
+        ({"event_col": "evnt"}, "event_col"),
+        ({"timestamp_col": "ts"}, "timestamp_col"),
+        ({"segment_cols": ["plann"]}, "segment_cols"),
+    ],
+)
+def test_schema_column_not_in_dataframe_raises(simple_df, schema, key):
+    """A typo'd column name used to surface as pandas' bare KeyError.
+
+    `custom_cols` already reported this properly, so these four were the
+    inconsistent ones.
+    """
+    from retentioneering.exceptions import SchemaConfigError
+
+    with pytest.raises(SchemaConfigError) as exc:
+        Eventstream(simple_df, schema)
+    message = str(exc.value)
+    # The schema key that was wrong, the bad name, and what was on offer.
+    assert key in message
+    bad = schema[key] if isinstance(schema[key], str) else schema[key][0]
+    assert bad in message
+    assert "user_id" in message
+
+
+def test_schema_custom_cols_missing_still_raises(simple_df):
+    """The pre-existing check this one was made consistent with."""
+    from retentioneering.exceptions import SchemaConfigError
+
+    with pytest.raises(SchemaConfigError, match="custom_cols"):
+        Eventstream(simple_df, {"custom_cols": ["nope"]})
+
+
 def test_event_name_with_path_delimiter_raises(simple_df):
     from retentioneering.exceptions import SchemaConfigError
 

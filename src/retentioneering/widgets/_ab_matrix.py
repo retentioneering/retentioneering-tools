@@ -15,8 +15,14 @@ Data parameters are the twin's; the sidebar edits the few that a reader varies
 while reading (the weight or the number of steps, the correction, the level and
 the support threshold) and recomputes; the others are fixed at construction and
 shown read-only. View parameters (intervals shown, significance filter, colour
-scale, sorting, hidden and pinned events, cell size) live in the browser and are
-saved with ``state_file``.
+scale, sorting, hidden and pinned events, cell size, the "Delta | Data needed"
+switch and its ``target_delta``) live in the browser and are saved with
+``state_file``.
+
+The "data needed" view reads ``power`` (``power_payload``): the frame projected
+to other sizes by the machinery of ``get_ab_transitions_power`` /
+``get_ab_steps_power`` — the curve of testable cells and median MDE against the
+users, and per row the multiple of users at which it becomes testable.
 """
 
 from __future__ import annotations
@@ -31,7 +37,8 @@ import pandas as pd
 import traitlets
 
 from retentioneering.exceptions import RetentioneeringError
-from retentioneering.tools.ab_tables import matrix_axes
+from retentioneering.tools.ab_power import DEFAULT_SCALE, power_frame
+from retentioneering.tools.ab_tables import KEYS, matrix_axes
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
 from retentioneering.widgets.ab_test import (
     _assignment_info,
@@ -57,6 +64,12 @@ VIEW_DEFAULTS: dict[str, Any] = {
     "cell_size": "auto",
     # '{"<event>": {"isHidden": bool, "isPinned": bool}}'
     "event_visibility": "{}",
+    # "delta" (the difference) or "data_needed" (the MDE, and the users a cell
+    # needs: the payload's ``power``)
+    "view_mode": "delta",
+    # the "data needed" view's goal in the frame's units: a cell shows the
+    # multiple of users its MDE needs to reach it; 0 = none
+    "target_delta": 0.0,
 }
 
 
@@ -150,9 +163,10 @@ def encode_frame(rows: list[dict], columns: list[str]) -> dict:
 
 def decode_payload(payload: dict) -> dict:
     """The widget's ``result`` with ``rows`` (one dict per row of the frame, in its
-    column order) in place of ``frame`` and ``untested_reason`` as a list: what the
-    browser reads (``parsePayload`` in ``js/widget/src/ab_matrix_encoding.ts``).
-    An empty result (``{}``) comes back as it is."""
+    column order) in place of ``frame``, and ``untested_reason`` and
+    ``power["scale_to_test"]`` as lists: what the browser reads (``parsePayload``
+    in ``js/widget/src/ab_matrix_encoding.ts``). An empty result (``{}``) comes
+    back as it is."""
     if "frame" not in payload:
         return dict(payload)
     frame = payload["frame"]
@@ -162,7 +176,49 @@ def decode_payload(payload: dict) -> dict:
     decoded = {key: value for key, value in payload.items() if key != "frame"}
     decoded["rows"] = [dict(zip(names, cells)) for cells in zip(*columns)]
     decoded["untested_reason"] = decode_column(payload["untested_reason"], length)
+    if "power" in payload:
+        power = dict(payload["power"])
+        power["scale_to_test"] = decode_column(power["scale_to_test"], length)
+        decoded["power"] = power
     return decoded
+
+
+def power_payload(frame: pd.DataFrame, keys: tuple[str, ...], params: dict) -> dict:
+    """What the "data needed" view draws: the projection of the frame to other
+    sizes (``power_frame``, the machinery of ``get_ab_transitions_power`` /
+    ``get_ab_steps_power``).
+
+    ``curve`` is ``attrs["curve"]`` (per scale: the testable cells and the median
+    MDE); ``scale_to_test`` is, per row of the frame in its order, the multiple of
+    the users at which the row passes the support rule (null when more users of
+    the same composition would not make it testable). The multiple a row needs
+    for a ``target_delta`` is ``(mde / target_delta) ** 2`` at the current
+    family's level, which the browser computes (``scale_needed`` of the power
+    getters at ``scale=1``)."""
+    projected = power_frame(
+        frame,
+        keys,
+        scale=DEFAULT_SCALE,
+        power=params["power"],
+        min_support=params["min_support"],
+    )
+    one = projected[projected["scale"] == 1.0]
+    if len(frame):
+        lookup = one.set_index(list(keys))["scale_to_test"]
+        aligned = lookup.reindex(pd.MultiIndex.from_frame(frame[list(keys)]))
+        to_test = [
+            float(v) if math.isfinite(float(v)) else None for v in aligned.to_numpy()
+        ]
+    else:
+        to_test = []
+    attrs = projected.attrs
+    return {
+        "scale": [float(s) for s in attrs["scale"]],
+        "curve": _jsonable(attrs["curve"]),
+        "scale_to_test": encode_column(to_test),
+        "level": "alpha / m (Bonferroni; conservative for Benjamini-Hochberg)",
+        "assumption": attrs["assumption"],
+    }
 
 
 def _jsonable(value: Any) -> Any:
@@ -224,6 +280,8 @@ class ABMatrixWidget(RetentioneeringWidget):
     col_sort = traitlets.Unicode("name").tag(sync=True)
     cell_size = traitlets.Unicode("auto").tag(sync=True)
     event_visibility = traitlets.Unicode("{}").tag(sync=True)
+    view_mode = traitlets.Unicode("delta").tag(sync=True)
+    target_delta = traitlets.Float(0.0).tag(sync=True)
 
     #: Data parameters with the twin's defaults; set by each subclass.
     _defaults: dict[str, Any] = {}
@@ -393,6 +451,7 @@ class ABMatrixWidget(RetentioneeringWidget):
             "min_support": params["min_support"],
             "simultaneous": "delta_ci_low_adj" in frame.columns,
             "warnings": list(dict.fromkeys(caught)),
+            "power": power_payload(frame, KEYS[self._tool], params),
             **self._payload_extra(frame, params),
         }
 

@@ -16,6 +16,13 @@
  *
  * The same rules are written for pandas in `tools/ab_tables.py` (`styled=True`),
  * whose colours and opacity these are (generated, `make export-ab-encoding`).
+ *
+ * The "data needed" view reads the payload's `power` (the machinery of
+ * `get_ab_transitions_power` / `get_ab_steps_power`): the background is the
+ * cell's MDE (or, with a `target_delta`, the multiple of users the MDE needs to
+ * reach it) on one hue, a cell not testable at this size is hatched and shows the
+ * multiple of users at which it would be, and the header draws the curve of
+ * testable cells and median MDE against the users.
  */
 import * as encoding from "./generated/ab_encoding.generated";
 
@@ -30,6 +37,10 @@ export const OUTLINE_GREY = encoding.MUTED_BORDER;
 export const CROSS_GREY = encoding.MUTED_BORDER;
 export const TEXT_MAIN = encoding.MAIN_TEXT;
 export const TEXT_MUTED = encoding.UNTESTED_TEXT;
+/** The "data needed" view's hue (MDE, or the users a target needs). */
+export const NEED_HUE = encoding.NEED;
+/** The hatch of a cell that is not testable at the current size. */
+export const HATCH_COLOR = encoding.HATCH;
 /** Width of the wide outline, px; drawn inside the cell so neighbours never overlap. */
 export const OUTLINE_WIDTH = 2.5;
 
@@ -37,6 +48,32 @@ export type CellStatus = "significant" | "not_significant" | "untested" | "empty
 export type SortKey = "name" | "max_abs_delta" | "n_significant";
 export type SignificanceFilter = "all" | "dim" | "hide";
 export type IntervalKind = "per_cell" | "simultaneous";
+export type ViewMode = "delta" | "data_needed";
+
+/** One point of the power curve (`attrs["curve"]` of the power getters). */
+export interface CurvePoint {
+  scale: number;
+  group1_paths: number;
+  group2_paths: number;
+  cells: number;
+  testable: number;
+  family_size: number;
+  mde_alpha: number | null;
+  mde_median: number | null;
+  mde_q25: number | null;
+  mde_q75: number | null;
+}
+
+/** The payload's `power` (`power_payload` in `widgets/_ab_matrix.py`), decoded. */
+export interface PowerInfo {
+  scale: number[];
+  curve: CurvePoint[];
+  /** Per row of the frame: the multiple of users at which it passes the support
+   *  rule (null: more users of the same composition would not make it testable). */
+  scale_to_test: (number | null)[];
+  level: string;
+  assumption: string;
+}
 
 /** One row of the frame (every column of `get_ab_transitions` / `get_ab_steps`). */
 export interface MatrixRow {
@@ -117,6 +154,7 @@ export interface MatrixPayload {
   edge_weight?: string;
   edges?: string;
   max_steps?: number;
+  power?: PowerInfo | null;
 }
 
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
@@ -150,8 +188,9 @@ export function parsePayload(raw: unknown): MatrixPayload | null {
     try { value = JSON.parse(raw); } catch { return null; }
   }
   if (!value || typeof value !== "object") return null;
-  const { frame, untested_reason, ...p } = value as Partial<Omit<MatrixPayload, "rows" | "untested_reason">> & {
+  const { frame, untested_reason, power, ...p } = value as Partial<Omit<MatrixPayload, "rows" | "untested_reason" | "power">> & {
     frame?: EncodedFrame; untested_reason?: EncodedColumn;
+    power?: Omit<PowerInfo, "scale_to_test"> & { scale_to_test?: EncodedColumn };
   };
   if (!frame || !Array.isArray(frame.columns) || !Array.isArray(p.row_keys) || !Array.isArray(p.col_keys)) return null;
   return {
@@ -174,6 +213,9 @@ export function parsePayload(raw: unknown): MatrixPayload | null {
     ...p,
     rows: decodeFrame(frame),
     untested_reason: decodeColumn(untested_reason, frame.length) as (string | null)[],
+    power: power && Array.isArray(power.curve)
+      ? { ...power, scale_to_test: decodeColumn(power.scale_to_test, frame.length) as (number | null)[] }
+      : null,
   } as MatrixPayload;
 }
 
@@ -452,4 +494,158 @@ export function intervalNote(level: number, kind: IntervalKind, simultaneous: bo
     return `Intervals: Bonferroni simultaneous (all cells at once, ${pct} family-wise).`;
   }
   return `Intervals: ${pct} per cell, not simultaneous; the outline reads the adjusted p-value, so a grey cell's interval may exclude 0.`;
+}
+
+// ── data needed ────────────────────────────────────────────────────────────
+
+/** The multiple of users a tested row needs for its MDE to reach `target`, at
+ *  the current family's level: `(mde / target)^2` (the power getters'
+ *  `scale_needed` at `scale=1`); null without a target or an MDE. */
+export function scaleNeeded(row: MatrixRow | undefined | null, target: number | null | undefined): number | null {
+  if (!row || !isNum(target) || !(target > 0)) return null;
+  const mde = row.mde;
+  if (!isNum(mde) || !(mde > 0)) return null;
+  return (mde / target) ** 2;
+}
+
+/** What a cell shows in the "data needed" view. */
+export interface NeedInfo {
+  /** Testable now (it has an adjusted p-value). */
+  testable: boolean;
+  /** The MDE now, in the frame's units (null when not tested). */
+  mde: number | null;
+  /** The multiple of users: to reach the target (tested) or to become testable
+   *  (not tested); null when unknown or unreachable. */
+  times: number | null;
+  /** What `times` is for. */
+  timesFor: "target" | "test" | null;
+}
+
+export function needOf(
+  row: MatrixRow | undefined | null,
+  scaleToTest: number | null | undefined,
+  alpha: number,
+  target: number | null | undefined,
+): NeedInfo {
+  const status = cellStatus(row, alpha);
+  if (status === "empty") return { testable: false, mde: null, times: null, timesFor: null };
+  if (status === "untested") {
+    return {
+      testable: false, mde: null,
+      times: isNum(scaleToTest) ? scaleToTest : null,
+      timesFor: isNum(scaleToTest) ? "test" : null,
+    };
+  }
+  const mde = isNum(row?.mde) ? (row?.mde as number) : null;
+  const times = scaleNeeded(row, target);
+  return { testable: true, mde, times, timesFor: times != null ? "target" : null };
+}
+
+/** The largest multiple the background distinguishes (×64 and above are full). */
+export const NEED_MAX_TIMES = 64;
+
+/** Opacity of a "data needed" background: with a target, log2 of the multiple
+ *  of users it needs (none at ×1 or less, full at ×64); without one, the MDE
+ *  over the scale maximum. A cell that is not testable has no fill (it is
+ *  hatched instead). */
+export function needAlpha(need: NeedInfo, mdeScale: number, withTarget: boolean): number {
+  if (!need.testable) return 0;
+  if (withTarget) {
+    if (!isNum(need.times) || need.times <= 1) return 0;
+    return MAX_ALPHA * Math.min(1, Math.log2(need.times) / Math.log2(NEED_MAX_TIMES));
+  }
+  if (!isNum(need.mde) || !(mdeScale > 0)) return 0;
+  return MAX_ALPHA * Math.min(1, need.mde / mdeScale);
+}
+
+export function needBackground(need: NeedInfo, mdeScale: number, withTarget: boolean): string {
+  const a = needAlpha(need, mdeScale, withTarget);
+  return a === 0 ? "transparent" : `rgba(${NEED_HUE}, ${a.toFixed(3)})`;
+}
+
+/** Diagonal hatching for a cell that is not testable at the current size. */
+export function hatchImage(color: string = HATCH_COLOR): string {
+  return `repeating-linear-gradient(135deg, ${color} 0 1.5px, transparent 1.5px 6px)`;
+}
+
+/** The largest MDE among the given rows that are tested (the "data needed"
+ *  view's scale maximum). */
+export function mdeScaleMax(rows: (MatrixRow | undefined)[], alpha: number): number {
+  let top = 0;
+  for (const row of rows) {
+    if (cellStatus(row, alpha) === "untested" || !row) continue;
+    if (isNum(row.mde) && row.mde > top) top = row.mde;
+  }
+  return top;
+}
+
+/** `×2.4`, `×16`, `×1.0`; `≥ ×1000` above a thousand. */
+export function fmtTimes(times: number | null | undefined): string {
+  if (!isNum(times)) return "n/a";
+  if (times >= 1000) return "≥ ×1000";
+  if (times >= 10) return `×${Math.ceil(times)}`;
+  return `×${(Math.ceil(times * 10) / 10).toFixed(1)}`;
+}
+
+/** The cell's two lines in the "data needed" view: the MDE in the frame's shown
+ *  units (a tested cell; "–" otherwise) and the multiple of users (to reach the
+ *  target, or to become testable; "never" when more users of the same
+ *  composition would not make it testable). */
+export function needText(need: NeedInfo, unit: UnitInfo): { main: string; times: string | null } {
+  if (!need.testable) {
+    return { main: "–", times: need.timesFor === "test" ? `${fmtTimes(need.times)} to test` : "never" };
+  }
+  const main = need.mde != null ? (need.mde * unit.scale).toFixed(decimalsFor(unit, need.mde)) : "n/a";
+  if (need.timesFor === "target") {
+    return { main, times: need.times != null && need.times <= 1 ? "enough" : `${fmtTimes(need.times)} users` };
+  }
+  return { main, times: null };
+}
+
+/** The power curve as SVG geometry: the testable cells (left axis) and the median
+ *  MDE (right axis) against the users (log2 multiples, x), with the current size
+ *  (×1) marked. */
+export interface CurveGeometry {
+  testablePath: string;
+  mdePath: string;
+  points: { x: number; yTestable: number; yMde: number | null; scale: number }[];
+  currentX: number | null;
+  targetY: number | null;
+  maxTestable: number;
+  maxMde: number;
+}
+
+export function curveGeometry(
+  curve: CurvePoint[],
+  width: number,
+  height: number,
+  pad = 4,
+  target: number | null = null,
+): CurveGeometry {
+  const pts = curve.filter((p) => isNum(p.scale) && p.scale > 0);
+  const empty = { testablePath: "", mdePath: "", points: [], currentX: null, targetY: null, maxTestable: 0, maxMde: 0 };
+  if (!pts.length) return empty;
+  const lx = pts.map((p) => Math.log2(p.scale));
+  const x0 = Math.min(...lx), x1 = Math.max(...lx);
+  const xOf = (v: number) => (x1 === x0 ? width / 2 : pad + ((v - x0) / (x1 - x0)) * (width - 2 * pad));
+  const maxTestable = Math.max(1, ...pts.map((p) => p.cells || 0), ...pts.map((p) => p.testable || 0));
+  const mdes = pts.map((p) => p.mde_median).filter(isNum) as number[];
+  const maxMde = Math.max(0, ...mdes, isNum(target) ? target : 0);
+  const yT = (v: number) => height - pad - (v / maxTestable) * (height - 2 * pad);
+  const yM = (v: number) => (maxMde > 0 ? height - pad - (v / maxMde) * (height - 2 * pad) : height - pad);
+  const points = pts.map((p, i) => ({
+    x: xOf(lx[i]), yTestable: yT(p.testable || 0), yMde: isNum(p.mde_median) ? yM(p.mde_median) : null, scale: p.scale,
+  }));
+  const line = (coords: [number, number][]) =>
+    coords.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const current = pts.findIndex((p) => p.scale === 1);
+  return {
+    testablePath: line(points.map((p) => [p.x, p.yTestable])),
+    mdePath: line(points.filter((p) => p.yMde != null).map((p) => [p.x, p.yMde as number])),
+    points,
+    currentX: current >= 0 ? points[current].x : null,
+    targetY: isNum(target) && target > 0 && maxMde > 0 ? yM(target) : null,
+    maxTestable,
+    maxMde,
+  };
 }

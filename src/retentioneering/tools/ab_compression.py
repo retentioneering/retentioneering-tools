@@ -129,6 +129,7 @@ PATH_COLUMNS: tuple[str, ...] = (
     "mass_retained",
     "artificial_transitions",
     "artificial_mass",
+    "reason",
 )
 
 
@@ -728,6 +729,7 @@ def _build_path(
             "events": [],
             "label": None,
             **_path_numbers(data, state, screen, original_transitions),
+            "reason": "the stream as it is",
         }
     ]
     states = [state]
@@ -867,6 +869,7 @@ def _build_path(
                 "members": members,
                 "label": label,
                 **_path_numbers(data, state, screen, original_transitions),
+                "reason": op.reason,
             }
         )
     return rows, states, ops

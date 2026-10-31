@@ -397,7 +397,7 @@ def test_static_data_needed_view(stream, tmp_path):
             # the curve: one point per scale for each line, now marked
             curve = page.locator("[data-testid=ab-power-curve]")
             assert curve.locator("circle").count() == 2 * len(power.attrs["scale"])
-            assert curve.locator("[data-testid=ab-curve-now]").count() == 1
+            assert curve.locator("[data-testid=ab-curve-now]").count() == 2
             now = next(c for c in power.attrs["curve"] if c["scale"] == 1)
             assert f"{now['testable']} of {now['cells']} now" in curve.inner_text()
             counts = page.locator("[data-testid=ab-counts]").inner_text()

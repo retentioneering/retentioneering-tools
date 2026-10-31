@@ -443,37 +443,54 @@ export const Matrix = React.memo(function Matrix({
 
 // ── header and legend ──────────────────────────────────────────────────────
 
-/** The header's curve: testable cells and median MDE against the users. */
+/** The header's curve: the testable cells and the median MDE against the users,
+ *  in two small panels sharing the x axis (one scale each, never two on one). */
 export function PowerCurve({ power, unit, target }: { power: PowerInfo; unit: ReturnType<typeof unitInfo>; target: number | null }) {
-  const W = 230, H = 64, PAD = 6;
+  const W = 168, H = 46, PAD = 6;
   const g = curveGeometry(power.curve, W, H, PAD, target);
   if (!g.points.length) return null;
   const now = power.curve.find((p) => p.scale === 1);
+  const top = power.curve[power.curve.length - 1];
   const suffix = unit.suffix ? ` ${unit.suffix}` : "";
   const fmtMde = (v: number | null | undefined) =>
     v == null || !Number.isFinite(v) ? "n/a" : `${(v * unit.scale).toFixed(decimalsFor(unit, v))}${suffix}`;
-  const top = power.curve[power.curve.length - 1];
-  return (
-    <div data-testid="ab-power-curve" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-      <svg width={W} height={H + 12} viewBox={`0 0 ${W} ${H + 12}`} role="img"
-        aria-label="Testable cells and median MDE against the users" style={{ overflow: "visible" }}>
+  const panel = (which: "testable" | "mde", title: string, valueNow: string, valueTop: string) => (
+    <div key={which} style={{ display: "inline-flex", flexDirection: "column", gap: 2 }}>
+      <div style={{ fontSize: 10, color: "#374151" }}>
+        <b>{title}</b>: {valueNow} now, {valueTop} at ×{top?.scale}
+      </div>
+      <svg width={W} height={H + 12} viewBox={`0 0 ${W} ${H + 12}`} role="img" data-testid={`ab-curve-${which}-panel`}
+        aria-label={`${title} against the users`} style={{ overflow: "visible" }}>
         <rect x={0} y={0} width={W} height={H} fill="#f9fafb" stroke="#e5e7eb" />
-        {g.currentX != null && <line data-testid="ab-curve-now" x1={g.currentX} x2={g.currentX} y1={0} y2={H} stroke="#6b7280" strokeDasharray="3 2" />}
-        {g.targetY != null && <line data-testid="ab-curve-target" x1={0} x2={W} y1={g.targetY} y2={g.targetY} stroke={`rgb(${NEED_HUE})`} strokeDasharray="2 3" strokeWidth={1} />}
-        <path data-testid="ab-curve-testable" d={g.testablePath} fill="none" stroke="#374151" strokeWidth={1.5} />
-        <path data-testid="ab-curve-mde" d={g.mdePath} fill="none" stroke={`rgb(${NEED_HUE})`} strokeWidth={1.5} />
+        {g.currentX != null && <line data-testid="ab-curve-now" x1={g.currentX} x2={g.currentX} y1={0} y2={H} stroke="#9ca3af" strokeWidth={1} />}
+        {which === "mde" && g.targetY != null && (
+          <line data-testid="ab-curve-target" x1={0} x2={W} y1={g.targetY} y2={g.targetY} stroke="#6b7280" strokeDasharray="3 3" strokeWidth={1} />
+        )}
+        <path data-testid={`ab-curve-${which}`} d={which === "testable" ? g.testablePath : g.mdePath} fill="none"
+          stroke={which === "testable" ? "#374151" : `rgb(${NEED_HUE})`} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+        {g.points.map((p, i) => {
+          const y = which === "testable" ? p.yTestable : p.yMde;
+          if (y == null) return null;
+          const point = power.curve[i];
+          return (
+            <g key={p.scale}>
+              <title>{`×${p.scale} users: ${point.testable} of ${point.cells} cells testable, median MDE ${fmtMde(point.mde_median)}`}</title>
+              <circle cx={p.x} cy={y} r={p.scale === 1 ? 4 : 3} fill={which === "testable" ? "#374151" : `rgb(${NEED_HUE})`} stroke="#f9fafb" strokeWidth={1.5} />
+            </g>
+          );
+        })}
         {g.points.map((p) => (
-          <g key={p.scale}>
-            <circle cx={p.x} cy={p.yTestable} r={p.scale === 1 ? 3 : 2} fill="#374151" />
-            {p.yMde != null && <circle cx={p.x} cy={p.yMde} r={p.scale === 1 ? 3 : 2} fill={`rgb(${NEED_HUE})`} />}
-            <text x={p.x} y={H + 10} fontSize={8} textAnchor="middle" fill={p.scale === 1 ? "#111827" : "#9ca3af"}>{`×${p.scale}`}</text>
-          </g>
+          <text key={`t${p.scale}`} x={p.x} y={H + 10} fontSize={8} textAnchor="middle" fill={p.scale === 1 ? "#111827" : "#9ca3af"}>{`×${p.scale}`}</text>
         ))}
       </svg>
-      <div style={{ fontSize: 10, color: "#374151", lineHeight: 1.45 }}>
-        <div><span style={{ color: "#374151" }}>━</span> testable cells: <b>{now?.testable ?? "?"}</b> of {now?.cells ?? "?"} now, {top?.testable ?? "?"} at ×{top?.scale}</div>
-        <div><span style={{ color: `rgb(${NEED_HUE})` }}>━</span> median MDE: <b>{fmtMde(now?.mde_median)}</b> now, {fmtMde(top?.mde_median)} at ×{top?.scale}</div>
-        <div style={{ color: "#6b7280" }}>x: users (both arms) as a multiple of now; dashed: now{target != null ? "; dotted: target" : ""}</div>
+    </div>
+  );
+  return (
+    <div data-testid="ab-power-curve" style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 14 }}>
+      {panel("testable", "testable cells", `${now?.testable ?? "?"} of ${now?.cells ?? "?"}`, `${top?.testable ?? "?"}`)}
+      {panel("mde", "median MDE", fmtMde(now?.mde_median), fmtMde(top?.mde_median))}
+      <div style={{ fontSize: 10, color: "#6b7280", maxWidth: 220, lineHeight: 1.4 }}>
+        x: users in both arms as a multiple of now (grey line: now){target != null ? "; dashed: the target" : ""}.
       </div>
     </div>
   );

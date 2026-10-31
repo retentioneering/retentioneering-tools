@@ -1959,8 +1959,9 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             projected family's `alpha / m`), `transitions`, `mass_retained` (the
             share of the original transitions still transitions, not artificial),
             `artificial_transitions` (compressed edges no original direct
-            transition maps to, counted once) and `artificial_mass` (the
-            transitions on them) — `chosen_step`, `mappings` (the
+            transition maps to, counted once), `artificial_mass` (the
+            transitions on them) and `reason` (the operation's evidence in
+            words) — `chosen_step`, `mappings` (the
             `{event: label}` of every step), `homogeneity` (effective vocabulary
             size `exp(entropy)` of the event distribution, transition entropy in
             bits, distinct-path share, and the numbers before and after) and the
@@ -4810,7 +4811,17 @@ Hover a cell for both arms' values, the delta and its interval, `rel_delta`,
 supports, `support_warning`, `conditional`, the verdict and the row's `reading`.
 The intervals are per cell, not simultaneous; with `correction="bonferroni"` the
 sidebar can show the simultaneous ones instead. It is an exploratory screen:
-read it after the scorecard, as a map of where the arms' paths part."""
+read it after the scorecard, as a map of where the arms' paths part.
+
+**Data needed**: the "Delta | Data needed" switch above the matrix shows how much
+data the screen needs (the power getters' projection of the same frame): the
+background is the cell's MDE, or with a target delta set in the sidebar the
+multiple of users its MDE needs to reach it; a cell that is not testable at this
+size is hatched and shows the multiple of users at which it would pass the
+support rule; the header draws the testable cells and the median MDE against the
+users (x0.25 to x16), the current size marked. The MDE is at `alpha / m`
+(Bonferroni over the testable cells, conservative for Benjamini-Hochberg), and
+the projection assumes the same path composition."""
     _MATRIX_DISPLAY = """
 height : int, default 600
     Widget height in pixels.
@@ -4820,8 +4831,8 @@ state_file : str, optional
     JSON file the widget state is bound to; see
     [Saving widget state](/docs/widgets#saving-widget-state). It keeps the data
     parameters and the view (intervals, filter, colour scale, sorting, hidden and
-    pinned events); `diff` and the `assignment` table are passed again when you
-    reopen the widget."""
+    pinned events, the "Data needed" view and its target); `diff` and the
+    `assignment` table are passed again when you reopen the widget."""
     ab_transitions.__doc__ = _numpydoc_join(
         """Interactive A/B difference matrix of transitions for Jupyter notebooks.
 
@@ -4900,6 +4911,208 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
             ),
         ],
     )
+
+    @_tracked("widget_ab_compression")
+    def ab_compression(
+        self,
+        diff: T_Diff,
+        screen: str | None = None,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
+        path_col: str | None = None,
+        edge_weight: str | None = None,
+        max_steps: int | None = None,
+        edges: list | None = None,
+        min_path_share: float | None = None,
+        chain_threshold: float | None = None,
+        synonym_threshold: float | None = None,
+        bridge_threshold: float | None = None,
+        max_events: int | None = None,
+        target=None,
+        step: int | None = None,
+        keep: list | None = None,
+        other: str | None = None,
+        by: str | None = None,
+        by_pre_exposure: bool | None = None,
+        correction: str | None = None,
+        ci_level: float | None = None,
+        power: float | None = None,
+        min_support: int | None = None,
+        height: int | None = None,
+        sidebar_open: bool | None = None,
+        state_file: str | None = None,
+    ):
+        # The docstring is assembled below from get_ab_compression's; None means
+        # "not passed" (the twin's default, or the saved state).
+        from retentioneering.widgets._base import _UNSET
+        from retentioneering.widgets.ab_compression import ABCompressionWidget
+
+        args = {
+            "screen": screen,
+            "horizon": horizon,
+            "path_col": path_col,
+            "edge_weight": edge_weight,
+            "max_steps": max_steps,
+            "edges": edges,
+            "min_path_share": min_path_share,
+            "chain_threshold": chain_threshold,
+            "synonym_threshold": synonym_threshold,
+            "bridge_threshold": bridge_threshold,
+            "max_events": max_events,
+            "target": target,
+            "step": step,
+            "keep": keep,
+            "other": other,
+            "by": by,
+            "by_pre_exposure": by_pre_exposure,
+            "correction": correction,
+            "ci_level": ci_level,
+            "power": power,
+            "min_support": min_support,
+            "height": height,
+            "sidebar_open": sidebar_open,
+        }
+        return ABCompressionWidget(
+            self,
+            diff,
+            assignment=assignment,
+            state_file=state_file,
+            **{k: v if v is not None else _UNSET for k, v in args.items()},
+        )
+
+    @_tracked("headless_ab_compression")
+    def ab_compression_data(
+        self,
+        diff: T_Diff,
+        screen: str = "transitions",
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
+        path_col: str | None = None,
+        edge_weight: str | None = None,
+        max_steps: int | None = None,
+        edges: list | None = None,
+        min_path_share: float = 0.01,
+        chain_threshold: float = 0.8,
+        synonym_threshold: float = 0.1,
+        bridge_threshold: float = 0.9,
+        max_events: int | None = None,
+        target="testable",
+        step: int | None = None,
+        keep: list | None = None,
+        other: str = "other",
+        by: str | None = None,
+        by_pre_exposure: bool | None = None,
+        correction: str = "bh",
+        ci_level: float = 0.95,
+        power: float = 0.8,
+        min_support: int = 10,
+    ) -> pd.DataFrame:
+        # The docstring is get_ab_compression's with an alias note, assembled below.
+        return self.get_ab_compression(
+            diff,
+            screen,
+            assignment=assignment,
+            horizon=horizon,
+            path_col=path_col,
+            edge_weight=edge_weight,
+            max_steps=max_steps,
+            edges=edges,
+            min_path_share=min_path_share,
+            chain_threshold=chain_threshold,
+            synonym_threshold=synonym_threshold,
+            bridge_threshold=bridge_threshold,
+            max_events=max_events,
+            target=target,
+            step=step,
+            keep=keep,
+            other=other,
+            by=by,
+            by_pre_exposure=by_pre_exposure,
+            correction=correction,
+            ci_level=ci_level,
+            power=power,
+            min_support=min_support,
+        )
+
+    _co_summary, _co_sections = _numpydoc_split(get_ab_compression.__doc__ or "")
+    _co_title, _, _co_rest = _co_summary.partition("\n\n")
+    ab_compression_data.__doc__ = _numpydoc_join(
+        f"{_co_title}\n\n"
+        "Documented alias of `get_ab_compression`, under the name of the\n"
+        "`ab_compression` widget's headless twin: the same computation, arguments\n"
+        "and result. The docs use `get_ab_compression`; the widget calls this\n"
+        f"method, so its numbers are the getter's.\n\n{_co_rest}",
+        list(_co_sections.items()),
+    )
+    ab_compression.__doc__ = _numpydoc_join(
+        """Interactive compression path of an A/B screen's vocabulary for Jupyter notebooks.
+
+The plan of `get_ab_compression` drawn step by step, its numbers those of
+`ab_compression_data(...)` (the widget's headless twin, an alias of
+`get_ab_compression`):
+
+- **the path chart**: one point per step of the greedy path, the vocabulary size
+  on x; in three panels sharing it, the testable cells, the median MDE of the
+  testable cells and the transition mass retained. A step that creates
+  artificial transitions (compressed edges no original direct transition maps
+  to) is marked with a red ring; the chosen step with a dark ring.
+- **the step slider**: picks a step of the path; the chosen step (by `target`,
+  or `step`) is where it starts. It moves in the browser without a recompute,
+  also in a static export.
+- **the mapping table** at that step: every event, its action (`keep`,
+  `merge`, `drop`, `other`), its new label, the step that set it and the reason
+  in words; by default only the events whose label changed.
+- **before and after**: the vocabulary, cells, testable cells, median MDE, mass
+  retained and artificial transitions at step 0 and at the selected step.
+
+With `by`, a selector switches between the segments' plans and the header shows
+the segment's homogeneity (effective vocabulary, transition entropy,
+distinct-path share). The plan is chosen without reading the arms; apply the
+plan of a step with
+`stream.compress_events(stream.ab_compression_data(..., step=k))`.
+
+The sidebar edits `screen`, `min_path_share`, `chain_threshold`, `max_events` and
+`target`, and every change recomputes; the other arguments are fixed at
+construction and shown read-only there. Switching the screen sets aside
+`edge_weight` / `max_steps` of the other one.""",
+        [
+            (
+                "Parameters",
+                _co_sections.get("Parameters", "")
+                + """
+height : int, default 640
+    Widget height in pixels.
+sidebar_open : bool, default True
+    Whether the sidebar starts open.
+state_file : str, optional
+    JSON file the widget state is bound to; see
+    [Saving widget state](/docs/widgets#saving-widget-state). It keeps the data
+    parameters and the view (the selected step, the table filter, the segment);
+    `diff` and the `assignment` table are passed again when you reopen the
+    widget.""",
+            ),
+            (
+                "Examples",
+                """    diff = ("exp_group", "treatment", "control")
+    stream.ab_compression(diff, assignment=assignment, keep=["quick_add"])
+
+    # the step screen's plan, capped at 10 events
+    stream.ab_compression(diff, "steps", max_steps=8, max_events=10,
+                          assignment=assignment)""",
+            ),
+            (
+                "See Also",
+                """get_ab_compression : The plan as a DataFrame (`ab_compression_data` is its alias).
+compress_events : Apply a plan.
+ab_transitions : The transition screen, with its "Data needed" view.
+ab_steps : The step screen, with its "Data needed" view.""",
+            ),
+        ],
+    )
+    del _co_summary, _co_sections, _co_title, _co_rest
+
     del _tr_summary, _tr_sections, _tr_title, _tr_rest
     del _st_summary, _st_sections, _st_title, _st_rest
     del _MATRIX_ENCODING, _MATRIX_DISPLAY, _TABLE_STYLED

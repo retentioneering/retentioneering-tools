@@ -425,7 +425,7 @@ test('the data needed legend: the curve, the encoding and the projection assumpt
   }));
   assert.match(html, /data-testid="ab-power-curve"/);
   assert.match(html, /data-testid="ab-curve-now"/);
-  assert.match(html, /testable cells: <b>3<\/b> of 5 now, 4 at ×16/);
+  assert.match(html, /<b>testable cells<\/b>: 3 of 5 now, 4 at ×16/);
   assert.match(html, /full at 3\.00 pp/);
   assert.match(html, /conservative for Benjamini-Hochberg/);
   assert.match(html, /data-testid="ab-legend-hatched"/);

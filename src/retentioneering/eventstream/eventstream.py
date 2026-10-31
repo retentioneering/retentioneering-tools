@@ -1825,6 +1825,7 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
         synonym_threshold: float = 0.1,
         bridge_threshold: float = 0.9,
         max_events: int | None = None,
+        max_group_size: int = 5,
         target="untestable_share",
         step: int | None = None,
         keep: list | None = None,
@@ -1914,19 +1915,28 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             requires (see `screen`) for it to be dropped rather than relabelled.
         max_events : int, optional
             A cap on the vocabulary. After the operations above, while the
-            vocabulary is above it, each step takes the cheapest merge of
-            neighbours among: the strongest chain pair left (`min(P(next),
-            P(prev))` at least 0.5, below `chain_threshold`), the closest synonym
-            pair (Jensen-Shannon distance at most 0.5), and each of the three
-            rarest events left with each of its three closest neighbours (the
-            labels next to it in most of its runs). The cost of a merge is the
-            events it loses: the runs of the merged label that hide which of the
-            two happened, plus the repeats its collapsed runs erase (a chain whose
-            every run is `A B` costs nothing). A frequent event is never dropped
-            or relabelled while a merge is left; only when none is left is the
-            rarest event dropped (relabelled `other` only below
-            `min_path_share`), its artificial transitions counted. The chosen
-            step is then the best one that fits.
+            vocabulary is above it, each step takes the cheapest admissible
+            merge among: the strongest chain pair left (`min(P(next), P(prev))`
+            at least 0.5, below `chain_threshold`), the closest synonym pair
+            within `synonym_threshold`, and each of the three rarest events left
+            with each of its three closest neighbours (`"merge_neighbour"`). A
+            merge is admissible when its label holds at most `max_group_size`
+            events and, but for synonyms, the two are neighbours: a direct
+            transition between them, in at least `min_support` paths, carries at
+            least 30 % of the runs of one of them. Similar contexts alone are no
+            reason to merge. The cost of a merge is the events it loses (the runs
+            of the merged label that hide which of the two happened, plus the
+            repeats its collapsed runs erase; a chain whose every run is `A B`
+            costs nothing) times the merged label's size minus one, so two
+            medium groups win over one growing group. A frequent event is never
+            dropped or relabelled to reach the cap: when no admissible merge is
+            left the path stops, the plan takes the smallest vocabulary reached
+            and a warning says the cap was not reached. Otherwise the chosen step
+            is the best one that fits.
+        max_group_size : int, default 5
+            The most events one merged label may hold, for every merge. A label
+            longer than 40 characters is written `first+…+last (k)`; its events
+            are in the plan's `members` column.
         target : {"untestable_share", "testable", "mde"} or float, default "untestable_share"
             Which step of the path the plan is taken at.
 
@@ -1981,7 +1991,8 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             The plan at the chosen step: one row per event of the compared paths.
 
             - `event`; `action`: `"keep"`, `"merge"`, `"drop"` or `"other"`;
-              `label`: its new name (None when dropped); `step`: the step of the
+              `label`: its new name (None when dropped); `members`: the events of
+              a merged label, in label order (empty otherwise); `step`: the step of the
               path that set it (0: kept); `operation`: `"keep"`,
               `"merge_chain"`, `"merge_synonym"`, `"merge_neighbour"` (above
               `max_events`: an event merged with one of its closest
@@ -2053,6 +2064,7 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             synonym_threshold=synonym_threshold,
             bridge_threshold=bridge_threshold,
             max_events=max_events,
+            max_group_size=max_group_size,
             target=target,
             step=step,
             keep=keep,
@@ -4977,6 +4989,7 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
         synonym_threshold: float | None = None,
         bridge_threshold: float | None = None,
         max_events: int | None = None,
+        max_group_size: int | None = None,
         target=None,
         step: int | None = None,
         keep: list | None = None,
@@ -5009,6 +5022,7 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
             "synonym_threshold": synonym_threshold,
             "bridge_threshold": bridge_threshold,
             "max_events": max_events,
+            "max_group_size": max_group_size,
             "target": target,
             "step": step,
             "keep": keep,
@@ -5048,6 +5062,7 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
         synonym_threshold: float = 0.1,
         bridge_threshold: float = 0.9,
         max_events: int | None = None,
+        max_group_size: int = 5,
         target="untestable_share",
         step: int | None = None,
         keep: list | None = None,
@@ -5075,6 +5090,7 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
             synonym_threshold=synonym_threshold,
             bridge_threshold=bridge_threshold,
             max_events=max_events,
+            max_group_size=max_group_size,
             target=target,
             step=step,
             keep=keep,

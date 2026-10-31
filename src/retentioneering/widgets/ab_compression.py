@@ -40,6 +40,7 @@ _DEFAULTS: dict[str, Any] = {
     "synonym_threshold": 0.1,
     "bridge_threshold": 0.9,
     "max_events": 0,
+    "max_group_size": 5,
     "target": "untestable_share",
     "step": -1,
     "keep": "",
@@ -69,6 +70,7 @@ PATH_FIELDS = (
     "operation",
     "events",
     "label",
+    "members",
     "vocabulary",
     "cells",
     "testable",
@@ -137,6 +139,7 @@ class ABCompressionWidget(ABFrameWidget):
     synonym_threshold = traitlets.Float(0.1).tag(sync=True)
     bridge_threshold = traitlets.Float(0.9).tag(sync=True)
     max_events = traitlets.Int(0).tag(sync=True)
+    max_group_size = traitlets.Int(5).tag(sync=True)
     # "untestable_share", "testable", "mde" or a number as text
     target = traitlets.Unicode("untestable_share").tag(sync=True)
     step = traitlets.Int(-1).tag(sync=True)
@@ -223,6 +226,7 @@ class ABCompressionWidget(ABFrameWidget):
             "synonym_threshold": raw["synonym_threshold"],
             "bridge_threshold": raw["bridge_threshold"],
             "max_events": raw["max_events"] or None,
+            "max_group_size": raw["max_group_size"],
             "target": raw["target"],
             "step": None if raw["step"] < 0 else raw["step"],
             "keep": _json_list(raw["keep"]),
@@ -321,6 +325,7 @@ class ABCompressionWidget(ABFrameWidget):
                 "synonym_threshold": meta.get("synonym_threshold"),
                 "bridge_threshold": meta.get("bridge_threshold"),
                 "max_events": meta.get("max_events"),
+                "max_group_size": meta.get("max_group_size"),
                 "min_support": meta.get("min_support"),
                 "correction": meta.get("correction"),
                 "ci_level": meta.get("ci_level"),

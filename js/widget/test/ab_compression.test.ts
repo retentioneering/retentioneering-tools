@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import React from 'react';
 import { createRequire } from 'node:module';
 import {
-  actionCounts, actionOf, beforeAfter, fmtMde, fmtScale, hasNeeds, labelAt, mappingAt, needGeometry, panelGeometry,
+  actionCounts, actionOf, beforeAfter, fmtMde, fmtScale, hasNeeds, isCompact, labelAt, labelMembers, mappingAt, needGeometry, panelGeometry,
   parseCompression, stepOf, stepText, xScale, MEASURES, type CompressionPayload, type PathStep, type Segment,
 } from '../src/ab_compression_encoding';
 import { CompressionBody, Header, NeedPanelView, PathPanel, type View } from '../src/ab_compression';
@@ -18,7 +18,7 @@ const step = (s: Partial<PathStep>): PathStep => ({
 });
 const PATH: PathStep[] = [
   step({}),
-  step({ step: 1, operation: 'merge_chain', events: 'checkout, pay', label: 'checkout+pay', vocabulary: 7, cells: 29, testable: 19, untestable: 10, mass_retained: 0.98, reason: 'P(next = pay | checkout) = 1.00' }),
+  step({ step: 1, operation: 'merge_chain', events: 'checkout, pay', label: 'checkout+pay', members: 'checkout, pay', vocabulary: 7, cells: 29, testable: 19, untestable: 10, mass_retained: 0.98, reason: 'P(next = pay | checkout) = 1.00' }),
   step({ step: 2, operation: 'other', events: 'r1', label: 'other', vocabulary: 7, cells: 28, testable: 20, untestable: 8, untestable_share: 0.0025, median_mde: 0.025, mass_retained: 0.98, reason: 'in 0.4% of paths' }),
   step({ step: 3, operation: 'drop', events: 'X', label: null, vocabulary: 6, cells: 26, testable: 19, untestable: 7, median_mde: null, mass_retained: 0.97, artificial_transitions: 1, artificial_mass: 3, reason: 'bridges' }),
 ];
@@ -76,6 +76,9 @@ test('the mapping table: the changed events by the step that set them, with that
   ]);
   assert.equal(rows[0].reason, 'P(next = pay | checkout) = 1.00');
   assert.equal(rows[0].operation, 'merge_chain');
+  // a merged label lists its events; other rows have none
+  assert.equal(rows[0].members, 'checkout, pay');
+  assert.equal(rows[2].members, null);
   const all = mappingAt(SEGMENT, 0, 'other', false);
   assert.equal(all.length, 6);
   assert.ok(all.every((r) => r.action === 'keep'));
@@ -114,6 +117,26 @@ test('numbers: the MDE in percentage points, the before / after rows, a step in 
   assert.equal(stepText(step({ step: 4, operation: 'merge_neighbour', events: 'D, product', label: 'D+product' })),
     'step 4: merge with a neighbour D, product → D+product');
   assert.deepEqual(MEASURES.map((m) => m.key), ['testable', 'untestable_share', 'median_mde', 'mass_retained']);
+});
+
+test('a long label in its compact form: the step text and the mapping table list its events', () => {
+  const members = 'checkout_address_view, address_postcode_typed, address_lookup, address_lookup_loaded';
+  const label = 'checkout_address_view+…+address_lookup_loaded (4)';
+  const long = step({ step: 1, operation: 'merge_neighbour', events: 'checkout_address_view+…+address_lookup (3), address_lookup_loaded', label, members });
+  assert.ok(isCompact(label) && !isCompact('checkout+pay') && !isCompact(null));
+  assert.equal(stepText(long), `step 1: merge with a neighbour ${long.events} → ${label} (${members})`);
+  assert.equal(labelMembers([PATH[0], long]).get(label), members);
+  const segment: Segment = {
+    ...SEGMENT, chosen_step: 1, path: [PATH[0], long], events: ['address_lookup', 'home'], path_share: [0.1, 1],
+    changes: { address_lookup: [[0, 'address_lookup'], [1, label]], home: [[0, 'home']] },
+  };
+  const [row] = mappingAt(segment, 1, 'other', true);
+  assert.equal(row.members, members);
+  const html = renderToStaticMarkup(React.createElement(CompressionBody, {
+    payload: { ...PAYLOAD, segments: [segment] }, segment, view, onStep: () => undefined,
+  }));
+  assert.ok(html.includes('data-testid="abc-members"'));
+  assert.ok(html.includes(`title="members: ${members}"`));
 });
 
 // The same path with target_delta: the users-needed columns.

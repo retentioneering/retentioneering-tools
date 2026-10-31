@@ -14,6 +14,9 @@ export interface PathStep {
   operation: string;
   events: string;
   label: string | null;
+  /** The events of the step's label, in label order ("a, b, c"): a long label
+   *  is written `first+…+last (k)`. */
+  members?: string;
   vocabulary: number;
   cells: number;
   testable: number;
@@ -127,16 +130,33 @@ export interface MappingRow {
   pathShare: number | null;
   action: Action;
   label: string | null;
+  /** The events of a merged label, in label order ("a, b, c"); null otherwise. */
+  members: string | null;
   /** The step that set the label (0: unchanged). */
   since: number;
   operation: string;
   reason: string;
 }
 
+/** Whether a label is written in its compact form, `first+…+last (k)`. */
+export function isCompact(label: string | null): boolean {
+  return label != null && label.includes("…");
+}
+
+/** Per merged label, its events: the path rows that created them. */
+export function labelMembers(path: PathStep[]): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const p of path) {
+    if (p.label && p.members && p.operation.startsWith("merge")) out.set(p.label, p.members);
+  }
+  return out;
+}
+
 /** The mapping table at `step`: every event (or only those whose label changed),
  *  the changed ones first by the step that set them, then by name. */
 export function mappingAt(segment: Segment, step: number, other: string, changedOnly: boolean): MappingRow[] {
   const byStep = new Map(segment.path.map((p) => [p.step, p]));
+  const members = labelMembers(segment.path);
   const rows: MappingRow[] = segment.events.map((event, i) => {
     const { label, since } = labelAt(segment, event, step);
     const action = actionOf(event, label, other);
@@ -146,6 +166,7 @@ export function mappingAt(segment: Segment, step: number, other: string, changed
       : op?.reason ?? "";
     return {
       event, pathShare: segment.path_share[i] ?? null, action, label, since,
+      members: action === "merge" && label != null ? members.get(label) ?? null : null,
       operation: action === "keep" ? "keep" : op?.operation ?? "", reason,
     };
   });
@@ -315,5 +336,6 @@ export function stepText(step: PathStep): string {
     other: "relabel to other",
   };
   const into = step.label ? ` → ${step.label}` : "";
-  return `step ${step.step}: ${what[step.operation] ?? step.operation} ${step.events}${into}`;
+  const all = isCompact(step.label) && step.members ? ` (${step.members})` : "";
+  return `step ${step.step}: ${what[step.operation] ?? step.operation} ${step.events}${into}${all}`;
 }

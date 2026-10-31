@@ -2071,6 +2071,7 @@ _COMPRESSION_PLAN_COLUMNS = (
     "event",
     "action",
     "label",
+    "members",
     "step",
     "operation",
     "path_share",
@@ -2192,6 +2193,7 @@ def get_ab_compression(
     synonym_threshold: float = 0.1,
     bridge_threshold: float = 0.9,
     max_events: int | None = None,
+    max_group_size: int = 5,
     target: Any = "untestable_share",
     step: int | None = None,
     keep: list | None = None,
@@ -2240,8 +2242,14 @@ def get_ab_compression(
     max_events:
         Optional: a cap on the vocabulary. Above it, each step takes the cheapest
         merge of neighbours (a chain pair, a synonym pair, or one of the rarest
-        events with one of its closest neighbours: the fewest events lost); a
-        frequent event is never dropped or relabelled while a merge is left.
+        events with one of its closest neighbours: the fewest events lost,
+        weighted by the merged label's size); two events merge only when a direct
+        transition between them carries at least 30 % of the runs of one of
+        them. A frequent event is never dropped or relabelled: when no such merge
+        is left the path stops short of the cap, with a warning.
+    max_group_size:
+        The most events one merged label may hold (default 5). A long label is
+        written first+…+last (k); `members` lists its events.
     target:
         How the step is picked: "untestable_share" (default: the earliest step
         whose share of observations in cells too thin to test is near its lowest,
@@ -2279,7 +2287,7 @@ def get_ab_compression(
     reading (quote it), homogeneity (effective_vocabulary, distinct_path_share,
     ...), path (steps 0 to one after the chosen: operation, events, label, the
     numbers and the reason), n_changed, changes (the top events whose label
-    changes: action, label, step, operation, path_share, reason) and preprocessor
+    changes: action, label, members, step, operation, path_share, reason) and preprocessor
     ({"type": "compress_events", "plan": [...]}: the whole plan, ready for
     local_preprocessors; with by, it is that segment's plan).
     """
@@ -2308,6 +2316,7 @@ def get_ab_compression(
                 synonym_threshold=synonym_threshold,
                 bridge_threshold=bridge_threshold,
                 max_events=max_events,
+                max_group_size=max_group_size,
                 target=target,
                 step=step,
                 keep=keep,

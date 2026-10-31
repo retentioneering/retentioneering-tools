@@ -1093,6 +1093,7 @@ def _build_server(
         synonym_threshold: float = 0.1,
         bridge_threshold: float = 0.9,
         max_events: int | None = None,
+        max_group_size: int = 5,
         target: str | float = "untestable_share",
         step: int | None = None,
         keep: list | None = None,
@@ -1132,8 +1133,11 @@ def _build_server(
             event when its neighbours join faithfully (0.9), else relabel it.
         max_events:
             Optional: compress until at most this many events; above it each step
-            takes the cheapest merge of neighbours, and a frequent event is never
-            dropped or relabelled while a merge is left.
+            takes the cheapest merge of two neighbours (a direct transition
+            between them carries 30 % of the runs of one); a frequent event is
+            never dropped or relabelled, so the path may stop short of the cap.
+        max_group_size:
+            The most events one merged label may hold (default 5).
         target:
             "untestable_share" (default: the earliest step whose observations in
             cells too thin to test are near their lowest, without artificial
@@ -1159,8 +1163,8 @@ def _build_server(
         warnings and segments: chosen_step, steps, before / after (vocabulary,
         cells, testable, untestable, untestable_share, median_mde, mass_retained,
         artificial_transitions), reading (quote it), homogeneity, path (to one
-        step after the chosen), n_changed, changes (event, action, label, step,
-        operation, path_share, reason) and preprocessor (compress_events).
+        step after the chosen), n_changed, changes (event, action, label, members,
+        step, operation, path_share, reason) and preprocessor (compress_events).
         """
         result = tools.get_ab_compression(
             session,
@@ -1175,6 +1179,7 @@ def _build_server(
             synonym_threshold,
             bridge_threshold,
             max_events,
+            max_group_size,
             target,
             step,
             keep,

@@ -37,12 +37,17 @@ Design (ADR-0017, amendment "Data sufficiency and vocabulary compression")
   carries no information of its own, so it no longer counts as a loss; a dense
   screen, whose thin cells hold almost none of the observations, keeps step 0.
   ``"testable"`` (the most testable cells) and ``"mde"`` remain.
-* **Above max_events, merge neighbours.** When the vocabulary is above the cap
-  and no regular operation applies, the step takes the cheapest merge of
-  neighbours (a chain pair, a synonym pair, or a rare event and one of its
-  closest neighbours), by the events the merge loses; a frequent event is never
-  dropped or relabelled while a merge is left, and a drop never leaves an
-  artificial transition while one is.
+* **Above max_events, merge neighbours, in small groups.** When the vocabulary
+  is above the cap and no regular operation applies, the step takes the
+  cheapest admissible merge (a chain pair, a synonym pair within
+  ``synonym_threshold``, or a rare event and one of its closest neighbours), by
+  the events the merge loses weighted by the size of the merged label. Two
+  labels are neighbours only when a direct transition between them carries at
+  least ``NEIGHBOUR_FLOOR`` of the runs of one of them: a similar context alone
+  is no reason to merge. No label holds more than ``max_group_size`` events.
+  When no admissible merge is left the path stops: a frequent event is never
+  dropped or relabelled to reach the cap. A label too long to read is written
+  ``first+…+last (k)``, its events listed in ``members``.
 * **Through the processors.** A plan is a mapping ``event -> label | None``
   applied by ``compress_events``: ``edit_events`` deletes and renames, then
   ``collapse_events(loops=...)`` collapses each run of a merged label into one
@@ -127,6 +132,7 @@ PLAN_COLUMNS: tuple[str, ...] = (
     "event",
     "action",
     "label",
+    "members",
     "step",
     "operation",
     "path_share",
@@ -203,11 +209,25 @@ class _State:
     """The vocabulary after some operations: a label (or -1: dropped) per event."""
 
     label_of: np.ndarray  # original code -> label id, -1 dropped
-    names: list  # label id -> name
+    names: list  # label id -> name (a long merged label in its compact form)
     kinds: list  # label id -> "event" | "merged" | "other"
+    # label id -> its events in label order (``[]`` for ``other``)
+    ordered: list = field(default_factory=list)
+    # label id -> the label written in full (``a+b+c``), compact or not
+    full: list = field(default_factory=list)
 
     def copy(self) -> "_State":
-        return _State(self.label_of.copy(), list(self.names), list(self.kinds))
+        return _State(
+            self.label_of.copy(),
+            list(self.names),
+            list(self.kinds),
+            list(self.ordered),
+            list(self.full),
+        )
+
+    def size(self, label: int) -> int:
+        """The events a label holds (1 for an event)."""
+        return len(self.ordered[label]) if self.ordered[label] else 1
 
     @property
     def collapsible(self) -> np.ndarray:
@@ -786,7 +806,7 @@ def _rare_decision(
 
 # ======================================================================= forced mode
 #: Above ``max_events``, a chain pair is a merge candidate from this strength
-#: (``min(P(next), P(prev))``) and a synonym pair up to ``1 -`` this distance.
+#: (``min(P(next), P(prev))``).
 FORCED_FLOOR = 0.5
 
 
@@ -821,16 +841,42 @@ def _merge_cost(
 
 
 #: Above ``max_events``, a merge considers the ``FORCED_RAREST`` rarest events
-#: left, each with its ``FORCED_NEIGHBOURS`` closest neighbours.
+#: left that have a neighbour they may merge with, each with its
+#: ``FORCED_NEIGHBOURS`` closest such neighbours.
 FORCED_RAREST = 3
 FORCED_NEIGHBOURS = 3
+#: Above ``max_events``, two labels are neighbours, and may merge, only when a
+#: direct transition between them (either way, in at least ``min_support``
+#: paths) carries at least this share of the runs of one of them. Similar
+#: contexts alone are no reason to merge (synonyms within ``synonym_threshold``
+#: aside).
+NEIGHBOUR_FLOOR = 0.3
+#: The default bound on the events one merged label may hold.
+MAX_GROUP_SIZE = 5
+
+
+def _adjacency(st: _Stats, u: int, v: int, min_support: int) -> float:
+    """The largest share of the runs of ``u`` or of ``v`` that go directly to, or
+    come directly from, the other (a direction counts only in at least
+    ``min_support`` paths); 0 when neither follows the other."""
+    runs = {
+        x: float(st.count[x, :].sum() - st.count[x, x]) for x in (u, v)
+    }  # a run of x is followed by one other label (or path_end)
+    best = 0.0
+    for a, b in ((u, v), (v, u)):
+        direct = float(st.count[a, b])
+        if direct == 0 or st.paths[a, b] < min_support:
+            continue
+        for x in (u, v):
+            if runs[x] > 0:
+                best = max(best, direct / runs[x])
+    return best
 
 
 def _closest_neighbours(st: _Stats, mergeable: np.ndarray, w: int) -> list:
-    """``[(x, share, w_first), ...]``: the mergeable labels next to ``w`` in most
-    of its runs, closest first, at most ``FORCED_NEIGHBOURS`` (``share``: the
-    larger of ``P(next = x | w)`` and ``P(prev = x | w)``; ``w_first``: ``w``
-    comes first)."""
+    """``[(x, share, w_first), ...]``: the mergeable labels next to ``w``, closest
+    first (``share``: the larger of ``P(next = x | w)`` and ``P(prev = x | w)``;
+    ``w_first``: ``w`` comes first)."""
     n = len(mergeable)
     out_w = st.count[w, :].sum()
     in_w = st.count[:, w].sum()
@@ -844,17 +890,37 @@ def _closest_neighbours(st: _Stats, mergeable: np.ndarray, w: int) -> list:
     order = np.lexsort((np.arange(n), -best))  # the lowest label id on a tie
     return [
         (int(x), float(best[x]), bool(after[x] >= before[x]))
-        for x in order[:FORCED_NEIGHBOURS]
+        for x in order
         if best[x] > 0
     ]
 
 
 # ======================================================================= the path
-def _label_name(state: _State, labels: tuple, joiner: str, taken: set) -> str:
-    name = joiner.join(state.names[i] for i in labels)
+#: A merged label of three events or more longer than this (in characters) is
+#: written in its compact form, ``first+…+last (k)``; the plan's ``members``
+#: column holds every event.
+LABEL_MAX_LENGTH = 40
+
+
+def _label_name(
+    state: _State, labels: tuple, joiner: str, taken: set
+) -> tuple[str, str, list]:
+    """``(name, full name, members)`` of the label merging ``labels``. A full
+    name of three events or more longer than ``LABEL_MAX_LENGTH`` becomes
+    ``first+…+last (k)``; a name already taken gets a suffix, so the labels stay
+    unique."""
+    full = joiner.join(state.full[i] for i in labels)
+    members = [e for i in labels for e in state.ordered[i]]
+    if len(full) <= LABEL_MAX_LENGTH or len(members) < 3:
+        name = full
+        while name in taken:
+            name = f"{name} (merged)"
+        return name, full, members
+    base = f"{members[0]}{joiner}…{joiner}{members[-1]} ({len(members)})"
+    name, k = base, 2
     while name in taken:
-        name = f"{name} (merged)"
-    return name
+        name, k = f"{base} #{k}", k + 1
+    return name, full, members
 
 
 def _apply(state: _State, op: _Op, other_id: int | None, other_name: str, taken: set):
@@ -869,13 +935,17 @@ def _apply(state: _State, op: _Op, other_id: int | None, other_name: str, taken:
         if other_id is None:
             new.names.append(other_name)
             new.kinds.append("other")
+            new.ordered.append([])
+            new.full.append(other_name)
             other_id = len(new.names) - 1
         new.label_of[new.label_of == u] = other_id
         return new, other_name, other_id
     joiner = "/" if op.operation == "merge_synonym" else "+"
-    name = _label_name(state, op.labels, joiner, taken)
+    name, full, members = _label_name(state, op.labels, joiner, taken)
     new.names.append(name)
     new.kinds.append("merged")
+    new.ordered.append(members)
+    new.full.append(full)
     target = len(new.names) - 1
     for u in op.labels:
         new.label_of[new.label_of == u] = target
@@ -911,6 +981,7 @@ def _build_path(
     bridge_threshold: float,
     max_events: int | None,
     other_name: str,
+    max_group_size: int = MAX_GROUP_SIZE,
 ) -> tuple[list[dict], list[_State], list[_Op]]:
     """The greedy path: the numbers and the state after every operation.
 
@@ -925,21 +996,31 @@ def _build_path(
     merge of synonyms needs a thin member and must leave fewer untestable cells
     without losing a testable one.
 
+    No merge makes a label of more than ``max_group_size`` events.
+
     With ``max_events``, while the vocabulary is above it and none of these
-    applies, each step takes the cheapest merge of neighbours among three: the
-    strongest chain pair left (strength at least ``FORCED_FLOOR``), the closest
-    synonym pair (distance at most ``1 - FORCED_FLOOR``), and each of the
-    ``FORCED_RAREST`` rarest events left with each of its ``FORCED_NEIGHBOURS``
-    closest neighbours. The cost is the runs of the merged label
-    that hide which of the two happened (:func:`_hidden_runs`). Only when no
-    merge is left is the rarest event dropped (``other`` takes only events below
-    ``min_path_share``), and its artificial transitions are counted.
+    applies, each step takes the cheapest admissible merge among: the strongest
+    chain pair left (strength at least ``FORCED_FLOOR``), the closest synonym
+    pair within ``synonym_threshold``, and each of the ``FORCED_RAREST`` rarest
+    events left with each of its ``FORCED_NEIGHBOURS`` closest neighbours
+    (``merge_neighbour``). A merge is admissible when its label holds at most
+    ``max_group_size`` events and, but for the synonyms, the two are neighbours:
+    a direct transition between them, in at least ``min_support`` paths, carries
+    at least ``NEIGHBOUR_FLOOR`` (30 %) of the runs of one of them
+    (:func:`_adjacency`). The cost is the events the merge loses
+    (:func:`_merge_cost`: the runs that hide which of the two happened and the
+    repeats the collapse erases) times the merged label's size minus one, so
+    two medium groups win over one growing group. When no admissible merge is
+    left, the path stops: no frequent event is dropped or relabelled, and the
+    plan takes the smallest vocabulary reached (with a warning).
     """
     n_orig = len(data.events)
     state = _State(
         label_of=np.arange(n_orig, dtype=np.int64),
         names=[str(e) for e in data.events],
         kinds=["event"] * n_orig,
+        ordered=[[str(e)] for e in data.events],
+        full=[str(e) for e in data.events],
     )
     taken = {str(e) for e in data.events}
     src, _, _ = _transitions(data.codes, data.pid, n_orig)
@@ -978,6 +1059,8 @@ def _build_path(
             if only is not None and only not in (u, v):
                 continue
             if only is None and not (thin[u] >= THIN_SHARE or thin[v] >= THIN_SHARE):
+                continue
+            if state.size(u) + state.size(v) > max_group_size:
                 continue
             if st.occurrences[v] > st.occurrences[u]:
                 u, v, loop_u, loop_v = v, u, loop_v, loop_u
@@ -1035,27 +1118,38 @@ def _build_path(
         return _Op(action, (u,), evidence, f"{why_rare}; {why}")
 
     def forced_op(st, mergeable, vocabulary) -> _Op | None:
-        """Above ``max_events``: the cheapest merge of neighbours, else a drop."""
+        """Above ``max_events``: the cheapest admissible merge, or None (stop)."""
         names = state.names
         why = f"the vocabulary ({vocabulary}) is above max_events {max_events}"
+
+        def fits(u, v):
+            return state.size(u) + state.size(v) <= max_group_size
+
+        def adjacent(u, v):
+            return _adjacency(st, u, v, screen.min_support)
+
         candidates = []
-        chains = _chain_candidates(st, mergeable, FORCED_FLOOR, screen.min_support)
-        if chains:
-            _, u, v, p_next, p_prev = chains[0]
-            candidates.append(
-                (
-                    "merge_chain",
-                    (u, v),
-                    {"p_next": p_next, "p_prev": p_prev},
-                    f"'{names[u]}' -> '{names[v]}' is the strongest chain left "
-                    f"(P(next = {names[v]} | {names[u]}) = {p_next:.2f}, "
-                    f"P(prev = {names[u]} | {names[v]}) = {p_prev:.2f}, both >= "
-                    f"{FORCED_FLOOR:g})",
+        for _, u, v, p_next, p_prev in _chain_candidates(
+            st, mergeable, FORCED_FLOOR, screen.min_support
+        ):
+            if fits(u, v) and adjacent(u, v) >= NEIGHBOUR_FLOOR:
+                candidates.append(
+                    (
+                        "merge_chain",
+                        (u, v),
+                        {"p_next": p_next, "p_prev": p_prev},
+                        f"'{names[u]}' -> '{names[v]}' is the strongest chain left "
+                        f"(P(next = {names[v]} | {names[u]}) = {p_next:.2f}, "
+                        f"P(prev = {names[u]} | {names[v]}) = {p_prev:.2f}, both >= "
+                        f"{FORCED_FLOOR:g})",
+                    )
                 )
-            )
-        synonyms = _synonym_candidates(st, mergeable, 1 - FORCED_FLOOR)
-        if synonyms:
-            distance, u, v, loop_u, loop_v = synonyms[0]
+                break
+        for distance, u, v, loop_u, loop_v in _synonym_candidates(
+            st, mergeable, synonym_threshold
+        ):
+            if not fits(u, v):
+                continue
             if st.occurrences[v] > st.occurrences[u]:
                 u, v = v, u
             candidates.append(
@@ -1065,86 +1159,77 @@ def _build_path(
                     {"js_distance": distance, "self_loop_share": max(loop_u, loop_v)},
                     f"'{names[u]}' and '{names[v]}' are the closest synonyms left "
                     f"(Jensen-Shannon distance {distance:.3f} <= "
-                    f"{1 - FORCED_FLOOR:g})",
+                    f"{synonym_threshold:g})",
                 )
             )
+            break
         left = np.flatnonzero(mergeable)
         share = st.path_share
         rarest = left[np.lexsort((left, share[left]))]
-        w = int(rarest[0]) if len(rarest) else None
-        pairs = [
-            (int(r), x, adjacent, w_first)
-            for r in rarest[:FORCED_RAREST]
-            for x, adjacent, w_first in _closest_neighbours(st, mergeable, int(r))
-        ]
-        seen = set()
-        for r, x, adjacent, w_first in pairs:
-            if frozenset((r, x)) in seen:
-                continue
-            seen.add(frozenset((r, x)))
-            u, v = (r, x) if w_first else (x, r)
-            out_u, in_v = st.count[u, :].sum(), st.count[:, v].sum()
-            candidates.append(
-                (
-                    "merge_neighbour",
-                    (u, v),
-                    {
-                        "p_next": float(st.count[u, v] / out_u) if out_u else np.nan,
-                        "p_prev": float(st.count[u, v] / in_v) if in_v else np.nan,
-                        "path_share": float(share[r]),
-                    },
-                    f"'{names[r]}' is one of the {FORCED_RAREST} rarest events left "
-                    f"({share[r]:.2%} of paths) and '{names[x]}' one of its "
-                    f"{FORCED_NEIGHBOURS} closest neighbours "
-                    f"({'after' if w_first else 'before'} it in {adjacent:.0%} of "
-                    "its runs)",
-                )
-            )
-        if candidates:
-            scored = [
-                (_merge_cost(st.lab, st.pid, *c[1]), i, c)
-                for i, c in enumerate(candidates)
+        seen: set = set()
+        found = 0
+        for r in rarest:
+            if found == FORCED_RAREST:
+                break
+            r = int(r)
+            near = [
+                (x, closeness, w_first, adjacent(r, x))
+                for x, closeness, w_first in _closest_neighbours(st, mergeable, r)
+                if fits(r, x)
             ]
-            (hidden, collapsed, runs), _, (operation, labels, evidence, what) = min(
-                scored, key=lambda t: (t[0][0] + t[0][1], t[1])
+            near = [n for n in near if n[3] >= NEIGHBOUR_FLOOR][:FORCED_NEIGHBOURS]
+            if not near:
+                continue
+            found += 1
+            for x, closeness, w_first, adjacency in near:
+                if frozenset((r, x)) in seen:
+                    continue
+                seen.add(frozenset((r, x)))
+                u, v = (r, x) if w_first else (x, r)
+                out_u, in_v = st.count[u, :].sum(), st.count[:, v].sum()
+                candidates.append(
+                    (
+                        "merge_neighbour",
+                        (u, v),
+                        {
+                            "p_next": (
+                                float(st.count[u, v] / out_u) if out_u else np.nan
+                            ),
+                            "p_prev": float(st.count[u, v] / in_v) if in_v else np.nan,
+                            "path_share": float(share[r]),
+                        },
+                        f"'{names[r]}' is one of the {FORCED_RAREST} rarest events "
+                        f"left with a neighbour ({share[r]:.2%} of paths) and "
+                        f"'{names[x]}' one of its {FORCED_NEIGHBOURS} closest "
+                        f"neighbours ({'after' if w_first else 'before'} it in "
+                        f"{closeness:.0%} of its runs; the direct transition between "
+                        f"them carries {adjacency:.0%} of the runs of one of them, >= "
+                        f"{NEIGHBOUR_FLOOR:.0%})",
+                    )
+                )
+        if not candidates:
+            return None  # no admissible merge left: the path stops here
+        scored = []
+        for i, c in enumerate(candidates):
+            hidden, collapsed, runs = _merge_cost(st.lab, st.pid, *c[1])
+            size = state.size(c[1][0]) + state.size(c[1][1])
+            lost = hidden + collapsed
+            scored.append(
+                ((lost * (size - 1), size, i), (hidden, collapsed, runs, size), c)
             )
-            return _Op(
-                operation,
-                labels,
-                evidence,
-                (
-                    f"{why}; {what}: the cheapest merge of neighbours ("
-                    f"{hidden + collapsed} events lost: the merged label hides which "
-                    f"of the two happened in {hidden} of its {runs} runs and its runs "
-                    f"collapse {collapsed} repeated events)"
-                ),
-            )
-        if w is None:
-            return None
-        # no merge left: the rarest event is dropped (or, below min_path_share,
-        # relabelled), its artificial transitions counted
-        if share[w] < min_path_share:
-            return rare_op(
-                st,
-                mergeable,
-                current,
-                w,
-                f"{why} and it is the rarest event left ({share[w]:.2%} of paths)",
-            )
-        dropped = state.copy()
-        dropped.label_of[dropped.label_of == w] = -1
-        prev, nxt = _runs(st.lab, st.pid, w, len(names))
-        artificial = _new_artificial(
-            prev, nxt, len(names), state.collapsible, _supported_pairs(data, dropped)
+        _, (hidden, collapsed, runs, size), (operation, labels, evidence, what) = min(
+            scored, key=lambda t: t[0]
         )
         return _Op(
-            "drop",
-            (w,),
-            {"path_share": float(share[w])},
+            operation,
+            labels,
+            evidence,
             (
-                f"{why}, no merge of neighbours is left and it is the rarest event "
-                f"left ({share[w]:.2%} of paths); dropping it leaves {artificial} "
-                f"artificial {'transition' if artificial == 1 else 'transitions'}"
+                f"{why}; {what}: the cheapest admissible merge ({hidden + collapsed} "
+                f"events lost: the merged label hides which of the two happened in "
+                f"{hidden} of its {runs} runs and its runs collapse {collapsed} "
+                f"repeated events; a label of {size} of at most {max_group_size} "
+                "events, the loss weighted by its size)"
             ),
         )
 
@@ -1154,9 +1239,13 @@ def _build_path(
         op = None
         for kind in order:
             if kind == "chain":
-                found = _chain_candidates(
-                    st, mergeable, chain_threshold, screen.min_support
-                )
+                found = [
+                    c
+                    for c in _chain_candidates(
+                        st, mergeable, chain_threshold, screen.min_support
+                    )
+                    if state.size(c[1]) + state.size(c[2]) <= max_group_size
+                ]
                 if found:
                     _, u, v, p_next, p_prev = found[0]
                     op = _Op(
@@ -1194,7 +1283,7 @@ def _build_path(
         if op is None:
             break
         names = [state.names[i] for i in op.labels]
-        members = [str(data.events[c]) for i in op.labels for c in state.members(i)]
+        members = [e for i in op.labels for e in state.ordered[i]]
         state, label, other_id = _apply(state, op, other_id, other_name, taken)
         if label is not None:
             taken.add(label)
@@ -1225,9 +1314,11 @@ def _choose(rows: list[dict], target: Any, max_events: int | None) -> int:
         else:
             warn_user(
                 f"no step of the compression path reaches max_events={max_events}: "
-                f"the smallest vocabulary is {min(r['vocabulary'] for r in rows)} "
-                "(protected events, keep and the declared edges are never merged "
-                "or dropped)"
+                f"the smallest vocabulary is {min(r['vocabulary'] for r in rows)}, "
+                "the plan takes it (protected events, keep and the declared edges "
+                "are never merged or dropped; above max_events only neighbours "
+                "merge, in labels of at most max_group_size events, and no frequent "
+                "event is dropped)"
             )
             candidates = [min(rows, key=lambda r: (r["vocabulary"], r["step"]))]
 
@@ -1316,6 +1407,7 @@ def _plan_rows(
             "p_prev": np.nan,
             "js_distance": np.nan,
             "bridge_fidelity": np.nan,
+            "members": "",
         }
         if code in last_op:
             k = last_op[code]
@@ -1335,6 +1427,7 @@ def _plan_rows(
                 )
             else:
                 row["action"], row["label"] = "merge", final.names[label_id]
+                row["members"] = ", ".join(final.ordered[label_id])
                 row["reason"] = (
                     f"merged into '{final.names[label_id]}' at step {k}: {op.reason}"
                 )
@@ -1529,6 +1622,7 @@ def ab_compression(
     synonym_threshold: float = DEFAULT_SYNONYM_THRESHOLD,
     bridge_threshold: float = DEFAULT_BRIDGE_THRESHOLD,
     max_events: int | None = None,
+    max_group_size: int = MAX_GROUP_SIZE,
     target: Any = "untestable_share",
     step: int | None = None,
     keep=None,
@@ -1593,6 +1687,12 @@ def ab_compression(
         or max_events < 1
     ):
         raise InvalidParameterError("max_events", max_events, ["None", "an int >= 1"])
+    if (
+        isinstance(max_group_size, bool)
+        or not isinstance(max_group_size, (int, np.integer))
+        or max_group_size < 2
+    ):
+        raise InvalidParameterError("max_group_size", max_group_size, ["an int >= 2"])
     if not (
         (isinstance(target, str) and target in TARGETS)
         or (
@@ -1702,6 +1802,7 @@ def ab_compression(
         bridge_threshold=bridge_threshold,
         max_events=None if max_events is None else int(max_events),
         other_name=other,
+        max_group_size=int(max_group_size),
     )
 
     if by is None:
@@ -1806,6 +1907,7 @@ def ab_compression(
         "synonym_threshold": synonym_threshold,
         "bridge_threshold": bridge_threshold,
         "max_events": params["max_events"],
+        "max_group_size": params["max_group_size"],
         "target": target,
         "target_delta": target_delta,
         "other": other,

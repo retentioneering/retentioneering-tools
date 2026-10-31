@@ -16,13 +16,13 @@ import {
 } from "./widget-utils";
 import {
   type CompressionPayload, type Measure, type PathStep, type Segment,
-  MEASURES, NEEDS, actionCounts, beforeAfter, fmtMeasure, fmtScale, fmtShare, hasNeeds, mappingAt, needGeometry,
+  MEASURES, NEEDS, actionCounts, isCompact, beforeAfter, fmtMeasure, fmtScale, fmtShare, hasNeeds, mappingAt, needGeometry,
   panelGeometry, parseCompression, stepOf, stepText,
 } from "./ab_compression_encoding";
 
 const DATA_KEYS = [
   "screen", "horizon", "path_col", "edge_weight", "max_steps", "edges", "min_path_share", "chain_threshold",
-  "synonym_threshold", "bridge_threshold", "max_events", "target", "step", "keep", "other", "by",
+  "synonym_threshold", "bridge_threshold", "max_events", "max_group_size", "target", "step", "keep", "other", "by",
   "by_pre_exposure", "correction", "ci_level", "power", "min_support", "target_delta",
 ];
 
@@ -242,7 +242,12 @@ function MappingTable({ segment, step, other, changedOnly }: { segment: Segment;
             <td style={td}>
               <span style={{ display: "inline-block", padding: "0 6px", borderRadius: 4, fontSize: 10, background: ACTION_STYLE[r.action].bg, color: ACTION_STYLE[r.action].fg }}>{r.action}</span>
             </td>
-            <td style={{ ...td, minWidth: 180, maxWidth: 320 }}>{r.label === null ? <span style={{ color: MUTED }}>(dropped)</span> : <Breakable label={r.label} />}</td>
+            <td style={{ ...td, minWidth: 180, maxWidth: 320 }} title={r.members ? `members: ${r.members}` : undefined}>
+              {r.label === null ? <span style={{ color: MUTED }}>(dropped)</span> : <Breakable label={r.label} />}
+              {r.members && isCompact(r.label) && (
+                <div data-testid="abc-members" style={{ fontSize: 10, color: MUTED, marginTop: 2, overflowWrap: "anywhere" }}>{r.members}</div>
+              )}
+            </td>
             <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{r.since || ""}</td>
             <td style={{ ...td, color: "#374151", lineHeight: 1.4, minWidth: 240, overflowWrap: "anywhere" }}>{r.reason}</td>
           </tr>
@@ -356,7 +361,7 @@ function Sidebar({ host, isStatic, isLoading, params, view, setParam, setView, p
   const targets = [...named, ...(named.includes(target) ? [] : [target])];
   const fixedKeys = [
     "horizon", "path_col", params.screen === "steps" ? "max_steps" : "edge_weight", ...(params.screen === "steps" ? [] : ["edges"]),
-    "synonym_threshold", "bridge_threshold", "keep", "other", "by", "by_pre_exposure", "step", "correction", "ci_level", "power", "min_support",
+    "synonym_threshold", "bridge_threshold", "max_group_size", "keep", "other", "by", "by_pre_exposure", "step", "correction", "ci_level", "power", "min_support",
   ];
   const fixed: [string, string][] = [
     ["diff", diffText],

@@ -241,8 +241,11 @@ times counts once. For a per-visit figure, carve out the subpopulation with
    Fix the plan before reading that screen, and never choose a step by its
    verdicts. Quote `reading`; say when the chosen step is 0 (the cells too thin
    to test hold almost none of the observations: the vocabulary already suits the
-   data). With `max_events` the plan merges neighbours rather than dropping
-   frequent events; `target_delta` adds how many users each vocabulary size needs.
+   data). With `max_events` the plan merges direct neighbours, in labels of at
+   most `max_group_size` events, rather than dropping frequent events; when it
+   stops short of the cap it warns: report it, never force the cap. Read the
+   merged labels (`members`) before applying the plan; `target_delta` adds how
+   many users each vocabulary size needs.
 7. Finish: `export_report` needs at least one tab, and the numbers-only tools
    register none. Add the scorecard as a tab with `add_ab_test(label=..., same
    arguments)` (or an `add_segment_overview` by arm) before `check_analysis` and

@@ -284,8 +284,8 @@ class TestNoArtificialDrop:
 
 
 class TestForcedMode:
-    """Above max_events: the cheapest merge of neighbours, never a drop or an
-    ``other`` of a frequent event while a merge is left."""
+    """Above max_events: the cheapest admissible merge of neighbours, never a drop
+    or an ``other`` of a frequent event."""
 
     TEMPLATES = [
         (["home", "A", "B", "cart"], 400),
@@ -326,18 +326,153 @@ class TestForcedMode:
         first = path.set_index("step").loc[1]
         assert first["operation"] == "merge_neighbour"
         assert first["label"] == "D+product"
-        assert "the cheapest merge of neighbours" in first["reason"]
+        assert "the cheapest admissible merge" in first["reason"]
         assert "hides which of the two happened in 100 of" in first["reason"]
 
-    def test_a_drop_only_when_no_merge_is_left(self, stream):
-        # every other event kept: D has no neighbour it may merge with, so it is
-        # dropped (it is not rare: never `other`), its joins counted
+    def test_no_admissible_merge_stops_the_path(self, stream):
+        # every other event kept: D has no neighbour it may merge with; it is not
+        # rare, so it is neither dropped nor relabelled: the path stops short of
+        # the cap, says so, and the plan takes the smallest vocabulary reached
         keep = ["home", "A", "B", "C", "cart", "product"]
-        plan = stream.get_ab_compression(("arm", "a", "b"), keep=keep, max_events=6)
-        row = plan.set_index("event").loc["D"]
-        assert row["action"] == "drop"
-        assert "no merge of neighbours is left" in row["reason"]
-        assert "leaves 0 artificial transitions" in row["reason"]
+        with pytest.warns(UserWarning, match="no step of the compression path"):
+            plan = stream.get_ab_compression(("arm", "a", "b"), keep=keep, max_events=6)
+        assert (plan["action"] == "keep").all()
+        assert len(plan.attrs["path"]) == 1 and plan.attrs["chosen_step"] == 0
+
+
+def _direct_pairs(stream: Eventstream, min_support: int = 10) -> set:
+    """The pairs of events that follow each other directly (either way) in at
+    least ``min_support`` paths of the stream."""
+    df = stream.to_dataframe().sort_values(["user_id", "timestamp"])
+    nxt = df.groupby("user_id")["event"].shift(-1)
+    pairs = pd.DataFrame({"user": df["user_id"], "a": df["event"], "b": nxt}).dropna()
+    paths = pairs.drop_duplicates().groupby(["a", "b"]).size()
+    return {frozenset(k) for k, n in paths.items() if n >= min_support and k[0] != k[1]}
+
+
+def _connected(members: list, pairs: set) -> bool:
+    """Whether ``members`` form one group under the ``pairs`` adjacency."""
+    seen, todo = {members[0]}, [members[0]]
+    while todo:
+        x = todo.pop()
+        for y in members:
+            if y not in seen and frozenset((x, y)) in pairs:
+                seen.add(y)
+                todo.append(y)
+    return len(seen) == len(members)
+
+
+class TestGroupsAndLabels:
+    """Merged labels: neighbours only, at most ``max_group_size`` events, unique,
+    and readable (a long one written ``first+…+last (k)``)."""
+
+    CHAIN = [f"checkout_step_{k}_view" for k in range(8)]
+
+    @pytest.fixture(scope="class")
+    def chain(self):
+        # an eight-event funnel with exits after every step
+        templates = [
+            (["home", *self.CHAIN[: k + 1], "home"], 40 + 10 * k) for k in range(8)
+        ]
+        return _stream_of(templates + [(["home", "search", "home"], 200)])
+
+    @pytest.mark.parametrize("screen", ["transitions", "steps"])
+    @pytest.mark.parametrize("bound", [2, 3, 5])
+    def test_no_group_grows_beyond_the_bound(self, chain, screen, bound):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # the cap may not be reached
+            plan = chain.get_ab_compression(
+                ("arm", "a", "b"), screen, max_events=3, max_group_size=bound
+            )
+        path = plan.attrs["path"]
+        for members in path["members"]:
+            assert len([m for m in members.split(", ") if m]) <= bound
+        merged = plan[plan["action"] == "merge"]
+        sizes = merged.groupby("label")["event"].size()
+        assert (sizes <= bound).all() and len(sizes)
+        assert (path["artificial_transitions"] == 0).all()
+
+    def test_two_medium_groups_before_one_big_one(self, chain):
+        # at 3 events the funnel is two groups of four, not one of eight: the
+        # loss of a merge is weighted by the size of its label
+        plan = chain.get_ab_compression(
+            ("arm", "a", "b"), max_events=3, max_group_size=8
+        )
+        merged = plan[plan["action"] == "merge"]
+        funnel = merged[merged["event"].isin(self.CHAIN)]
+        assert sorted(funnel.groupby("label")["event"].size()) == [4, 4]
+        # a cap of 2 needs a bigger group: the bound allows it, or the path stops
+        # at the smallest vocabulary it reaches, with a warning
+        bigger = chain.get_ab_compression(
+            ("arm", "a", "b"), max_events=2, max_group_size=8
+        )
+        path = bigger.attrs["path"]
+        assert path.loc[bigger.attrs["chosen_step"], "vocabulary"] == 2
+        merged = bigger[bigger["action"] == "merge"]
+        assert merged.groupby("label")["event"].size().max() > 5
+        with pytest.warns(UserWarning, match="no step of the compression path"):
+            bounded = chain.get_ab_compression(
+                ("arm", "a", "b"), max_events=2, max_group_size=5
+            )
+        path = bounded.attrs["path"]
+        assert path.loc[bounded.attrs["chosen_step"], "vocabulary"] == 3
+
+    def test_merges_only_between_direct_neighbours(self):
+        # X and Y have similar contexts (both between home and cart), but never
+        # follow each other: above the cap they never merge together
+        stream = _stream_of(
+            [
+                (["home", "X", "cart"], 200),
+                (["home", "X", "product"], 60),
+                (["home", "Y", "cart"], 150),
+                (["home", "Y", "search"], 60),
+                (["home", "search", "cart"], 100),
+                (["home", "product", "cart"], 100),
+            ]
+        )
+        pairs = _direct_pairs(stream)
+        assert frozenset(("X", "Y")) not in pairs
+        for screen in ("transitions", "steps"):
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                plan = stream.get_ab_compression(
+                    ("arm", "a", "b"), screen, max_events=2, synonym_threshold=0.05
+                )
+            path = plan.attrs["path"]
+            merges = path[path["operation"].str.startswith("merge")]
+            assert len(merges), screen
+            for members in merges["members"]:
+                group = members.split(", ")
+                assert not {"X", "Y"} <= set(group), (screen, group)
+                assert _connected(group, pairs), (screen, group)
+            assert set(merges["operation"]) <= {"merge_chain", "merge_neighbour"}
+
+    def test_long_labels_are_compact_unique_and_listed(self, chain):
+        plan = chain.get_ab_compression(
+            ("arm", "a", "b"), max_events=3, max_group_size=8
+        )
+        merged = plan[plan["action"] == "merge"]
+        labels = merged.groupby("label")["members"].agg(set)
+        # one members list per label, and one label per members list
+        assert (labels.map(len) == 1).all()
+        assert labels.map(lambda m: next(iter(m))).is_unique
+        kept = set(plan.loc[plan["action"] == "keep", "event"])
+        assert not set(labels.index) & kept
+        for label, members in labels.items():
+            events = next(iter(members)).split(", ")
+            assert sorted(events) == sorted(
+                merged.loc[merged["label"] == label, "event"]
+            )
+            full = "+".join(events)
+            if len(full) <= 40 or len(events) < 3:
+                assert label == full
+            else:
+                assert label == f"{events[0]}+…+{events[-1]} ({len(events)})"
+        assert any("…" in label for label in labels.index)
+        # the compressed stream carries the compact labels
+        compact = chain.compress_events(plan)
+        names = set(compact.to_dataframe()["event"])
+        assert set(labels.index) <= names
 
 
 # ======================================================================= data needed
@@ -621,12 +756,16 @@ class TestBundled:
             hits = frame[frame["verdict"].isin(["increase", "decrease"])]
             return set(zip(hits["source"], hits["target"]))
 
-        for edge in [
+        # a planted edge is found after compression under its events' new labels
+        label = dict(zip(plan["event"], plan["label"]))
+        for source, target in [
             ("cart", "cart"),
             ("product_view", "quick_add"),
             ("quick_add", "cart"),
         ]:
-            assert edge in found(before) and edge in found(after), edge
+            assert (source, target) in found(before), (source, target)
+            renamed = (label[source], label[target])
+            assert renamed in found(after), renamed
         share = lambda f: np.isfinite(f["p_value_adjusted"]).mean()  # noqa: E731
         assert share(after) > share(before)
 
@@ -846,15 +985,24 @@ class TestScale:
         diff = ("exp_group", "treatment", "control")
         for screen in ("transitions", "steps"):
             started = time.perf_counter()
-            plan = wide.get_ab_compression(diff, screen, max_events=40)
+            # the events are drawn independently: few pairs are neighbours (a
+            # direct transition carrying 30 % of the runs of one of them), so the
+            # path stops short of the cap, says so and takes the smallest
+            # vocabulary it reaches; no frequent event is dropped to force it
+            with pytest.warns(UserWarning, match="no step of the compression path"):
+                plan = wide.get_ab_compression(diff, screen, max_events=40)
             assert time.perf_counter() - started < 60, screen
             path = plan.attrs["path"].set_index("step")
             chosen = plan.attrs["chosen_step"]
-            assert path.loc[chosen, "vocabulary"] <= 40
-            # a forced merge may leave a thin cell where there was none (the step
-            # screen has none at step 0), but not more thin data than the tolerance
+            assert path.loc[chosen, "vocabulary"] == path["vocabulary"].min() < 80
+            frequent = plan["path_share"] >= plan.attrs["min_path_share"]
+            assert plan.loc[frequent, "action"].isin(["keep", "merge"]).all()
+            merged = plan[plan["action"] == "merge"]
+            assert merged.groupby("label").size().max() <= 5
+            # the cap forces merges whatever they do to the thin data: here they
+            # change little (a structureless stream has no chain to pool)
             share = path["untestable_share"]
-            assert share.loc[chosen] <= share.loc[0] + TARGET_TOLERANCE_MIN
+            assert share.loc[chosen] <= 1.05 * share.loc[0] + TARGET_TOLERANCE_MIN
             assert (path["artificial_transitions"] == 0).all()
             # the plan's numbers are the compressed stream's screen
             frame = _screen(wide.compress_events(plan), diff, screen, plan)

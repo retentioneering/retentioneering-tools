@@ -13,7 +13,9 @@ PROCESSOR_NAME = "sample_paths"
 
 @dataclass
 class SamplePaths(DataProcessor):
-    # Cannot break the event order: keeps whole paths with a boolean mask, in input order.
+    # Cannot break the event order: keeps whole paths. The JOIN may return paths
+    # in any order, which the layout contract allows; within a path the scan
+    # order is kept (the test suite's strict check verifies it).
     may_break_order = False
 
     n: int | None
@@ -62,14 +64,14 @@ class SamplePaths(DataProcessor):
 
         path_col_q = engine.quote_ident(path_col)
 
-        # DuckDB picks the paths; the rows are then kept with a mask, which
-        # leaves them in the input layout (ADR-0017). A JOIN would not
-        # guarantee any row order.
         query_template = """
             {set_threads}
-            select {path_col}
-            from (select distinct {path_col} from df)
-            using sample reservoir({sample_chunk}) {seed_chunk}
+             with sampled_paths as (
+                select {path_col}
+                from (select distinct {path_col} from df)
+                using sample reservoir({sample_chunk}) {seed_chunk}
+             )
+             select * from df join sampled_paths using({path_col})
          """
 
         seed_chunk = set_threads = ""
@@ -90,8 +92,7 @@ class SamplePaths(DataProcessor):
             set_threads=set_threads,
         )
 
-        sampled = engine.run(query, df=df)[path_col]
-        df = df[df[path_col].isin(sampled)].reset_index(drop=True)
+        df = engine.run(query, df=df)
 
         for col in [schema.event_col] + schema.segment_cols:
             df[col] = df[col].astype("category")

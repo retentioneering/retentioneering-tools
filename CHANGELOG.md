@@ -26,8 +26,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
     `to_daily_states`, `filter_events(sql=...)`) have their output checked and
     re-sorted if needed; the order of paths relative to each other is not
     guaranteed.
-  - `sample_paths` keeps the rows of the sampled paths in their input order;
-    it used to return them in whatever order DuckDB's join produced.
   - `add_events(sql=...)` rows must keep the `index` of a row of their path;
     one that matches no event raises `PreprocessingConfigError`. The timestamp
     may be changed freely — the row still sits at its source position.

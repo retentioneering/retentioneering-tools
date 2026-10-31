@@ -233,15 +233,24 @@ class AddEvents(DataProcessor):
         # A new row is placed at the position of the row it came from
         # (ADR-0017), so it must carry a `(path, index)` that exists. Its
         # timestamp is an attribute and is taken as given.
-        keys = [schema.path_col, schema.index]
-        known = df[keys].drop_duplicates()
-        unknown = result[keys].merge(known, on=keys, how="left", indicator=True)
-        unknown = unknown[unknown["_merge"] == "left_only"]
+        path_q = engine.quote_ident(schema.path_col)
+        index_q = engine.quote_ident(schema.index)
+        unknown = engine.run(
+            f"""
+            SELECT COUNT(*) OVER () AS _n, {path_q}, {index_q}
+            FROM (SELECT {path_q}, {index_q} FROM result) r
+            ANTI JOIN (SELECT {path_q}, {index_q} FROM df) d
+            USING ({path_q}, {index_q})
+            LIMIT 1
+            """,
+            result=result,
+            df=df,
+        )
         if not unknown.empty:
             example = unknown.iloc[0]
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                f"The SQL query returned {len(unknown)} row(s) whose "
+                f"The SQL query returned {int(example['_n'])} row(s) whose "
                 f"({schema.path_col}, {schema.index}) matches no event of the "
                 f"eventstream, e.g. {schema.path_col}={example[schema.path_col]!r}, "
                 f"{schema.index}={example[schema.index]!r}. A new event takes the "

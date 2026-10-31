@@ -1,3 +1,4 @@
+import numpy as np
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
@@ -219,7 +220,11 @@ class ToDailyStates(DataProcessor):
         FROM states
         ORDER BY {path_col_q}, {index_col_q}
         """
-        res = engine.run(query, df=df)
+        # "first"/"last" aggregates read the event order off an integer row
+        # number: within a path, physical order is the event order (ADR-0017),
+        # and an int key is far cheaper for ARG_MIN/ARG_MAX than the
+        # (index, subindex) row value.
+        res = engine.run(query, df=df.assign(_rn=np.arange(len(df))))
 
         for col in [schema.event_col] + schema.segment_cols:
             if col in res.columns:

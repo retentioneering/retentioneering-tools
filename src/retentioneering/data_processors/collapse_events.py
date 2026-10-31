@@ -351,21 +351,22 @@ class CollapseEvents(DataProcessor):
         exclude_cols: Set[str],
         index_col: str,
         subindex_col: str,
+        rank_col: str = "_rn",
     ) -> List[str]:
         """
         Aggregates carrying the remaining columns into a merged row.
 
-        "first" / "last" mean first / last in event order, `(index, subindex)`
-        (ADR-0017) — not by timestamp, which ties. The merged row takes the
-        group's first position, so `index` and `subindex` always come from the
-        same, first row whatever `agg_config` says about them.
+        "first" / "last" mean first / last in event order (ADR-0017), read off
+        `rank_col` — the query's integer row number in `(index, subindex)`
+        order. An integer key is much cheaper for ARG_MIN/ARG_MAX than the
+        `(index, subindex)` row value, and orders the same. The merged row
+        takes the group's first position, so `index` and `subindex` always
+        come from the same, first row whatever `agg_config` says about them.
         """
         agg_exprs = []
-        pos = dialect.event_position(
-            engine.quote_ident(index_col), engine.quote_ident(subindex_col)
-        )
+        pos = rank_col
         for c in df.columns:
-            if c in exclude_cols:
+            if c in exclude_cols or c == rank_col:
                 continue
             c_q = engine.quote_ident(c)
             agg_name = agg_config.get(c, "first")
@@ -486,9 +487,6 @@ class CollapseEvents(DataProcessor):
         order = dialect.event_order(
             engine.quote_ident(schema.index), engine.quote_ident(schema.subindex)
         )
-        pos = dialect.event_position(
-            engine.quote_ident(schema.index), engine.quote_ident(schema.subindex)
-        )
 
         # A run of one event keeps that event's own name unless `name` overrides it.
         name_expr, metric_agg_chunk = self._name_sql("_event", event_col, ts_col)
@@ -536,7 +534,7 @@ class CollapseEvents(DataProcessor):
             SELECT
                 {path_col_q},
                 ANY_VALUE({event_col_q}) AS _event,
-                CASE WHEN COUNT(*) > 1 THEN '{collapsed_event_type}' ELSE ARG_MIN({event_type_col_q}, {pos}) END AS {event_type_col_q},
+                CASE WHEN COUNT(*) > 1 THEN '{collapsed_event_type}' ELSE ARG_MIN({event_type_col_q}, _rn) END AS {event_type_col_q},
                 MIN(_rn) AS _first_rn
                 {metric_agg_chunk}
                 {agg_chunk}

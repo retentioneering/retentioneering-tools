@@ -28,6 +28,7 @@ here; load individual ADRs when a task touches the corresponding area.
 | [0014](0014-agent-facing-docs-surface.md) | Agent-facing docs surface | llms.txt / llms-full.txt are build output; a hosted docs MCP server reads the same corpus |
 | [0015](0015-path-pattern-quantifiers.md) | Path pattern quantifiers and groups | `{m,n}` bounds a gap, `(P){k}` unrolls; no upper bounds on groups — those are conditions |
 | [0016](0016-condition-shorthand-leaves.md) | Shorthand leaves in conditions | `{"has_event": "purchase"}` means `= True`, for 0/1 metrics only |
+| [0017](0017-non-overlapping-occurrence.md) | Explicit matches with bounded evaluation | Memoized matching, complete bounds, explicit grain and conversion attribution |
 
 ## Adding a new ADR
 

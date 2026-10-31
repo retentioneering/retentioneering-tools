@@ -135,6 +135,14 @@ ordinals; quantified classes (`.{0,4}`, `[a|b]+`) are gaps and take none; groups
 unrolled by `normalize_pattern`, so everything downstream sees plain tokens. Changes to the
 matcher must keep agreeing with the brute-force oracle in `tests/paths/anchors_test.py`; JS
 that splits a pattern into blocks must use `isGapToken` and the unrolled `layout_pattern`.
+`occurrence="non_overlapping"` is the one mode not matched in SQL: `paths/non_overlapping.py`
+uses a memoized ordered instruction program over integer-coded events (ADR-0017).
+Never reintroduce backtracking regex scanning. Numeric captures stay aligned with the
+unrolled ordinals; string start/end address complete match bounds. DuckDB numbers,
+sorts and encodes rows. `find_matches` exposes match identity/bounds, while
+`get_match_conversion` exposes one outcome per match with explicit attribution.
+Keep NULL/sentinel predicates consistent with the SQL matcher. Resource limits must
+raise without returning partial results.
 
 ### JS: two workspace packages, one build target (ADR-0005)
 

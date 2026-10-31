@@ -213,3 +213,24 @@ Confirm with the user, then call `update_base_stream` with one or more of:
 {"type": "filter_paths", "op": ">", "metric": "length", "value": 3}
 {"type": "filter_events", "drop": {"event": ["noise_event"]}}
 ```
+
+
+## Episodes and conversion units
+
+For repeated attempts, inspect `find_matches(pattern, path_col=...)` before
+marking or counting. Groups are greedy, gaps lazy; `(B){3}` partitions a run,
+`(B){3,}` takes its whole extent. Exclude a closing event from a repeated gap
+when that event must end the episode. Full start/end bounds include the last B
+of `(B)+`; numeric -1 addresses the last capture instead.
+
+Use `get_match_conversion` with explicit `from_boundary="end"` (or "start")
+and `attribution="any_later"`. State that one target may convert several
+matches. Report unit, denominator and attribution beside the rate. For path
+conversion with non_overlapping, explicitly pass `unit="path"`; do not divide
+converted paths by the number of episodes. Returned MCP rows may be truncated,
+but its aggregate count/rate always uses all matches.
+
+When annotating episodes, explicitly choose at and path_col. Use
+placement="after" for a closing marker, including at path end; an out-of-path
+offset is an error. Recompute from the raw stream or explicitly request
+on_existing="replace"; repeated non-overlapping annotation otherwise raises.

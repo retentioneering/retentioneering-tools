@@ -782,6 +782,8 @@ class Eventstream:
         churn=None,
         anchor=None,
         path_col=None,
+        placement: str = "before",
+        on_existing: str | None = None,
     ) -> "Eventstream":
         """
         Insert synthetic events derived from existing events or a SQL query.
@@ -790,8 +792,9 @@ class Eventstream:
         provided. The new event rows are appended to the eventstream; original
         rows are kept.
 
-        A synthetic event shares its source row's timestamp and sorts *before*
-        it, so it marks the moment the source event opens. The exception is a
+        A synthetic event shares its source row's timestamp and normally sorts
+        *before* it. With anchor=, placement="after" closes that exact row,
+        including at the path's end. The separate activity-based option is a
         `churn` event, which closes a stretch of inactivity and so sorts after
         the last active event (and always before `path_end`).
 
@@ -821,8 +824,14 @@ class Eventstream:
             [Path Patterns](/docs/path-patterns). One anchor per call, not a
             list. By default the anchor resolves once per path
             (`occurrence="first"`); pass `occurrence="all"` to mark every
-            position the anchor can occupy. Paths where it resolves nowhere get
-            no event.
+            position the anchor can occupy, or `occurrence="non_overlapping"`
+            to mark each leftmost non-overlapping match —
+            `{"pattern": "(B){3,}", "at": "start", "occurrence":
+            "non_overlapping"}` marks the start of every run of three or more
+            `B`. Set `at` explicitly: "start"/"end" refer to the complete
+            match (including the last B in `(B)+`); integers address the
+            normalized token ordinals. Out-of-path offsets raise instead of
+            clamping in this mode. Paths with no match get no event.
 
             This is what makes a position addressable by every other tool: a
             pattern can say "the cart that was followed by checkout with no cart
@@ -830,7 +839,18 @@ class Eventstream:
             `step_matrix`, counted by a funnel, or filtered on.
         path_col : str, optional
             Path ID column the `anchor` is resolved within; defaults to
-            `schema.path_col`. Ignored by the other modes.
+            `schema.path_col`. Required for non_overlapping if the schema has
+            multiple path columns. Ignored by the other modes.
+        placement : {"before", "after"}, default "before"
+            Insert before the anchor's event, or after it at the same timestamp.
+            "after" requires anchor= and works at the last event of a path;
+            use it instead of offset=1 to close an episode. Existing events
+            retain their index/time; ordering uses index then subindex.
+        on_existing : {"error", "replace", "allow"}, optional
+            If name already exists, error; replace its synthetic rows before
+            matching; or explicitly permit duplicates. Defaults to "error"
+            for non_overlapping and "allow" for existing modes. Replacement
+            refuses to remove raw or other non-synthetic events.
 
         Examples
         --------
@@ -860,6 +880,8 @@ class Eventstream:
             churn=churn,
             anchor=anchor,
             path_col=path_col,
+            placement=placement,
+            on_existing=on_existing,
         ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
@@ -2239,6 +2261,7 @@ class Eventstream:
         end_anchor,
         within=None,
         path_col: str | None = None,
+        unit: str | None = None,
     ) -> pd.DataFrame:
         """
         Given that `start_anchor` happened, how often does `end_anchor` follow?
@@ -2272,6 +2295,12 @@ class Eventstream:
             end of the path.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
+        unit : {"path"}, optional
+            Required explicitly with a non_overlapping anchor: this method
+            counts paths, never episodes. Use `get_match_conversion` for
+            one outcome per match. With multiple path columns, non_overlapping
+            also requires an explicit `path_col`. It is supported only on
+            the start side; mark end-side matches as events first.
 
         Returns
         -------
@@ -2319,6 +2348,108 @@ class Eventstream:
             end_anchor=end_anchor,
             within=within,
             path_col=path_col,
+            unit=unit,
+        )
+
+    @_tracked("find_matches")
+    def find_matches(
+        self, pattern: str, *, path_col: str, event_col: str | None = None
+    ) -> pd.DataFrame:
+        """Find leftmost, non-overlapping pattern instances as explicit rows.
+
+        `path_col` is required: sessions and users define different episodes.
+        Groups are greedy, gaps lazy. `(B){3,}` takes a whole run, `(B){3}`
+        partitions it into blocks, and `A->.*->B` consumes intervening A's.
+        A group's unrestricted gap can cross a target event; exclude that event
+        explicitly (e.g. `[^order_success]*`) when it closes an episode.
+
+        Parameters
+        ----------
+        pattern : str
+            A path pattern; see Path Patterns for grammar and selection rules.
+        path_col : str
+            Required path ID column from `schema.path_cols`.
+        event_col : str, optional
+            Column matched against; defaults to the stream's event column.
+
+        Returns
+        -------
+        pd.DataFrame
+            One row per match: path column, `match_id` (1-based within path),
+            `start_step`, `end_step`, `start_index`, `end_index`,
+            `start_timestamp`, `end_timestamp`. Ends include the last repetition
+            even for `(B)+`. Steps count internal rows, including real boundary
+            and synthetic events; virtual boundaries use 0 / max_step+1 and
+            borrow the adjacent real row's index/time. A match identity is the
+            pair (path, match_id), valid for this pattern and input snapshot.
+            No-match input returns an empty table, not a zero-length episode.
+
+        Raises
+        ------
+        PatternMatchLimitError
+            More than 4096 compiled states or 2,000,000 evaluated states per
+            path. No partial result is returned; simplify the pattern or paths.
+        InvalidParameterError
+            Duplicate (path, index, subindex) rows have ambiguous ordering.
+            Rebuild annotations from the raw stream instead of stacking copies.
+        """
+        from retentioneering.tools.matches import find_matches
+
+        return find_matches(self, pattern, path_col=path_col, event_col=event_col)
+
+    @_tracked("get_match_conversion")
+    def get_match_conversion(
+        self,
+        pattern: str,
+        target_event: str,
+        *,
+        path_col: str,
+        from_boundary: str,
+        attribution: str,
+        within=None,
+    ) -> pd.DataFrame:
+        """Return one conversion outcome per match, with explicit attribution.
+
+        Unlike `get_conversion_rate`, the denominator is the number of rows
+        (matches), not distinct paths. `converted.mean()` is the match rate;
+        it is undefined (NaN) when there are no matches.
+
+        Parameters
+        ----------
+        pattern : str
+            Pattern passed to `find_matches`.
+        target_event : str
+            Existing literal event name, not an anchor spec or pattern.
+        path_col : str
+            Required path ID column.
+        from_boundary : {"start", "end"}
+            Required origin of the conversion window, strictly after that row.
+        attribution : {"any_later"}
+            Required acknowledgement that one target can convert several
+            earlier matches. This is not one-to-one order attribution.
+        within : int or str or pd.Timedelta, optional
+            Inclusive window from the selected boundary: events or duration.
+            None means any later target in the same path. Equal timestamps
+            still follow input step order.
+
+        Returns
+        -------
+        pd.DataFrame
+            `find_matches` columns plus `converted`, the first qualifying
+            `target_step`, `target_index`, `target_timestamp` (null if none),
+            `unit="match"`, `from_boundary`, and `attribution`. Original rows
+            and episodes without a target are retained. No implicit aggregation.
+        """
+        from retentioneering.tools.matches import get_match_conversion
+
+        return get_match_conversion(
+            self,
+            pattern,
+            target_event,
+            path_col=path_col,
+            from_boundary=from_boundary,
+            attribution=attribution,
+            within=within,
         )
 
     @_tracked("widget_segment_overview")

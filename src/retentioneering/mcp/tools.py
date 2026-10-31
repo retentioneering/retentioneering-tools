@@ -507,6 +507,7 @@ def get_conversion_rate(
     within: int | str | None = None,
     path_col: str | None = None,
     local_preprocessors: list | None = None,
+    unit: str | None = None,
 ) -> dict:
     """
     Measure how often one event is followed by another, against its baseline.
@@ -548,6 +549,9 @@ def get_conversion_rate(
     local_preprocessors:
         Optional one-off preprocessing applied on top of the base stream for
         this measurement only. Same format as update_base_stream preprocessors.
+    unit:
+        Explicit "path" is required for non_overlapping start anchors. This
+        method never counts matches; use get_match_conversion for that unit.
 
     Returns
     -------
@@ -575,6 +579,7 @@ def get_conversion_rate(
             end_anchor=end_anchor,
             within=within,
             path_col=path_col or None,
+            unit=unit,
         )
     except Exception as exc:
         return {"error": str(exc)}
@@ -587,6 +592,7 @@ def get_conversion_rate(
         return None if math.isnan(value) else round(value, 4)
 
     return {
+        "unit": "path",
         "path_col": path_col or src.schema.path_col,
         "within": within,
         "rows": [
@@ -602,6 +608,100 @@ def get_conversion_rate(
             for row in frame.to_dict("records")
         ],
     }
+
+
+def _match_table(session, method, kwargs, local_preprocessors, limit):
+    if (err := _require_stream(session)) is not None:
+        return err
+    if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 10000:
+        return {"error": "limit must be an integer between 1 and 10000"}
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+        frame = getattr(src, method)(**kwargs)
+    except Exception as exc:
+        return {"error": str(exc)}
+    result = {
+        "unit": "match",
+        "path_col": kwargs["path_col"],
+        "pattern": kwargs["pattern"],
+        "matches": len(frame),
+        "returned_rows": min(limit, len(frame)),
+        "truncated": len(frame) > limit,
+        "rows": json.loads(
+            frame.head(limit).to_json(orient="records", date_format="iso")
+        ),
+    }
+    if "converted" in frame:
+        result.update(
+            converted=int(frame.converted.sum()),
+            conversion_rate=float(frame.converted.mean()) if len(frame) else None,
+            from_boundary=kwargs["from_boundary"],
+            attribution=kwargs["attribution"],
+            within=kwargs.get("within"),
+            target_event=kwargs["target_event"],
+        )
+    return result
+
+
+def find_matches(
+    session,
+    pattern: str,
+    path_col: str,
+    event_col: str | None = None,
+    local_preprocessors: list | None = None,
+    limit: int = 100,
+) -> dict:
+    """Inspect complete leftmost non-overlapping matches before marking/counting.
+
+    path_col is explicit. Greedy groups / lazy gaps determine the episodes;
+    unrestricted group gaps can consume a target. Returns match_id and full
+    start/end bounds, including singleton runs. match_id is local to each path.
+    Only displayed rows are limited: matches is the full count and truncated
+    explicitly reports omitted rows. No report tab is created.
+    """
+    return _match_table(
+        session,
+        "find_matches",
+        dict(pattern=pattern, path_col=path_col, event_col=event_col),
+        local_preprocessors,
+        limit,
+    )
+
+
+def get_match_conversion(
+    session,
+    pattern: str,
+    target_event: str,
+    path_col: str,
+    from_boundary: str,
+    attribution: str,
+    within=None,
+    local_preprocessors: list | None = None,
+    limit: int = 100,
+) -> dict:
+    """Measure match-level conversion with an explicit boundary and attribution.
+
+    from_boundary must be start or end; attribution must be any_later, which
+    allows one target event to convert several earlier episodes. target_event
+    is a literal event name. within is events/time, None means to path end.
+    The denominator matches and conversion_rate use ALL matches, even when
+    displayed rows are truncated. No matches gives null rate. Always report
+    unit, denominator, boundary and attribution with the result.
+    """
+    return _match_table(
+        session,
+        "get_match_conversion",
+        dict(
+            pattern=pattern,
+            target_event=target_event,
+            path_col=path_col,
+            from_boundary=from_boundary,
+            attribution=attribution,
+            within=within,
+        ),
+        local_preprocessors,
+        limit,
+    )
 
 
 def check_analysis(analysis: str) -> dict:

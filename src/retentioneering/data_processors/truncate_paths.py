@@ -62,10 +62,11 @@ class TruncatePaths(DataProcessor):
         # every position the anchor can occupy, which says nothing about where
         # to cut — the processor that wants them all is `add_events`.
         for spec in specs:
-            if spec.occurrence == "all":
+            if spec.occurrence in anchors.MULTI_OCCURRENCES:
                 raise PreprocessingConfigError(
                     PROCESSOR_NAME,
-                    f"Parameter '{param}' cannot use occurrence='all': a window "
+                    f"Parameter '{param}' cannot use occurrence="
+                    f"{spec.occurrence!r}: a window "
                     f"bound must resolve to a single position. Use 'first' or "
                     f"'last' here; to mark every occurrence of an anchor, use "
                     f"`add_events(anchor=...)`.",

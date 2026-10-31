@@ -32,6 +32,13 @@ class PatternSyntaxError(RetentioneeringError):
         super().__init__(message, "PATTERN_SYNTAX")
 
 
+class PatternMatchLimitError(RetentioneeringError):
+    """A non-overlapping match exceeded its explicit work/memory budget."""
+
+    def __init__(self, message: str):
+        super().__init__(message, "PATTERN_MATCH_LIMIT")
+
+
 class InvalidParameterError(RetentioneeringError):
     def __init__(self, param_name: str, value: str, allowed_values: list | None = None):
         message = f"Invalid value '{value}' for parameter '{param_name}'"

@@ -474,6 +474,7 @@ def _build_server(
         within: int | str | None = None,
         path_col: str | None = None,
         local_preprocessors: list | None = None,
+        unit: str | None = None,
     ) -> str:
         """
         Measure how often one event is followed by another, against its baseline.
@@ -511,6 +512,9 @@ def _build_server(
         local_preprocessors:
             One-off preprocessing for this measurement only. Same format as
             update_base_stream.
+        unit:
+            Pass "path" explicitly for non_overlapping start anchors. For a
+            denominator of matches, use get_match_conversion instead.
 
         Returns
         -------
@@ -521,9 +525,71 @@ def _build_server(
         1 means the start event makes the target LESS likely.
         """
         result = tools.get_conversion_rate(
-            session, start_anchor, end_anchor, within, path_col, local_preprocessors
+            session,
+            start_anchor,
+            end_anchor,
+            within,
+            path_col,
+            local_preprocessors,
+            unit,
         )
         return json.dumps(result, ensure_ascii=False)
+
+    @_tool()
+    def find_matches(
+        pattern: str,
+        path_col: str,
+        event_col: str | None = None,
+        local_preprocessors: list | None = None,
+        limit: int = 100,
+    ) -> str:
+        """Inspect leftmost non-overlapping episodes with explicit path_col.
+
+        Returns local match_id and full start/end bounds. Greedy groups and
+        lazy gaps define episodes; a group's unrestricted gap can cross a
+        target. matches is the full count; truncated reports omitted display
+        rows when limit applies. No tab is created.
+        """
+        return json.dumps(
+            tools.find_matches(
+                session, pattern, path_col, event_col, local_preprocessors, limit
+            ),
+            ensure_ascii=False,
+        )
+
+    @_tool()
+    def get_match_conversion(
+        pattern: str,
+        target_event: str,
+        path_col: str,
+        from_boundary: str,
+        attribution: str,
+        within: int | str | None = None,
+        local_preprocessors: list | None = None,
+        limit: int = 100,
+    ) -> str:
+        """Compute one outcome per match, not per path.
+
+        Explicit from_boundary=start/end and attribution=any_later are required:
+        one later target can convert several matches. target_event is a literal
+        name. within counts events or duration; None looks to path end. Rates
+        and denominators use all rows, even if returned rows are truncated.
+        Report unit, denominator, boundary and attribution alongside the rate.
+        """
+        return json.dumps(
+            tools.get_match_conversion(
+                session,
+                pattern,
+                target_event,
+                path_col,
+                from_boundary,
+                attribution,
+                within,
+                local_preprocessors,
+                limit,
+            ),
+            ensure_ascii=False,
+        )
 
     @_tool()
     def check_analysis(analysis: str) -> str:

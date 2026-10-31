@@ -434,7 +434,7 @@ export function familyText(payload: Pick<MatrixPayload, "correction" | "n_tested
   const of = payload.n_rows != null ? ` of ${payload.n_rows}` : "";
   return payload.correction === "none"
     ? `no correction, ${tested}${of} ${what} tested`
-    : `${payload.correction} over ${tested}${of} tested ${what}`;
+    : `${payload.correction} over ${tested} tested${of} ${what}`;
 }
 
 /** The population and window, in words. */

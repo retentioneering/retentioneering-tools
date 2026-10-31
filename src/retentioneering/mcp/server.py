@@ -1113,9 +1113,11 @@ def _build_server(
         a smaller vocabulary makes more rows testable on the same data: merge
         chains, relabel rare events to `other` or drop them, merge thin synonyms,
         one step at a time; `target` picks the step. Arm-blind (pooled paths and
-        arm sizes only), so the screen on the compressed stream keeps its error
-        control. Apply the returned preprocessor in local_preprocessors of the
-        screen; fix the plan BEFORE reading that screen.
+        arm sizes only): a safeguard against tuning the plan to the arms, not a
+        guarantee of the compressed screen's false discovery rate, so report that
+        screen as exploratory. Apply the returned preprocessor (it names its
+        path_col) in local_preprocessors of the screen; with by there is no ready
+        preprocessor (see scope). Fix the plan BEFORE reading that screen.
 
         Parameters
         ----------
@@ -1164,7 +1166,9 @@ def _build_server(
         cells, testable, untestable, untestable_share, median_mde, mass_retained,
         artificial_transitions), reading (quote it), homogeneity, path (to one
         step after the chosen), n_changed, changes (event, action, label, members,
-        step, operation, path_share, reason) and preprocessor (compress_events).
+        step, operation, path_share, reason) and preprocessor (compress_events
+        with path_col; null with by, where plan, scope and apply say how to use
+        the segment's plan, and with status "no_events_in_window").
         """
         result = tools.get_ab_compression(
             session,

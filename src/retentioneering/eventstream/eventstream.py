@@ -1849,7 +1849,10 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
         with the same neighbours) when that pools thin cells. Every statistic is
         computed on the pooled paths of both arms — the arm of a path is never
         read, only the two arm sizes — so the vocabulary is not selected on the
-        outcome. The transition and step screens get different plans (see
+        outcome. That is a safeguard, not a guarantee that the screen on the
+        compressed stream keeps its false discovery rate: read it as exploratory
+        unless the plan was fixed on other data (see the A/B guide). The
+        transition and step screens get different plans (see
         `screen`). By default the plan is taken at the earliest step that brings
         the share of the screen's observations in cells too thin to test close
         to its lowest (see `target`), so a dense screen keeps its vocabulary.
@@ -1892,7 +1895,9 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             `screen="steps"` only (default 10): the steps of the screen.
         edges : list of tuple, optional
             `screen="transitions"` only: a declared family of `(source, target)`
-            edges; their events are never changed.
+            edges; their events are never changed. This protects their names, not
+            the family's numbers: the plan still counts every cell of the screen,
+            so the declared edges' own MDE can differ from the plan's median.
         min_path_share : float, default 0.01
             An event in fewer than this share of the compared paths is rare. A
             rare event with a synonym (see `synonym_threshold`) is merged into it
@@ -1962,6 +1967,9 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             Events never dropped, relabelled or merged. Declare the events the
             treatment introduces or changes: the plan cannot see the arms, so it
             cannot tell a synonym from the treatment's replacement of an event.
+            A kept event keeps its label only: dropping or merging the events
+            around it can still change what comes before or after it, and at
+            which step it stands.
         other : str, default "other"
             The label of relabelled rare events; must not be an event already.
         by : str, optional
@@ -2014,12 +2022,18 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             side and is not counted), `median_mde` (of the testable cells, at the
             projected family's `alpha / m`), `median_scale_needed` and
             `scale_to_test_90` (with `target_delta`), `transitions`,
-            `mass_retained` (the
-            share of the original transitions still transitions, not artificial),
+            `mass_retained` (of the original transitions, counted path by path,
+            the share still a transition between two labels and not artificial:
+            how much of the transition structure survives, not how much
+            information; a rare event can carry the effect),
             `artificial_transitions` (compressed edges no original direct
-            transition maps to, counted once), `artificial_mass` (the
+            transition maps to, counted once: a pooled structural check, which
+            does not show that each path's route, or a distinction such as
+            submit and success, survives), `artificial_mass` (the
             transitions on them) and `reason` (the operation's evidence in
-            words) — `chosen_step`, `mappings` (the
+            words) — `status` (`"ok"`, or `"no_events_in_window"` when no
+            compared path has an event in the analysed window: the plan is then
+            empty and a warning says so), `mde_basis`, `chosen_step`, `mappings` (the
             `{event: label}` of every step), `homogeneity` (effective vocabulary
             size `exp(entropy)` of the event distribution, transition entropy in
             bits, distinct-path share, and the numbers before and after) and the
@@ -2030,8 +2044,11 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
         DiffConfigError, InvalidParameterError, EmptyEventstreamError
             As in `get_ab_transitions`; an argument of the other screen
             (`max_steps` with `screen="transitions"`, `edge_weight` or `edges`
-            with `screen="steps"`), an unknown `keep` event or `by` column, or an
-            `other` label that is already an event raise `InvalidParameterError`.
+            with `screen="steps"`), an unknown `keep` event or `by` column, a `by`
+            column that changes within a compared path, or whose levels print
+            alike (`1` and `"1"`), none of whose values is on a compared path, or
+            an `other` label that is already an event raise
+            `InvalidParameterError`.
 
         Examples
         --------
@@ -2921,25 +2938,35 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
         does not name, and plan events the stream does not have, are left as they
         are.
 
+        The result is checked against the plan's own reading of every path (its
+        labels in path order, a run of a merged label as one event), and a
+        mismatch raises instead of returning a stream compressed differently from
+        the plan. Every form of a plan is normalised to the same mapping first,
+        so equivalent plans give the same stream.
+
         Parameters
         ----------
         plan : pandas.DataFrame, list of dict or dict
-            What to do with each event.
+            What to do with each event. Each event appears once.
 
             - a `get_ab_compression` frame (or `frame.to_dict("records")`): its
               `action` column says it — `"keep"`, `"drop"`, `"merge"` (renamed
               to `label`; runs of the label collapse into one event) or
               `"other"` (renamed to `label`, runs kept, so every event keeps its
               position). A frame built `by` a segment is refused unless it holds
-              one segment's rows.
+              one segment's rows, and then only on a stream of that segment alone.
             - a mapping `{event: label}`: `None` drops the event, a label renames
               it; a label shared by two or more events is a merge (runs
-              collapse). To relabel several events without collapsing their runs,
-              pass a frame with `action="other"` or call `rename_events`.
+              collapse), an event mapped to its own name counting as one of them
+              (`{"A": "B", "B": "B"}` merges `A` and `B`). A label that is already
+              an event of the stream must be named in the plan too. To relabel
+              several events without collapsing their runs, pass a frame with
+              `action="other"` or call `rename_events`.
         path_col : str, optional
             The grain within which runs collapse; defaults to `schema.path_col`.
             A plan frame records the `path_col` it was built on, and a different
-            one raises: pass `path_col=plan.attrs["path_col"]`.
+            one raises: pass `path_col=plan.attrs["path_col"]`. A list of rows or
+            a mapping records none, so pass the grain it was built on.
 
         Examples
         --------
@@ -2974,10 +3001,43 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
                     "collapse within that grain"
                 ),
             )
+        self._check_plan_scope(plan)
         new_df, new_schema = CompressEvents(plan, path_col=grain).apply(
             self._df, self.schema
         )
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
+
+    def _check_plan_scope(self, plan) -> None:
+        """A plan learned within one `by` segment applies to a stream of that
+        segment alone: anywhere else it changes paths it was not learned on."""
+        if not isinstance(plan, pd.DataFrame):
+            return
+        by = (plan.attrs or {}).get("by")
+        if by is None or by not in plan.columns or not len(plan):
+            return
+        if plan[by].nunique(dropna=False) > 1:
+            return  # several segments' plans: plan_mapping refuses them
+        value = plan[by].iloc[0]
+        if by not in self._df.columns:
+            return
+        others = [v for v in pd.unique(self._df[by].dropna()) if v != value]
+        if not others:
+            return
+        from retentioneering.exceptions import InvalidParameterError
+
+        shown = ", ".join(repr(v) for v in others[:5])
+        raise InvalidParameterError(
+            "plan",
+            f"the plan of {by} == {value!r}",
+            [f"a stream whose paths are all {by} == {value!r}"],
+            reason=(
+                f"the stream also holds {by} {shown}, whose events the plan was not "
+                "learned on. Analyse the segment on its own: filter the stream, e.g. "
+                f'filter_paths({{"in_segment": {{"segment_name": "{by}", '
+                f'"segment_level": {value!r}, "mode": "all"}}}}), and restrict the '
+                "assignment table to the same paths"
+            ),
+        )
 
     @_tracked("dp_to_daily_states")
     @_op

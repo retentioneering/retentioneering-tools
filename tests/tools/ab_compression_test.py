@@ -558,7 +558,19 @@ class TestThroughProcessors:
         with pytest.raises(InvalidParameterError, match="one segment"):
             toy.compress_events(plan)
         one = plan[plan["segment"] == "mixed"]
-        toy.compress_events(one)
+        # one segment's plan applies to a stream of that segment alone
+        with pytest.raises(InvalidParameterError, match="also holds segment"):
+            toy.compress_events(one)
+        mixed = toy.filter_paths(
+            {
+                "in_segment": {
+                    "segment_name": "segment",
+                    "segment_level": "mixed",
+                    "mode": "all",
+                }
+            }
+        )
+        mixed.compress_events(one)
 
     def test_path_col_of_the_plan(self, toy):
         df = toy.to_dataframe()

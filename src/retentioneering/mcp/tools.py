@@ -251,7 +251,9 @@ _MCP_RESULT_NOTES = {
         "Through MCP get_ab_compression returns, per segment, the numbers before "
         "and after the chosen step, the path up to it, the top changed events with "
         "their reasons and a ready preprocessor step ({'type': 'compress_events', "
-        "'plan': [...]}) for local_preprocessors, not the plan frame. See mcp_docs."
+        "'plan': [...], 'path_col': ...}) for local_preprocessors, not the plan "
+        "frame. With by there is no ready step: each segment's plan comes with its "
+        "scope, for a session of that segment alone. See mcp_docs."
     ),
     "get_ab_bootstrap": (
         "Through MCP get_ab_bootstrap returns a contrast summary, not the "
@@ -2094,9 +2096,21 @@ def _compression_value(value: Any) -> Any:
 
 
 def _compression_segment(
-    key: str, path: pd.DataFrame, plan: pd.DataFrame, chosen: int, top: int
+    key: str,
+    path: pd.DataFrame,
+    plan: pd.DataFrame,
+    chosen: int,
+    top: int,
+    path_col: str,
+    by: str | None = None,
 ) -> dict:
-    """One segment of the compact compression result."""
+    """One segment of the compact compression result.
+
+    Without ``by`` the plan comes with a ready ``compress_events`` step that names
+    its grain (``path_col``): replayed without it, runs would collapse at the
+    stream's default grain, across the plan's paths. A segment's plan has no
+    ready step: it was learned on that segment's paths alone, and the session's
+    stream and assignment hold every segment (``scope`` says which one it is)."""
     rows = path.to_dict("records")
     by_step = {int(r["step"]): r for r in rows}
     last = max(by_step) if by_step else 0
@@ -2176,7 +2190,36 @@ def _compression_segment(
             {c: _compression_value(r[c]) for c in _COMPRESSION_PLAN_COLUMNS}
             for r in changed.head(int(top)).to_dict("records")
         ],
-        "preprocessor": {"type": "compress_events", "plan": steps_plan},
+        **_compression_apply(steps_plan, path_col, by, plan),
+    }
+
+
+def _compression_apply(
+    steps_plan: list, path_col: str, by: str | None, plan: pd.DataFrame
+) -> dict:
+    """``preprocessor`` (and, for a segment's plan, ``scope`` and ``apply``)."""
+    if by is None:
+        return {
+            "preprocessor": {
+                "type": "compress_events",
+                "plan": steps_plan,
+                "path_col": path_col,
+            }
+        }
+    value = plan[by].iloc[0] if len(plan) else None
+    return {
+        "preprocessor": None,
+        "scope": {"column": by, "value": _compression_value(value)},
+        "apply": (
+            f"not a ready step: this plan was learned on the paths with {by} == "
+            f"{value!r} alone. Applied to the session's stream it would change the "
+            "other segments' paths too, and filtering the stream would leave their "
+            "assigned users in the analysis as silent paths. Analyse the segment in "
+            "a session (or Python code) whose stream and assignment hold that "
+            "segment alone, then apply these rows there with compress_events "
+            f"(path_col={path_col!r})"
+        ),
+        "plan": steps_plan,
     }
 
 
@@ -2215,10 +2258,13 @@ def get_ab_compression(
     always followed by the next), relabels rare events to `other` or drops them,
     and merges thin synonyms, one step at a time, and picks the step by `target`.
     Arm-blind: it reads the pooled paths of both arms and the arm sizes, never
-    which arm a path is in, so the screen run on the compressed stream keeps its
-    error control. Apply the plan with the returned preprocessor (compress_events)
-    in local_preprocessors of get_ab_transitions / get_ab_steps. Fix the plan
-    BEFORE reading that screen; never pick a step by the screen's verdicts.
+    which arm a path is in, so it cannot be tuned to where the arms differ. That is
+    a safeguard, not a guarantee that the screen on the compressed stream keeps its
+    false discovery rate: report that screen's findings as exploratory. Apply the
+    plan with the returned preprocessor (compress_events, with its path_col) in
+    local_preprocessors of get_ab_transitions / get_ab_steps. A plan built with by
+    has no ready preprocessor (its scope says which segment it is for). Fix the
+    plan BEFORE reading that screen; never pick a step by the screen's verdicts.
 
     Parameters
     ----------
@@ -2288,8 +2334,13 @@ def get_ab_compression(
     ...), path (steps 0 to one after the chosen: operation, events, label, the
     numbers and the reason), n_changed, changes (the top events whose label
     changes: action, label, members, step, operation, path_share, reason) and preprocessor
-    ({"type": "compress_events", "plan": [...]}: the whole plan, ready for
-    local_preprocessors; with by, it is that segment's plan).
+    ({"type": "compress_events", "plan": [...], "path_col": ...}: the whole plan
+    with the grain it was built on, ready for local_preprocessors). With by,
+    preprocessor is null: the segment's plan comes as plan, with scope (the
+    segment column and value) and apply (how to use it), since the session's
+    stream holds every segment. status is "no_events_in_window" (and
+    preprocessor null) when no compared path has an event in the analysed
+    window. mde_basis: the plan's MDE is a pooled proxy of the screen's.
     """
     if (err := _require_stream(session)) is not None:
         return err
@@ -2342,7 +2393,9 @@ def get_ab_compression(
             pick = chosen[key]
         else:
             part, rows, pick = path, plan, chosen
-        entry = _compression_segment(key, part, rows, int(pick), top)
+        entry = _compression_segment(
+            key, part, rows, int(pick), top, meta.get("path_col"), by
+        )
         h = next((h for h in homogeneity if str(h.get("segment")) == key), {})
         entry["homogeneity"] = {
             name: _compression_value(h.get(name))
@@ -2354,9 +2407,17 @@ def get_ab_compression(
                 "distinct_path_share",
             )
         }
+        if meta.get("status") == "no_events_in_window":
+            entry["reading"] = (
+                "no plan: no event of the compared paths falls in the analysed "
+                "window (assignment and horizon), so there is no vocabulary to learn "
+                "from; check the assignment times and the horizon"
+            )
+            entry["preprocessor"] = None
         segments.append(entry)
     weight = meta.get("edge_weight")
     return {
+        "status": meta.get("status", "ok"),
         "diff": list(diff),
         "screen": meta.get("screen"),
         "edge_weight": weight,
@@ -2369,10 +2430,13 @@ def get_ab_compression(
         "target_delta": meta.get("target_delta"),
         "by": by,
         "by_pre_exposure": meta.get("by_pre_exposure"),
+        "mde_basis": meta.get("mde_basis"),
         "arm_blind": (
             "the plan reads the pooled paths of both arms and the arm sizes, never "
-            "which arm a path is in: the screen on the compressed stream keeps its "
-            "error control. Fix the plan before reading that screen"
+            "which arm a path is in, so it is not tuned to the arms' differences. "
+            "That is a safeguard, not a guarantee of the false discovery rate of "
+            "the screen on the compressed stream: report its findings as "
+            "exploratory. Fix the plan before reading that screen"
         ),
         "unit": "value" if weight == "avg_per_path" else "pp",
         "segments": segments,

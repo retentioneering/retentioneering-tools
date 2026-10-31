@@ -333,9 +333,14 @@ leaves fewer untestable cells and loses no testable one. `keep` events,
 Arm-blind: every statistic is pooled; the plan reads the two arm sizes (for the
 MDE) and never a path's arm, so permuting the arms or swapping them in `diff`
 leaves it identical (tested). Choosing the vocabulary from arm differences would be
-selection on the outcome; filtering on the pooled support, which does not depend
-on the arms under the null, is independent filtering and keeps BH valid (Bourgon,
-Gentleman and Huber, 2010). The plan's statistics read each path's whole window,
+selection on the outcome. Arm blindness is a safeguard, not a proof of BH
+validity: independent filtering (Bourgon, Gentleman and Huber, 2010) covers
+dropping hypotheses on a statistic independent of the test under the null, while
+a plan also merges and relabels events, moves step positions and changes the
+dependence between cells, and the screen's tests are approximate. The docs call
+the compressed screen exploratory and point to a vocabulary fixed on other data
+(earlier paths, a held-out split of the units) for a confirmatory reading; a
+calibration study under global and mixed nulls is open work. The plan's statistics read each path's whole window,
 not the first `max_steps` steps: the plan applies to the stream.
 
 Deviations from the first design, with their reason:

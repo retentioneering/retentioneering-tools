@@ -237,9 +237,11 @@ times counts once. For a per-visit figure, carve out the subpopulation with
    longer. `get_ab_compression(diff=[...], screen="transitions" | "steps",
    keep=[the treatment's own events, the metric's events])` proposes a smaller
    vocabulary (chains merged, rare events relabelled `other` or dropped) chosen
-   without the arms; pass its `preprocessor` in `local_preprocessors` of the screen.
-   Fix the plan before reading that screen, and never choose a step by its
-   verdicts. Quote `reading`; say when the chosen step is 0 (the cells too thin
+   without the arms; pass its `preprocessor` in `local_preprocessors` of the screen
+   (with `by` there is none: each segment's plan is for a session of that segment
+   alone). Arm blindness is a safeguard, not a guarantee of the screen's false
+   discovery rate: report the compressed screen as exploratory. Fix the plan
+   before reading that screen, and never choose a step by its verdicts. Quote `reading`; say when the chosen step is 0 (the cells too thin
    to test hold almost none of the observations: the vocabulary already suits the
    data). With `max_events` the plan merges direct neighbours, in labels of at
    most `max_group_size` events, rather than dropping frequent events; when it

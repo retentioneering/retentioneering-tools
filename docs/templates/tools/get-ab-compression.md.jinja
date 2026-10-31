@@ -121,14 +121,58 @@ place), so the steps plan relabels it `other` to keep the later steps in place.
 Every statistic that drives the plan is computed on the pooled paths of both
 arms: the arm of a path is never read, only the two arm sizes (for the MDE).
 Choosing the vocabulary from the arms' differences would be selection on the
-outcome, and the screen on the compressed stream would no longer control its
-false discoveries; filtering on a statistic that is independent of the arms
-under the null, as the pooled support is, keeps Benjamini-Hochberg valid
-("independent filtering", Bourgon, Gentleman and Huber, 2010). Permuting the
-arm labels, or swapping the arms in `diff`, leaves the plan identical. Fix the
+outcome: the screen on the compressed stream would find what the selection put
+there. Permuting the arm labels, or swapping the arms in `diff`, leaves the plan
+identical.
+
+That is a safeguard, not a guarantee that the compressed screen keeps its false
+discovery rate. Independent filtering (Bourgon, Gentleman and Huber, 2010)
+covers dropping hypotheses on a statistic independent of the test under the
+null; a plan also merges and relabels events, moves step positions and changes
+which cells depend on each other. Read the compressed screen as exploratory, or
+fix the vocabulary on other data (earlier paths, a held-out split of the units)
+before reading the experiment. Fix the
 plan before reading the screen it is for, and declare the events the treatment
 introduces or changes in `keep`: the plan cannot see the arms, so it cannot tell
 a synonym from the treatment's replacement of an event.
+
+### What a plan's numbers are, and what they are not
+
+- **The MDE and testable cells are pooled proxies** (`attrs["mde_basis"]`). The
+  plan uses the spread of both arms together, linearised for ratio and count
+  weights; the screen uses each arm's own Welch or bootstrap spread. The events
+  are applied exactly (`compress_events` checks it), but the screen's MDE on the
+  compressed stream can differ from the plan's.
+- **`keep` keeps a label, not a transition.** A kept event is never dropped,
+  relabelled or merged, but dropping or merging the events around it can change
+  what comes before or after it, and at which step it stands.
+- **`edges=` protects names, not the family.** The declared edges' events are
+  never changed, but the plan still counts every cell of the screen: its median
+  MDE is the screen's, not the declared family's.
+- **Artificial transitions are a pooled structural check.** An edge counts as
+  artificial when no path had a direct transition that maps to it. Zero does not
+  mean that every path's route survives, nor that a business distinction does:
+  merging `submit` and `success` creates no artificial edge and still hides the
+  failed submits. Check the merged labels a cap produces.
+- **Mass retained is not information retained.** `mass_retained` is the share of
+  the original transitions, counted path by path, that are still a transition
+  between two labels and not artificial. A common event of little interest can
+  carry most of that mass while a rare payment failure carries the effect.
+
+### Applying a plan
+
+`compress_events(plan)` applies the plan's own reading of the paths: it drops
+and relabels, collapses the merged runs per path at the plan's `path_col`, and
+compares the result path by path with the plan's. If they differ, it raises
+rather than return a stream compressed otherwise. A plan built with `by=` is one
+segment's: apply it to a stream of that segment alone (`filter_paths` with
+`in_segment`), otherwise `compress_events` refuses it. A plan given as a dict or
+as rows is normalised the same way as the frame, one row per event: an event in
+two rows, or a label that is another event the plan changes, raises.
+
+When no compared path has an event in the analysed window (assignment times
+after the last event, or a short `horizon`), the plan is empty,
+`attrs["status"]` is `"no_events_in_window"`, and a warning says why.
 
 ### Homogeneity
 

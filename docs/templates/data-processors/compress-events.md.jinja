@@ -19,11 +19,29 @@ The plan comes in three shapes:
   deletes the event; `"merge"` renames it to `label`, and each run of the label
   becomes one event; `"other"` renames it to `label` and keeps its runs, so
   every event keeps its position. A frame built `by` a segment holds one plan
-  per segment, and is refused unless it holds one segment's rows.
+  per segment, and is refused unless it holds one segment's rows; one segment's
+  plan is refused on a stream that holds other segments' paths too (filter the
+  stream to the segment first: `filter_paths` with `in_segment`).
 - **a mapping `{event: label}`**: `None` drops the event, a label renames it,
-  and a label shared by two or more events is a merge (its runs collapse).
+  and a label shared by two or more events is a merge (its runs collapse). An
+  event mapped to itself counts as a member of its label: `{"A": "B", "B": "B"}`
+  merges `A` and `B` into `B`, as the frame form does.
 - an event the plan does not name, and a plan event the stream does not have,
   are left as they are.
+
+The three shapes are read by one rule, so they give the same stream. A plan with
+an event in two rows, a label that is another event the plan drops or renames,
+or a label that is an event of the stream the plan does not name (renaming into
+it would merge them silently) raises `PreprocessingConfigError` or
+`InvalidParameterError` before anything is changed.
+
+**The result is checked.** After the two processors, every path is compared with
+the plan's own reading of it: the path in path order, the plan's labels, each run
+of a merged label read as one event. If they differ in any path, the step raises
+instead of returning a stream compressed otherwise than the plan says. That can
+happen where the processors read events that share a timestamp in another order
+than the plan does, for example markers added by `add_events` at a timestamp
+other events share.
 
 Before: `home → catalog → debug_ping → product_view → add_to_cart_v1 →
 add_to_cart_v2 → cart`

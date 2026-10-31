@@ -32,17 +32,31 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   short of the cap when none is left; `max_group_size` (default 5) bounds every
   merged label, a long one is written `first+…+last (k)` with its events in
   `members`; `target_delta=` adds the users each step's vocabulary needs. Each screen gets its own plan; `by=`
-  builds one per pre-exposure segment with a homogeneity summary; `keep=`
-  protects the treatment's and the metric's events.
+  builds one per pre-exposure segment with a homogeneity summary (the segment
+  must be constant per path, as `strata_col`, and its levels must differ as
+  text); `keep=` protects the treatment's and the metric's events. Arm blindness
+  keeps the plan from being tuned to the arms; it does not guarantee the
+  compressed screen's false discovery rate, so the docs call that screen
+  exploratory, and `attrs["mde_basis"]` names the plan's MDE as a pooled proxy of
+  the screen's. With no event in the analysed window the plan is empty and
+  `attrs["status"]` is `"no_events_in_window"`.
 - `compress_events(plan)` applies a plan (the frame, its rows, or a
-  `{event: label | None}` mapping) through `edit_events` and `collapse_events`.
+  `{event: label | None}` mapping) through `edit_events` and `collapse_events`,
+  then checks every path against the plan's own reading and raises rather than
+  return a different compression (events sharing a timestamp can be read in
+  another order by the processors). The three forms are read by one rule: an
+  event mapped to itself is a member of its label, and an event in two rows or
+  a label that is another event of the stream raises. A plan learned within one
+  `by` segment is refused on a stream that holds other segments.
 - The `ab_compression` widget (twin `ab_compression_data`) draws the plan's path,
   a slider over its steps, the mapping at each step and the numbers before and
-  after; its static export keeps the slider.
+  after; its static export keeps the slider. Its arguments are checked as the
+  getter checks them, and its apply line names the plan's own arguments.
 - MCP: `get_ab_transitions_power`, `get_ab_steps_power` and `get_ab_compression`
   tools with compact results (the compression result carries a ready
-  `compress_events` preprocessor step); `compress_events` is a documented
-  preprocessor.
+  `compress_events` preprocessor step with the plan's `path_col`; a `by` plan
+  comes with its segment's scope instead of a step); `compress_events` is a
+  documented preprocessor.
 
 - `add_segment(name, path_values=...)` adds a segment from one value per path —
   a pandas Series indexed by path id or a dict — broadcast to every event of the

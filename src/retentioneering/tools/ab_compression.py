@@ -13,10 +13,21 @@ Design (ADR-0017, amendment "Data sufficiency and vocabulary compression")
   paths of both arms; the arm of a path is never read. The only numbers taken from
   the design are the two arm sizes, which a permutation of the labels does not
   change (within a ``by`` segment, the segment's paths split in the design's
-  allocation ratio). Choosing a vocabulary from the arms' differences would be a
-  selection on the outcome; a filter on pooled support is independent of the test
-  statistic under the null ("independent filtering", Bourgon, Gentleman and Huber,
-  PNAS 2010), so Benjamini-Hochberg over the rows that remain keeps its guarantee.
+  allocation ratio). So the vocabulary cannot be tuned to where the arms differ,
+  and permuting the arms leaves the plan identical (tested). That is a safeguard,
+  not a proof that the screen on the compressed stream keeps its false discovery
+  rate: independent filtering (Bourgon, Gentleman and Huber, PNAS 2010) covers
+  dropping hypotheses on a statistic independent of the test under the null,
+  while a plan also merges and relabels events, moves step positions and changes
+  which cells depend on each other, and the screen's tests are approximate. Read
+  the compressed screen as exploratory unless a validated contract applies, such
+  as a vocabulary frozen on other data (earlier paths, or a held-out split of the
+  units) before the experiment is read.
+* **Planning numbers are pooled proxies.** The MDE that steers the plan uses the
+  pooled spread of both arms (linearised for ratio and count weights), not the
+  screen's per-arm Welch or bootstrap spread; ``attrs["mde_basis"]`` says so. The
+  events of the plan are applied exactly (``compress_events`` checks it); the
+  screen's own MDE on the compressed stream can still differ from the plan's.
 * **A greedy path.** The plan is built one operation at a time on the current
   compressed paths, in an order that depends on the screen; after every operation
   the screen's numbers (cells, testable cells, median MDE) and the path metrics
@@ -67,7 +78,7 @@ import pandas as pd
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.exceptions import InvalidParameterError
 from retentioneering.tools import _stats
-from retentioneering.tools._diff import warn_user
+from retentioneering.tools._diff import MISSING, MULTI, per_path_label, warn_user
 from retentioneering.tools.ab_test import (
     CORRECTIONS,
     _provenance,
@@ -1453,13 +1464,22 @@ def _plan_rows(
 
 
 def plan_mapping(plan: Any) -> tuple[dict, list[str], list[str]]:
-    """``(mapping, merged labels, other labels)`` of a plan.
+    """``(mapping, merged labels, other labels)`` of a plan, validated.
 
     ``plan`` is a ``get_ab_compression`` frame (or its rows as a list of dicts with
     ``event``, ``action`` and ``label``), or a mapping ``{event: label | None}``.
-    In a mapping, a label shared by two or more events is a merge (its runs
-    collapse); in a frame the ``action`` column says it, and ``other`` rows keep
-    their runs.
+    Every form is normalised to the same three values, so equivalent plans apply
+    the same way:
+
+    - In a mapping, ``None`` drops the event and a label shared by two or more
+      events is a merge: its runs collapse. An event mapped to its own name
+      counts as a member, so ``{"A": "B", "B": "B"}`` merges ``A`` and ``B``. A
+      label with one event renames it and keeps its runs (``other`` in a frame).
+    - In a frame the ``action`` column says it, and ``other`` rows keep their runs.
+    - Each event appears once; a label is either a merge or an ``other`` label;
+      and a label that is also an event of the plan must be one of its own
+      members (``B`` cannot be kept, or relabelled, while ``A`` merges into ``B``).
+      Anything else raises.
     """
     allowed = [
         "a get_ab_compression plan (DataFrame), its rows as a list of dicts with "
@@ -1488,17 +1508,7 @@ def plan_mapping(plan: Any) -> tuple[dict, list[str], list[str]]:
             )
         records = plan[["event", "action", "label"]].to_dict("records")
     elif isinstance(plan, dict):
-        mapping = {}
-        for event, label in plan.items():
-            if not isinstance(event, str) or not (
-                label is None or isinstance(label, str)
-            ):
-                raise InvalidParameterError("plan", {event: label}, allowed)
-            mapping[event] = label
-        shared = pd.Series([v for k, v in mapping.items() if v is not None and v != k])
-        counts = shared.value_counts()
-        merged = sorted(counts[counts >= 2].index.tolist())
-        return mapping, merged, []
+        records = _mapping_records(plan, allowed)
     elif isinstance(plan, (list, tuple)):
         records = list(plan)
         if not all(
@@ -1509,25 +1519,38 @@ def plan_mapping(plan: Any) -> tuple[dict, list[str], list[str]]:
     else:
         raise InvalidParameterError("plan", type(plan).__name__, allowed)
     mapping: dict = {}
+    action_of: dict = {}
     merged: set = set()
     others: set = set()
     for record in records:
         event, action, label = record["event"], record["action"], record["label"]
         if action not in ACTIONS:
             raise InvalidParameterError("plan", f"action {action!r}", list(ACTIONS))
-        if isinstance(label, float) and math.isnan(label):
+        if label is not None and not isinstance(label, str) and pd.isna(label):
             label = None
+        event = str(event)
+        if event in mapping:
+            raise InvalidParameterError(
+                "plan",
+                f"event '{event}' in more than one row",
+                ["one row per event"],
+                reason=(
+                    "a later row would silently override an earlier one; a plan "
+                    "of several segments must be split by segment first"
+                ),
+            )
         if action == "drop":
-            mapping[str(event)] = None
+            mapping[event] = None
         elif action == "keep":
-            mapping[str(event)] = str(event)
+            mapping[event] = event
         else:
             if label is None:
                 raise InvalidParameterError(
                     "plan", f"a {action} row of '{event}' without a label", allowed
                 )
-            mapping[str(event)] = str(label)
+            mapping[event] = str(label)
             (merged if action == "merge" else others).add(str(label))
+        action_of[event] = action
     clash = merged & others
     if clash:
         raise InvalidParameterError(
@@ -1535,7 +1558,49 @@ def plan_mapping(plan: Any) -> tuple[dict, list[str], list[str]]:
             f"labels {sorted(clash)} used by both merge and other rows",
             allowed,
         )
+    # a label that is also an event of the plan names that event too: it must be
+    # one of the label's own members, or the plan says two things about it
+    for label in sorted(merged | others):
+        if label not in mapping:
+            continue
+        kind = "merge" if label in merged else "other"
+        if mapping[label] == label and action_of[label] == kind:
+            continue
+        if mapping[label] is None:
+            what = "drops"
+        elif mapping[label] == label:
+            what = "keeps"
+        else:
+            what = f"relabels to '{mapping[label]}'"
+        raise InvalidParameterError(
+            "plan",
+            f"label '{label}' is also an event the plan {what}",
+            [f"a {kind} row of '{label}' with its own label, or another label"],
+        )
     return mapping, sorted(merged), sorted(others)
+
+
+def _mapping_records(plan: dict, allowed: list) -> list[dict]:
+    """A ``{event: label | None}`` mapping as plan rows: ``None`` drops, a label
+    shared by two or more events (an event mapped to itself included) merges, a
+    label of one other event relabels it with its runs kept, and an event mapped
+    to itself alone is kept."""
+    for event, label in plan.items():
+        if not isinstance(event, str) or not (label is None or isinstance(label, str)):
+            raise InvalidParameterError("plan", {event: label}, allowed)
+    sizes = pd.Series([v for v in plan.values() if v is not None]).value_counts()
+    records = []
+    for event, label in plan.items():
+        if label is None:
+            action = "drop"
+        elif sizes[label] >= 2:
+            action = "merge"
+        elif label == event:
+            action = "keep"
+        else:
+            action = "other"
+        records.append({"event": event, "action": action, "label": label})
+    return records
 
 
 # ======================================================================= homogeneity
@@ -1606,14 +1671,17 @@ def _check_events(name: str, value: Any, available: set) -> list[str]:
     return events
 
 
-def ab_compression(
-    stream: "Eventstream",
-    diff: Any,
+#: ``attrs["mde_basis"]`` of a plan: what its MDE and testable cells are.
+MDE_BASIS = (
+    "pooled: the spread of both arms together (linearised for ratio and count "
+    "weights), the arm-blind proxy of the screen's per-arm Welch or bootstrap "
+    "spread; the screen's own MDE on the compressed stream can differ"
+)
+
+
+def check_arguments(
     screen: str = "transitions",
     *,
-    assignment=None,
-    horizon=None,
-    path_col: str | None = None,
     edge_weight: str | None = None,
     max_steps: int | None = None,
     edges=None,
@@ -1625,7 +1693,6 @@ def ab_compression(
     max_group_size: int = MAX_GROUP_SIZE,
     target: Any = "untestable_share",
     step: int | None = None,
-    keep=None,
     other: str = "other",
     by: str | None = None,
     by_pre_exposure: bool | None = None,
@@ -1634,10 +1701,20 @@ def ab_compression(
     power: float = 0.8,
     min_support: int = 10,
     target_delta: float | None = None,
-) -> pd.DataFrame:
-    """The plan of ``Eventstream.get_ab_compression`` (see its docstring)."""
+    **_stream_dependent: Any,
+) -> dict:
+    """Check the arguments of ``get_ab_compression`` that do not need the stream,
+    as the caller wrote them, and return them normalised (``edge_weight`` and
+    ``max_steps`` with their screen defaults, the thresholds as floats).
+
+    ``ab_compression`` calls it first; ``ABCompressionWidget`` calls it on its
+    constructor arguments before turning them into traitlets, whose sentinels
+    (``0`` for "no cap", ``-1`` for "the chosen step") would otherwise read an
+    invalid argument as a valid one. Arguments checked against the stream
+    (the events of ``edges`` and ``keep``, ``by``, ``horizon``, ``path_col``) are
+    ignored here; ``edges`` only has to be ``None`` on the steps screen.
+    """
     from retentioneering.tools.ab_power import check_target_delta
-    from retentioneering.tools.ab_transitions import _check_edges, _population
 
     target_delta = check_target_delta(target_delta)
 
@@ -1721,6 +1798,79 @@ def ab_compression(
         raise InvalidParameterError(
             "by_pre_exposure", by_pre_exposure, ["None without by"]
         )
+
+    return {
+        "edge_weight": edge_weight,
+        "max_steps": max_steps_value,
+        "min_path_share": min_path_share,
+        "chain_threshold": chain_threshold,
+        "synonym_threshold": synonym_threshold,
+        "bridge_threshold": bridge_threshold,
+        "target_delta": target_delta,
+    }
+
+
+def ab_compression(
+    stream: "Eventstream",
+    diff: Any,
+    screen: str = "transitions",
+    *,
+    assignment=None,
+    horizon=None,
+    path_col: str | None = None,
+    edge_weight: str | None = None,
+    max_steps: int | None = None,
+    edges=None,
+    min_path_share: float = 0.01,
+    chain_threshold: float = 0.8,
+    synonym_threshold: float = DEFAULT_SYNONYM_THRESHOLD,
+    bridge_threshold: float = DEFAULT_BRIDGE_THRESHOLD,
+    max_events: int | None = None,
+    max_group_size: int = MAX_GROUP_SIZE,
+    target: Any = "untestable_share",
+    step: int | None = None,
+    keep=None,
+    other: str = "other",
+    by: str | None = None,
+    by_pre_exposure: bool | None = None,
+    correction: str = "bh",
+    ci_level: float = 0.95,
+    power: float = 0.8,
+    min_support: int = 10,
+    target_delta: float | None = None,
+) -> pd.DataFrame:
+    """The plan of ``Eventstream.get_ab_compression`` (see its docstring)."""
+    from retentioneering.tools.ab_transitions import _check_edges, _population
+
+    checked = check_arguments(
+        screen,
+        edge_weight=edge_weight,
+        max_steps=max_steps,
+        edges=edges,
+        min_path_share=min_path_share,
+        chain_threshold=chain_threshold,
+        synonym_threshold=synonym_threshold,
+        bridge_threshold=bridge_threshold,
+        max_events=max_events,
+        max_group_size=max_group_size,
+        target=target,
+        step=step,
+        other=other,
+        by=by,
+        by_pre_exposure=by_pre_exposure,
+        correction=correction,
+        ci_level=ci_level,
+        power=power,
+        min_support=min_support,
+        target_delta=target_delta,
+    )
+    edge_weight = checked["edge_weight"]
+    max_steps_value = checked["max_steps"]
+    min_path_share = checked["min_path_share"]
+    chain_threshold = checked["chain_threshold"]
+    synonym_threshold = checked["synonym_threshold"]
+    bridge_threshold = checked["bridge_threshold"]
+    target_delta = checked["target_delta"]
 
     schema = stream.schema
     event_col = schema.event_col
@@ -1810,9 +1960,7 @@ def ab_compression(
         by_flag, by_source = None, None
     else:
         by_flag, by_source = _by_flag(stream, by, by_pre_exposure)
-        segment = (
-            stream.df.groupby(path_col, observed=True)[by].first().reindex(pop.path_ids)
-        )
+        segment = _segment_of_paths(stream, by, path_col, pop.path_ids)
         values = segment.astype(object).to_numpy()
         groups = []
         share1 = n1 / max(n1 + n2, 1)
@@ -1823,6 +1971,16 @@ def ab_compression(
                 (value, data.subset(rows, n_seg * share1, n_seg * (1 - share1)))
             )
         missing = int(pd.isna(segment).sum())
+        if not groups:
+            raise InvalidParameterError(
+                "by",
+                by,
+                ["a segment column with a value on the compared paths"],
+                reason=(
+                    f"none of the {len(segment)} compared paths has a '{by}' value, "
+                    "so there is no segment to build a plan for"
+                ),
+            )
         if missing:
             warn_user(
                 f"{missing} compared path(s) have no '{by}' value (no event in the "
@@ -1841,7 +1999,9 @@ def ab_compression(
             )
         stats0 = _stats_of(part, states[0], None)
         plan_rows = _plan_rows(part, states, ops, pick, stats0, protected_reason, scr)
-        frame = pd.DataFrame(plan_rows)
+        # no event in the analysed window: an empty plan (it changes nothing)
+        # that still has its columns
+        frame = pd.DataFrame(plan_rows, columns=None if plan_rows else PLAN_COLUMNS)
         path = pd.DataFrame(rows)
         # a dropped event's label is None: an object column keeps it None where
         # pandas 3 would infer a string column and turn it into NaN
@@ -1882,6 +2042,13 @@ def ab_compression(
         )
         homogeneity.append(h)
 
+    events_analysed = sum(len(part.codes) for _, part in groups)
+    if not events_analysed:
+        warn_user(
+            f"no event of the {len(pop.path_ids)} compared paths falls in the "
+            "analysed window (assignment and horizon): there is nothing to learn a "
+            "vocabulary from, so the plan is empty and changes nothing"
+        )
     plan = pd.concat(plan_parts, ignore_index=True)
     lead = [by] if by is not None else []
     plan = plan[lead + [c for c in PLAN_COLUMNS if c in plan.columns]]
@@ -1898,6 +2065,8 @@ def ab_compression(
     path = path[lead + [c for c in PATH_COLUMNS if c in path.columns] + ["members"]]
     plan.attrs = {
         "tool": "get_ab_compression",
+        "status": "ok" if events_analysed else "no_events_in_window",
+        "mde_basis": MDE_BASIS,
         "screen": screen,
         "edge_weight": edge_weight if screen == "transitions" else None,
         "max_steps": max_steps_value if screen == "steps" else None,
@@ -1930,6 +2099,35 @@ def ab_compression(
         "homogeneity": homogeneity if by is not None else homogeneity[0],
     }
     return plan
+
+
+def _segment_of_paths(stream, by: str, path_col: str, path_ids: pd.Index) -> pd.Series:
+    """The ``by`` value of every compared path (NaN without one), checked as
+    ``get_ab_test`` checks ``strata_col``: a plan per segment needs each path in one
+    segment. Levels that print alike (``1`` and ``"1"``) are refused too, since a
+    plan's ``mappings`` and ``chosen_step`` are keyed by the level's name."""
+    labels = per_path_label(stream.df, by, path_col).reindex(path_ids)
+    multi = labels.index[labels == MULTI]
+    if len(multi):
+        raise InvalidParameterError(
+            "by",
+            f"'{by}' changes within {len(multi)} compared path(s), "
+            f"e.g. {list(multi[:3])}",
+            ["a segment constant per path, such as its value at assignment"],
+        )
+    labels = labels.where(labels != MISSING)
+    levels = pd.unique(labels.dropna())
+    printed = pd.Series([str(v) for v in levels], dtype=object)
+    if printed.duplicated().any():
+        alike = sorted(
+            {repr(v) for v, p in zip(levels, printed) if (printed == p).sum() > 1}
+        )
+        raise InvalidParameterError(
+            "by",
+            f"'{by}' with levels {', '.join(alike)}, which print the same",
+            ["levels whose names differ as text (a plan keys its segments by name)"],
+        )
+    return labels
 
 
 def _by_flag(stream, by: str, declared: bool | None) -> tuple[bool, str]:

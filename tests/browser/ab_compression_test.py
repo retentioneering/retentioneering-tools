@@ -64,7 +64,13 @@ def test_static_compression_follows_the_plan_at_every_step(tmp_path):
             assert page.locator("[data-testid=abc-panel-needed]").count() == 0
             header = page.locator("[data-testid=abc-header]").inner_text()
             assert f"chosen step {chosen} of {len(path) - 1}" in header
-            assert "Arm-blind" in header
+            assert "Arm-blind" in header and "exploratory" in header
+            # the export line reproduces this plan, not the default one
+            apply = page.locator("[data-testid=abc-apply]").inner_text()
+            assert "max_events=10, keep=['quick_add', 'cart']" in apply, apply
+            assert f"step={chosen}" in apply and "assignment=assignment" in apply
+            note = page.locator("[data-testid=abc-mass-note]").inner_text()
+            assert f"of the {path.loc[0, 'transitions']} original transitions" in note
             assert page.locator("[data-testid=abc-step]").inner_text() == (
                 f"{chosen} / {len(path) - 1}"
             )
@@ -181,6 +187,55 @@ def test_static_compression_counts_the_segment_paths(tmp_path):
                 f"{plan.attrs['group2_paths']}" in text
             ), text
             assert f"platform = {first['segment']}: " in text
+            # a segment's plan applies to a stream of that segment alone
+            apply = page.locator("[data-testid=abc-apply]").inner_text()
+            assert '"segment_name": "platform"' in apply, apply
+            assert f'"segment_level": "{first["segment"]}"' in apply, apply
+            assert not errors, errors
+        finally:
+            browser.close()
+
+
+def test_static_compression_says_when_the_window_is_empty(tmp_path):
+    import warnings
+
+    import pandas as pd
+
+    from retentioneering.eventstream.eventstream import Eventstream
+
+    df = pd.DataFrame(
+        [
+            ("u1", "A", "2026-01-01 00:00", "t"),
+            ("u1", "B", "2026-01-01 00:01", "t"),
+            ("u2", "A", "2026-01-01 00:00", "c"),
+            ("u2", "B", "2026-01-01 00:01", "c"),
+        ],
+        columns=["user_id", "event", "timestamp", "arm"],
+    )
+    stream = Eventstream(df, {"segment_cols": ["arm"]})
+    table = pd.DataFrame(
+        {"arm": ["t", "c"], "assigned_at": pd.to_datetime(["2026-02-01"] * 2)},
+        index=pd.Index(["u1", "u2"], name="user_id"),
+    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        widget = stream.ab_compression(("arm", "t", "c"), assignment=table)
+    export = tmp_path / "empty.html"
+    widget.export_html(str(export))
+    with playwright.sync_playwright() as runtime:
+        browser = _launch(runtime)
+        try:
+            page = browser.new_page(viewport={"width": 1200, "height": 700})
+            errors = []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.goto(export.as_uri())
+            empty = page.locator("[data-testid=abc-no-events]")
+            empty.wait_for(state="visible")
+            assert "analysed window" in empty.inner_text()
+            assert page.locator("[data-testid=abc-chart]").count() == 0
+            assert "analysed window" in (
+                page.locator("[data-testid=abc-warnings]").inner_text()
+            )
             assert not errors, errors
         finally:
             browser.close()

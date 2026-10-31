@@ -78,6 +78,12 @@ export interface CompressionPayload {
   group2_paths: number | null;
   segments: Segment[];
   warnings: string[];
+  /** "ok", or "no_events_in_window": no compared path has an event in the
+   * analysed window, so the plan is empty (the warning says why). */
+  status?: string;
+  /** The keyword arguments of the plan shown (those that differ from the
+   * getter's defaults), for the export line. */
+  call_args?: string;
 }
 
 export type Action = "keep" | "merge" | "drop" | "other";

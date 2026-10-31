@@ -278,6 +278,13 @@ function BeforeAfter({ segment, step, unit }: { segment: Segment; step: number; 
           </tr>
         ))}
       </tbody>
+      <tfoot>
+        <tr>
+          <td colSpan={3} data-testid="abc-mass-note" style={{ ...td, textAlign: "left", color: MUTED, fontSize: 10, whiteSpace: "normal", maxWidth: 320 }}>
+            Mass retained: of the {segment.path[0]?.transitions ?? "?"} original transitions, the share still between two labels and not artificial. It measures structure, not information: a rare event can carry the effect.
+          </td>
+        </tr>
+      </tfoot>
     </table>
   );
 }
@@ -309,7 +316,7 @@ export function Header({ payload, segment }: { payload: CompressionPayload; segm
     <div data-testid="abc-header" style={{ fontSize: 12, color: INK, lineHeight: 1.5 }}>
       <div><b>Vocabulary compression</b><span style={{ color: MUTED }}> · {screen} · {who}{payload.horizon ? `, horizon ${payload.horizon}` : ""} · target {target} · chosen step {segment.chosen_step} of {segment.path.length - 1}</span></div>
       <div style={{ fontSize: 11, color: MUTED }}>
-        Arm-blind: every number pools both arms ({pooled}); the arm of a path is never read. Testable cells and MDE as the screen counts them (min_support {payload.min_support}, MDE at alpha / m).
+        Arm-blind: every number pools both arms ({pooled}); the arm of a path is never read. That keeps the plan from being tuned to the arms, but does not guarantee the compressed screen's false discovery rate: read that screen as exploratory. Testable cells and MDE are pooled proxies of the screen's (min_support {payload.min_support}, MDE at alpha / m).
       </div>
       {h && <div data-testid="abc-homogeneity" style={{ fontSize: 11, color: "#374151" }}>{payload.by ? `${payload.by} = ${segment.key}: ` : ""}{h}</div>}
     </div>
@@ -398,6 +405,7 @@ function Sidebar({ host, isStatic, isLoading, params, view, setParam, setView, p
         <Label>Max events</Label>
         <NumberField label="Max events" value={Number(params.max_events) || null} integer emptyIsNone disabled={disabled}
           onCommit={(v) => setParam("max_events", v ?? 0)} />
+        <Hint>A cap merges events the screen would keep apart. No artificial transition does not mean nothing is lost: merging submit and success hides the failed submits. Check the merged labels.</Hint>
         <Label>Chosen step by</Label>
         <select aria-label="Target" value={target} disabled={disabled} style={sel} onChange={(e) => setParam("target", e.target.value)}>
           {targets.map((t) => (
@@ -488,9 +496,28 @@ export function CompressionBody({ payload, segment, view, onStep }: {
       </div>
       <div data-testid="abc-step-text" style={{ fontSize: 11, color: "#374151", lineHeight: 1.45 }}>
         <b>{current ? stepText(current) : ""}</b>{current && current.step > 0 ? <> — {current.reason}</> : null}
-        <div style={{ color: MUTED }}>Apply this plan: <code>stream.compress_events(stream.ab_compression_data(..., step={step}))</code></div>
+        <ApplyLine payload={payload} segment={segment} step={step} />
       </div>
       <MappingTable segment={segment} step={step} other={payload.other} changedOnly={view.changed_only} />
+    </div>
+  );
+}
+
+/** The call that reproduces the plan shown: its own arguments and step, and for
+ *  a segment's plan the stream of that segment alone it applies to. */
+function ApplyLine({ payload, segment, step }: { payload: CompressionPayload; segment: Segment; step: number }) {
+  const args = [payload.call_args, `step=${step}`].filter(Boolean).join(", ");
+  const call = `stream.ab_compression_data(diff, ${args})`;
+  const code: React.CSSProperties = { whiteSpace: "pre-wrap", wordBreak: "break-word" };
+  if (!payload.by) {
+    return <div data-testid="abc-apply" style={{ color: MUTED }}>Apply this plan: <code style={code}>{`stream.compress_events(${call})`}</code></div>;
+  }
+  const level = JSON.stringify(segment.key);
+  return (
+    <div data-testid="abc-apply" style={{ color: MUTED }}>
+      Apply this segment's plan to a stream of that segment alone:{" "}
+      <code style={code}>{`plan = ${call}; seg = stream.filter_paths({"in_segment": {"segment_name": "${payload.by}", "segment_level": ${level}, "mode": "all"}}); seg.compress_events(plan[plan["${payload.by}"].astype(str) == ${level}])`}</code>
+      {" "}(the level as text; restrict the assignment table to the same paths).
     </div>
   );
 }
@@ -553,7 +580,12 @@ export function render({ host, el, isStatic = false }: RenderContext) {
             )}
           </div>
           <div data-testid="abc-scroll" style={{ flex: 1, minHeight: 0, overflow: "auto", padding: 12 }}>
-            {payload && segment && (
+            {payload && segment && payload.status === "no_events_in_window" && (
+              <div data-testid="abc-no-events" style={{ padding: 24, color: MUTED, fontSize: 13, textAlign: "center", lineHeight: 1.5 }}>
+                No event of the compared {payload.path_col ?? "path"}s falls in the analysed window, so there is no vocabulary to learn and no plan to apply.
+              </div>
+            )}
+            {payload && segment && payload.status !== "no_events_in_window" && (
               <CompressionBody payload={payload} segment={segment} view={view} onStep={(s) => setView("selected_step", s)} />
             )}
             {!payload && !isLoading && !error && (

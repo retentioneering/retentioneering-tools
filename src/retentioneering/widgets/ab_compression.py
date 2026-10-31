@@ -18,13 +18,18 @@ is ``attrs["mappings"][k]``. A plan at another step is
 
 from __future__ import annotations
 
+import inspect
 import json
 from typing import Any
 
 import pandas as pd
 import traitlets
 
-from retentioneering.tools.ab_compression import TARGETS
+from retentioneering.tools.ab_compression import (
+    TARGETS,
+    ab_compression,
+    check_arguments,
+)
 from retentioneering.widgets._ab_widget import ABFrameWidget, jsonable
 from retentioneering.widgets._base import _UNSET
 
@@ -85,6 +90,21 @@ PATH_FIELDS = (
     "artificial_mass",
     "reason",
 )
+
+
+#: The getter's defaults, for the export line's arguments.
+_GETTER_DEFAULTS = {
+    name: parameter.default
+    for name, parameter in inspect.signature(ab_compression).parameters.items()
+    if name not in ("stream", "diff")
+}
+
+
+def _same(value: Any, default: Any) -> bool:
+    try:
+        return bool(value == default) and type(value) is type(default)
+    except Exception:
+        return False
 
 
 def _none_if_empty(value: Any) -> Any:
@@ -172,19 +192,18 @@ class ABCompressionWidget(ABFrameWidget):
     _export_label = "A/B Compression"
 
     def __init__(self, eventstream, diff, assignment=None, state_file=None, **args):
-        # An argument of the other screen is the twin's error (the widget drops
+        # The arguments as the caller wrote them are checked as the getter checks
+        # them, before they become traitlets: a trait's sentinel (0 = no cap,
+        # -1 = the chosen step, 0.0 = no target effect) must not turn an invalid
+        # argument (max_events=0, step=-2, target_delta=0) into a valid one. An
+        # argument of the other screen is the getter's error too (the widget drops
         # it only when the sidebar switches the screen).
         given = {
             name: value
             for name, value in args.items()
             if name in self._defaults and value is not _UNSET and value is not None
         }
-        screen = given.get("screen", "transitions")
-        crossed = (screen == "transitions" and "max_steps" in given) or (
-            screen == "steps" and ("edge_weight" in given or "edges" in given)
-        )
-        if crossed or screen not in ("transitions", "steps"):
-            eventstream.ab_compression_data(diff, assignment=assignment, **given)
+        check_arguments(**given)
         super().__init__(
             eventstream, diff, assignment=assignment, state_file=state_file, **args
         )
@@ -261,6 +280,26 @@ class ABCompressionWidget(ABFrameWidget):
     def _twin(self, params: dict) -> pd.DataFrame:
         return self._eventstream.ab_compression_data(self._diff, **params)
 
+    def _call_args(self, params: dict) -> str:
+        """The arguments of the plan shown, as Python keyword arguments of
+        ``ab_compression_data`` (those that differ from its defaults; ``step`` is
+        the slider's): the export line reproduces this plan, not the default."""
+        out = []
+        for name, value in params.items():
+            if name in ("step", "assignment"):
+                continue
+            default = _GETTER_DEFAULTS.get(name, inspect.Parameter.empty)
+            if value is None and default in (None, inspect.Parameter.empty):
+                continue
+            if default is not inspect.Parameter.empty and _same(value, default):
+                continue
+            if name == "edges" and value is not None:
+                value = [tuple(pair) for pair in value]
+            out.append(f"{name}={value!r}")
+        if params.get("assignment") is not None:
+            out.insert(0, "assignment=assignment")
+        return ", ".join(out)
+
     def _payload(self, frame: pd.DataFrame, params: dict, caught: list[str]) -> dict:
         meta = dict(frame.attrs or {})
         by = meta.get("by")
@@ -310,6 +349,8 @@ class ABCompressionWidget(ABFrameWidget):
         return jsonable(
             {
                 "tool": self._tool,
+                "status": meta.get("status", "ok"),
+                "call_args": self._call_args(params),
                 "screen": meta.get("screen"),
                 "edge_weight": weight,
                 "max_steps": meta.get("max_steps"),

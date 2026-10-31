@@ -541,14 +541,22 @@ widget draws the path, with a slider over its steps and the mapping at each.
 **Chosen without the arms.** Every statistic behind the plan is pooled over both
 arms; the arm of a user is never read, only the arm sizes for the MDE. Choosing
 the vocabulary from where the arms differ would be selection on the outcome: the
-compressed screen would find what the selection put there. A filter on a
-statistic that does not depend on the arms under the null, as the pooled support
-does not, keeps Benjamini–Hochberg valid ("independent filtering", Bourgon,
-Gentleman and Huber, 2010). Permuting the arm labels leaves the plan identical. Under a
-true null the compressed screens find about as little as the full ones: over ten
-seeds of the A/A experiment with plans capped at 6 events, one edge in one run
-after compression and none before (the step screen: none either way); over five
-permutations of this experiment's arms, 3 edges in all after and 5 before. Two rules follow. Fix the plan before reading the screen
+compressed screen would find what the selection put there. Permuting the arm
+labels leaves the plan identical (tested).
+
+This is a safeguard, not a proof that the compressed screen keeps its false
+discovery rate. Independent filtering (Bourgon, Gentleman and Huber, 2010) covers
+dropping hypotheses on a statistic that does not depend on the arms under the
+null. A plan does more: it merges and relabels events, moves step positions and
+changes which cells depend on each other, and the screen's tests (Welch,
+bootstrap) are approximate. Read the compressed screen as **exploratory**. For a
+confirmatory reading, fix the vocabulary on other data before the experiment is
+read: earlier paths, or a held-out split of the units, then apply that plan to
+the experiment's own units. The A/A runs below are a smoke test, not a
+calibration study: over ten seeds of the A/A experiment with plans capped at 6
+events, one edge in one run after compression and none before (the step screen:
+none either way); over five permutations of this experiment's arms, 3 edges in
+all after and 5 before. Two rules follow. Fix the plan before reading the screen
 it is for, and never pick a step by its verdicts. And declare in `keep` the events
 the treatment introduces or changes, and the decision metric's: the plan cannot see
 the arms, so it cannot tell a synonym from the treatment's replacement of an event.

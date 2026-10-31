@@ -224,9 +224,22 @@ Before: `payment_details → shipping_details → review_page → purchase`, aft
 
 ## agg
 
-By default, every non-event column takes its **first** value within the
-merged rows (ordered by timestamp). `agg` overrides this per column with one
-of `"first"`, `"last"`, `"min"`, `"max"`, `"mean"`, `"mode"`, `"any"`.
+By default, every non-event column takes its **first** non-null value within
+the merged rows. `agg` overrides this per column with one of `"first"`,
+`"last"`, `"min"`, `"max"`, `"mean"`, `"mode"`, `"any"`.
+
+- `"first"` and `"last"` read the merged rows in the order described in
+  [Events with the same timestamp](#events-with-the-same-timestamp), and skip
+  nulls: the merged row takes the first (last) value that is not null, and null
+  only when every merged value is null. Its columns can therefore come from
+  different source rows. The merged row keeps the first row's timestamp and
+  position (`index`) whatever its values.
+- `"any"` takes some value of the group, without a rule for which one; `"mode"`
+  takes the most frequent value, and between equally frequent values which one
+  is not fixed. Use them only for columns that are constant within a group, or
+  where any value will do.
+- A name read from a column, `name={"col": ...}`, works the same way as
+  `"any"`: give a column that is constant within each group.
 
 Before — a `price` column alongside three consecutive `add_to_cart` events:
 
@@ -263,5 +276,27 @@ stream.collapse_events(loops=True, agg={"price": "mean"})
 |---|---|---|---|
 | u1 | add_to_cart | 00:00:00 | 16.67 |
 | u1 | purchase | 00:00:20 | 50 |
+
+## Events with the same timestamp
+
+Every mode reads a path in the order (timestamp, `subindex`, `index`): by time,
+then by the event-type rank (`subindex`: a marker from `add_events` before a raw
+event, a churn marker after it), then by the event's position in the path
+(`index`). Raw events that share a timestamp therefore keep their order in the
+path, however the rows are stored, and the runs, the windows and the `"first"`
+and `"last"` values do not change from one run to the next.
+
+Two cases are not covered yet:
+
+- A marker added by `add_events` at the same timestamp as raw events sorts
+  before all of them here, not only before its own source event. Path patterns
+  and the transition and step tools read a path by position (`index`, then
+  `subindex`) and see each marker next to its source event. With two `A` at
+  one timestamp and a marker `M` on each, `matches_pattern("M->A->M->A")` is
+  true, while `collapse_events(loops=True)` reads `M, M, A, A` and returns
+  `M → A`.
+- Markers added by two `add_events` calls at the same source event share the
+  timestamp, the rank and the position, so their order between themselves is
+  not fixed, and neither is a result that depends on it.
 
 {% endblock %}

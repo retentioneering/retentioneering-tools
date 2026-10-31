@@ -1,6 +1,9 @@
+import itertools
+
 import pandas as pd
 import pytest
 
+from retentioneering.data_processors.split_sessions import SplitSessions
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.exceptions import PreprocessingConfigError
 
@@ -345,3 +348,96 @@ class TestSplitSessionsTimeout:
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError):
             stream.split_sessions(timeout="1800")
+
+
+def sessions_over_row_orders(stream, processor):
+    """Apply `processor` to every row order of the stream's frame, as DuckDB may
+    read a large frame in any order across threads. Returns the distinct
+    results as (event, session_id) pairs in the order `apply` returned the
+    rows, which must already be path order: by path, then position."""
+    frame, schema = stream._df, stream.schema
+    results = set()
+    for order in itertools.permutations(range(len(frame))):
+        out, _ = processor.apply(frame.iloc[list(order)].reset_index(drop=True), schema)
+        in_path_order = out.sort_values(
+            [schema.path_col, schema.index, schema.subindex], kind="stable"
+        )
+        assert list(out.index) == list(in_path_order.index)
+        session = [None if pd.isna(v) else v for v in out["session_id"]]
+        results.add(tuple(zip(out["event"].astype(str), session)))
+    return results
+
+
+class TestSplitSessionsTiedTimestamps:
+    """Regression: events with the same timestamp were ordered by
+    (timestamp, subindex) alone, so which session a tied event fell in followed
+    the order DuckDB read the rows in. The index, the event's position in the
+    path, now breaks the tie."""
+
+    def test_bounds_follow_the_path_order(self):
+        stream = make_stream(
+            [
+                ["u1", "X", "2020-01-01 00:00:00"],
+                ["u1", "S", "2020-01-01 00:00:00"],
+                ["u1", "Y", "2020-01-01 00:01:00"],
+                ["u1", "E", "2020-01-01 00:01:00"],
+                ["u1", "Z", "2020-01-01 00:02:00"],
+            ]
+        )
+        results = sessions_over_row_orders(
+            stream, SplitSessions(bounds={"start_event": "S", "end_event": "E"})
+        )
+        # X is before the start S and Y before the end E, at the same timestamps
+        assert results == {(("X", None), ("Y", "u1_1"), ("Z", None))}
+
+    def test_timeout_splits_between_timestamps_only(self):
+        stream = make_stream(
+            [
+                ["u1", "A", "2020-01-01 00:00:00"],
+                ["u1", "B", "2020-01-01 00:00:00"],
+                ["u1", "C", "2020-01-01 00:10:00"],
+                ["u1", "D", "2020-01-01 00:10:00"],
+                ["u2", "E", "2020-01-01 00:15:00"],
+            ]
+        )
+        results = sessions_over_row_orders(stream, SplitSessions(timeout="5m"))
+        # a tie never splits; a gap equal to the timeout would not split either
+        assert results == {
+            (
+                ("A", "u1_1"),
+                ("B", "u1_1"),
+                ("C", "u1_2"),
+                ("D", "u1_2"),
+                ("E", "u2_1"),
+            )
+        }
+
+    def test_timeout_gap_equal_to_the_timeout_does_not_split(self):
+        stream = make_stream(
+            [
+                ["u1", "A", "2020-01-01 00:00:00"],
+                ["u1", "B", "2020-01-01 00:05:00"],
+                ["u1", "C", "2020-01-01 00:05:00"],
+            ]
+        )
+        results = sessions_over_row_orders(stream, SplitSessions(timeout="5m"))
+        assert results == {(("A", "u1_1"), ("B", "u1_1"), ("C", "u1_1"))}
+
+    def test_separator_comes_first_among_tied_events(self):
+        """A separator sorts before every other event with its timestamp,
+        whatever their positions: X, stored before S at the same time, still
+        falls in the session S starts. This is the separator mode's own rule,
+        not the path order."""
+        stream = make_stream(
+            [
+                ["u1", "A", "2020-01-01 00:00:00"],
+                ["u1", "X", "2020-01-01 00:01:00"],
+                ["u1", "S", "2020-01-01 00:01:00"],
+                ["u1", "B", "2020-01-01 00:01:00"],
+                ["u1", "C", "2020-01-01 00:02:00"],
+            ]
+        )
+        assert list(stream._df["event"].astype(str)) == ["A", "X", "S", "B", "C"]
+        results = sessions_over_row_orders(stream, SplitSessions(separator="S"))
+        # A is before the first separator; X and B follow S into session 1
+        assert results == {(("A", None), ("X", "u1_1"), ("B", "u1_1"), ("C", "u1_1"))}

@@ -350,18 +350,24 @@ class CollapseEvents(DataProcessor):
         agg_config: Dict[str, str],
         exclude_cols: Set[str],
         ts_col: str,
+        order_col: str | None = None,
     ) -> List[str]:
+        """
+        One aggregate per column. "first" and "last" are by `order_col` when
+        given (the `_rn` row number, which orders events with the same
+        timestamp by their position in the path), else by the timestamp.
+        """
         agg_exprs = []
-        ts_col_q = engine.quote_ident(ts_col)
+        order_q = engine.quote_ident(order_col or ts_col)
         for c in df.columns:
             if c in exclude_cols:
                 continue
             c_q = engine.quote_ident(c)
             agg_name = agg_config.get(c, "first")
             if agg_name == "first":
-                agg_exprs.append(f"ARG_MIN({c_q}, {ts_col_q}) AS {c_q}")
+                agg_exprs.append(f"ARG_MIN({c_q}, {order_q}) AS {c_q}")
             elif agg_name == "last":
-                agg_exprs.append(f"ARG_MAX({c_q}, {ts_col_q}) AS {c_q}")
+                agg_exprs.append(f"ARG_MAX({c_q}, {order_q}) AS {c_q}")
             elif agg_name == "min":
                 agg_exprs.append(f"MIN({c_q}) AS {c_q}")
             elif agg_name == "max":
@@ -373,7 +379,7 @@ class CollapseEvents(DataProcessor):
             elif agg_name == "any":
                 agg_exprs.append(f"ANY_VALUE({c_q}) AS {c_q}")
             else:
-                agg_exprs.append(f"ARG_MIN({c_q}, {ts_col_q}) AS {c_q}")
+                agg_exprs.append(f"ARG_MIN({c_q}, {order_q}) AS {c_q}")
         return agg_exprs
 
     @staticmethod
@@ -462,7 +468,7 @@ class CollapseEvents(DataProcessor):
         ts_col = schema.timestamp_col
         collapsed_event_type = EventTypes().COLLAPSED_EVENT.type
         exclude = {path_col, event_col, schema.event_type}
-        agg_exprs = self._session_agg_exprs(df, self.agg, exclude, ts_col)
+        agg_exprs = self._session_agg_exprs(df, self.agg, exclude, ts_col, "_rn")
         agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
 
         path_col_q = engine.quote_ident(path_col)
@@ -470,6 +476,7 @@ class CollapseEvents(DataProcessor):
         ts_col_q = engine.quote_ident(ts_col)
         event_type_col_q = engine.quote_ident(schema.event_type)
         subindex_col_q = engine.quote_ident(schema.subindex)
+        index_col_q = engine.quote_ident(schema.index)
 
         # A run of one event keeps that event's own name unless `name` overrides it.
         name_expr, metric_agg_chunk = self._name_sql("_event", event_col, ts_col)
@@ -478,7 +485,9 @@ class CollapseEvents(DataProcessor):
         # tie (subindex is the same for all raw events), and DuckDB's default RANGE
         # window frame lumps tied peer rows into one group, silently merging
         # distinct consecutive events that share a timestamp. A precomputed
-        # ROW_NUMBER (_rn) plus an explicit ROWS frame makes grouping deterministic.
+        # ROW_NUMBER (_rn) plus an explicit ROWS frame makes grouping deterministic,
+        # and the index (the event's position in the path) orders the tied rows
+        # themselves: without it they come in whatever order DuckDB reads them.
         if self.loops is True:
             is_start_condition = f"LAG({event_col_q}) OVER (PARTITION BY {path_col_q} ORDER BY _rn) = {event_col_q}"
         else:
@@ -497,7 +506,8 @@ class CollapseEvents(DataProcessor):
         WITH ordered AS (
             SELECT *,
                 ROW_NUMBER() OVER (
-                    PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
+                    PARTITION BY {path_col_q}
+                    ORDER BY {ts_col_q}, {subindex_col_q}, {index_col_q}
                 ) AS _rn
             FROM df
         ),
@@ -519,7 +529,7 @@ class CollapseEvents(DataProcessor):
             SELECT
                 {path_col_q},
                 ANY_VALUE({event_col_q}) AS _event,
-                CASE WHEN COUNT(*) > 1 THEN '{collapsed_event_type}' ELSE ARG_MIN({event_type_col_q}, {ts_col_q}) END AS {event_type_col_q},
+                CASE WHEN COUNT(*) > 1 THEN '{collapsed_event_type}' ELSE ARG_MIN({event_type_col_q}, _rn) END AS {event_type_col_q},
                 MIN(_rn) AS _first_rn
                 {metric_agg_chunk}
                 {agg_chunk}
@@ -567,13 +577,14 @@ class CollapseEvents(DataProcessor):
             )
 
         explicit_cols = {path_col, event_col, event_type_col, ts_col, subindex_col, col}
-        agg_exprs = self._session_agg_exprs(df, self.agg, explicit_cols, ts_col)
+        agg_exprs = self._session_agg_exprs(df, self.agg, explicit_cols, ts_col, "_rn")
         agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
 
         path_col_q = engine.quote_ident(path_col)
         event_col_q = engine.quote_ident(event_col)
         ts_col_q = engine.quote_ident(ts_col)
         subindex_col_q = engine.quote_ident(subindex_col)
+        index_col_q = engine.quote_ident(schema.index)
         event_type_col_q = engine.quote_ident(event_type_col)
         col_q = engine.quote_ident(col)
 
@@ -595,7 +606,8 @@ class CollapseEvents(DataProcessor):
         ordered AS (
             SELECT *,
                 ROW_NUMBER() OVER (
-                    PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
+                    PARTITION BY {path_col_q}
+                    ORDER BY {ts_col_q}, {subindex_col_q}, {index_col_q}
                 ) AS _rn
             FROM df
         ),
@@ -629,7 +641,7 @@ class CollapseEvents(DataProcessor):
         )
         SELECT {collapsed_select}
         FROM grouped
-        ORDER BY {path_col_q}, {ts_col_q}, {subindex_col_q}
+        ORDER BY {path_col_q}, {ts_col_q}, {subindex_col_q}, {index_col_q}
         """
         return engine.run(query, df=df)
 
@@ -655,6 +667,7 @@ class CollapseEvents(DataProcessor):
         path_col_q = engine.quote_ident(path_col)
         ts_col_q = engine.quote_ident(ts_col)
         subindex_col_q = engine.quote_ident(subindex_col)
+        index_col_q = engine.quote_ident(schema.index)
         event_type_col_q = engine.quote_ident(event_type_col)
         event_col_q = engine.quote_ident(event_col)
 
@@ -666,11 +679,11 @@ class CollapseEvents(DataProcessor):
         name_expr, metric_agg_chunk = self._name_sql(default, event_col, ts_col)
 
         session_ctes = build_session_ctes(
-            self._as_group(), path_col, event_col, ts_col, subindex_col
+            self._as_group(), path_col, event_col, ts_col, subindex_col, schema.index
         )
 
         exclude_cols = {path_col, event_col, event_type_col, ts_col}
-        agg_exprs = self._session_agg_exprs(df, self.agg, exclude_cols, ts_col)
+        agg_exprs = self._session_agg_exprs(df, self.agg, exclude_cols, ts_col, "_rn")
         agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
 
         collapsed_select = ", ".join(
@@ -706,7 +719,7 @@ class CollapseEvents(DataProcessor):
         SELECT {cols_list} FROM collapsed
         UNION ALL
         SELECT {cols_list} FROM uncollapsed
-        ORDER BY {path_col_q}, {ts_col_q}, {subindex_col_q}
+        ORDER BY {path_col_q}, {ts_col_q}, {subindex_col_q}, {index_col_q}
         """
         return engine.run(query, df=df)
 

@@ -1085,7 +1085,10 @@ class Eventstream:
         agg : dict, optional
             Aggregation rules for non-event columns when rows are merged, as a
             `{column: agg_func}` dict. `agg_func` is one of `"first"` (default),
-            `"last"`, `"min"`, `"max"`, `"mean"`, `"mode"`, `"any"`. See
+            `"last"`, `"min"`, `"max"`, `"mean"`, `"mode"`, `"any"`. `"first"`
+            and `"last"` take the first (last) non-null value, reading events
+            that share a timestamp in their order in the path; `"any"` and a
+            tied `"mode"` pick no particular value. See
             [agg](/docs/data-processors/collapse-events#agg) below. Example:
             `{"price": "max"}`.
         path_col : str, optional
@@ -1381,7 +1384,8 @@ class Eventstream:
             Name of the new column that holds the 1-based session index within each path.
         separator : str or list of str, optional
             Event name(s) that mark a session boundary. The separator event starts a new
-            session; the separator row itself is dropped from the output.
+            session; the separator row itself is dropped from the output. Events that
+            share the separator's timestamp fall in the session it starts.
         bounds : dict, optional
             Sessions delimited by their own opening and closing events, given as
             `start_event` and `end_event` — both required. Events outside a

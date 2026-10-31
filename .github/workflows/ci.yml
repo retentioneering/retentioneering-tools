@@ -55,6 +55,13 @@ jobs:
       - name: Install Python dependencies
         run: uv sync
 
+      - name: Check the interpreter is the matrix Python
+        run: >-
+          uv run python -c "import sys;
+          v = '%d.%d' % sys.version_info[:2];
+          print('Python', v);
+          assert v == '${{ matrix.python-version }}', v"
+
       - name: Run tests
         run: uv run pytest tests/ -v
 

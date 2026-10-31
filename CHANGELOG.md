@@ -7,6 +7,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- `collapse_events` and `split_sessions` read a path in the order (timestamp,
+  `subindex`, `index`), so raw events that share a timestamp keep their order in
+  the path. They used to stop at (timestamp, `subindex`), and tied rows came in
+  whatever order DuckDB read them, which on a large stream could change from run
+  to run. That order decided the runs, the windows, the sessions, a merged
+  event's `"first"` and `"last"` values, and the order of the returned rows.
+  `"first"` and `"last"` now follow the same order. Results on streams without
+  tied timestamps are unchanged. Two cases stay open: a marker from
+  `add_events` sorts before every raw event with its timestamp, where path
+  patterns and the transition tools see it next to its source event, and
+  markers added at the same source event by two `add_events` calls still have
+  no order between themselves.
 - `time_median` and `time_q95` edge weights in `transition_graph` and
   `transition_graph_data` measure the exact gap between events instead of
   counting whole-second boundaries, so a 125 ms span no longer reads as 0 s or

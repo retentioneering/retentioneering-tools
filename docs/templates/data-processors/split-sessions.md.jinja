@@ -63,4 +63,34 @@ After:
 
 `event_1 → event_2`, with `session_id` = `user_1_1, user_1_1`
 
+### Events with the same timestamp
+
+Every mode reads a path in the order (timestamp, `subindex`, `index`): by time,
+then by the event-type rank (`subindex`), then by the event's position in the
+path (`index`), so raw events that share a timestamp keep their order in the
+path, however the rows are stored. A tie never splits a session on `timeout`:
+the gap between tied events is zero, and only a gap longer than `timeout`
+starts a new session.
+
+`separator` adds one rule of its own: a separator sorts before every other
+event with its timestamp, whatever their positions, so they fall in the session
+it starts.
+
+Before: `A` at `00:00`, then `X`, `sep`, `B` all at `00:01`
+
+```python
+stream.split_sessions(separator="sep")
+```
+
+After — `X` is stored before `sep` but shares its timestamp, so it joins the
+session `sep` starts:
+
+`A → X → B`, with `session_id` = `(none), user_1_1, user_1_1`
+
+The same two cases as in
+[Collapse Events](/docs/data-processors/collapse-events#events-with-the-same-timestamp)
+are not covered yet: a marker from `add_events` sorts before every raw event
+with its timestamp, and markers added at the same source event by two
+`add_events` calls have no order between themselves.
+
 {% endblock %}

@@ -126,13 +126,14 @@ class SplitSessions(DataProcessor):
 
         group = self._as_group()
         session_ctes = build_session_ctes(
-            group, path_col, event_col, ts_col, subindex_col
+            group, path_col, event_col, ts_col, subindex_col, schema.index
         )
 
         path_col_q = engine.quote_ident(path_col)
         event_col_q = engine.quote_ident(event_col)
         ts_col_q = engine.quote_ident(ts_col)
         subindex_col_q = engine.quote_ident(subindex_col)
+        index_col_q = engine.quote_ident(schema.index)
         session_col_q = engine.quote_ident(self.session_col)
         session_index_col_q = engine.quote_ident(self.session_index_col)
 
@@ -155,7 +156,7 @@ class SplitSessions(DataProcessor):
             END AS {session_col_q}
         FROM with_session_id w
         {where_clause}
-        ORDER BY w.{path_col_q}, w.{ts_col_q}, w.{subindex_col_q}
+        ORDER BY w.{path_col_q}, w.{ts_col_q}, w.{subindex_col_q}, w.{index_col_q}
         """
 
         result = engine.run(query, df=df)

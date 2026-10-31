@@ -30,6 +30,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   empty`, and a positive overrun such as `at=3` raised `IndexError`; code
   catching that `IndexError` needs to catch `InvalidParameterError` instead
   ([#194](https://github.com/retentioneering/retentioneering-tools/issues/194)).
+- `collapse_events` now detects runs in the order the eventstream is laid out by,
+  `(index, subindex)`, instead of `(timestamp, subindex)`. `subindex` is the
+  event-type rank, so it is equal for every raw event, which left the
+  `ROW_NUMBER` feeding the `LAG`/`SUM` windows numbering same-timestamp rows in
+  an arbitrary order. `collapse_events(loops=True)` therefore compared each event
+  to an arbitrary tied neighbour and identical calls on the same eventstream
+  returned different results whenever events in a path shared a timestamp — five
+  calls on a 100,000-row stream that must collapse nothing returned 99,994 /
+  99,992 / 100,000 / 99,998 / 99,992 rows. `group_col` runs were built from the
+  same key and its output is now ordered by the run's first position rather than
+  by a tied `(timestamp, subindex)`
+  ([#141](https://github.com/retentioneering/retentioneering-tools/issues/141)).
 
 ## [5.3.0] - 2026-10-27
 

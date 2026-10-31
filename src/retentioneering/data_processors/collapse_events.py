@@ -470,15 +470,23 @@ class CollapseEvents(DataProcessor):
         ts_col_q = engine.quote_ident(ts_col)
         event_type_col_q = engine.quote_ident(schema.event_type)
         subindex_col_q = engine.quote_ident(schema.subindex)
+        index_col_q = engine.quote_ident(schema.index)
 
         # A run of one event keeps that event's own name unless `name` overrides it.
         name_expr, metric_agg_chunk = self._name_sql("_event", event_col, ts_col)
 
-        # LAG/SUM below must be ordered by a unique key: (timestamp, subindex) can
-        # tie (subindex is the same for all raw events), and DuckDB's default RANGE
-        # window frame lumps tied peer rows into one group, silently merging
-        # distinct consecutive events that share a timestamp. A precomputed
-        # ROW_NUMBER (_rn) plus an explicit ROWS frame makes grouping deterministic.
+        # LAG/SUM below must be ordered by a unique key, and (timestamp, subindex)
+        # is not one: subindex is the event-type rank, so it is equal for every
+        # raw event, and timestamps tie in real logs. Two things went wrong with
+        # it. DuckDB's default RANGE window frame lumps tied peer rows into one
+        # group, which the precomputed ROW_NUMBER (_rn) plus an explicit ROWS
+        # frame already fixed; and ROW_NUMBER over a tied key numbers those rows
+        # in an arbitrary order that can change between runs, so LAG compared
+        # each event to an arbitrary tied neighbour and identical calls returned
+        # different results. Order _rn by (index, subindex) instead: that is the
+        # order the frame is laid out by, and `index` is itself derived from the
+        # timestamp order at construction, so it is the same chronology with
+        # ties resolved the way the layout resolves them.
         if self.loops is True:
             is_start_condition = f"LAG({event_col_q}) OVER (PARTITION BY {path_col_q} ORDER BY _rn) = {event_col_q}"
         else:
@@ -497,7 +505,7 @@ class CollapseEvents(DataProcessor):
         WITH ordered AS (
             SELECT *,
                 ROW_NUMBER() OVER (
-                    PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
+                    PARTITION BY {path_col_q} ORDER BY {index_col_q}, {subindex_col_q}
                 ) AS _rn
             FROM df
         ),
@@ -574,6 +582,7 @@ class CollapseEvents(DataProcessor):
         event_col_q = engine.quote_ident(event_col)
         ts_col_q = engine.quote_ident(ts_col)
         subindex_col_q = engine.quote_ident(subindex_col)
+        index_col_q = engine.quote_ident(schema.index)
         event_type_col_q = engine.quote_ident(event_type_col)
         col_q = engine.quote_ident(col)
 
@@ -595,7 +604,7 @@ class CollapseEvents(DataProcessor):
         ordered AS (
             SELECT *,
                 ROW_NUMBER() OVER (
-                    PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
+                    PARTITION BY {path_col_q} ORDER BY {index_col_q}, {subindex_col_q}
                 ) AS _rn
             FROM df
         ),
@@ -620,7 +629,8 @@ class CollapseEvents(DataProcessor):
                 MIN({ts_col_q}) AS {ts_col_q},
                 MIN({subindex_col_q}) AS {subindex_col_q},
                 ANY_VALUE({col_q}) AS _run_value,
-                '{collapsed_event_type}' AS {event_type_col_q}
+                '{collapsed_event_type}' AS {event_type_col_q},
+                MIN(_rn) AS _first_rn
                 {run_col_select}
                 {metric_agg_chunk}
                 {agg_chunk}
@@ -629,7 +639,7 @@ class CollapseEvents(DataProcessor):
         )
         SELECT {collapsed_select}
         FROM grouped
-        ORDER BY {path_col_q}, {ts_col_q}, {subindex_col_q}
+        ORDER BY {path_col_q}, _first_rn
         """
         return engine.run(query, df=df)
 

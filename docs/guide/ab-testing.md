@@ -450,11 +450,17 @@ users the screen needs, and a smaller vocabulary for the users there are.
 
 **How much data.** [`get_ab_transitions_power()`](/docs/tools/get-ab-transitions-power)
 and [`get_ab_steps_power()`](/docs/tools/get-ab-steps-power) take the screens'
-arguments and project every row to `scale` times the current users (both arms
-alike): whether it would be testable, the family it would belong to and its
-minimum detectable effect there, at the family's Bonferroni level `alpha / m`
-(the screen's own MDE level; conservative for Benjamini–Hochberg). At `scale=1`
-every number is the screen's.
+arguments and project every row to `scale` times the current paths (both arms
+alike; a path is one `path_col`, so a session screen counts sessions): whether it
+would pass the support rule (`supported`), whether it could then be tested, the
+family it would belong to and its minimum detectable effect there, at the
+family's Bonferroni level `alpha / m` (the screen's own MDE level; conservative
+for Benjamini–Hochberg). At `scale=1` every number is the screen's. Support is not
+inference: a transition probability of 1 in both arms is constant whatever the
+number of paths (`inference="no_spread"`), so it never becomes testable and never
+joins the family; a rare row whose spread the screen could not estimate is
+`"unknown_spread"`, with `testable` NA once it passes the rule, and counts in the
+family so the level stays conservative.
 
 ```python
 power = stream.get_ab_transitions_power(diff, assignment=assignment, target_delta=0.01)
@@ -471,11 +477,17 @@ pd.DataFrame(power.attrs["curve"])[["scale", "testable", "mde_median", "share_re
 
 At its 5,000 users per arm, the experiment tests 90 of its 92 edges with a median
 MDE of 2.03 pp; 14 % of them could detect a 1 pp effect, half of them with four
-times the users. The [A/B Transitions](/docs/widgets/ab-transitions) and
+times the users. With `target_delta`, `scale_needed` and `group*_paths_needed`
+are the total paths (not additional ones) from which a row's MDE stays at or below the
+target, with the family projected at that size (`attrs["sizing_basis"] =
+"projected_family"`): a larger sample makes more rows testable, and a size
+computed with today's family can miss its own target once they join. The [A/B Transitions](/docs/widgets/ab-transitions) and
 [A/B Steps](/docs/widgets/ab-steps) widgets draw the same projection in their
-**Data needed** view: each cell's MDE (or the multiple of users it needs for
-`target_delta`), the untested cells hatched with the users that would make them
-testable, and the curve above the matrix. The projection assumes the same mix of
+**Data needed** view: each cell's MDE (or the multiple of paths it needs for
+`target_delta`, solved in the browser with the same projected family), the
+untested cells hatched with the paths at which they pass the support rule ("?"
+when their spread is unknown, "never" when they are constant or have no
+estimate), and the curve above the matrix. The projection assumes the same mix of
 paths at every size. It sizes the next test; it is never a reason to run this one
 longer ([pitfall 6](#6-peeking-and-open-ended-metrics)). On a simulated case study
 with 40,000 users and 79 events, the projection to five times the users predicted

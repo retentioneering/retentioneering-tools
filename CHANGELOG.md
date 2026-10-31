@@ -405,6 +405,29 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- `get_ab_transitions_power` / `get_ab_steps_power`: support is no longer read as
+  inference. A rare transition probability of 1 in both arms (every path's own
+  ratio is 1) was `testable=True` at larger scales, with no MDE, and enlarged the
+  projected family. Every row now has `supported` (the support rule at that
+  scale) and `inference` (`tested`, `projectable`, `unknown_spread`, `no_spread`,
+  `no_estimate`, the same at every scale); `testable` is a nullable boolean, NA
+  where a supported row's spread is unknown; the family counts the supported rows
+  that are tested, projectable or of unknown spread, never a constant one; and
+  `attrs["curve"]` counts `supported`, `unknown_spread`, `no_spread` and
+  `no_estimate` per scale.
+- The paths a target needs (`scale_needed`, `group*_paths_needed`, the matrices'
+  Data needed view and `get_ab_compression`'s `median_scale_needed`) meet their
+  own target: they are solved with the family projected at that size
+  (`attrs["sizing_basis"] = "projected_family"`), the smallest size from which
+  the row's MDE stays at or below the target, and they are totals, the same at every
+  scale. With the family of the displayed scale, a toy with ten rare branches
+  asked for 2,231 users per arm, where the family had grown from 4 to 24 rows and
+  the MDE was 5.87 pp instead of 5; it now asks for 3,073. One solver serves
+  Python, the widgets (the browser repeats its arithmetic on the payload's inputs)
+  and MCP.
+- The A/B sizing texts name their unit: "paths needed", a path being one
+  `path_col` (a session on a session screen, not a user); the MCP power results
+  add `unit_of_paths`, `n_inference`, `sizing_basis` and `sizing`.
 - The source tree no longer carries a zero-byte `datasets/.!51949!ecom.csv.gz`,
   a leftover of an interrupted copy that was tracked next to the real dataset.
 - `time_median` and `time_q95` edge weights in `transition_graph` and

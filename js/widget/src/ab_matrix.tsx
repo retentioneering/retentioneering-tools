@@ -21,7 +21,8 @@ import {
   type ViewMode, type PowerInfo,
   axisStats, cellBackground, cellId, cellLook, cellStatus, cellText, crossImage, curveGeometry, deltaSign, familyText,
   fmtArmValue, fmtP, fmtSigned, fmtTimes, decimalsFor, hatchImage, indexRows, intervalNote, intervalOf, keepsSignificance,
-  mdeScaleMax, needBackground, needOf, needText, orderKeys, parsePayload, populationText, readingHint, scaleMax, unitInfo,
+  inferenceText, mdeScaleMax, needBackground, needOf, needText, orderKeys, parsePayload, pathUnitText, populationText,
+  powerCell, readingHint, scaleMax, unitInfo,
   HATCH_COLOR, MATRIX_BLUE, MATRIX_RED, MAX_ALPHA, NEED_HUE, NEED_MAX_TIMES, OUTLINE_BLACK, OUTLINE_GREY, OUTLINE_WIDTH,
   TEXT_MUTED,
 } from "./ab_matrix_encoding";
@@ -202,8 +203,11 @@ function Tooltip({ apiRef, payload, kind, mode, target }: {
   };
   const g1 = payload.group1_label, g2 = payload.group2_label;
   const need = row && tip.idx != null
-    ? needOf(row, payload.power?.scale_to_test?.[tip.idx], payload.alpha, target > 0 ? target : null)
+    ? needOf(row, powerCell(payload.power, tip.idx), payload.alpha, target > 0 ? target : null, payload.power?.family)
     : null;
+  const pathsAt = (times: number | null) =>
+    `${fmtTimes(times)} (${Math.ceil((row?.group1_paths ?? 0) * (times ?? 0) - 1e-9)} / ${Math.ceil((row?.group2_paths ?? 0) * (times ?? 0) - 1e-9)} paths per arm, in total)`;
+  const targetText = `paths for an MDE of ${fmtSigned(target, decimalsFor(unit, target), unit.scale).replace(/^\+/, "")}${unit.suffix ? ` ${unit.suffix}` : ""}`;
   let body: React.ReactNode = null;
   if (row) {
     const [lo, hi] = intervalOf(row, "per_cell");
@@ -236,15 +240,21 @@ function Tooltip({ apiRef, payload, kind, mode, target }: {
           <TipLine label="verdict" value={String(row.verdict ?? "n/a")} />
           <TipLine label="test" value={String(row.test ?? "n/a")} />
           {status === "untested" && reason && <TipLine label="why not tested" value={reason} />}
-          {mode === "data_needed" && need && need.timesFor === "test" && (
-            <TipLine label="users to become testable" value={`${fmtTimes(need.times)} (${Math.ceil((row.group1_paths ?? 0) * (need.times ?? 0))} / ${Math.ceil((row.group2_paths ?? 0) * (need.times ?? 0))} paths)`} />
+          {mode === "data_needed" && need && (need.timesFor === "test" || need.timesFor === "support") && (
+            <TipLine label="paths to pass the support rule" value={pathsAt(need.times)} />
           )}
-          {mode === "data_needed" && need && need.timesFor === "target" && (
-            <TipLine label={`users for an MDE of ${fmtSigned(target, decimalsFor(unit, target), unit.scale).replace(/^\+/, "")}${suffix}`}
-              value={need.times != null && need.times <= 1 ? "enough now" : `${fmtTimes(need.times)} (${Math.ceil((row.group1_paths ?? 0) * (need.times ?? 0))} / ${Math.ceil((row.group2_paths ?? 0) * (need.times ?? 0))} paths)`} />
+          {mode === "data_needed" && need && need.timesFor === "support" && (
+            <TipLine label="testable then" value={inferenceText(need.inference) ?? "unknown"} />
+          )}
+          {mode === "data_needed" && need && target > 0 && (need.timesFor === "target" || need.timesFor === "test") && (
+            <TipLine label={targetText}
+              value={need.forTarget == null ? "n/a" : need.forTarget <= 1 ? "enough now" : pathsAt(need.forTarget)} />
           )}
           {mode === "data_needed" && status === "untested" && need && need.timesFor === null && (
-            <TipLine label="users to become testable" value="more users of the same mix do not make it testable" />
+            <TipLine label="paths to become testable" value={inferenceText(need.inference) ?? "more paths of the same mix do not make it testable"} />
+          )}
+          {mode === "data_needed" && need && (
+            <TipLine label="unit" value={`${pathUnitText(payload)}; the family is projected at each size`} />
           )}
         </div>
         {row.reading && (
@@ -379,7 +389,7 @@ export const Matrix = React.memo(function Matrix({
                 const status = cellStatus(row, payload.alpha);
                 const dim = dimRow || dimCols.has(c);
                 if (needed) {
-                  const need = needOf(row, idx != null ? payload.power?.scale_to_test?.[idx] : null, payload.alpha, target);
+                  const need = needOf(row, powerCell(payload.power, idx), payload.alpha, target, payload.power?.family);
                   const words = row ? needText(need, unit) : null;
                   const hatched = !!row && !need.testable;
                   return (
@@ -443,9 +453,12 @@ export const Matrix = React.memo(function Matrix({
 
 // ── header and legend ──────────────────────────────────────────────────────
 
-/** The header's curve: the testable cells and the median MDE against the users,
+/** The header's curve: the testable cells and the median MDE against the paths,
  *  in two small panels sharing the x axis (one scale each, never two on one). */
-export function PowerCurve({ power, unit, target }: { power: PowerInfo; unit: ReturnType<typeof unitInfo>; target: number | null }) {
+export function PowerCurve({ power, unit, target, pathCol }: {
+  power: PowerInfo; unit: ReturnType<typeof unitInfo>; target: number | null; pathCol?: string | null;
+}) {
+  const unitText = pathUnitText({ path_col: pathCol ?? null, power });
   const W = 168, H = 46, PAD = 6;
   const g = curveGeometry(power.curve, W, H, PAD, target);
   if (!g.points.length) return null;
@@ -460,7 +473,7 @@ export function PowerCurve({ power, unit, target }: { power: PowerInfo; unit: Re
         <b>{title}</b>: {valueNow} now, {valueTop} at ×{top?.scale}
       </div>
       <svg width={W} height={H + 12} viewBox={`0 0 ${W} ${H + 12}`} role="img" data-testid={`ab-curve-${which}-panel`}
-        aria-label={`${title} against the users`} style={{ overflow: "visible" }}>
+        aria-label={`${title} against the paths`} style={{ overflow: "visible" }}>
         <rect x={0} y={0} width={W} height={H} fill="#f9fafb" stroke="#e5e7eb" />
         {g.currentX != null && <line data-testid="ab-curve-now" x1={g.currentX} x2={g.currentX} y1={0} y2={H} stroke="#9ca3af" strokeWidth={1} />}
         {which === "mde" && g.targetY != null && (
@@ -474,7 +487,7 @@ export function PowerCurve({ power, unit, target }: { power: PowerInfo; unit: Re
           const point = power.curve[i];
           return (
             <g key={p.scale}>
-              <title>{`×${p.scale} users: ${point.testable} of ${point.cells} cells testable, median MDE ${fmtMde(point.mde_median)}`}</title>
+              <title>{`×${p.scale} paths: ${point.testable} of ${point.cells} cells testable${point.unknown_spread ? ` (${point.unknown_spread} more of unknown spread)` : ""}, median MDE ${fmtMde(point.mde_median)}`}</title>
               <circle cx={p.x} cy={y} r={p.scale === 1 ? 4 : 3} fill={which === "testable" ? "#374151" : `rgb(${NEED_HUE})`} stroke="#f9fafb" strokeWidth={1.5} />
             </g>
           );
@@ -490,7 +503,7 @@ export function PowerCurve({ power, unit, target }: { power: PowerInfo; unit: Re
       {panel("testable", "testable cells", `${now?.testable ?? "?"} of ${now?.cells ?? "?"}`, `${top?.testable ?? "?"}`)}
       {panel("mde", "median MDE", fmtMde(now?.mde_median), fmtMde(top?.mde_median))}
       <div style={{ fontSize: 10, color: "#6b7280", maxWidth: 220, lineHeight: 1.4 }}>
-        x: users in both arms as a multiple of now (grey line: now){target != null ? "; dashed: the target" : ""}.
+        x: paths in both arms as a multiple of now ({unitText}; grey line: now){target != null ? "; dashed: the target" : ""}.
       </div>
     </div>
   );
@@ -527,18 +540,18 @@ export function NeedLegend({ payload, kind, mdeScale, view }: { payload: MatrixP
         <b>Data needed</b>
         <span style={{ color: "#6b7280" }}> · {what} · {populationText(payload)} · {familyText(payload)} · power {payload.attrs?.power != null ? `${+(Number(payload.attrs.power) * 100).toFixed(0)}%` : "80%"}</span>
       </div>
-      {payload.power && <PowerCurve power={payload.power} unit={unit} target={target} />}
+      {payload.power && <PowerCurve power={payload.power} unit={unit} target={target} pathCol={payload.path_col} />}
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", rowGap: 4, marginTop: 4 }}>
         {item(ramp, target != null
-          ? `background: users needed for an MDE of ${fmt(target)}, none at ×1 or less … full at ×${NEED_MAX_TIMES}`
+          ? `background: paths needed for an MDE of ${fmt(target)}, none at ×1 or less … full at ×${NEED_MAX_TIMES}`
           : `background: MDE (minimum detectable effect), full at ${fmt(mdeScale)}`, "bg")}
         {item(
           <span data-testid="ab-legend-hatched" style={{ display: "inline-block", width: 26, height: 16, backgroundImage: hatchImage(), outline: `1px dashed ${HATCH_COLOR}`, outlineOffset: "-1px" }} />,
-          "not testable now: ×k = the users at which it passes the support rule", "hatch",
+          "not testable now: ×k = the paths at which it passes the support rule (“?”: its spread is unknown until then; “never”: constant, or no estimate)", "hatch",
         )}
       </div>
-      <div style={{ color: "#6b7280", fontSize: 10, marginTop: 2 }}>
-        Cells: MDE in {unit.label}{target != null ? ", ×k users to reach the target below it" : ""}. MDE at {payload.power?.level ?? "alpha / m"}; projections assume {payload.power?.assumption ?? "the same path composition"}.
+      <div data-testid="ab-need-unit" style={{ color: "#6b7280", fontSize: 10, marginTop: 2 }}>
+        Paths needed: multiples of the current paths, {pathUnitText(payload)}. Cells: MDE in {unit.label}{target != null ? ", ×k paths to reach the target below it (in total, with the family projected at that size)" : ""}. MDE at {payload.power?.level ?? "alpha / m"}; projections assume {payload.power?.assumption ?? "the same path composition"}.
       </div>
     </div>
   );
@@ -722,11 +735,11 @@ function Sidebar({ kind, host, isStatic, isLoading, params, view, setParam, setV
         <select aria-label="View mode" value={view.view_mode} style={sel} disabled={!payload?.power}
           onChange={(e) => setView("view_mode", e.target.value as ViewMode)}>
           <option value="delta">Delta (the difference)</option>
-          <option value="data_needed">Data needed (MDE, users)</option>
+          <option value="data_needed">Data needed (MDE, paths)</option>
         </select>
         <Label>Target delta{unit.suffix ? ` (${unit.suffix})` : ""}</Label>
         <TargetInput view={view} unitScale={unit.scale} onCommit={(v) => setView("target_delta", v)} />
-        <Hint>Data needed: the users each cell needs for its MDE to reach this; empty = show the MDE.</Hint>
+        <Hint>Data needed: the paths ({pathUnitText(payload ?? { path_col: null })}) each cell needs for its MDE to reach this; empty = show the MDE.</Hint>
         <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#374151", marginTop: 8 }}>
           <input type="checkbox" aria-label="Show intervals" checked={view.show_ci} onChange={(e) => setView("show_ci", e.target.checked)} />
           Show intervals in the cells

@@ -12,8 +12,9 @@ import {
 import { Legend, Matrix, NeedLegend, PowerCurve, ViewSwitch, type View } from '../src/ab_matrix';
 import {
   HATCH_COLOR, NEED_HUE, NEED_MAX_TIMES, curveGeometry, fmtTimes, hatchImage, mdeScaleMax, needAlpha, needBackground,
-  needOf, needText, scaleNeeded, type CurvePoint,
+  inferenceText, needOf, needText, pathUnitText, powerCell, scaleNeeded, type CurvePoint, type FamilyInfo, type PowerCell,
 } from '../src/ab_matrix_encoding';
+import SCALE_NEEDED from './fixtures/scale_needed.json';
 import * as generated from '../src/generated/ab_encoding.generated';
 import { AB_BLUE, AB_RED, abEdgeClass } from '../../viz-core/src/utils/ab-transitions';
 
@@ -312,7 +313,12 @@ const CURVE: CurvePoint[] = [0.25, 0.5, 1, 2, 4, 8, 16].map((scale) => ({
   mde_median: 0.02 / Math.sqrt(scale), mde_q25: null, mde_q75: null,
 }));
 const MDES = [0.012, 0.03, 0.02, null, null];
-const TO_TEST = [null, null, null, 2.5, null];
+// the tested cells join the family at ×0.1, the untested one at ×2.5; the factor
+// is the same everywhere, so a tested cell needs (mde / target)^2 (base * 2 = mde)
+const TO_TEST = [0.1, 0.1, 0.1, 2.5, null];
+const BASES = [0.006, 0.015, 0.01, 0.004, null];
+const INFERENCES = ['tested', 'tested', 'tested', 'projectable', 'no_spread'];
+const FAMILY: FamilyInfo = { breakpoints: [0, 0.1, 2.5], sizes: [0, 3, 4], factors: [2, 2, 2], factor_now: 2 };
 const powered: MatrixPayload = parsePayload(JSON.stringify({
   tool: 'get_ab_transitions',
   frame: encodeFrame(ROWS.map((r, i) => ({ ...r, mde: MDES[i] }))), untested_reason: encodeColumn(REASONS),
@@ -322,6 +328,8 @@ const powered: MatrixPayload = parsePayload(JSON.stringify({
   simultaneous: false, warnings: [], unit: 'pp', conditional: false, edge_weight: 'unique_paths', edges: 'all',
   power: {
     scale: CURVE.map((c) => c.scale), curve: CURVE, scale_to_test: encodeColumn(TO_TEST),
+    inference: encodeColumn(INFERENCES), base: encodeColumn(BASES), family: FAMILY,
+    sizing_basis: 'projected_family', unit_of_paths: 'user_id',
     level: 'alpha / m (Bonferroni; conservative for Benjamini-Hochberg)', assumption: 'the same path composition',
   },
 }))!;
@@ -345,63 +353,127 @@ test('the data needed view takes its hue and hatch from the generated encoding',
 test('the payload carries the power section, decoded per row', () => {
   assert.ok(powered.power);
   assert.deepEqual(powered.power!.scale_to_test, TO_TEST);
+  assert.deepEqual(powered.power!.base, BASES);
+  assert.deepEqual(powered.power!.inference, INFERENCES);
+  assert.deepEqual(powered.power!.family, FAMILY);
+  assert.deepEqual(powerCell(powered.power, 3), { scaleToTest: 2.5, base: 0.004, inference: 'projectable' });
+  assert.deepEqual(powerCell(powered.power, 4), { scaleToTest: null, base: null, inference: 'no_spread' });
+  assert.deepEqual(powerCell(null, 0), { scaleToTest: null, base: null, inference: null });
   assert.equal(powered.power!.curve.length, 7);
   assert.equal(parsePayload(JSON.stringify({ ...JSON.parse(JSON.stringify(payload)), frame: encodeFrame(ROWS), untested_reason: encodeColumn(REASONS) }))!.power, null);
 });
 
-test('users needed: (mde / target)^2, the scale to test for an untested cell, none for an empty one', () => {
-  const tested = { ...sig, mde: 0.02 };
-  assert.equal(scaleNeeded(tested, 0.01), 4);
-  assert.equal(scaleNeeded(tested, 0.04), 0.25);
-  assert.equal(scaleNeeded(tested, null), null);
-  // never fewer users than the support rule needs
-  assert.equal(scaleNeeded(tested, 0.04, 0.5), 0.5);
-  assert.equal(scaleNeeded(tested, 0.01, 0.5), 4);
-  assert.equal(scaleNeeded({ ...sig, mde: null }, 0.01), null);
-  assert.deepEqual(needOf(tested, null, 0.05, 0.01), { testable: true, mde: 0.02, times: 4, timesFor: 'target' });
-  assert.deepEqual(needOf(tested, null, 0.05, null), { testable: true, mde: 0.02, times: null, timesFor: null });
-  assert.deepEqual(needOf(untested, 2.5, 0.05, 0.01), { testable: false, mde: null, times: 2.5, timesFor: 'test' });
-  assert.deepEqual(needOf(untested, null, 0.05, 0.01), { testable: false, mde: null, times: null, timesFor: null });
-  assert.deepEqual(needOf(undefined, null, 0.05, 0.01), { testable: false, mde: null, times: null, timesFor: null });
+const cellOf = (scaleToTest: number | null, base: number | null, inference: PowerCell['inference']): PowerCell =>
+  ({ scaleToTest, base, inference });
+const TESTED = cellOf(0.1, 0.01, 'tested');
+const RARE = cellOf(2.5, 0.004, 'projectable');
+const UNKNOWN = cellOf(2.5, null, 'unknown_spread');
+const NEVER = cellOf(null, null, 'no_spread');
+
+test('paths needed: the projected family, never below the scale to test, none without a spread', () => {
+  // a constant factor: (factor * base / target)^2, never below the scale to test
+  assert.ok(Math.abs((scaleNeeded(0.01, 0.1, 0.01, FAMILY) as number) - 4) < 1e-12);
+  assert.ok(Math.abs((scaleNeeded(0.01, 0.1, 0.04, FAMILY) as number) - 0.25) < 1e-12);
+  assert.equal(scaleNeeded(0.01, 0.5, 0.04, FAMILY), 0.5);
+  assert.equal(scaleNeeded(0.004, 2.5, 0.01, FAMILY), 2.5);
+  for (const [base, toTest, target, family] of [
+    [0.01, 0.1, null, FAMILY], [null, 0.1, 0.01, FAMILY], [0.01, null, 0.01, FAMILY], [0.01, 0.1, 0.01, null],
+    [0, 0.1, 0.01, FAMILY], [0.01, 0.1, 0, FAMILY],
+  ] as const) {
+    assert.equal(scaleNeeded(base, toTest, target, family), null);
+  }
+  // the family grows at ×2.5 (factor 2 -> 3): a size reaching the target before
+  // it, and missing it there, is not the answer
+  const jump: FamilyInfo = { breakpoints: [0, 0.1, 2.5], sizes: [0, 3, 30], factors: [2, 2, 3], factor_now: 2 };
+  // 2.25 at factor 2 reaches it, but at ×2.5 factor 3 misses it until 5.0625
+  const needed = scaleNeeded(0.0075, 0.1, 0.01, jump) as number;
+  assert.ok(Math.abs(needed - 5.0625) < 1e-12);
+  // 0.64 at factor 2; past ×2.5 factor 3 needs 1.44, which is already behind
+  assert.ok(Math.abs((scaleNeeded(0.004, 0.1, 0.01, jump) as number) - 0.64) < 1e-12);
 });
 
-test('the data needed background: the MDE over its maximum, or log2 of the users a target needs', () => {
-  const mde = needOf({ ...sig, mde: 0.015 }, null, 0.05, null);
+test('paths needed: the numbers of the Python solver (tests/tools/ab_power_test.py)', () => {
+  const cases = (SCALE_NEEDED as { cases: {
+    name: string; target_delta: number; breakpoints: number[]; sizes: number[]; factors: number[]; factor_now: number;
+    rows: { base: number | null; scale_to_test: number | null }[]; scale_needed: (number | null)[];
+  }[] }).cases;
+  assert.ok(cases.length >= 3);
+  for (const c of cases) {
+    const family: FamilyInfo = { breakpoints: c.breakpoints, sizes: c.sizes, factors: c.factors, factor_now: c.factor_now };
+    c.rows.forEach((row, i) => {
+      const got = scaleNeeded(row.base, row.scale_to_test, c.target_delta, family);
+      const expected = c.scale_needed[i];
+      if (expected == null) assert.equal(got, null, `${c.name}, row ${i}`);
+      else assert.ok(got != null && Math.abs(got - expected) <= 1e-12 * expected, `${c.name}, row ${i}: ${got} vs ${expected}`);
+    });
+  }
+  // the review's case: 3,073 paths per arm (100 now), not 2,231
+  const review = cases[0];
+  assert.equal(Math.ceil(100 * (review.scale_needed[0] as number) - 1e-9), 3073);
+});
+
+test('what a cell needs: the target for a tested cell, the support rule for an untested one', () => {
+  const tested = { ...sig, mde: 0.02 };
+  const at = (n: ReturnType<typeof needOf>) => ({ ...n, times: n.times == null ? null : +n.times.toFixed(9), forTarget: n.forTarget == null ? null : +n.forTarget.toFixed(9) });
+  assert.deepEqual(at(needOf(tested, TESTED, 0.05, 0.01, FAMILY)),
+    { testable: true, mde: 0.02, times: 4, timesFor: 'target', forTarget: 4, inference: 'tested' });
+  assert.deepEqual(needOf(tested, TESTED, 0.05, null, FAMILY),
+    { testable: true, mde: 0.02, times: null, timesFor: null, forTarget: null, inference: 'tested' });
+  // an untested cell with a spread: testable at ×2.5, and the target then too
+  assert.deepEqual(needOf(untested, RARE, 0.05, 0.01, FAMILY),
+    { testable: false, mde: null, times: 2.5, timesFor: 'test', forTarget: 2.5, inference: 'projectable' });
+  // an unknown spread: the support rule passes at ×2.5, the test is unknown
+  assert.deepEqual(needOf(untested, UNKNOWN, 0.05, 0.01, FAMILY),
+    { testable: false, mde: null, times: 2.5, timesFor: 'support', forTarget: null, inference: 'unknown_spread' });
+  assert.deepEqual(needOf(constant, NEVER, 0.05, 0.01, FAMILY),
+    { testable: false, mde: null, times: null, timesFor: null, forTarget: null, inference: 'no_spread' });
+  assert.deepEqual(needOf(undefined, cellOf(null, null, null), 0.05, 0.01, FAMILY),
+    { testable: false, mde: null, times: null, timesFor: null, forTarget: null, inference: null });
+});
+
+test('the data needed background: the MDE over its maximum, or log2 of the paths a target needs', () => {
+  const mde = needOf({ ...sig, mde: 0.015 }, TESTED, 0.05, null, FAMILY);
   assert.equal(needAlpha(mde, 0.03, false), MAX_ALPHA / 2);
   assert.match(needBackground(mde, 0.03, false), new RegExp(`rgba\\(${NEED_HUE}, ${(MAX_ALPHA / 2).toFixed(3)}\\)`));
-  const eight = needOf({ ...sig, mde: 0.02 * Math.sqrt(8) }, null, 0.05, 0.02);
+  const eight = needOf({ ...sig, mde: 0.02 * Math.sqrt(8) }, cellOf(0.1, 0.01 * Math.sqrt(8), 'tested'), 0.05, 0.02, FAMILY);
   assert.ok(Math.abs(needAlpha(eight, 0, true) - MAX_ALPHA * 3 / Math.log2(NEED_MAX_TIMES)) < 1e-12);
-  assert.equal(needAlpha(needOf({ ...sig, mde: 0.01 }, null, 0.05, 0.02), 0, true), 0);  // enough already
-  assert.equal(needAlpha(needOf(untested, 2.5, 0.05, null), 0.03, false), 0);  // hatched instead
+  assert.equal(needAlpha(needOf({ ...sig, mde: 0.01 }, cellOf(0.1, 0.005, 'tested'), 0.05, 0.02, FAMILY), 0, true), 0);  // enough already
+  assert.equal(needAlpha(needOf(untested, RARE, 0.05, null, FAMILY), 0.03, false), 0);  // hatched instead
 });
 
-test('the data needed text: the MDE and the multiple of users', () => {
+test('the data needed text: the MDE and the multiple of paths', () => {
   const unit = unitInfo(powered);
   assert.equal(fmtTimes(2.41), '×2.5');
   assert.equal(fmtTimes(16), '×16');
   assert.equal(fmtTimes(12.2), '×13');
   assert.equal(fmtTimes(5000), '≥ ×1000');
-  assert.deepEqual(needText(needOf({ ...sig, mde: 0.02 }, null, 0.05, 0.01), unit), { main: '2.00', times: '×4.0 users' });
-  assert.deepEqual(needText(needOf({ ...sig, mde: 0.02 }, null, 0.05, 0.05), unit), { main: '2.00', times: 'enough' });
-  assert.deepEqual(needText(needOf(untested, 2.5, 0.05, null), unit), { main: '–', times: '×2.5 to test' });
-  assert.deepEqual(needText(needOf(constant, null, 0.05, null), unit), { main: '–', times: 'never' });
+  assert.deepEqual(needText(needOf({ ...sig, mde: 0.02 }, TESTED, 0.05, 0.01, FAMILY), unit), { main: '2.00', times: '×4.0 paths' });
+  assert.deepEqual(needText(needOf({ ...sig, mde: 0.02 }, TESTED, 0.05, 0.05, FAMILY), unit), { main: '2.00', times: 'enough' });
+  assert.deepEqual(needText(needOf(untested, RARE, 0.05, null, FAMILY), unit), { main: '–', times: '×2.5 to test' });
+  assert.deepEqual(needText(needOf(untested, UNKNOWN, 0.05, null, FAMILY), unit), { main: '–', times: '×2.5 to test?' });
+  assert.deepEqual(needText(needOf(constant, NEVER, 0.05, null, FAMILY), unit), { main: '–', times: 'never' });
+  assert.equal(pathUnitText(powered), 'a path is one user_id');
+  assert.equal(pathUnitText({ path_col: 'session_id', power: null }), 'a path is one session_id');
+  assert.match(inferenceText('no_spread') ?? '', /constant/);
+  assert.match(inferenceText('unknown_spread') ?? '', /unknown/);
+  assert.equal(inferenceText('tested'), null);
 });
 
-test('the curve: testable cells and median MDE against log2 users, the current size marked', () => {
+test('the curve: testable cells and median MDE against log2 paths, the current size marked', () => {
   const g = curveGeometry(CURVE, 230, 64, 6, 0.01);
   assert.equal(g.points.length, 7);
   assert.equal(g.points[0].x, 6);
   assert.equal(g.points[6].x, 224);
   assert.equal(g.currentX, g.points[2].x);
   assert.ok(g.testablePath.startsWith('M6.0,'));
-  // more users: more testable cells (higher), smaller MDE (lower)
+  // more paths: more testable cells (higher), smaller MDE (lower)
   assert.ok(g.points[6].yTestable < g.points[0].yTestable);
   assert.ok((g.points[6].yMde as number) > (g.points[0].yMde as number));
   assert.ok(g.targetY != null);
   assert.deepEqual(curveGeometry([], 230, 64).points, []);
 });
 
-test('the matrix in the data needed view: MDE text and fill, hatched untestable cells with the users to test', () => {
+test('the matrix in the data needed view: MDE text and fill, hatched untestable cells with the paths to test', () => {
   const html = renderNeed();
   const s = cellHtml(html, 'checkout_start', 'payment');
   assert.match(s, /data-mode="data_needed"/);
@@ -413,11 +485,12 @@ test('the matrix in the data needed view: MDE text and fill, hatched untestable 
   assert.match(u, /background-image:repeating-linear-gradient/);
   assert.match(html, /×2\.5 to test/);
   assert.match(html, />2\.00</);
-  // with a target: the users each tested cell needs
+  // with a target: the paths each tested cell needs
   const target = renderNeed({ target_delta: 0.01 });
-  assert.match(cellHtml(target, 'checkout_start', 'payment'), /data-times="4"/);
-  assert.match(target, /×4\.0 users/);
-  assert.match(target, /×9\.0 users/);
+  const times = Number(/data-times="([^"]+)"/.exec(cellHtml(target, 'checkout_start', 'payment'))![1]);
+  assert.ok(Math.abs(times - 4) < 1e-12);
+  assert.match(target, /×4\.0 paths/);
+  assert.match(target, /×9\.0 paths/);
   // the delta view draws no power
   assert.doesNotMatch(renderMatrix(), /data-mode="data_needed"/);
 });
@@ -435,7 +508,9 @@ test('the data needed legend: the curve, the encoding and the projection assumpt
   const withTarget = renderToStaticMarkup(React.createElement(NeedLegend, {
     payload: powered, kind: 'transitions', mdeScale: 0.03, view: { ...view, view_mode: 'data_needed', target_delta: 0.01 },
   }));
-  assert.match(withTarget, /users needed for an MDE of 1\.00 pp/);
+  assert.match(withTarget, /paths needed for an MDE of 1\.00 pp/);
+  assert.match(withTarget, /a path is one user_id/);
+  assert.match(withTarget, /in total, with the family projected at that size/);
   assert.match(withTarget, /data-testid="ab-curve-target"/);
   const curve = renderToStaticMarkup(React.createElement(PowerCurve, { power: powered.power!, unit: unitInfo(powered), target: null }));
   assert.equal((curve.match(/<circle/g) ?? []).length, 14);

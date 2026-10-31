@@ -60,7 +60,7 @@ def test_static_compression_follows_the_plan_at_every_step(tmp_path):
                 )
                 assert points.count() == len(path)
             assert page.locator("[data-testid=abc-chosen]").count() == 4
-            # no target_delta: no users-needed panel
+            # no target_delta: no paths-needed panel
             assert page.locator("[data-testid=abc-panel-needed]").count() == 0
             header = page.locator("[data-testid=abc-header]").inner_text()
             assert f"chosen step {chosen} of {len(path) - 1}" in header
@@ -116,7 +116,7 @@ def _scale(value: float) -> str:
     return f"×{value:.2f}"
 
 
-def test_static_compression_draws_the_users_needed(tmp_path):
+def test_static_compression_draws_the_paths_needed(tmp_path):
     stream = datasets.load_ab_test()
     table = datasets.load_ab_test_assignment()
     args = {**ARGS, "target_delta": 0.02}
@@ -149,7 +149,8 @@ def test_static_compression_draws_the_users_needed(tmp_path):
                 assert text.startswith(_scale(row["median_scale_needed"])), text
                 assert "2.00 pp" in text
             counts = page.locator("[data-testid=abc-before-after]").inner_text()
-            assert "users for half the cells to detect the target" in counts
+            assert "paths for half the cells to detect the target" in counts
+            assert "a path is one user_id" in panel.inner_text()
             assert "NaN" not in page.locator("body").inner_text()
             assert not errors, errors
         finally:

@@ -997,8 +997,10 @@ def _build_server(
         Each edge is its own test: an edge with few supporting paths is not tested,
         and the family is every testable edge. Projects the screen to `scale` times
         the current paths (both arms alike): per scale the testable edges and the
-        median mde, per edge the multiple of the paths that makes it testable.
-        Sizing, not inference: for a NEW test, or to explain a screen full of
+        median mde, per edge the multiple of the paths at which it passes the
+        support rule and its inference status (a constant edge never becomes
+        testable). A path is one unit_of_paths (the path_col). Sizing, not
+        inference: for a NEW test, or to explain a screen full of
         insufficient_data; never to run this test longer. Numbers only.
 
         Parameters
@@ -1009,18 +1011,22 @@ def _build_server(
             Multiples of the current paths (default [0.25, 0.5, 1, 2, 4, 8, 16]).
         target_delta:
             Optional absolute effect (a share: 0.01 is 1 pp): adds the paths per
-            arm each edge's mde needs to reach it.
+            arm each edge's mde needs to reach it (totals, with the family
+            projected at that size).
         top:
             Rows returned (default 15): the edges not testable now (or, with
             target_delta, not reaching it), nearest first.
 
         Returns
         -------
-        JSON with n_rows, n_testable, n_never_testable, group sizes, curve (per
-        scale: paths per arm, cells, testable, family_size, mde_alpha, mde_median,
-        mde_q25, mde_q75, share_reaching_target), level, assumption, scope, listed
-        and top (source, target, pooled_support, testable, mde, rel_mde,
-        scale_to_test, *_paths_needed, scale_needed), unit, warnings.
+        JSON with unit_of_paths, n_rows, n_testable, n_never_testable,
+        n_inference, group sizes, curve (per scale: paths per arm, cells,
+        supported, unknown_spread, testable, family_size, mde_alpha, mde_median,
+        mde_q25, mde_q75, no_spread, no_estimate, share_reaching_target), level,
+        inference, sizing_basis, sizing, assumption, scope, listed and top
+        (source, target, pooled_support, supported, inference, testable (null:
+        spread unknown), mde, rel_mde, scale_to_test, *_paths_needed,
+        scale_needed), unit, warnings.
         """
         result = tools.get_ab_transitions_power(
             session,

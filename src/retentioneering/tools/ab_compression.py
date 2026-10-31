@@ -459,17 +459,7 @@ def _cell_numbers(
         "median_mde": float(np.median(mde)) if mde.size else float("nan"),
     }
     if screen.target_delta is not None:
-        numbers.update(
-            _data_needed(
-                support,
-                non_support,
-                se,
-                testable,
-                mde_all,
-                screen.min_support,
-                screen.target_delta,
-            )
-        )
+        numbers.update(_data_needed(support, non_support, se, testable, n1, n2, screen))
     return numbers
 
 
@@ -478,15 +468,21 @@ def _data_needed(
     non_support: np.ndarray | None,
     se: np.ndarray | None,
     testable: np.ndarray,
-    mde: np.ndarray,
-    min_support: int,
-    target_delta: float,
+    n1: float,
+    n2: float,
+    screen: _Screen,
 ) -> dict:
-    """The multiples of the users a screen needs, as ``get_ab_*_power`` projects
+    """The multiples of the paths a screen needs, as ``get_ab_*_power`` projects
     them (the same path composition, more paths): ``median_scale_needed``, the
-    median ``scale_needed`` of the testable cells (half of them reach
-    ``target_delta``), and ``scale_to_test_90``, the multiple at which 90 % of the
-    cells pass the support rule (``scale_to_test``)."""
+    median ``scale_needed`` of the testable cells, solved by
+    :func:`~retentioneering.tools.ab_power.solve_scale_needed` over the family
+    projected at each size (half of them reach ``target_delta`` there), and
+    ``scale_to_test_90``, the multiple at which 90 % of the cells pass the support
+    rule (``scale_to_test``). Every cell here has a pooled spread, so a cell joins
+    the family once it passes the support rule unless that spread is 0."""
+    from retentioneering.tools.ab_power import family_steps, solve_scale_needed
+
+    min_support = screen.min_support
     with np.errstate(invalid="ignore", divide="ignore"):
         need = np.where(support > 0, min_support / support, np.inf)
         if non_support is not None:
@@ -496,6 +492,12 @@ def _data_needed(
     if se is not None:
         # no spread or no estimate: more paths of the same composition do not help
         need = np.where(np.isfinite(se) & (se > 0), need, np.inf)
+        base = se
+    else:
+        n = n1 + n2
+        with np.errstate(invalid="ignore", divide="ignore"):
+            share = support / n
+            base = np.sqrt(share * (1 - share) * (1 / n1 + 1 / n2))
     cells = len(need)
     if cells:
         ordered = np.sort(need)
@@ -503,9 +505,16 @@ def _data_needed(
         to_test = float(at) if np.isfinite(at) else float("nan")
     else:
         to_test = float("nan")
-    with np.errstate(invalid="ignore", divide="ignore"):
-        needed = (mde[testable] / target_delta) ** 2
-    needed = np.maximum(needed, need[testable])
+    scale_to_test = np.where(np.isfinite(need), need, np.nan)
+    steps = family_steps(
+        scale_to_test,
+        alpha=screen.alpha,
+        correction=screen.correction,
+        power=screen.power,
+    )
+    needed = solve_scale_needed(
+        base[testable], scale_to_test[testable], steps, screen.target_delta
+    )
     needed = needed[np.isfinite(needed)]
     return {
         "median_scale_needed": (

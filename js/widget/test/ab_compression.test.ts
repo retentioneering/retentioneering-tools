@@ -111,7 +111,7 @@ test('numbers: the MDE in percentage points, the before / after rows, a step in 
   assert.deepEqual(rows[2], ['testable cells', '20', '20']);
   assert.deepEqual(rows[4], ['observations too thin to test', '0.400 %', '0.250 %']);
   assert.deepEqual(rows[5], ['median MDE', '3.00 pp', '2.50 pp']);
-  assert.equal(rows.length, 8);  // no users-needed rows without target_delta
+  assert.equal(rows.length, 8);  // no paths-needed rows without target_delta
   assert.equal(stepText(PATH[1]), 'step 1: merge a chain checkout, pay → checkout+pay');
   assert.equal(stepText(PATH[0]), 'step 0: the stream as it is');
   assert.equal(stepText(step({ step: 4, operation: 'merge_neighbour', events: 'D, product', label: 'D+product' })),
@@ -139,10 +139,10 @@ test('a long label in its compact form: the step text and the mapping table list
   assert.ok(html.includes(`title="members: ${members}"`));
 });
 
-// The same path with target_delta: the users-needed columns.
+// The same path with target_delta: the paths-needed columns.
 const NEEDED: PathStep[] = PATH.map((p, i) => ({ ...p, median_scale_needed: [4, 3.5, 2, 2.2][i], scale_to_test_90: [12, 10, 6, null][i] }));
 
-test('users needed: two series on one log scale, ×1 inside the range, the rows of the before / after table', () => {
+test('paths needed: two series on one log scale, ×1 inside the range, the rows of the before / after table', () => {
   assert.equal(hasNeeds(PATH), false);
   assert.equal(hasNeeds(NEEDED), true);
   const g = needGeometry(NEEDED, 300, 64, 8);
@@ -160,8 +160,8 @@ test('users needed: two series on one log scale, ×1 inside the range, the rows 
   assert.equal(fmtScale(null), 'n/a');
   const rows = beforeAfter(NEEDED, 2, 'pp');
   assert.deepEqual(rows.slice(-2), [
-    ['users for half the cells to detect the target', '×4.00', '×2.00'],
-    ['users for 90 % testable cells', '×12.0', '×6.00'],
+    ['paths for half the cells to detect the target', '×4.00', '×2.00'],
+    ['paths for 90 % testable cells', '×12.0', '×6.00'],
   ]);
   const html = renderToStaticMarkup(React.createElement(NeedPanelView, {
     path: NEEDED, targetDelta: 0.01, unit: 'pp', selected: 2, chosen: 2, onSelect: () => {},
@@ -178,7 +178,7 @@ test('the body draws the chart, the slider at the chosen step, the counts and th
   for (const id of ['abc-panel-testable', 'abc-panel-untestable_share', 'abc-panel-median_mde', 'abc-panel-mass_retained', 'abc-slider', 'abc-before-after', 'abc-mapping']) {
     assert.match(html, new RegExp(`data-testid="${id}"`), id);
   }
-  assert.doesNotMatch(html, /abc-panel-needed/);  // no target_delta: no users-needed panel
+  assert.doesNotMatch(html, /abc-panel-needed/);  // no target_delta: no paths-needed panel
   assert.match(html, /data-testid="abc-step"[^>]*>2 \/ 3</);
   assert.equal((html.match(/data-testid="abc-mapping-row"/g) ?? []).length, 3);
   assert.match(html, /data-event="r1" data-action="other"/);
@@ -189,7 +189,9 @@ test('the body draws the chart, the slider at the chosen step, the counts and th
     payload: { ...PAYLOAD, target_delta: 0.01, segments: [needed] }, segment: needed, view, onStep: () => {},
   }));
   assert.match(withNeeds, /data-testid="abc-panel-needed"/);
-  assert.match(withNeeds, /users for 90 % testable cells/);
+  assert.match(withNeeds, /paths for 90 % testable cells/);
+  assert.match(withNeeds, /Paths needed \(× now\)/);
+  assert.match(withNeeds, /a path is one user_id/);
   assert.match(html, /step=2\)\)/);
   assert.match(html, /3 kept, 2 merged, 0 dropped, 1 relabelled other/);
   // another step, every event listed

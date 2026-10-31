@@ -33,6 +33,7 @@ from retentioneering.tools.ab_tables import (
     cell_status,
     matrix_axes,
 )
+from retentioneering.tools.ab_power import FamilySteps, solve_scale_needed
 from retentioneering.tools.ab_transitions import EDGE_WEIGHTS
 from retentioneering.widgets._ab_matrix import (
     VIEW_DEFAULTS,
@@ -753,21 +754,62 @@ class TestDataNeeded:
                 assert value == pytest.approx(expected)
             else:
                 assert value is None
-        # a cell untested now and reachable with more users has a multiple > 1;
+        # a cell untested now and reachable with more paths has a multiple > 1;
         # a tested cell needs none
         for row, value in zip(payload["rows"], to_test):
             if row["p_value_adjusted"] is not None:
                 assert value is None or value <= 1 + 1e-12
+        # the inference status and the base spread, row by row
+        status = power[power["scale"] == 1].set_index(list(keys))["inference"]
+        inference = payload["power"]["inference"]
+        base = payload["power"]["base"]
+        assert len(inference) == len(base) == len(payload["rows"])
+        for row, value, spread in zip(payload["rows"], inference, base):
+            assert value == status.loc[tuple(row[k] for k in keys)]
+            assert (spread is not None) == (value in ("tested", "projectable"))
+        family = payload["power"]["family"]
+        assert family["breakpoints"][0] == 0 and family["sizes"][0] == 0
+        assert sorted(family["breakpoints"]) == family["breakpoints"]
+        now = next(c for c in power.attrs["curve"] if c["scale"] == 1)
+        index = np.searchsorted(family["breakpoints"], 1.0, side="right") - 1
+        assert family["sizes"][index] == now["family_size"]
+        assert family["factor_now"] == family["factors"][index]
+        assert payload["power"]["sizing_basis"] == "projected_family"
+        assert payload["power"]["unit_of_paths"] == "user_id"
 
-    def test__the_browsers_users_for_a_target_are_the_getters(self, stream) -> None:
-        # ab_matrix_encoding.ts computes (mde / target) ** 2 from the row, never
-        # below the row's scale_to_test: the power getter's scale_needed at scale 1
+    @pytest.mark.parametrize("weight", ["unique_paths", "proba_out"])
+    def test__the_browsers_paths_for_a_target_are_the_getters(
+        self, stream, weight
+    ) -> None:
+        # ab_matrix_encoding.ts solves the payload's base, scale_to_test and family
+        # with solve_scale_needed's arithmetic: the power getter's scale_needed
         target = 0.01
-        power = stream.get_ab_transitions_power(DIFF, target_delta=target)
-        one = power[(power["scale"] == 1) & power["testable"]].dropna(subset=["mde"])
-        browser = np.maximum((one["mde"] / target) ** 2, one["scale_to_test"])
-        np.testing.assert_allclose(one["scale_needed"], browser)
-        assert (one["scale_needed"] > (one["mde"] / target) ** 2).any()
+        args = {"n_bootstrap": 200} if weight == "proba_out" else {}
+        power = stream.get_ab_transitions_power(
+            DIFF, weight, target_delta=target, **args
+        )
+        payload = _strict(stream.ab_transitions(DIFF, weight, **args).result)
+        family = payload["power"]["family"]
+        steps = FamilySteps(
+            np.array(family["breakpoints"]),
+            np.array(family["sizes"]),
+            np.array(family["factors"]),
+        )
+
+        def floats(values):
+            return np.array([np.nan if v is None else v for v in values], dtype=float)
+
+        browser = solve_scale_needed(
+            floats(payload["power"]["base"]),
+            floats(payload["power"]["scale_to_test"]),
+            steps,
+            target,
+        )
+        one = power[power["scale"] == 1].set_index(["source", "target"])
+        keys = [(row["source"], row["target"]) for row in payload["rows"]]
+        expected = one.loc[keys, "scale_needed"].to_numpy(dtype=float)
+        np.testing.assert_allclose(browser, expected, rtol=1e-12, equal_nan=True)
+        assert np.isfinite(expected).sum() > 10
 
     def test__view_mode_and_target_are_view_state(self, stream, tmp_path) -> None:
         assert VIEW_DEFAULTS["view_mode"] == "delta"

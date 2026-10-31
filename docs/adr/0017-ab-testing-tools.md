@@ -298,24 +298,52 @@ are added, all in the A/B group except one general processor.
 current paths, both arms alike; 1 always included) and `target_delta`, and return
 one row per (row of the screen, scale). The projection is the screen's own
 machinery with the paths multiplied: the support rule on the projected pooled
-support, the family `m` = the rows testable at that scale, and the `mde` at
+support (`supported`), the family `m` at that scale, and the `mde` at
 `alpha / m` (the screen's MDE level: Bonferroni, conservative for BH, which never
 rejects below `alpha / m`) with the standard error scaled by `1 / sqrt(scale)` —
 the pooled share at the projected arm sizes for a z-test row, `delta_se /
 sqrt(scale)` for a Welch or bootstrapped row. At `scale=1` every number equals the
-getter's (tested). With `target_delta`, the paths per arm a row needs are those at
-which it passes the support rule and its MDE reaches the target; a rare row's
-small MDE does not count before it is testable. `attrs["curve"]` sums each scale up
-(cells, testable, family, MDE median and quartiles, share reaching the target).
+getter's (tested). *Support is not inference* (a review round): each row has an
+`inference` status, the same at every scale — `tested`; `projectable` (untested,
+its spread known to exist: a z-test row or a positive `delta_se`);
+`unknown_spread` (untested, no spread estimated now, not provably constant);
+`no_spread` (provably constant: a standard error of 0, a share every path has or
+none does, or a value in [0, 1] at 0 or 1 in each arm — a ratio of sums at 1 means
+every path's own ratio is 1); `no_estimate` (it passes the rule now and is still
+untested, or an arm has no value). `testable` is a nullable boolean: True when
+supported and tested or projectable, NA when supported with an unknown spread,
+False otherwise; the family `m` counts the supported rows that are tested,
+projectable or of unknown spread (unknown rows count, so the level stays
+conservative; rows that can never be tested do not). Before, a rare constant ratio
+became `testable=True` at a larger scale and enlarged the family. With
+`target_delta`, the paths per arm a row needs are solved with the *projected
+family* (`attrs["sizing_basis"] = "projected_family"`): every MDE is separable,
+`F(m) * base / sqrt(scale)` with `F(m)` the normal factor at `alpha / m` and
+`base` the row's standard error now, the family is a step function of the scale
+(`family_steps`, breaking at the rows' `scale_to_test`), and `solve_scale_needed`
+returns the smallest scale, never below the row's `scale_to_test`, from which
+the MDE stays at or below the target (a total, not an additional multiple; the same at
+every scale of a row). Plugging it back into `scale` meets the target with the
+family there. The first version kept the family of the displayed scale: on a toy
+with a common edge and ten rare branches it asked for 2,231 users per arm, at which
+the family grew from 4 to 24 rows and the MDE was 5.87 pp instead of 5; the solver
+asks for 3,073. A size that reaches the target just before a breakpoint and misses
+it after is not returned, so a larger sample keeps the target. `attrs["curve"]` sums each scale up (cells, supported, unknown
+spread among them, testable, family, MDE median and quartiles, no spread and no
+estimate, share reaching the target). A path is one `path_col`: the texts say
+"paths", with the unit named (`unit_of_paths` through MCP).
 The projection assumes the same path composition, and the docs say it sizes a new
 test, never a longer run of this one. The matrix widgets get a **Data needed**
 view (the cell background the MDE or the users a target needs, untested cells
 hatched with `×k to test`, the curve as two small panels — testable cells and
 median MDE against the users, never one chart with two scales); its colours are
 constants of `tools/ab_tables.py`, generated into the widget like the delta
-encoding. The payload carries the curve and each row's `scale_to_test`; the
-users a target needs, `max((mde / target)^2, scale_to_test)`, are computed in the
-browser from the row's `mde`, so the target is view state and needs no recompute.
+encoding. The payload carries the curve and, per row, `scale_to_test`,
+`inference` and the base spread, plus the family step function (`breakpoints`,
+`sizes`, `factors`, `factor_now`); the paths a target needs are solved in the
+browser by `scaleNeeded`, the same arithmetic as `solve_scale_needed` (pure
+arithmetic, no statistics; a shared fixture of the Python solver's numbers tests
+both), so the target is view state and needs no recompute.
 
 **C2 — a smaller vocabulary, chosen without the arms.**
 `get_ab_compression(diff, screen="transitions" | "steps", ...)` returns a plan:
@@ -440,7 +468,8 @@ frequent checkout events with six artificial transitions:
   count in the reason.
 - *How much data each vocabulary needs.* `target_delta=` adds two path columns
   computed by the power machinery of C1 at each step: `median_scale_needed` (the
-  median over the testable cells of `max((mde / target)^2, scale_to_test)`) and
+  median over the testable cells of their `scale_needed`, solved by
+  `solve_scale_needed` with the step's projected family) and
   `scale_to_test_90` (the multiple at which 90 % of the cells pass the support
   rule). At step 0 they equal `get_ab_*_power` (tested). The widget draws them as
   one panel on a log scale, solid and dashed, with a legend.

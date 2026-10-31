@@ -24,9 +24,9 @@ export interface PathStep {
   /** The share of the screen's observations in cells too thin to test. */
   untestable_share: number | null;
   median_mde: number | null;
-  /** With `target_delta`: the multiple of the users at which half of the
-   *  testable cells detect it, and the one at which 90 % of the cells pass the
-   *  support rule. */
+  /** With `target_delta`: the multiple of the paths (in total, with the family
+   *  projected at that size) at which half of the testable cells detect it, and
+   *  the one at which 90 % of the cells pass the support rule. */
   median_scale_needed?: number | null;
   scale_to_test_90?: number | null;
   transitions: number;
@@ -184,7 +184,7 @@ export function actionCounts(segment: Segment, step: number, other: string): Rec
 // ── the path chart ─────────────────────────────────────────────────────────
 
 /** The panels of the path chart, one measure each: what each draws and how it
- *  reads. With `target_delta` a last panel draws the users needed. */
+ *  reads. With `target_delta` a last panel draws the paths needed. */
 export type Measure = "testable" | "untestable_share" | "median_mde" | "mass_retained";
 export const MEASURES: { key: Measure; title: string }[] = [
   { key: "testable", title: "Testable cells" },
@@ -193,15 +193,15 @@ export const MEASURES: { key: Measure; title: string }[] = [
   { key: "mass_retained", title: "Transition mass retained" },
 ];
 
-/** The two series of the "users needed" panel (one unit: a multiple of the
- *  current users, on a log scale). */
+/** The two series of the "paths needed" panel (one unit: a multiple of the
+ *  current paths, on a log scale). */
 export type Need = "median_scale_needed" | "scale_to_test_90";
 export const NEEDS: { key: Need; title: string }[] = [
   { key: "median_scale_needed", title: "half of the testable cells detect the target" },
   { key: "scale_to_test_90", title: "90 % of the cells are testable" },
 ];
 
-/** Whether the path carries the users-needed columns (`target_delta`). */
+/** Whether the path carries the paths-needed columns (`target_delta`). */
 export function hasNeeds(path: PathStep[]): boolean {
   return path.some((p) => isNum(p.median_scale_needed) || isNum(p.scale_to_test_90));
 }
@@ -213,8 +213,8 @@ export interface NeedPanel {
   max: number;
 }
 
-/** The users-needed panel: both series on one log scale (a multiple of the
- *  current users; 1 is the data as it is). */
+/** The paths-needed panel: both series on one log scale (a multiple of the
+ *  current paths; 1 is the data as it is). */
 export function needGeometry(path: PathStep[], width: number, height: number, pad = 6): NeedPanel {
   const x = xScale(path, width, pad);
   const all = path.flatMap((p) => NEEDS.map(({ key }) => p[key])).filter((v): v is number => isNum(v) && v > 0);
@@ -237,12 +237,17 @@ export function needGeometry(path: PathStep[], width: number, height: number, pa
   return { lines, points, min, max };
 }
 
-/** A multiple of the current users: "×2.4". */
+/** A multiple of the current paths: "×2.4". */
 export function fmtScale(value: number | null | undefined): string {
   if (!isNum(value)) return "n/a";
   if (value >= 100) return `×${Math.round(value)}`;
   if (value >= 10) return `×${value.toFixed(1)}`;
   return `×${value.toFixed(2)}`;
+}
+
+/** What one path is: "a path is one user_id" (the plan's `path_col`). */
+export function pathUnitText(pathCol: string | null | undefined): string {
+  return pathCol ? `a path is one ${pathCol}` : "a path is one unit of the schema's path_col";
 }
 
 export interface Panel {
@@ -318,8 +323,8 @@ export function beforeAfter(path: PathStep[], step: number, unit: "pp" | "per_pa
     ["artificial transitions", String(a.artificial_transitions), String(b.artificial_transitions)],
     ...(hasNeeds(path)
       ? ([
-        ["users for half the cells to detect the target", fmtScale(a.median_scale_needed), fmtScale(b.median_scale_needed)],
-        ["users for 90 % testable cells", fmtScale(a.scale_to_test_90), fmtScale(b.scale_to_test_90)],
+        ["paths for half the cells to detect the target", fmtScale(a.median_scale_needed), fmtScale(b.median_scale_needed)],
+        ["paths for 90 % testable cells", fmtScale(a.scale_to_test_90), fmtScale(b.scale_to_test_90)],
       ] as [string, string, string][])
       : []),
   ];

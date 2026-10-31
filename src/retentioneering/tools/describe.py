@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, Any, Dict, Tuple
 
 import pandas as pd
 
+from retentioneering.eventstream.eventstream import SEGMENT_MISSING
+
 if TYPE_CHECKING:
     from retentioneering.eventstream.eventstream import Eventstream
 
@@ -74,11 +76,20 @@ class Describe:
             for path_col in schema.path_cols
         }
 
+        # `dropna=False`, so paths with no assigned segment value get their own
+        # row under the same `SEGMENT_MISSING` sentinel `get_segment_levels`
+        # reports them as. Dropping them would both hide the group and leave
+        # `share` normalized over the survivors, summing to 1.0 as if the
+        # listed levels covered every path.
         segments = pd.DataFrame(
             [
-                {"segment_col": col, "value": str(value), "count": int(count)}
+                {
+                    "segment_col": col,
+                    "value": SEGMENT_MISSING if pd.isna(value) else str(value),
+                    "count": int(count),
+                }
                 for col in schema.segment_cols
-                for value, count in df[col].value_counts().items()
+                for value, count in df[col].value_counts(dropna=False).items()
             ],
             columns=["segment_col", "value", "count"],
         )

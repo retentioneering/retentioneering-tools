@@ -44,6 +44,22 @@ stream.filter_paths([
 ])
 ```
 
+A 0/1 metric compared with `True` has a shorthand — the metric name as the only
+key, and its single required argument (or its `metric_args`) as the value:
+
+```python
+# the same condition as the second example above
+stream.filter_paths({"has_event": "purchase"})
+
+# longer than 2 events AND went from the cart to the purchase
+stream.filter_paths([
+    {"op": ">", "metric": "length", "value": 2},
+    {"matches_pattern": "cart->.*->purchase"},
+])
+```
+
+See [Path Metrics](/docs/path-metrics#shorthand-leaves) for the full list.
+
 If nothing matches, the call raises `EmptyEventstreamError` rather than
 returning an empty eventstream.
 

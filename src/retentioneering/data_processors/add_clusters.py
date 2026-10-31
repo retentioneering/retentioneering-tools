@@ -18,7 +18,10 @@ from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import PreprocessingConfigError
 from retentioneering.metrics.metric_builder import MetricBuilder
 from retentioneering.tools.cluster_analysis import normalize_scaler
-from retentioneering.utils.clustering_methods import parse_method_args
+from retentioneering.utils.clustering_methods import (
+    kmeans_init_args,
+    parse_method_args,
+)
 
 PROCESSOR_NAME = "add_clusters"
 
@@ -77,9 +80,12 @@ class AddClusters(DataProcessor):
                      ]
             method: Clustering method - "kmeans" or "hdbscan"
             method_args: Parameters of the chosen `method` — `n_clusters` for
-                     "kmeans" (required), `min_cluster_size` /
-                     `cluster_selection_epsilon` for "hdbscan" (both optional).
-                     A key belonging to another method is an error.
+                     "kmeans" (required) plus its optional initialisation
+                     arguments `n_init` ("auto" or a positive int, default
+                     "auto") and `random_state` (int or None, default 42);
+                     `min_cluster_size` / `cluster_selection_epsilon` for
+                     "hdbscan" (both optional). A key belonging to another
+                     method is an error.
             scaler: Feature scaler - "minmax", "std", or None. Default is "minmax".
                      "standard" is accepted as a legacy alias of "std".
             path_col: Path ID column (if None, taken from schema)
@@ -102,6 +108,16 @@ class AddClusters(DataProcessor):
                 PROCESSOR_NAME,
                 "method_args={'n_clusters': ...} is required for the 'kmeans' method",
             )
+        # Validated here so a bad `n_init` fails at construction, like a missing
+        # `n_clusters`, instead of inside the fit.
+        self._kmeans_init = (
+            kmeans_init_args(
+                self.method_params,
+                error=lambda msg: PreprocessingConfigError(PROCESSOR_NAME, msg),
+            )
+            if method == "kmeans"
+            else {}
+        )
 
         super().__init__()
 
@@ -219,9 +235,7 @@ class AddClusters(DataProcessor):
         """
         if self.method == "kmeans":
             clusterer = KMeans(
-                n_clusters=self.method_params["n_clusters"],
-                random_state=42,
-                n_init="auto",
+                n_clusters=self.method_params["n_clusters"], **self._kmeans_init
             )
             return clusterer.fit_predict(features)
         elif self.method == "hdbscan":

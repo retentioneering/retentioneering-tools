@@ -144,15 +144,60 @@ class TestRejectedConstructs:
             parse_token("[^[b|c]]")
         assert "'[^b|c]'" in exc.value.message
 
-    @pytest.mark.parametrize("bad", ["[x]+", ".?", "[^x]+", "[a|b]?"])
-    def test__only_star_is_a_quantifier(self, bad):
-        with pytest.raises(PatternSyntaxError, match=r"only '\*'"):
+    @pytest.mark.parametrize(
+        "raw,bounds",
+        [
+            (".*", (0, None)),
+            ("[x]+", (1, None)),
+            (".?", (0, 1)),
+            ("[^x]+", (1, None)),
+            ("[a|b]?", (0, 1)),
+            (".{3}", (3, 3)),
+            (".{2,}", (2, None)),
+            (".{,4}", (0, 4)),
+            (".{1,4}", (1, 4)),
+            (".{ 1 , 4 }", (1, 4)),
+            (".{0}", (0, 0)),
+        ],
+    )
+    def test__quantifiers_bound_the_run(self, raw, bounds):
+        """Regex's spellings and regex's inclusive bounds; `{,n}` as in
+        Python's `re`."""
+        token = parse_token(raw)
+        assert isinstance(token, Gap)
+        assert (token.min_len, token.max_len) == bounds
+
+    def test__star_and_its_braced_spelling_are_the_same_gap(self):
+        assert parse_token(".{0,}").is_plain
+        assert parse_token(".*").is_plain
+        assert not parse_token(".+").is_plain
+        assert not parse_token("[^x]*").is_plain
+
+    @pytest.mark.parametrize(
+        "bad,message",
+        [
+            (".{3,1}", "exceeds the upper bound"),
+            (".{-1}", "non-negative"),
+            (".{a}", "non-negative"),
+            (".{}", "Empty quantifier"),
+            (".{,}", "bounds nothing"),
+            (".{30m}", "time bounds"),
+            ("[x]{1h,2h}", "time bounds"),
+        ],
+    )
+    def test__malformed_quantifiers(self, bad, message):
+        with pytest.raises(PatternSyntaxError, match=message):
             parse_token(bad)
 
     def test__quantifier_on_a_plain_name_is_just_a_name(self):
         """`promo*` is an event name, not a repetition — the quantifier only
         exists after a class or a wildcard."""
         assert parse_token("promo*") == "promo*"
+        assert parse_token("promo{2}") == "promo{2}"
+
+    def test__quantifier_on_a_missing_name_points_at_the_class_form(self):
+        hint = tokens_mod.describe_unknown_token("error{2,}")
+        assert "'(error){2,}'" in hint and "'[error]{2,}'" in hint
 
 
 class TestHintsForNamesThatDoNotExist:
@@ -283,3 +328,68 @@ class TestGaps:
 
     def test__a_class_without_a_star_is_still_a_position(self):
         assert not tokens_mod.is_gap("[^x]")
+
+
+class TestGroups:
+    """`(P){k}` is unrolled before anything else sees the pattern, so its whole
+    meaning is decided here: which copies, joined how, and which forms are
+    refused because unrolling cannot express them."""
+
+    @staticmethod
+    def _expand(pattern):
+        return "->".join(tokens_mod.expand_groups(pattern.split("->"), pattern))
+
+    @pytest.mark.parametrize(
+        "pattern,expanded",
+        [
+            ("A->(B->C){3}", "A->B->C->B->C->B->C"),
+            ("A->.*->(B->.*->C->.*){2}", "A->.*->B->.*->C->.*->B->.*->C->.*"),
+            ("A->.*->(B->.*->C->.*){2,}", "A->.*->B->.*->C->.*->B->.*->C->.*"),
+            ("A->(.*->B->.*->C){2,}->D", "A->.*->B->.*->C->.*->B->.*->C->D"),
+            ("A->.*->(B->C){2,}", "A->.*->B->C->B->C"),
+            ("(B->C)+->D", "B->C->D"),
+            ("A->(B){2}", "A->B->B"),
+            ("A->([B|C]->.*){2}->D", "A->[B|C]->.*->[B|C]->.*->D"),
+            ("A->(B->C){1}", "A->B->C"),
+        ],
+    )
+    def test__unrolls(self, pattern, expanded):
+        assert self._expand(pattern) == expanded
+
+    def test__names_with_round_brackets_are_not_groups(self):
+        for pattern in ["(beta) promo->cart", "cart->pay (card)", "(cart|purchase)"]:
+            assert self._expand(pattern) == pattern
+
+    def test__a_gap_inside_but_not_at_the_edges_is_refused(self):
+        """The trap: `(B->.*->C){2}` glues the copies as `C->B`. The message
+        has to offer both readings, since either may be meant."""
+        with pytest.raises(PatternSyntaxError) as exc:
+            self._expand("A->.*->(B->.*->C){2,}")
+        assert "'(B->.*->C->.*){2,}'" in exc.value.message
+        assert "'B->.*->C->B->.*->C'" in exc.value.message
+
+    def test__a_single_repetition_cannot_fall_into_that_trap(self):
+        assert self._expand("A->(B->.*->C)+->.*->D") == "A->B->.*->C->.*->D"
+
+    def test__a_gapless_group_repeats_back_to_back(self):
+        assert self._expand("A->.*->(B->C){2}") == "A->.*->B->C->B->C"
+
+    @pytest.mark.parametrize(
+        "pattern,message",
+        [
+            ("A->(B->C){,3}->.*->D", "not at most"),
+            ("A->(B->C){2,4}->.*->D", r"'\(B->C\)\{5\}'"),
+            ("A->(B->C)?->D", "not at most"),
+            ("A->(B->C)*->D", "zero repetitions"),
+            ("A->(B->C){0}->D", "zero repetitions"),
+            ("A->(B->C){2,}->D", "between two adjacent tokens"),
+            ("A->(B->C)->D", "no quantifier"),
+            ("A->(B->C", "never closed"),
+            ("A->(B->(C->D){2}){2}", "Nested groups"),
+            ("A->(B->C)x{2}", "Unexpected text"),
+            ("A->(->B){2}", "Empty token"),
+        ],
+    )
+    def test__refused(self, pattern, message):
+        with pytest.raises(PatternSyntaxError, match=message):
+            self._expand(pattern)

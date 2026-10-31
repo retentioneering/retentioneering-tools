@@ -245,7 +245,7 @@ class TestFilterEvents:
         schema = {"custom_cols": ["country"]}
         stream = Eventstream(df, schema)
 
-        res = stream.add_start_end_events().filter_events(
+        res = stream._build_start_end_events().filter_events(
             func=lambda _df: ~_df["event"].isin(["path_end", "B"])
         )
 

@@ -154,7 +154,7 @@ ECOM_PATTERNS = [
 
 @pytest.fixture(scope="module")
 def ecom_stream():
-    return load_ecom().add_start_end_events()
+    return load_ecom()._build_start_end_events()
 
 
 class TestResolveAnchorsSemantics:
@@ -551,12 +551,12 @@ class TestEventClassesOnRealData:
         pattern = f"[{'|'.join(members)}]->.*->purchase"
 
         via_class = anchors.resolve_anchors(
-            stream.add_start_end_events().df,
+            stream._build_start_end_events().df,
             stream.schema,
             pattern,
         )
         via_rename = anchors.resolve_anchors(
-            merged.add_start_end_events().df,
+            merged._build_start_end_events().df,
             merged.schema,
             "MERGED->.*->purchase",
         )

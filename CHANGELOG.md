@@ -5,6 +5,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Changed
+
+- `transition_graph`, `step_matrix`, `step_sankey` (and their `*_data` twins), the
+  `time_between` and `matches_pattern` metrics and `path_pattern` filtering raise
+  `PathBoundariesPresentError` on an eventstream that already contains
+  `path_start`/`path_end` rows. Boundaries baked in for one `path_col` used to be
+  silently rebuilt for the tool's own `path_col` (transition graph) or counted as
+  steps (step matrix: real events shifted by one step and column totals fell
+  below 100%). Remove the `add_start_end_events()` call and pass `path_col` to
+  the tool instead.
+
+### Deprecated
+
+- [`add_start_end_events`](https://retentioneering.com/docs/data-processors/add-start-end-events)
+  now emits a `FutureWarning` and will be removed in a future release. Tools place
+  `path_start`/`path_end` themselves, for the `path_col` they are given.
+
 ### Fixed
 
 - `time_median` and `time_q95` edge weights in `transition_graph` and

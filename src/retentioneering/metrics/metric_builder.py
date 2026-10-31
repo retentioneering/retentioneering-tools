@@ -1031,7 +1031,7 @@ class MetricBuilder:
 
         # Lazy load dataframe with start_end events (needed for path_start/path_end)
         if self.df_with_start_end is None:
-            self.df_with_start_end = self.eventstream.add_start_end_events(
+            self.df_with_start_end = self.eventstream._with_path_boundaries(
                 path_col=path_col
             ).df
 
@@ -1145,7 +1145,7 @@ class MetricBuilder:
 
         # Lazy load dataframe with start_end events (needed for path_start/path_end in patterns)
         if self.df_with_start_end is None:
-            self.df_with_start_end = self.eventstream.add_start_end_events(
+            self.df_with_start_end = self.eventstream._with_path_boundaries(
                 path_col=path_col
             ).df
 

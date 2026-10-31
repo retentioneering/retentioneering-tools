@@ -611,6 +611,21 @@ class TestPowerTools:
         reach = [r["scale_to_test"] for r in result["top"]]
         assert reach == sorted(reach)
         assert "Bonferroni" in result["level"] and "NEW test" in result["scope"]
+        # support is not inference; the unit of the paths; the sizing basis
+        assert result["unit_of_paths"] == "user_id" == result["path_col"]
+        counts = now["inference"].value_counts().to_dict()
+        assert {k: v for k, v in result["n_inference"].items() if v} == counts
+        assert result["n_inference"]["tested"] == screen.attrs["n_tested"]
+        assert sum(result["n_inference"].values()) == result["n_rows"]
+        assert "unknown_spread" in result["inference"]
+        assert result["sizing_basis"] == "projected_family"
+        assert "total, not additional" in result["sizing"]
+        for row in result["top"]:
+            assert row["inference"] in result["n_inference"]
+            assert isinstance(row["supported"], bool)
+        for sent, ref in zip(result["curve"], curve):
+            assert sent["supported"] == ref["supported"]
+            assert sent["unknown_spread"] == ref["unknown_spread"]
 
     def test_steps_power_with_a_target(self, northwind) -> None:
         result = tools.get_ab_steps_power(

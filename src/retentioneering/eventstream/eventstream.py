@@ -1669,8 +1669,8 @@ scale : list of float, default (0.25, 0.5, 1, 2, 4, 8, 16)
 target_delta : float, optional
     An absolute effect in the frame's units (a share: `0.01` is 1 pp; for
     `avg_per_path` transitions per path). Adds the paths per arm a {row} needs to
-    be tested with an `mde` that reaches it, and `attrs["curve"]` the share of
-    testable {rows} that reach it."""
+    be tested with an `mde` that reaches it, with the family projected at that
+    size, and `attrs["curve"]` the share of testable {rows} that reach it."""
     _POWER_RETURNS = """pandas.DataFrame
     One row per {row} of `{getter}` and per `scale`, sorted by {keys} and `scale`;
     * marks the columns added with `target_delta`.
@@ -1679,10 +1679,24 @@ target_delta : float, optional
     - `group1_paths`, `group2_paths`: the projected paths per arm.
     - `pooled_support`: the projected supporting paths of the support rule (paths
       with the {what}, both arms).
-    - `testable`: the {row} passes the pooled support rule at this scale (at
-      `scale=1`, exactly the {rows} the getter tests); a {row} that passes it and
-      still has no p-value (a value constant in both arms) stays untestable.
-    - `family_size`: testable {rows} at this scale, the projected family `m`;
+    - `supported`: the {row} passes the pooled support rule at this scale.
+    - `inference`: what more paths of the same mix can do for the {row}, the same
+      at every scale: `"tested"` (an adjusted p-value now), `"projectable"` (not
+      tested now, a spread known to exist: a z-test {row}, or a positive
+      `delta_se`), `"unknown_spread"` (not tested now and no spread estimated, so
+      more paths may or may not make it testable), `"no_spread"` (provably
+      constant: a standard error of 0, a share that every path has or none does,
+      or a value in [0, 1] at 0 or 1 in each arm, such as a transition
+      probability of 1) and `"no_estimate"` (it passes the support rule now and
+      is still untested, or an arm has no value: more paths of the same mix keep
+      it so). Support is not inference: passing the rule does not give a constant
+      {row} a spread.
+    - `testable` (nullable boolean): `supported` and tested or projectable; NA
+      when `supported` with an unknown spread; False otherwise. At `scale=1`,
+      exactly the {rows} the getter tests.
+    - `family_size`: the projected family `m` at this scale, the {rows} that are
+      `supported` and tested, projectable or of unknown spread (counted, so the
+      level stays conservative; {rows} that can never be tested are not);
       `mde_alpha`: `alpha / m`, the Bonferroni level the `mde` is computed at
       (as the getter's; conservative for Benjamini-Hochberg, which rejects the
       k-th smallest p-value at `alpha * k / m`, never below `alpha / m`).
@@ -1694,16 +1708,25 @@ target_delta : float, optional
       getter's `mde`.
     - `delta`, `test`: the getter's, unchanged (for reference).
     - `scale_to_test`: the smallest multiple of the paths at which the {row}
-      passes the support rule (NaN when it never does).
+      passes the support rule and joins the family (NaN when it never does, and
+      for `"no_spread"` and `"no_estimate"`).
     - `group1_paths_needed`*, `group2_paths_needed`*, `scale_needed`*: the paths
-      per arm (and their multiple of the current ones) at which the {row} passes
-      the support rule and its `mde` reaches `target_delta`, keeping the family
-      level of this scale (NaN when no multiple makes it testable).
+      per arm (totals, not additional paths) and their multiple of the current
+      ones from which the {row} passes the support rule and its `mde`, at the
+      level of the family projected at that size, stays at or below `target_delta`
+      (the same at every scale of the {row}; NaN without a spread to project).
+      Plugging `scale_needed` back into `scale` gives an `mde` that reaches the
+      target there.
 
-    `attrs` are the getter's plus `scale`, `target_delta`, `power`, `assumption`
-    and `curve`: one dict per scale with the paths per arm, `cells`, `testable`,
-    `family_size`, `mde_alpha`, `mde_median`, `mde_q25`, `mde_q75` (over the
-    testable {rows}) and, with `target_delta`, `share_reaching_target`.
+    `attrs` are the getter's (`path_col` names what one path is: a user, or a
+    session) plus `scale`, `target_delta`, `power`, `min_support`, `family` and
+    `sizing` (what `family_size` and `scale_needed` count, in words),
+    `sizing_basis` (`"projected_family"`), `assumption` and `curve`: one dict per
+    scale with the paths per arm, `cells`, `supported`, `unknown_spread` (among
+    the supported), `testable`, `family_size`, `mde_alpha`, `mde_median`,
+    `mde_q25`, `mde_q75` (over the testable {rows}), `no_spread` and
+    `no_estimate` (the same at every scale) and, with `target_delta`,
+    `share_reaching_target`.
 
     The projection assumes the same path composition: more paths with the same
     mix of behaviours, so the same pooled shares and per-path spread. It sizes the
@@ -1716,11 +1739,12 @@ target_delta : float, optional
 A screen with many events is data-hungry: each edge is its own test, the family
 is every testable edge, and an edge with few supporting paths is not tested. This
 getter runs `get_ab_transitions(...)` with the same arguments and projects every
-edge to `scale` times the current paths: whether it would be testable, the family
-it would belong to, and the minimum detectable effect (`mde`) there. At
-`scale=1` every number is the getter's. Read `attrs["curve"]` for the screen as a
-whole (testable edges and median MDE against the users), or draw it with
-`ab_transitions(...)` in its "Data needed" view.""",
+edge to `scale` times the current paths: whether it would pass the support rule,
+whether it could then be tested, the family it would belong to, and the minimum
+detectable effect (`mde`) there. At `scale=1` every number is the getter's. Read
+`attrs["curve"]` for the screen as a whole (testable edges and median MDE against
+the paths; a path is one `path_col`), or draw it with `ab_transitions(...)` in its
+"Data needed" view.""",
         [
             (
                 "Parameters",
@@ -1767,10 +1791,11 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more edges
 The step matrix has a cell per event and step, and the later steps split the
 paths over more events, so many cells are thin. This getter runs
 `get_ab_steps(...)` with the same arguments and projects every cell to `scale`
-times the current paths: whether it would be testable, the family it would belong
-to, and its minimum detectable effect (`mde`) there. At `scale=1` every number is
-the getter's. Read `attrs["curve"]` for the screen as a whole, or draw it with
-`ab_steps(...)` in its "Data needed" view.""",
+times the current paths: whether it would pass the support rule, whether it could
+then be tested, the family it would belong to, and its minimum detectable effect
+(`mde`) there. At `scale=1` every number is the getter's. Read `attrs["curve"]`
+for the screen as a whole, or draw it with `ab_steps(...)` in its "Data needed"
+view.""",
         [
             (
                 "Parameters",

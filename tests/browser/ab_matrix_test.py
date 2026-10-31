@@ -373,8 +373,9 @@ def test_sidebar_changes_recompute_through_python(stream, tmp_path):
 
 def test_static_data_needed_view(stream, tmp_path):
     """The "Delta | Data needed" switch works without a kernel: the MDE in every
-    tested cell, the untestable cells hatched with the users they need, the curve
-    in the header and, with a target, the users each tested cell needs."""
+    tested cell, the untestable cells hatched with the paths they need, the curve
+    in the header and, with a target, the paths each tested cell needs (the power
+    getter's projected-family scale_needed, solved in the browser)."""
     frame = stream.get_ab_transitions(DIFF)
     power = stream.get_ab_transitions_power(DIFF)
     export = _export(stream.ab_transitions(DIFF), tmp_path, "transitions_needed")
@@ -406,12 +407,13 @@ def test_static_data_needed_view(stream, tmp_path):
             counts = page.locator("[data-testid=ab-counts]").inner_text()
             shown = page.locator("[data-testid=ab-cell][data-idx]").count()
             assert f"{frame.attrs['n_tested']} of {shown} cells testable now" in counts
-            # a target: the users each tested cell needs, as the power getter says
+            # a target: the paths each tested cell needs, as the power getter says
             page.get_by_label("Target delta").fill("1")
             page.get_by_label("Target delta").press("Enter")
             page.locator("[data-testid=ab-curve-target]").wait_for(state="attached")
             target = stream.get_ab_transitions_power(DIFF, target_delta=0.01)
             one = target[(target["scale"] == 1) & target["testable"]]
+            assert len(one) == frame.attrs["n_tested"]
             row = one.sort_values("scale_needed").iloc[-1]
             cell = page.locator(
                 f"[data-testid=ab-cell][data-row='{row['source']}']"
@@ -420,12 +422,13 @@ def test_static_data_needed_view(stream, tmp_path):
             assert float(cell.get_attribute("data-times")) == pytest.approx(
                 row["scale_needed"], rel=1e-9
             )
-            assert "users" in cell.inner_text() or "enough" in cell.inner_text()
+            assert "paths" in cell.inner_text() or "enough" in cell.inner_text()
             cell.hover()
-            assert (
-                "users for an MDE of 1.00 pp"
-                in page.locator("[data-testid=ab-tooltip]").inner_text()
-            )
+            tip = page.locator("[data-testid=ab-tooltip]").inner_text()
+            assert "paths for an MDE of 1.00 pp" in tip
+            assert "a path is one user_id" in tip
+            unit = page.locator("[data-testid=ab-need-unit]").inner_text()
+            assert "a path is one user_id" in unit
             # back to the delta view
             page.locator("[data-testid=ab-view-delta]").click()
             assert page.locator("[data-testid=ab-cell][data-mode]").count() == 0

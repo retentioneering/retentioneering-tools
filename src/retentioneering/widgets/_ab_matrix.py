@@ -22,7 +22,9 @@ switch and its ``target_delta``) live in the browser and are saved with
 The "data needed" view reads ``power`` (``power_payload``): the frame projected
 to other sizes by the machinery of ``get_ab_transitions_power`` /
 ``get_ab_steps_power`` — the curve of testable cells and median MDE against the
-users, and per row the multiple of users at which it becomes testable.
+paths (one path is one ``path_col``: a user, or a session), and per row the
+multiple of the paths at which it passes the support rule, its inference status
+and the inputs of the paths a target needs.
 """
 
 from __future__ import annotations
@@ -33,7 +35,11 @@ from typing import Any
 import pandas as pd
 import traitlets
 
-from retentioneering.tools.ab_power import DEFAULT_SCALE, power_frame
+from retentioneering.tools.ab_power import (
+    DEFAULT_SCALE,
+    power_frame,
+    projection_inputs,
+)
 from retentioneering.tools.ab_tables import KEYS, matrix_axes
 from retentioneering.widgets._ab_widget import ABFrameWidget, jsonable
 from retentioneering.widgets.ab_test import scorecard_records
@@ -156,7 +162,8 @@ def encode_frame(rows: list[dict], columns: list[str]) -> dict:
 def decode_payload(payload: dict) -> dict:
     """The widget's ``result`` with ``rows`` (one dict per row of the frame, in its
     column order) in place of ``frame``, and ``untested_reason`` and
-    ``power["scale_to_test"]`` as lists: what the browser reads (``parsePayload``
+    ``power["scale_to_test"]``, ``power["inference"]`` and ``power["base"]`` as
+    lists: what the browser reads (``parsePayload``
     in ``js/widget/src/ab_matrix_encoding.ts``). An empty result (``{}``) comes
     back as it is."""
     if "frame" not in payload:
@@ -170,7 +177,8 @@ def decode_payload(payload: dict) -> dict:
     decoded["untested_reason"] = decode_column(payload["untested_reason"], length)
     if "power" in payload:
         power = dict(payload["power"])
-        power["scale_to_test"] = decode_column(power["scale_to_test"], length)
+        for name in ("scale_to_test", "inference", "base"):
+            power[name] = decode_column(power[name], length)
         decoded["power"] = power
     return decoded
 
@@ -181,12 +189,17 @@ def power_payload(frame: pd.DataFrame, keys: tuple[str, ...], params: dict) -> d
     ``get_ab_steps_power``).
 
     ``curve`` is ``attrs["curve"]`` (per scale: the testable cells and the median
-    MDE); ``scale_to_test`` is, per row of the frame in its order, the multiple of
-    the users at which the row passes the support rule (null when more users of
-    the same composition would not make it testable). The multiple a row needs
-    for a ``target_delta`` is ``(mde / target_delta) ** 2`` at the current
-    family's level, which the browser computes (``scale_needed`` of the power
-    getters at ``scale=1``)."""
+    MDE). Per row of the frame, in its order: ``scale_to_test``, the multiple of
+    the paths at which the row passes the support rule (null when it never joins
+    the family), ``inference`` (``tested``, ``projectable``, ``unknown_spread``,
+    ``no_spread``, ``no_estimate``) and ``base``, its standard error at the current
+    size (null without a spread to project). ``family`` is the projected family as
+    a step function of the scale (``breakpoints``, ``sizes``, ``factors``,
+    ``factor_now``: :func:`~retentioneering.tools.ab_power.family_steps`). The
+    multiple a row needs for a ``target_delta`` is
+    :func:`~retentioneering.tools.ab_power.solve_scale_needed` of those inputs,
+    which the browser computes with the same arithmetic (``scaleNeeded``), so the
+    target stays view state: it equals the power getters' ``scale_needed``."""
     projected = power_frame(
         frame,
         keys,
@@ -194,20 +207,23 @@ def power_payload(frame: pd.DataFrame, keys: tuple[str, ...], params: dict) -> d
         power=params["power"],
         min_support=params["min_support"],
     )
-    one = projected[projected["scale"] == 1.0]
-    if len(frame):
-        lookup = one.set_index(list(keys))["scale_to_test"]
-        aligned = lookup.reindex(pd.MultiIndex.from_frame(frame[list(keys)]))
-        to_test = [
-            float(v) if math.isfinite(float(v)) else None for v in aligned.to_numpy()
-        ]
-    else:
-        to_test = []
+    rows = projection_inputs(
+        frame, power=params["power"], min_support=params["min_support"]
+    )
+
+    def _floats(values) -> list:
+        return [float(v) if math.isfinite(float(v)) else None for v in values]
+
     attrs = projected.attrs
     return {
         "scale": [float(s) for s in attrs["scale"]],
         "curve": jsonable(attrs["curve"]),
-        "scale_to_test": encode_column(to_test),
+        "scale_to_test": encode_column(_floats(rows.scale_to_test)),
+        "inference": encode_column([str(v) for v in rows.inference]),
+        "base": encode_column(_floats(rows.base)),
+        "family": rows.steps.payload(),
+        "sizing_basis": attrs["sizing_basis"],
+        "unit_of_paths": attrs.get("path_col"),
         "level": "alpha / m (Bonferroni; conservative for Benjamini-Hochberg)",
         "assumption": attrs["assumption"],
     }

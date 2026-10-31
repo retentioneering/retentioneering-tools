@@ -1810,12 +1810,15 @@ def _power_result(
 ) -> dict:
     """The numbers-only view of a power frame: the curve over the scales, the
     counts now and the rows nearest to being testable (or to the target)."""
+    from retentioneering.tools.ab_power import INFERENCE
+
     meta = frame.attrs
     target = meta.get("target_delta")
     now = frame[frame["scale"] == 1.0]
     curve = _power_curve(meta)
     first = next((c for c in curve if c["scale"] == 1.0), None)
     with_target = target is not None
+    testable_now = now["testable"].fillna(False).astype(bool)
 
     def _row(row: dict) -> dict:
         out: dict[str, Any] = {}
@@ -1823,7 +1826,10 @@ def _power_result(
             value = row[column]
             out[column] = int(value) if column == "step" else str(value)
         out["pooled_support"] = int(row["pooled_support"])
-        out["testable"] = bool(row["testable"])
+        out["supported"] = bool(row["supported"])
+        out["inference"] = str(row["inference"])
+        # null: it passes the support rule, but whether it has a spread is unknown
+        out["testable"] = None if pd.isna(row["testable"]) else bool(row["testable"])
         for column in ("mde", "rel_mde", "scale_to_test"):
             out[column] = _json_number(row[column], 6)
         if with_target:
@@ -1842,10 +1848,13 @@ def _power_result(
         )
         listed = (
             f"{rows} whose mde does not reach target_delta={target} now, the "
-            "nearest first (scale_needed); null: never at this family level"
+            "nearest first (scale_needed: the total multiple of the paths, not an "
+            "additional one, from which the mde reaches it with the family "
+            "projected at that size); null: no spread to project (inference "
+            "unknown_spread, no_spread or no_estimate)"
         )
     else:
-        pending = now[~now["testable"].astype(bool)]
+        pending = now[~testable_now]
         ordered = pending.sort_values(
             ["scale_to_test", "pooled_support"],
             ascending=[True, False],
@@ -1853,26 +1862,40 @@ def _power_result(
         )
         listed = (
             f"{rows} not testable now, the nearest to the support rule first "
-            "(scale_to_test: the multiple of the paths that makes them testable)"
+            "(scale_to_test: the multiple of the paths at which they pass it; "
+            "testable is null where their spread is unknown until then)"
         )
+    inference = now["inference"].value_counts()
     out: dict[str, Any] = {
         "diff": meta.get("diff"),
         "path_col": meta.get("path_col"),
+        "unit_of_paths": meta.get("path_col"),
         "population": meta.get("population"),
         "correction": meta.get("correction"),
         "power": meta.get("power"),
         "min_support": meta.get("min_support"),
         "target_delta": target,
         "n_rows": int(len(now)),
-        "n_testable": int(now["testable"].astype(bool).sum()),
+        "n_testable": int(testable_now.sum()),
         "n_never_testable": int(now["scale_to_test"].isna().sum()),
+        "n_inference": {name: int(inference.get(name, 0)) for name in INFERENCE},
         "group1_paths": None if first is None else first["group1_paths"],
         "group2_paths": None if first is None else first["group2_paths"],
         "curve": curve,
         "level": (
-            "each mde is at alpha / m, m = the testable rows at that scale "
-            "(Bonferroni: conservative for Benjamini-Hochberg)"
+            "each mde is at alpha / m, m = the family at that scale: the rows that "
+            "pass the support rule there and are tested, projectable or of unknown "
+            "spread (Bonferroni: conservative for Benjamini-Hochberg)"
         ),
+        "inference": (
+            "tested: an adjusted p-value now; projectable: a spread known to exist, "
+            "testable once it passes the support rule; unknown_spread: no spread "
+            "estimated now, so whether more paths make it testable is unknown "
+            "(testable null); no_spread: constant, and no_estimate: no estimate "
+            "that more paths of the same mix would give, never testable"
+        ),
+        "sizing_basis": meta.get("sizing_basis"),
+        "sizing": meta.get("sizing"),
         "assumption": meta.get("assumption"),
         "scope": (
             "sizes the data the screen needs; says nothing about the effects it "
@@ -1916,9 +1939,12 @@ def get_ab_transitions_power(
     not tested, and the family is every testable edge. This projects the screen to
     `scale` times the current paths (both arms alike): per scale, the testable
     edges and the median minimum detectable effect (mde), and per edge the
-    multiple of the paths that makes it testable. Sizing, not inference: run it
-    BEFORE a new test (or to explain a screen full of insufficient_data), never to
-    decide whether to run this test longer. Numbers only (no report tab).
+    multiple of the paths that makes it pass the support rule and its inference
+    status (support is not inference: a constant edge never becomes testable).
+    A path is one `unit_of_paths` (the path_col: users, or sessions on a session
+    screen). Sizing, not inference: run it BEFORE a new test (or to explain a
+    screen full of insufficient_data), never to decide whether to run this test
+    longer. Numbers only (no report tab).
 
     Parameters
     ----------
@@ -1929,7 +1955,8 @@ def get_ab_transitions_power(
         4, 8, 16]); 1 is always included.
     target_delta:
         Optional absolute effect in the screen's units (a share: 0.01 is 1 pp).
-        Adds, per edge, the paths per arm its mde needs to reach it, and per scale
+        Adds, per edge, the paths per arm its mde needs to reach it (totals, not
+        additional paths, with the family projected at that size), and per scale
         the share of testable edges that reach it.
     top:
         Rows returned (a positive integer, default 15): the edges not testable now,
@@ -1938,16 +1965,22 @@ def get_ab_transitions_power(
 
     Returns
     -------
-    diff, path_col, population, correction, power, min_support, target_delta,
-    n_rows (edges seen), n_testable (now), n_never_testable (no scale makes them
-    testable), group sizes, curve (per scale: group1_paths, group2_paths, cells,
-    testable, family_size, mde_alpha, mde_median, mde_q25, mde_q75 and, with
-    target_delta, share_reaching_target), level, assumption (the same mix of
+    diff, path_col, unit_of_paths (the path_col: what one path is), population,
+    correction, power, min_support, target_delta, n_rows (edges seen), n_testable
+    (now), n_never_testable (no scale makes them testable: no spread, no
+    estimate, or never enough support), n_inference (edges per inference status:
+    tested, projectable, unknown_spread, no_spread, no_estimate), group sizes,
+    curve (per scale: group1_paths, group2_paths, cells, supported,
+    unknown_spread, testable, family_size, mde_alpha, mde_median, mde_q25,
+    mde_q75, no_spread, no_estimate and, with target_delta,
+    share_reaching_target), level, inference (the statuses in words),
+    sizing_basis ("projected_family") and sizing, assumption (the same mix of
     paths at every scale), scope, listed (what top holds), top (source, target,
-    pooled_support, testable, mde, rel_mde, scale_to_test and, with
-    target_delta, group1_paths_needed, group2_paths_needed, scale_needed), unit
-    ("pp": shares read in percentage points; "value": counts per path),
-    warnings; with target_delta also n_reaching_target.
+    pooled_support, supported, inference, testable (null: supported, spread
+    unknown), mde, rel_mde, scale_to_test and, with target_delta,
+    group1_paths_needed, group2_paths_needed, scale_needed), unit ("pp": shares
+    read in percentage points; "value": counts per path), warnings; with
+    target_delta also n_reaching_target.
     """
     if (err := _require_stream(session)) is not None:
         return err
@@ -2004,7 +2037,9 @@ def get_ab_steps_power(
 
     As get_ab_transitions_power, for the step-matrix cells (event at step k):
     per scale the testable cells and their median mde, per cell the multiple of
-    the paths that makes it testable. Sizing, not inference. Numbers only.
+    the paths that makes it pass the support rule and its inference status. A
+    path is one unit_of_paths (the path_col). Sizing, not inference. Numbers
+    only.
 
     Parameters
     ----------
@@ -2324,7 +2359,8 @@ def get_ab_compression(
 
     Returns
     -------
-    diff, screen, edge_weight, max_steps, path_col, population, group sizes,
+    diff, screen, edge_weight, max_steps, path_col, unit_of_paths (what one path
+    is: median_scale_needed is a multiple of these), population, group sizes,
     target, by, by_pre_exposure, arm_blind, unit, warnings and segments: per
     segment (one, "all", without by): chosen_step, steps (the path length),
     before / after (vocabulary, cells, testable, untestable, untestable_share,
@@ -2423,6 +2459,7 @@ def get_ab_compression(
         "edge_weight": weight,
         "max_steps": meta.get("max_steps"),
         "path_col": meta.get("path_col"),
+        "unit_of_paths": meta.get("path_col"),
         "population": meta.get("population"),
         "group1_paths": meta.get("group1_paths"),
         "group2_paths": meta.get("group2_paths"),

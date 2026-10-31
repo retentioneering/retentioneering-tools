@@ -17,6 +17,7 @@ import {
 import {
   type CompressionPayload, type Measure, type PathStep, type Segment,
   MEASURES, NEEDS, actionCounts, isCompact, beforeAfter, fmtMeasure, fmtScale, fmtShare, hasNeeds, mappingAt, needGeometry,
+  pathUnitText,
   panelGeometry, parseCompression, stepOf, stepText,
 } from "./ab_compression_encoding";
 
@@ -126,12 +127,13 @@ export function PathPanel({ path, measure, title, unit, selected, chosen, onSele
   );
 }
 
-/** The users-needed panel (with `target_delta`): two series in one unit, a
- *  multiple of the current users on a log scale; the line at ×1 is the data as
- *  it is. A legend names the series (solid and dashed, not colour alone). */
-export function NeedPanelView({ path, targetDelta, unit, selected, chosen, onSelect }: {
+/** The paths-needed panel (with `target_delta`): two series in one unit, a
+ *  multiple of the current paths (one path is one `path_col`) on a log scale;
+ *  the line at ×1 is the data as it is. A legend names the series (solid and
+ *  dashed, not colour alone). */
+export function NeedPanelView({ path, targetDelta, unit, selected, chosen, onSelect, pathCol }: {
   path: PathStep[]; targetDelta: number | null; unit: "pp" | "per_path"; selected: number; chosen: number;
-  onSelect: (step: number) => void;
+  onSelect: (step: number) => void; pathCol?: string | null;
 }) {
   const g = needGeometry(path, PANEL_W, PANEL_H, 8);
   const current = path[Math.min(selected, path.length - 1)];
@@ -141,7 +143,7 @@ export function NeedPanelView({ path, targetDelta, unit, selected, chosen, onSel
   const target = targetDelta == null ? "the target" : unit === "pp" ? `${(targetDelta * 100).toFixed(2)} pp` : String(targetDelta);
   return (
     <div data-testid="abc-panel-needed" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <svg width={PANEL_W} height={PANEL_H} viewBox={`0 0 ${PANEL_W} ${PANEL_H}`} role="img" aria-label="Users needed along the compression path"
+      <svg width={PANEL_W} height={PANEL_H} viewBox={`0 0 ${PANEL_W} ${PANEL_H}`} role="img" aria-label="Paths needed along the compression path"
         style={{ flexShrink: 0, overflow: "visible" }}>
         <rect x={0} y={0} width={PANEL_W} height={PANEL_H} fill="#f9fafb" stroke="#e5e7eb" />
         {yOne >= 0 && yOne <= PANEL_H && <line x1={0} x2={PANEL_W} y1={yOne} y2={yOne} stroke="#d1d5db" strokeDasharray="2 3" />}
@@ -152,7 +154,7 @@ export function NeedPanelView({ path, targetDelta, unit, selected, chosen, onSel
         {NEEDS.map(({ key, title }) => g.points[key].map((p) => p.y == null ? null : (
           <g key={`${key}-${p.step}`} data-testid="abc-need-point" data-series={key} data-step={p.step}
             onClick={() => onSelect(p.step)} style={{ cursor: "pointer" }}>
-            <title>{`${stepText(path[p.step])} · users for ${title}: ${fmtScale(p.value)}`}</title>
+            <title>{`${stepText(path[p.step])} · paths for ${title}: ${fmtScale(p.value)}`}</title>
             <circle cx={p.x} cy={p.y} r={9} fill="transparent" />
             {p.artificial && <circle cx={p.x} cy={p.y} r={7} fill="none" stroke={ARTIFICIAL} strokeWidth={2} />}
             <circle cx={p.x} cy={p.y} r={p.step === selected ? 5 : 3.5} fill={p.step === selected ? SELECTED : LINE} stroke="#f9fafb" strokeWidth={2} />
@@ -161,7 +163,7 @@ export function NeedPanelView({ path, targetDelta, unit, selected, chosen, onSel
         )))}
       </svg>
       <div style={{ fontSize: 11, color: "#374151", lineHeight: 1.4, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, color: INK }}>Users needed (× now)</div>
+        <div style={{ fontWeight: 600, color: INK }}>Paths needed (× now)</div>
         {NEEDS.map(({ key, title }) => (
           <div key={key} data-testid={`abc-value-${key}`} style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <svg width={18} height={6}><line x1={0} x2={18} y1={3} y2={3} stroke={LINE} strokeWidth={2} strokeDasharray={dash[key]} /></svg>
@@ -169,13 +171,15 @@ export function NeedPanelView({ path, targetDelta, unit, selected, chosen, onSel
           </div>
         ))}
         <div style={{ fontSize: 10, color: MUTED }}>{`path range ${fmtScale(g.min)}–${fmtScale(g.max)}, log scale; the dotted line is ×1`}</div>
+        <div data-testid="abc-need-unit" style={{ fontSize: 10, color: MUTED }}>{pathUnitText(pathCol)}</div>
       </div>
     </div>
   );
 }
 
-function PathChart({ segment, unit, targetDelta, step, onSelect }: {
+function PathChart({ segment, unit, targetDelta, step, onSelect, pathCol }: {
   segment: Segment; unit: "pp" | "per_path"; targetDelta: number | null; step: number; onSelect: (s: number) => void;
+  pathCol?: string | null;
 }) {
   const vocab = segment.path.map((p) => p.vocabulary);
   const lo = Math.min(...vocab), hi = Math.max(...vocab);
@@ -188,7 +192,7 @@ function PathChart({ segment, unit, targetDelta, step, onSelect }: {
       ))}
       {hasNeeds(segment.path) && (
         <NeedPanelView path={segment.path} targetDelta={targetDelta} unit={unit} selected={step}
-          chosen={segment.chosen_step} onSelect={onSelect} />
+          chosen={segment.chosen_step} onSelect={onSelect} pathCol={pathCol} />
       )}
       <div style={{ width: PANEL_W, display: "flex", justifyContent: "space-between", fontSize: 10, color: MUTED }}>
         <span>{lo} events</span><span>vocabulary size →</span><span>{hi} events</span>
@@ -415,10 +419,10 @@ function Sidebar({ host, isStatic, isLoading, params, view, setParam, setView, p
         <Hint>{target === "untestable_share"
           ? "The earliest step whose observations in cells too thin to test are near their lowest, without artificial transitions: the information, not the number of cells."
           : target === "testable" ? "The step with the most testable cells: a merged chain counts as a lost cell." : "The step with the lowest median MDE of the testable cells."}</Hint>
-        <Label>Target effect (users needed)</Label>
+        <Label>Target effect (paths needed)</Label>
         <NumberField label="Target effect" value={Number(params.target_delta) || null} percent={payload?.unit !== "per_path"} emptyIsNone disabled={disabled}
           onCommit={(v) => setParam("target_delta", v ?? 0)} />
-        <Hint>{payload?.unit === "per_path" ? "Per path, absolute" : "Percentage points, absolute"}: adds the users-needed panel.</Hint>
+        <Hint>{payload?.unit === "per_path" ? "Per path, absolute" : "Percentage points, absolute"}: adds the paths-needed panel ({pathUnitText(payload?.path_col)}).</Hint>
         {isStatic && <Hint>A static export has no kernel: these are the values it was computed with.</Hint>}
 
         <Rule />
@@ -476,7 +480,8 @@ export function CompressionBody({ payload, segment, view, onStep }: {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-start" }}>
-        <PathChart segment={segment} unit={payload.unit} targetDelta={payload.target_delta ?? null} step={step} onSelect={onStep} />
+        <PathChart segment={segment} unit={payload.unit} targetDelta={payload.target_delta ?? null} step={step} onSelect={onStep}
+          pathCol={payload.path_col} />
         <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 260 }}>
           <BeforeAfter segment={segment} step={step} unit={payload.unit} />
           <div data-testid="abc-actions" style={{ fontSize: 11, color: "#374151" }}>

@@ -248,6 +248,7 @@ class TestScope:
             session, list(TOY), path_col="session_id", step=1
         )
         assert "error" not in result, result
+        assert result["unit_of_paths"] == "session_id"
         step = result["segments"][0]["preprocessor"]
         assert step["path_col"] == "session_id"
         assert {r["label"] for r in step["plan"]} == {"a1+a2"}

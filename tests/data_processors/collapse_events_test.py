@@ -1008,17 +1008,28 @@ class TestCollapseEventsInactivity:
 # ---------------------------------------------------------------------------
 
 
-def results_over_row_orders(stream, processor, cols):
+def results_over_row_orders(stream, processor, cols, path_col=None):
     """Apply `processor` to every row order of the stream's frame. DuckDB reads
     the rows in that order, as it may read a large frame in any order across
     threads; the result must not depend on it. Returns the distinct results,
-    each as tuples of `cols` in path order."""
+    each as tuples of `cols` in the order `apply` returned the rows, which must
+    already be path order: by path, then position."""
     frame, schema = stream._df, stream.schema
+    path_col = path_col or schema.path_col
     results = set()
     for order in itertools.permutations(range(len(frame))):
         out, _ = processor.apply(frame.iloc[list(order)].reset_index(drop=True), schema)
-        out = out.sort_values([schema.index, schema.subindex], kind="stable")
-        results.add(tuple(map(tuple, out[cols].astype(str).to_numpy())))
+        in_path_order = out.sort_values(
+            [path_col, schema.index, schema.subindex], kind="stable"
+        )
+        assert list(out.index) == list(in_path_order.index)
+        values = out[cols].astype(object)
+        results.add(
+            tuple(
+                tuple(None if pd.isna(v) else str(v) for v in row)
+                for row in values.to_numpy()
+            )
+        )
     return results
 
 
@@ -1084,3 +1095,84 @@ class TestCollapseEventsTiedTimestamps:
         )
         # X comes before the start S, so it stays out of the window
         assert results == {(("X",), ("grp",), ("Z",))}
+
+    def test_explicit_first_and_last_follow_the_path_order(self):
+        df = pd.DataFrame(
+            [
+                ["u1", "A", "2020-01-01 00:00:00", "p1", 1],
+                ["u1", "A", "2020-01-01 00:00:00", "p2", 2],
+                ["u1", "A", "2020-01-01 00:00:00", "p3", 3],
+                ["u1", "B", "2020-01-01 00:00:00", "p4", 4],
+            ],
+            columns=["user_id", "event", "timestamp", "page", "value"],
+        )
+        stream = Eventstream(df, {**SCHEMA, "custom_cols": ["page", "value"]})
+        results = results_over_row_orders(
+            stream,
+            CollapseEvents(loops=True, agg={"page": "first", "value": "last"}),
+            ["event", "page", "value", "index", "timestamp"],
+        )
+        assert results == {
+            (
+                ("A", "p1", "3", "1", "2020-01-01 00:00:00"),
+                ("B", "p4", "4", "4", "2020-01-01 00:00:00"),
+            )
+        }
+
+    @pytest.mark.parametrize(
+        "pages, first, last",
+        [
+            ([None, "p2", "p3"], "p2", "p3"),  # a leading null is skipped
+            (["p1", "p2", None], "p1", "p2"),  # a trailing null is skipped
+            ([None, None, None], None, None),  # all null: null
+        ],
+    )
+    def test_first_and_last_skip_nulls(self, pages, first, last):
+        df = pd.DataFrame(
+            {
+                "user_id": "u1",
+                "event": "A",
+                "timestamp": "2020-01-01 00:00:00",
+                "page": pages,
+                "page_last": pages,
+            }
+        )
+        stream = Eventstream(df, {**SCHEMA, "custom_cols": ["page", "page_last"]})
+        results = results_over_row_orders(
+            stream,
+            CollapseEvents(loops=True, agg={"page_last": "last"}),
+            ["event", "page", "page_last", "index"],
+        )
+        # the merged row keeps the first event's position
+        assert results == {(("A", first, last, "1"),)}
+
+    def test_paths_and_nested_grain_stay_apart(self):
+        df = pd.DataFrame(
+            [
+                ["u1", "s1", "B", "2020-01-01 00:01:00"],
+                ["u1", "s2", "B", "2020-01-01 00:01:00"],
+                ["u1", "s2", "B", "2020-01-01 00:02:00"],
+                ["u2", "s3", "B", "2020-01-01 00:00:00"],
+                ["u2", "s3", "A", "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "session_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df, {**SCHEMA, "path_cols": ["user_id", "session_id"]})
+        by_session = results_over_row_orders(
+            stream,
+            CollapseEvents(loops=True, path_col="session_id"),
+            ["session_id", "event"],
+            path_col="session_id",
+        )
+        # B, B across the session boundary stays two events
+        assert by_session == {(("s1", "B"), ("s2", "B"), ("s3", "B"), ("s3", "A"))}
+        by_user = results_over_row_orders(
+            stream, CollapseEvents(loops=True), ["user_id", "event"]
+        )
+        assert by_user == {(("u1", "B"), ("u2", "B"), ("u2", "A"))}
+
+    def test_public_chain_agrees_with_the_processor(self):
+        stream = self.tied_stream()
+        res = stream.collapse_events(loops=True)
+        assert events(res) == ["A", "B", "C"]
+        assert list(res.df["page"]) == ["p1", "p2", "p4"]

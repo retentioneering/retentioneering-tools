@@ -1843,6 +1843,10 @@ def ab_compression(
         plan_rows = _plan_rows(part, states, ops, pick, stats0, protected_reason, scr)
         frame = pd.DataFrame(plan_rows)
         path = pd.DataFrame(rows)
+        # a dropped event's label is None: an object column keeps it None where
+        # pandas 3 would infer a string column and turn it into NaN
+        frame["label"] = pd.Series([r["label"] for r in plan_rows], dtype=object)
+        path["label"] = pd.Series([r["label"] for r in rows], dtype=object)
         if by is not None:
             frame.insert(0, by, value)
             path.insert(0, by, value)

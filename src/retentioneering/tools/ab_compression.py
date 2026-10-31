@@ -144,6 +144,17 @@ class _Data:
     n1: float
     n2: float
     events: list  # code -> event name
+    _pairs: np.ndarray | None = field(default=None, repr=False)
+
+    @property
+    def original_pairs(self) -> np.ndarray:
+        """The distinct direct transitions of the original paths (``source *
+        (events + 2) + target``, with the synthetic start and end), computed once."""
+        if self._pairs is None:
+            n_orig = len(self.events)
+            src, dst, _ = _transitions(self.codes, self.pid, n_orig)
+            self._pairs = np.unique(src * (n_orig + 2) + dst)
+        return self._pairs
 
     def subset(self, rows: np.ndarray, n1: float, n2: float) -> "_Data":
         """The events of the paths in ``rows`` (a boolean mask over path rows),
@@ -385,8 +396,7 @@ def _supported_pairs(data: _Data, state: _State) -> np.ndarray:
     (pairs with a dropped event left out): what a compressed edge may be without
     being artificial."""
     n_orig = len(data.events)
-    src, dst, _ = _transitions(data.codes, data.pid, n_orig)
-    pairs = np.unique(src * (n_orig + 2) + dst)
+    pairs = data.original_pairs
     o_src, o_dst = pairs // (n_orig + 2), pairs % (n_orig + 2)
     n_labels = len(state.names)
     to_label = np.concatenate([state.label_of, [n_labels, n_labels + 1]])
@@ -398,11 +408,11 @@ def _supported_pairs(data: _Data, state: _State) -> np.ndarray:
 def _path_numbers(
     data: _Data, state: _State, screen: _Screen, original_transitions: int
 ) -> dict:
-    """One row of ``attrs["path"]`` (without the operation columns)."""
+    """One row of ``attrs["path"]`` (without the operation columns), with the
+    cells' ``_thin`` shares the next step reads."""
     n_labels = len(state.names)
     lab, pid = _compress(data, state)
     numbers = _cell_numbers(data, lab, pid, n_labels, screen)
-    numbers.pop("_thin")
     src, dst, _ = _transitions(lab, pid, n_labels)
     keys = src * (n_labels + 2) + dst
     artificial = ~np.isin(keys, _supported_pairs(data, state))
@@ -722,13 +732,19 @@ def _build_path(
     taken = {str(e) for e in data.events}
     src, _, _ = _transitions(data.codes, data.pid, n_orig)
     original_transitions = len(src)
+    # the numbers of the current state, ``_thin`` included (the path rows drop it)
+    current = _path_numbers(data, state, screen, original_transitions)
+
+    def public(numbers: dict) -> dict:
+        return {k: v for k, v in numbers.items() if k != "_thin"}
+
     rows = [
         {
             "step": 0,
             "operation": "start",
             "events": [],
             "label": None,
-            **_path_numbers(data, state, screen, original_transitions),
+            **public(current),
             "reason": "the stream as it is",
         }
     ]
@@ -801,7 +817,6 @@ def _build_path(
     while True:
         st = _stats_of(data, state, None)
         mergeable = _mergeable(state, protected, st)
-        current = _cell_numbers(data, *_compress(data, state), len(state.names), screen)
         op = None
         for kind in order:
             if kind == "chain":
@@ -861,6 +876,7 @@ def _build_path(
             taken.add(label)
         ops.append(op)
         states.append(state)
+        current = _path_numbers(data, state, screen, original_transitions)
         rows.append(
             {
                 "step": len(ops),
@@ -868,7 +884,7 @@ def _build_path(
                 "events": names,
                 "members": members,
                 "label": label,
-                **_path_numbers(data, state, screen, original_transitions),
+                **public(current),
                 "reason": op.reason,
             }
         )

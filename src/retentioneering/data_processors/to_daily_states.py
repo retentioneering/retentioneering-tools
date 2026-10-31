@@ -102,7 +102,8 @@ class ToDailyStates(DataProcessor):
             is_active_today = "TRUE"
 
         exclude = {path_col, schema.event_col, schema.event_type}
-        agg_exprs = _session_agg_exprs(df, self.agg, exclude, timestamp_col)
+        # "first" and "last" of a day follow the path order (ADR-0018).
+        agg_exprs = _session_agg_exprs(df, self.agg, exclude, timestamp_col, "_rn")
         agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
 
         other_path_cols = [c for c in schema.path_cols if c != path_col]
@@ -138,7 +139,10 @@ class ToDailyStates(DataProcessor):
 
         query = f"""
         WITH base AS (
-            SELECT *, CAST({timestamp_col_q} AS DATE) AS day
+            SELECT *, CAST({timestamp_col_q} AS DATE) AS day,
+                ROW_NUMBER() OVER (
+                    PARTITION BY {path_col_q} ORDER BY {index_col_q}, {subindex_col_q}
+                ) AS _rn
             FROM df
         ),
         dataset_end AS (
@@ -207,7 +211,7 @@ class ToDailyStates(DataProcessor):
                     END
             END AS {event_col_q},
             '{collapsed_event_type}' AS {event_type_col_q},
-            1 AS {subindex_col_q},
+            {EventTypes().COLLAPSED_EVENT.index} AS {subindex_col_q},
             ROW_NUMBER() OVER (
                 PARTITION BY {path_col_q}
                 ORDER BY {timestamp_col_q}, {subindex_col_q}

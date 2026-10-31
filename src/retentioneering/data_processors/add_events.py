@@ -14,6 +14,7 @@ from retentioneering.exceptions import (
 )
 from retentioneering.paths import anchors
 from retentioneering.utils.sequences import find_delimiter_collisions
+from retentioneering.utils.session_detection import path_order
 from retentioneering.utils.sql_quoting import quote_list
 
 PROCESSOR_NAME = "add_events"
@@ -152,17 +153,65 @@ class AddEvents(DataProcessor):
         df_new = df_source.copy()
         df_new[schema.event_col] = self.name
         df_new[schema.event_type] = marker.type
-        df_new[schema.subindex] = marker.index
+        df_new[schema.subindex] = self._marker_ranks(
+            df, df_source, schema, marker.index
+        )
 
+        # Path order (ADR-0018): every row has a position of its own, so this
+        # sort has no ties to break.
         df = (
             pd.concat([df, df_new])
-            .sort_values([schema.path_col, schema.timestamp_col, schema.subindex])
+            .sort_values([schema.path_col, schema.index, schema.subindex])
             .reset_index(drop=True)
         )
 
         df[schema.event_col] = df[schema.event_col].astype("category")
 
         return df, schema
+
+    @staticmethod
+    def _marker_ranks(
+        df: pd.DataFrame, source: pd.DataFrame, schema: EventstreamSchema, base: int
+    ) -> pd.Series:
+        """The `subindex` of each new marker: a rank of its own at its position.
+
+        A marker shares its source row's `index`. Markers of one kind already
+        at that position (from an earlier `add_events` call) keep their ranks
+        and the new ones take the next free ones, in the path order of their
+        sources, so `(index, subindex)` stays unique within the path and the
+        markers stand in the order they were added (ADR-0018).
+        """
+        path_col, index_col, subindex_col = (
+            schema.path_col,
+            schema.index,
+            schema.subindex,
+        )
+        if source[index_col].isna().any():
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"every new event needs a position: the rows to mark have an empty "
+                f"'{index_col}'. Return the source rows' own '{index_col}' column.",
+            )
+        slots = EventTypes.SLOTS
+        kind = df[(df[subindex_col] >= base) & (df[subindex_col] < base + slots)]
+        taken = kind.groupby([path_col, index_col], observed=True)[subindex_col].max()
+        order = source.sort_values(
+            [path_col, index_col, subindex_col], kind="stable"
+        ).index
+        new = source.loc[order, [path_col, index_col]]
+        nth = new.groupby([path_col, index_col], observed=True).cumcount()
+        first_free = (
+            pd.MultiIndex.from_frame(new)
+            .map(lambda key: taken.get(key, base - 1) + 1)
+            .to_numpy()
+        )
+        ranks = pd.Series(first_free + nth.to_numpy(), index=order)
+        if (ranks >= base + slots).any():
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"more than {slots} markers of one kind at one position of a path",
+            )
+        return ranks.reindex(source.index).astype(df[subindex_col].dtype)
 
     def _get_by_source_event(
         self, df: pd.DataFrame, schema: EventstreamSchema
@@ -227,6 +276,25 @@ class AddEvents(DataProcessor):
                 PROCESSOR_NAME,
                 "The SQL query must return the same columns as the eventstream.",
             )
+        # A marker takes its source row's position, so the source must be a row
+        # of the stream: same path, `index` and timestamp (ADR-0018).
+        keys = [schema.path_col, schema.index, schema.timestamp_col]
+        if result[schema.index].isna().any():
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"every row the SQL query returns needs the '{schema.index}' of the "
+                f"event it marks; some rows have none.",
+            )
+        known = df[keys].drop_duplicates()
+        found = result[keys].merge(known, on=keys, how="left", indicator=True)
+        if (found["_merge"] != "both").any():
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"each row the SQL query returns must be an event of the stream, "
+                f"with its own '{schema.path_col}', '{schema.index}' and "
+                f"'{schema.timestamp_col}': the new event is placed at that row's "
+                f"position. Select rows from `eventstream` instead of changing them.",
+            )
         return result
 
     def _get_by_churn(
@@ -234,12 +302,13 @@ class AddEvents(DataProcessor):
     ) -> pd.DataFrame:
         path_col = schema.path_col
         ts_col = schema.timestamp_col
-        subindex_col = schema.subindex
         event_col = schema.event_col
         path_col_q = engine.quote_ident(path_col)
         ts_col_q = engine.quote_ident(ts_col)
-        subindex_col_q = engine.quote_ident(subindex_col)
         event_col_q = engine.quote_ident(event_col)
+        # In path order, of tied events only the last one in the path has the
+        # gap after it, so the marker follows that one (ADR-0018).
+        position = path_order(schema.index, schema.subindex)
 
         inactivity_days = self.churn["inactivity_days"]
         active_events = self.churn.get("active_events")
@@ -260,7 +329,7 @@ class AddEvents(DataProcessor):
             WITH windowed AS (
                 SELECT *,
                     LEAD({ts_col_q}) OVER (
-                        PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
+                        PARTITION BY {path_col_q} ORDER BY {position}
                     ) AS _hop_next_ts,
                     (SELECT MAX({ts_col_q}) FROM df) AS _hop_dataset_end
                 FROM df

@@ -11,6 +11,7 @@ from retentioneering.exceptions import (
     PreprocessingConfigError,
 )
 from retentioneering.paths import anchors
+from retentioneering.utils.session_detection import path_order
 
 PROCESSOR_NAME = "truncate_paths"
 
@@ -151,8 +152,6 @@ class TruncatePaths(DataProcessor):
 
         path_col_q = engine.quote_ident(path_col)
         index_col_q = engine.quote_ident(schema.index)
-        timestamp_col_q = engine.quote_ident(schema.timestamp_col)
-        subindex_col_q = engine.quote_ident(schema.subindex)
 
         start = self._bounds(df, schema, self.start_specs, "start", path_col)
 
@@ -182,7 +181,7 @@ class TruncatePaths(DataProcessor):
                 FROM df
                 JOIN bounds b ON df.{path_col_q} = b.{path_col_q}
                 WHERE df.{index_col_q} BETWEEN b.bound_start AND b.bound_end
-                ORDER BY df.{path_col_q}, df.{timestamp_col_q}, df.{subindex_col_q}
+                ORDER BY df.{path_col_q}, {path_order(schema.index, schema.subindex, "df.")}
                 """,
                 df=df,
                 bounds=bounds,

@@ -286,3 +286,113 @@ The MCP server is unchanged: ADR-0009 asks that renames reach the server and
 that tool results stay compact; nothing is renamed, and the screens' MCP tools of
 the getters' names already return compact summaries. A report tab for the
 matrices is not part of this change.
+
+## Amendment (2026-10): data sufficiency and vocabulary compression
+
+The screens are data-hungry: every edge (cell) is its own test, a row below
+`min_support` is not tested, and the family grows with the vocabulary. Two answers
+are added, all in the A/B group except one general processor.
+
+**C1 — how much data a screen needs.** `get_ab_transitions_power` and
+`get_ab_steps_power` take the screens' arguments plus `scale` (multiples of the
+current paths, both arms alike; 1 always included) and `target_delta`, and return
+one row per (row of the screen, scale). The projection is the screen's own
+machinery with the paths multiplied: the support rule on the projected pooled
+support, the family `m` = the rows testable at that scale, and the `mde` at
+`alpha / m` (the screen's MDE level: Bonferroni, conservative for BH, which never
+rejects below `alpha / m`) with the standard error scaled by `1 / sqrt(scale)` —
+the pooled share at the projected arm sizes for a z-test row, `delta_se /
+sqrt(scale)` for a Welch or bootstrapped row. At `scale=1` every number equals the
+getter's (tested). With `target_delta`, the paths per arm a row needs are those at
+which it passes the support rule and its MDE reaches the target; a rare row's
+small MDE does not count before it is testable. `attrs["curve"]` sums each scale up
+(cells, testable, family, MDE median and quartiles, share reaching the target).
+The projection assumes the same path composition, and the docs say it sizes a new
+test, never a longer run of this one. The matrix widgets get a **Data needed**
+view (the cell background the MDE or the users a target needs, untested cells
+hatched with `×k to test`, the curve as two small panels — testable cells and
+median MDE against the users, never one chart with two scales); its colours are
+constants of `tools/ab_tables.py`, generated into the widget like the delta
+encoding. The payload carries the curve and each row's `scale_to_test`; the
+users a target needs, `max((mde / target)^2, scale_to_test)`, are computed in the
+browser from the row's `mde`, so the target is view state and needs no recompute.
+
+**C2 — a smaller vocabulary, chosen without the arms.**
+`get_ab_compression(diff, screen="transitions" | "steps", ...)` returns a plan:
+one row per event (`action` keep / merge / drop / other, the new `label`, the
+evidence and a `reason` in words) and, in `attrs["path"]`, the greedy path — one
+operation per step with the screen's numbers after it (vocabulary, cells,
+testable and untestable cells, median MDE, transition mass retained, artificial
+transitions). The operations: merge a chain (`P(next)` and `P(prev)` both at least
+`chain_threshold`); drop a rare event when the screen's bridge rule holds, else
+relabel it `other`; merge synonyms (Jensen–Shannon distance of the in- and
+out-transitions, no self-loops of their own) only when one is thin and the merge
+leaves fewer untestable cells and loses no testable one. `keep` events,
+`path_start` / `path_end` and a declared `edges=` family are never touched.
+
+Arm-blind: every statistic is pooled; the plan reads the two arm sizes (for the
+MDE) and never a path's arm, so permuting the arms or swapping them in `diff`
+leaves it identical (tested). Choosing the vocabulary from arm differences would be
+selection on the outcome; filtering on the pooled support, which does not depend
+on the arms under the null, is independent filtering and keeps BH valid (Bourgon,
+Gentleman and Huber, 2010). The plan's statistics read each path's whole window,
+not the first `max_steps` steps: the plan applies to the stream.
+
+Deviations from the first design, with their reason:
+
+- `target="testable"` maximises the *count* of testable cells (ties: the fewest
+  untestable cells, the lowest median MDE, the earliest step), not their share: a
+  share rewards a tiny vocabulary with few cells, all testable.
+- Synonym merges are gated: one member must be thin (at least half of the paths
+  through its cells in untestable cells) and the merge must reduce the untestable
+  cells without losing a testable one. Ungated, two well-measured events with
+  similar neighbours (`catalog` and `search`) merged and lost real cells.
+- `screen=` takes the other screen's arguments as an error (`max_steps` with
+  `"transitions"`, `edge_weight` / `edges` with `"steps"`), not silently.
+
+**C3 — one plan per screen.** The transition screen wants fewer, richer edges
+and no invented transition: a rare event is dropped only when, for
+`bridge_threshold` of its runs, the events around it already follow each other
+directly in at least `min_support` paths; chains come first. The step screen
+wants aligned steps: a rare event is dropped when it is an insertion (the paths
+without it go from the event before to the event after directly at least as
+often as through one other event), which realigns the later steps; otherwise it
+becomes `other`, which keeps every position; rare events come first, chains last.
+On Northwind with `min_path_share=0.1`, `support_chat` is dropped by the
+transitions plan and relabelled by the steps plan (a test pins the reason).
+
+**C4 — homogeneity.** `by=<segment fixed before exposure>` builds a plan per
+segment (the segment column on every row, `chosen_step` and `mappings` per
+segment), with `attrs["homogeneity"]` per segment: effective vocabulary
+`exp(entropy)`, transition entropy, distinct-path share, and the numbers before
+and after. The pre-exposure rule is the scorecard's: `by_pre_exposure=True`, or
+the recipe shows it; otherwise it warns. Within a segment the arm sizes are the
+segment's.
+
+**C5 — applying a plan.** `compress_events(plan)` is a general data processor (a
+verb, ADR-0008) and adds no transformation: it is `edit_events(delete, rename)`
+followed by `collapse_events(loops=[merged labels])` (ADR-0003: a new stream, the
+step in the recipe, a plan frame recorded as its rows). It takes the plan frame,
+its records, or a `{event: label | None}` mapping. The compressed stream's
+screens reproduce the plan's step in `attrs["path"]` (tested on every step of a
+toy stream and on Northwind).
+
+**C6 — the widget and MCP.** `ab_compression(diff, screen, ...)` with the twin
+`ab_compression_data` (an alias of `get_ab_compression`) draws the path as three
+panels sharing the vocabulary axis (testable cells, median MDE, mass retained;
+artificial steps ringed), a step slider, the mapping at the selected step and the
+numbers before and after. The payload holds every step (per event, the steps at
+which its label changes), so the slider works in a static export. The matrix and
+compression widgets share one base (`widgets/_ab_widget.py`). Through MCP,
+`get_ab_transitions_power`, `get_ab_steps_power` and `get_ab_compression` are
+compact-result tools (ADR-0009): the curve and the rows nearest to testable; the
+plan's numbers before and after, the path up to the chosen step, the changed
+events and a ready `compress_events` step for `local_preprocessors`.
+`compress_events` is a documented preprocessor.
+
+Measured: on the bundled experiments the default plans keep five of six streams as
+they are (they are dense) and merge `session_start+home` on `session_assignment`
+(57 of 59 step cells testable before, 65 of 66 after); no default plan creates an
+artificial transition. On 40,000 and 200,000 simulated users of a 79-event
+store, the projection from 40,000 to ×5 predicted 1,386 testable edges at a median
+MDE of 0.106 pp, and the 200,000-user sample had 1,375 at 0.106 pp.

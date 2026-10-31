@@ -439,6 +439,122 @@ Under a true null (20 seeds of `load_ab_test("aa_calibration", seed=...)`) the s
 no edge significant in any run, at any of `unique_paths`, `avg_per_path`,
 `proba_out` and `share_of_total`, and one cell in one run of `get_ab_steps`.
 
+## When the screen is too sparse: how much data, and compressing the vocabulary
+
+The screens are data-hungry. Every edge (cell) is its own test, an edge with fewer
+than `min_support` supporting users is not tested at all, and the family the
+p-values are adjusted over grows with the vocabulary: a stream with 80 events has
+thousands of possible edges sharing the same users. A screen full of
+`insufficient_data` is short of data, not of effects. Two tools answer it: how many
+users the screen needs, and a smaller vocabulary for the users there are.
+
+**How much data.** [`get_ab_transitions_power()`](/docs/tools/get-ab-transitions-power)
+and [`get_ab_steps_power()`](/docs/tools/get-ab-steps-power) take the screens'
+arguments and project every row to `scale` times the current users (both arms
+alike): whether it would be testable, the family it would belong to and its
+minimum detectable effect there, at the family's Bonferroni level `alpha / m`
+(the screen's own MDE level; conservative for Benjamini–Hochberg). At `scale=1`
+every number is the screen's.
+
+```python
+power = stream.get_ab_transitions_power(diff, assignment=assignment, target_delta=0.01)
+pd.DataFrame(power.attrs["curve"])[["scale", "testable", "mde_median", "share_reaching_target"]]
+#    scale  testable  mde_median  share_reaching_target
+# 0   0.25        84    0.042995               0.000000
+# 1   0.50        88    0.029289               0.068182
+# 2   1.00        90    0.020292               0.144444
+# 3   2.00        91    0.014239               0.329670
+# 4   4.00        91    0.010069               0.494505
+# 5   8.00        91    0.007120               0.626374
+# 6  16.00        92    0.005005               0.923913
+```
+
+At its 5,000 users per arm, the experiment tests 90 of its 92 edges with a median
+MDE of 2.03 pp; 14 % of them could detect a 1 pp effect, half of them with four
+times the users. The [A/B Transitions](/docs/widgets/ab-transitions) and
+[A/B Steps](/docs/widgets/ab-steps) widgets draw the same projection in their
+**Data needed** view: each cell's MDE (or the multiple of users it needs for
+`target_delta`), the untested cells hatched with the users that would make them
+testable, and the curve above the matrix. The projection assumes the same mix of
+paths at every size. It sizes the next test; it is never a reason to run this one
+longer ([pitfall 6](#6-peeking-and-open-ended-metrics)). On a simulated case study
+with 40,000 users and 79 events, the projection to five times the users predicted
+1,386 testable edges at a median MDE of 0.106 pp; an independent sample of 200,000
+users from the same simulator had 1,375, at 0.106 pp.
+
+**A smaller vocabulary.** [`get_ab_compression()`](/docs/tools/get-ab-compression)
+proposes one, step by step: it merges a chain of events that almost always follow
+each other (`P(next = B | A)` and `P(prev = A | B)` both at least `chain_threshold`),
+drops a rare event that only interrupts transitions that exist anyway, relabels
+other rare events to one `other` event, and merges two events with the same
+neighbours when that pools thin cells. Each step is a row of `attrs["path"]` with
+the screen's numbers after it (cells, testable cells, median MDE, the share of the
+original transitions retained, and the artificial transitions: compressed edges no
+original direct transition maps to), and `target` picks the step (by default the
+most testable cells). [`compress_events(plan)`](/docs/data-processors/compress-events)
+applies the plan through `edit_events` and `collapse_events`, and the compressed
+stream's screen has the numbers of the chosen step:
+
+```python
+plan = stream.get_ab_compression(diff, assignment=assignment,
+                                 keep=["quick_add", "cart"], max_events=10)
+plan.loc[plan["action"] != "keep", ["event", "action", "label"]]
+#                event action                   label
+# 3     checkout_start  merge  checkout_start+payment
+# 4   collections_view   drop                    None
+# 7            payment  merge  checkout_start+payment
+# 12     search_filter   drop                    None
+# 13      support_chat   drop                    None
+# 14      wishlist_add   drop                    None
+compact = stream.compress_events(plan)
+compact.get_ab_transitions(diff, assignment=assignment).attrs["n_tested"]
+# 58 (of 58 edges)
+```
+
+This experiment is dense, so the default plan keeps the stream as it is (step 0:
+the screen already tests almost every edge); the cap of 10 events forces a
+compression to show it. All 58 edges of the compressed screen are tested, and its
+19 discoveries still include the planted ones (`cart -> cart`,
+`product_view -> quick_add`, `quick_add -> cart`), at a cost the path records: the
+dropped events took a quarter of the transitions with them, and the median MDE of
+the tested edges rose from 2.03 to 2.52 pp. The [A/B Compression](/docs/widgets/ab-compression)
+widget draws the path, with a slider over its steps and the mapping at each.
+
+**Chosen without the arms.** Every statistic behind the plan is pooled over both
+arms; the arm of a user is never read, only the arm sizes for the MDE. Choosing
+the vocabulary from where the arms differ would be selection on the outcome: the
+compressed screen would find what the selection put there. A filter on a
+statistic that does not depend on the arms under the null, as the pooled support
+does not, keeps Benjamini–Hochberg valid ("independent filtering", Bourgon,
+Gentleman and Huber, 2010). Permuting the arm labels leaves the plan identical, and
+on the A/A experiment and on permuted Northwind arms the compressed screens stayed
+as clean as the full ones. Two rules follow. Fix the plan before reading the screen
+it is for, and never pick a step by its verdicts. And declare in `keep` the events
+the treatment introduces or changes, and the decision metric's: the plan cannot see
+the arms, so it cannot tell a synonym from the treatment's replacement of an event.
+
+**One plan per screen.** The transition screen wants fewer, richer edges and no
+invented transition; the step screen wants aligned steps. With
+`min_path_share=0.1`, `support_chat` (8.5 % of the users) is rare for both. Every
+one of its runs sits between two events that also follow each other directly, so
+the transitions plan drops it. But only 57 % of them are insertions (in the paths
+without it, the event before is more often followed by another event than by the
+one after), so dropping it would pull those paths' later events one step earlier
+than paths that never had it: the steps plan relabels it `other`, which keeps every
+position. Chains come first for the transitions and last for the steps. On
+`session_assignment`, where every session opens `session_start -> home`, the one
+chain merge moves every later event a step earlier into the window, and the step
+screen tests 65 of 66 cells instead of 57 of 59.
+
+**Homogeneity.** `by=` builds one plan per segment fixed before exposure
+(`by_pre_exposure=True`, as for the scorecard's strata), with a summary per
+segment in `attrs["homogeneity"]`: the effective vocabulary (`exp` of the entropy
+of the event distribution), the transition entropy and the share of distinct
+paths. A homogeneous segment, where a few events carry most of the paths, reaches
+enough testable cells with little compression; a heterogeneous one needs more. On
+this experiment desktop and mobile are alike (an effective vocabulary of 9.5 of 15
+events, 87 % and 86 % distinct paths) and neither needs compression.
+
 ## Sample ratio mismatch
 
 A sample ratio mismatch (SRM) — arms whose sizes differ from the design by more than chance — means the assignment, the logging or a filter lost users from one arm, and no metric of the test can be trusted until it is explained. [`get_sample_ratio()`](/docs/tools/get-sample-ratio) tests the counts against the expected shares (chi-square goodness of fit, an equal split by default):
@@ -548,13 +664,13 @@ Sequential (always-valid) tests and a bootstrap over a unit coarser than the pat
 
 ## Asking an agent instead
 
-The [MCP server](/docs/mcp-server) has six A/B tools: `get_sample_ratio`, `get_ab_test`, `get_ab_bootstrap` (an early-minus-late contrast with its interval), `get_ab_transitions` and `get_ab_steps` (the screens above: counts per verdict and the top rows) return numbers only, and `add_ab_test` registers the scorecard as a report tab. `get_ab_paths` is Python only. Its playbook has an A/B scenario: check the sample ratio first, declare the decision metric and the metrics before the first call, read `inconclusive` with the interval and the `mde`, and never filter or stratify on post-exposure behaviour. Two habits from this page carry over. When the treatment renames an event — `quick_add` instead of `add_to_cart` — compare the union (`has_any_event` over both), not either event alone. And to find who the treatment helps, test heterogeneity first, then read `stratum_vs_rest_p_value`, with every stratum labelled exploratory unless it was fixed before exposure. `export_report` saves only report tabs, so a numbers-only analysis needs a tab, such as the scorecard via `add_ab_test`, before it can be exported. An agent with retentioneering's [skills](/docs/agent-skills) can run the same calls as code.
+The [MCP server](/docs/mcp-server) has nine A/B tools: `get_sample_ratio`, `get_ab_test`, `get_ab_bootstrap` (an early-minus-late contrast with its interval), `get_ab_transitions` and `get_ab_steps` (the screens above: counts per verdict and the top rows), `get_ab_transitions_power` and `get_ab_steps_power` (the curve and the rows nearest to testable) and `get_ab_compression` (the plan before and after, with a ready `compress_events` step for `local_preprocessors`) return numbers only, and `add_ab_test` registers the scorecard as a report tab. `get_ab_paths` is Python only. Its playbook has an A/B scenario: check the sample ratio first, declare the decision metric and the metrics before the first call, read `inconclusive` with the interval and the `mde`, and never filter or stratify on post-exposure behaviour. Two habits from this page carry over. When the treatment renames an event — `quick_add` instead of `add_to_cart` — compare the union (`has_any_event` over both), not either event alone. And to find who the treatment helps, test heterogeneity first, then read `stratum_vs_rest_p_value`, with every stratum labelled exploratory unless it was fixed before exposure. `export_report` saves only report tabs, so a numbers-only analysis needs a tab, such as the scorecard via `add_ab_test`, before it can be exported. An agent with retentioneering's [skills](/docs/agent-skills) can run the same calls as code.
 
 ## Next steps
 
 - [A/B testing tutorial](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_tutorial.ipynb) — an eleven-step notebook on the built-in `load_ab_test()` dataset: sample ratio, scorecard and its widget, funnel, novelty, pre-exposure strata, loops, example paths per arm, and a decision.
 - [A/B testing showcase](https://github.com/retentioneering/retentioneering-tools/blob/master/notebooks/ab_testing_showcase.ipynb) — the companion reference notebook, organised by capability: every dataset, metric kind, test, correction, period basis and output column, each shown once with its reading.
-- [A/B Test Scorecard](/docs/tools/get-ab-test), [A/B Bootstrap Replicates](/docs/tools/get-ab-bootstrap), [A/B Per-Path Table](/docs/tools/get-ab-paths), [A/B Transition Screen](/docs/tools/get-ab-transitions), [A/B Step Screen](/docs/tools/get-ab-steps), [Sample Ratio Check](/docs/tools/get-sample-ratio) — every parameter and output column; `get_ab_paths()` returns the per-path table behind the scorecard, for an analysis the scorecard does not run (a covariate adjustment by hand); the [A/B Test widget](/docs/widgets/ab-test) draws the scorecard as a table and a forest plot.
+- [A/B Test Scorecard](/docs/tools/get-ab-test), [A/B Bootstrap Replicates](/docs/tools/get-ab-bootstrap), [A/B Per-Path Table](/docs/tools/get-ab-paths), [A/B Transition Screen](/docs/tools/get-ab-transitions), [A/B Step Screen](/docs/tools/get-ab-steps), [Data needed](/docs/tools/get-ab-transitions-power) for the [steps](/docs/tools/get-ab-steps-power), [A/B Vocabulary Compression](/docs/tools/get-ab-compression), [Sample Ratio Check](/docs/tools/get-sample-ratio) — every parameter and output column; `get_ab_paths()` returns the per-path table behind the scorecard, for an analysis the scorecard does not run (a covariate adjustment by hand); the [A/B Test widget](/docs/widgets/ab-test) draws the scorecard as a table and a forest plot.
 - [A/B test datasets](/docs/eventstream#ab-test-datasets) — `list_ab_tests()` and `load_ab_test(name=...)`: six synthetic experiments to practise on, some of them broken tests whose right answer is not to read them.
 - [Funnel](/docs/widgets/funnel#confidence-intervals-and-ab-tests) — what each interval and p-value assumes.
 - [Segments](/docs/segments) and [Add Segment](/docs/data-processors/add-segment) — carrying an assignment table or pre-exposure labels onto the event log with `path_values`.

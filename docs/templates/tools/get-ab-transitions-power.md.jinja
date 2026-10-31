@@ -1,0 +1,53 @@
+{% extends "_tool_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+A transition screen tests every edge on its own: an edge with fewer than
+`min_support` supporting paths (or non-supporting ones, for a share) is not
+tested, and the family the p-values are adjusted over is every tested edge. The
+more events a stream has, the more edges share the same users, and the more of
+them are too thin to test. This getter answers the question before the screen is
+read: how many users would it take?
+
+It runs [`get_ab_transitions`](/docs/tools/get-ab-transitions) with the same
+arguments and projects every edge to `scale` times the current paths, the same
+multiple in both arms:
+
+- **the support rule** is the screen's, on the projected pooled support: an
+  edge with 8 supporting paths at `min_support=10` is testable at `×1.25`
+  (`scale_to_test`); an edge the screen cannot test for another reason (a value
+  constant in both arms) stays untestable at every scale;
+- **the family** at a scale is the number of testable edges there, and the
+  `mde` is computed at its Bonferroni level `alpha / m` (`mde_alpha`). That is
+  the screen's own MDE level, and it is conservative for Benjamini-Hochberg,
+  which rejects the k-th smallest p-value at `alpha * k / m`, never below
+  `alpha / m`;
+- **the MDE** is the getter's own computation with the standard error scaled by
+  `1 / sqrt(scale)`: the pooled share and the projected arm sizes for a share
+  (`unique_paths`), the Welch standard error for `avg_per_path`, the bootstrap
+  standard error for the conditional weights. At `scale=1` every number is the
+  getter's.
+
+With `target_delta` (an absolute effect in the screen's units: `0.01` is 1 pp
+of the users), each edge also gets the paths per arm it needs to be tested with
+an `mde` that reaches the target (`scale_needed`, never below `scale_to_test`),
+and the curve the share of testable edges that reach it.
+
+`attrs["curve"]` reads the screen as a whole. On `load_ab_test()` with its
+assignment table (5,000 users per arm), 90 of the 92 edges are testable and the
+median MDE is 2.03 pp; at a quarter of the users, 84 edges are testable at a
+median MDE of 4.30 pp, and at 16 times the users all 92 are, at 0.50 pp. With
+`target_delta=0.01`, 14 % of the testable edges can detect a 1 pp effect now,
+49 % with four times the users and 92 % with sixteen.
+
+The projection assumes **the same path composition**: more users with the same
+mix of behaviours, so the same pooled shares and the same per-path spread. It
+sizes the data a screen needs; it says nothing about the effects the screen
+will find. A larger sample is a new test sized before it starts, not this test
+run longer (peeking). The [A/B Transitions](/docs/widgets/ab-transitions) widget
+draws the same projection in its **Data needed** view, and
+[`get_ab_compression`](/docs/tools/get-ab-compression) is the other way out: a
+smaller vocabulary for the same users.
+
+{% endblock %}

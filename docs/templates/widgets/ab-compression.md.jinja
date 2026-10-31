@@ -1,0 +1,111 @@
+{% extends "_widget_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+The A/B Compression widget draws the plan of
+[`get_ab_compression`](/docs/tools/get-ab-compression) step by step: it computes
+nothing of its own. Its headless twin, `ab_compression_data`, is an alias of
+`get_ab_compression` (same arguments, same frame), and every number in the
+widget is a row of the plan or of its `attrs["path"]`.
+
+### The path chart
+
+One point per step of the greedy path, the vocabulary size on x (the full
+vocabulary on the right; the path moves left as events are merged, dropped or
+relabelled). Three panels share that axis, one measure each, so no panel needs a
+second scale:
+
+- **Testable cells**: the cells of the screen that pass the support rule;
+- **Median MDE** of the testable cells, at the family's `alpha / m`;
+- **Transition mass retained**: the share of the original transitions that are
+  still transitions after compression, not artificial ones.
+
+A step that creates artificial transitions (compressed edges no original direct
+transition maps to) is marked with a red ring, and the chosen step (by
+`target`, or `step`) with a dark one. Each panel's range is printed beside it.
+
+### The slider and the mapping table
+
+The slider picks a step; it starts at the chosen one. It moves in the browser
+without a recompute, in a notebook and in a static export alike: the payload
+carries every step's mapping. At the selected step, the mapping table lists the
+events whose label changed (or every event): the new label, dropped or `other`,
+the step that set it, its share of the paths and the reason in words, the same
+`reason` as the plan's. Before and after compares step 0 with the selected step:
+vocabulary, cells, testable and untestable cells, median MDE, transition mass
+retained and artificial transitions.
+
+The header names the screen, the population, the chosen step and the arm sizes,
+and says that the plan is arm-blind: it reads the pooled paths, never which arm
+a path is in. With `by`, a selector switches between the segments' plans, and
+the header shows the segment's homogeneity (effective vocabulary, transition
+entropy, distinct-path share).
+
+To take the plan at the step shown:
+
+```python
+plan = stream.ab_compression_data(diff, assignment=assignment, step=3)
+compact = stream.compress_events(plan)
+```
+
+### Sidebar and view
+
+The sidebar edits `screen`, `min_path_share`, `chain_threshold`, `max_events` and
+`target`, and every change recomputes the plan; the other arguments are set in
+code and shown read-only. Switching the screen sets aside the other screen's
+argument (`edge_weight` or `max_steps`). The selected step, the "changed only"
+filter and the segment are the view. A `state_file` keeps the data arguments and
+the view; `diff` and `assignment` are passed again when the widget is reopened. A
+static export keeps the slider and the view, and locks the data controls.
+
+{% endblock %}
+{% block demo_examples %}
+## Examples
+
+The examples run on the bundled synthetic experiment, `load_ab_test()`, with its
+assignment table, `load_ab_test_assignment()`, as `assignment`.
+
+### A capped vocabulary for the transition screen
+
+<DemoWidget cmd={`stream.ab_compression(
+    ("exp_group", "treatment", "control"),
+    assignment=assignment,
+    keep=["quick_add", "cart"],
+    max_events=10,
+)`} path="/docs-demos/widgets/ab-compression/transitions-capped.html" height={640} />
+
+The stream is dense (90 of 92 edges testable), so the default plan keeps it as it
+is; the cap of 10 events merges `checkout_start+payment` and drops four rare
+events, each of them only between events that already follow each other
+directly. All 58 edges of the compressed screen are testable, at a cost the
+chart shows: a quarter of the transitions dropped with those events, and a
+higher median MDE.
+
+### The step screen's plan
+
+<DemoWidget cmd={`stream.ab_compression(
+    ("exp_group", "treatment", "control"),
+    "steps",
+    max_steps=8,
+    assignment=assignment,
+    keep=["quick_add"],
+    max_events=10,
+)`} path="/docs-demos/widgets/ab-compression/steps-capped.html" height={640} />
+
+The same cap on the step screen relabels the rare events `other` instead of
+dropping them: the transition mass stays where it was, and every later event
+keeps its step.
+{% endblock %}
+{% block extra %}
+## `ab_compression_data` and `get_ab_compression`
+
+`ab_compression_data` and `get_ab_compression` are the same method under two
+names; the full parameter and column reference is on the
+[A/B Vocabulary Compression](/docs/tools/get-ab-compression) page. Apply a plan
+with [`compress_events`](/docs/data-processors/compress-events), and read how
+much data the screens need with the **Data needed** view of
+[A/B Transitions](/docs/widgets/ab-transitions) and
+[A/B Steps](/docs/widgets/ab-steps).
+
+{% endblock %}

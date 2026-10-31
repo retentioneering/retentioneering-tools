@@ -7,6 +7,35 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 
+- How much data an A/B screen needs: `get_ab_transitions_power` and
+  `get_ab_steps_power` project every edge (cell) of `get_ab_transitions` /
+  `get_ab_steps` to `scale` times the current users: whether it would be testable,
+  the family it would belong to, and its MDE there at the family's Bonferroni level
+  (conservative for Benjamini-Hochberg). `target_delta` adds the users each row
+  needs for its MDE to reach an effect; `attrs["curve"]` sums each scale up. At
+  `scale=1` every number is the screen's. The `ab_transitions` and `ab_steps`
+  widgets get a **Data needed** view: each cell's MDE (or the users a target
+  needs), untested cells hatched with the users that would make them testable, and
+  the curve of testable cells and median MDE against the users.
+- `get_ab_compression(diff, screen="transitions" | "steps")` proposes a smaller
+  event vocabulary for a sparse screen, chosen without reading the arms (permuting
+  them leaves the plan identical): it merges chains of events that always follow
+  each other, drops rare events that only interrupt existing transitions,
+  relabels other rare events to `other`, and merges thin synonyms, one step at a
+  time, with the screen's numbers after every step in `attrs["path"]` (testable
+  cells, median MDE, transition mass retained, artificial transitions). Each
+  screen gets its own plan; `by=` builds one per pre-exposure segment with a
+  homogeneity summary; `keep=` protects the treatment's and the metric's events.
+- `compress_events(plan)` applies a plan (the frame, its rows, or a
+  `{event: label | None}` mapping) through `edit_events` and `collapse_events`.
+- The `ab_compression` widget (twin `ab_compression_data`) draws the plan's path,
+  a slider over its steps, the mapping at each step and the numbers before and
+  after; its static export keeps the slider.
+- MCP: `get_ab_transitions_power`, `get_ab_steps_power` and `get_ab_compression`
+  tools with compact results (the compression result carries a ready
+  `compress_events` preprocessor step); `compress_events` is a documented
+  preprocessor.
+
 - `add_segment(name, path_values=...)` adds a segment from one value per path —
   a pandas Series indexed by path id or a dict — broadcast to every event of the
   path. It carries an experiment's assignment table onto the event log, or labels

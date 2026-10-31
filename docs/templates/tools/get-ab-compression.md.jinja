@@ -1,0 +1,120 @@
+{% extends "_tool_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+A screen of many events splits the users over many edges (or cells), and most of
+them are too thin to test: rare events break popular transitions into
+fragments, and events that always follow each other split one behaviour into
+two edges. `get_ab_compression` proposes a smaller vocabulary for the same
+users, one operation at a time, and returns the plan: what to do with every
+event, and why. [`compress_events(plan)`](/docs/data-processors/compress-events)
+applies it.
+
+### The operations
+
+Each step of the greedy path applies one operation, and the numbers of the
+screen after it (cells, testable cells, median MDE, transition mass retained,
+artificial transitions) are one row of `attrs["path"]`:
+
+- **merge a chain** `A → B` into `A+B` when `P(next = B | A)` and
+  `P(prev = A | B)` both reach `chain_threshold` (pooled): the two events are one
+  behaviour. Runs of the merged label collapse into one event, so a merge
+  creates no self-loop that its members did not have.
+- **drop a rare event** (in fewer than `min_path_share` of the paths) when it
+  only interrupts transitions that exist anyway: removing `X` turns `A → X → B`
+  into `A → B`, and the screen decides whether that is faithful (below).
+- **relabel a rare event to `other`** when dropping it would not be faithful: it
+  keeps the event's position and invents no `A → B`.
+- **merge synonyms**: two events with the same incoming and outgoing transitions
+  (Jensen-Shannon distance at most `synonym_threshold`, no self-loops of their
+  own), one of them thin, when the merge leaves fewer untestable cells and loses
+  no testable one.
+
+`keep` events, `path_start` / `path_end` and the events of a declared `edges=`
+family are never touched. With `max_events`, the rarest events left are then
+handled the same way until the vocabulary fits. `target` picks the step: by
+default the one with the most testable cells (then the fewest untestable ones,
+the lowest median MDE, the earliest step), so a screen that is already testable
+keeps the stream as it is (step 0). `step=k` returns the plan at another step.
+
+### One plan per screen
+
+The two screens need different vocabularies, and `screen` builds the plan for
+one of them:
+
+- `"transitions"` wants **fewer, richer edges with no artificial transition**: a
+  rare event is dropped only when the events around it already follow each other
+  directly in at least `min_support` paths for `bridge_threshold` of its runs,
+  else it is relabelled `other`; chains are merged first. Every compressed edge
+  that no original direct transition maps to is counted in
+  `artificial_transitions`.
+- `"steps"` wants **aligned steps**: a rare event is dropped when it is an
+  insertion (the paths without it go from the event before to the event after
+  directly at least as often as through one other event), because dropping it
+  moves the later events of its paths back to the step of the paths without it;
+  otherwise it is relabelled `other`, which keeps every position. Rare events
+  come first, chains last.
+
+On `load_ab_test()` with `min_path_share=0.1`, `support_chat` (8.5 % of the
+users) is rare for both screens. All of its runs sit between two events that
+also follow each other directly, so the transitions plan drops it; only 57 % of
+them are insertions (the paths without it more often take another event at that
+place), so the steps plan relabels it `other` to keep the later steps in place.
+
+### Chosen without the arms
+
+Every statistic that drives the plan is computed on the pooled paths of both
+arms: the arm of a path is never read, only the two arm sizes (for the MDE).
+Choosing the vocabulary from the arms' differences would be selection on the
+outcome, and the screen on the compressed stream would no longer control its
+false discoveries; filtering on a statistic that is independent of the arms
+under the null, as the pooled support is, keeps Benjamini-Hochberg valid
+("independent filtering", Bourgon, Gentleman and Huber, 2010). Permuting the
+arm labels, or swapping the arms in `diff`, leaves the plan identical. Fix the
+plan before reading the screen it is for, and declare the events the treatment
+introduces or changes in `keep`: the plan cannot see the arms, so it cannot tell
+a synonym from the treatment's replacement of an event.
+
+### Homogeneity
+
+With `by=<a segment fixed before exposure>`, every segment gets its own plan (and
+the segment column on every row), and `attrs["homogeneity"]` a summary per
+segment: the effective vocabulary size (`exp` of the entropy of the event
+distribution), the transition entropy in bits, and the share of distinct paths.
+A homogeneous segment (a few events carry most of the paths, many users share a
+path) reaches enough testable cells with little compression; a heterogeneous
+one needs more. The segment must be fixed before exposure, as for the
+scorecard's strata: pass `by_pre_exposure=True`, or the stream's recipe must
+show it.
+
+### On the bundled datasets
+
+The bundled experiments are dense: their default plans keep the stream as it is,
+except `session_assignment`, whose sessions all open with `session_start →
+home` (one chain merge: 57 of 59 step cells testable before, 65 of 66 after, as
+every later event moves one step earlier into the window). A cap forces a real
+compression: on `load_ab_test()`, `max_events=10` with `keep=["quick_add",
+"cart"]` merges `checkout_start+payment` and drops four rare events
+(`support_chat`, `search_filter`, `collections_view`, `wishlist_add`); all 58
+edges of the compressed screen are testable (90 of 92 before), and its 19
+discoveries include the planted ones (`cart → cart`, `product_view → quick_add`,
+`quick_add → cart`). Compression is not free: the dropped events took 24.5 % of
+the transitions with them (`mass_retained` 0.755), and the median MDE of the
+testable edges rose from 2.03 to 2.52 pp, as the best-measured rare edges left
+the family. With `screen="steps"` the same cap relabels those events `other`
+instead (and `order_success`), which keeps every position. No default plan on a
+bundled dataset creates an artificial transition.
+
+{% endblock %}
+
+{% block extra_params %}
+### screen
+
+{{ bullets(doc.parameters, "screen") }}
+
+### target
+
+{{ bullets(doc.parameters, "target") }}
+
+{% endblock %}

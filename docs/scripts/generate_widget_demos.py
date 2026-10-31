@@ -49,11 +49,14 @@ _TRAIT_ATTRS = {
     "height": "height",
     "stepWindow": "step_window",
     "nodePositions": "node_positions",
+    "viewMode": "view_mode",
 }
 # Traits carrying JSON text rather than a number. The tag writes them as a JSX
 # object literal — `nodePositions={{"home": {"x": -260, "y": 0}}}` — whose
 # inner expression is also valid JSON, so it round-trips through json.loads.
 _JSON_TRAITS = {"node_positions"}
+# Traits carrying a string, written as a JSX string literal: `viewMode={"data_needed"}`.
+_TEXT_TRAITS = {"view_mode"}
 
 # The exported page centers the widget inside a 24px margin (see the template
 # in widgets/_html_export.py), so an iframe fits a widget 48px shorter.
@@ -94,6 +97,8 @@ def _traits_from_attrs(attrs: str) -> dict[str, int | str]:
             continue
         if trait in _JSON_TRAITS:
             traits[trait] = json.dumps(json.loads(expr))
+        elif trait in _TEXT_TRAITS:
+            traits[trait] = str(json.loads(expr))
         elif trait == "height":
             traits[trait] = max(int(expr) - _EXPORT_CHROME_PX, 120)
         else:
@@ -165,6 +170,7 @@ STREAM_BUILDERS = {
     TEMPLATES_DIR / "widgets" / "ab-test.md.jinja": load_ab_test,
     TEMPLATES_DIR / "widgets" / "ab-transitions.md.jinja": load_ab_test,
     TEMPLATES_DIR / "widgets" / "ab-steps.md.jinja": load_ab_test,
+    TEMPLATES_DIR / "widgets" / "ab-compression.md.jinja": load_ab_test,
 }
 
 # Names a page's <DemoWidget> commands use besides `stream`, each built on first
@@ -178,6 +184,9 @@ EXTRA_GLOBALS = {
         "assignment": load_ab_test_assignment,
     },
     TEMPLATES_DIR / "widgets" / "ab-steps.md.jinja": {
+        "assignment": load_ab_test_assignment,
+    },
+    TEMPLATES_DIR / "widgets" / "ab-compression.md.jinja": {
         "assignment": load_ab_test_assignment,
     },
 }

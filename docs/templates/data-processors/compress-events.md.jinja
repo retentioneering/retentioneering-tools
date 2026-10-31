@@ -1,0 +1,58 @@
+{% extends "_data_processor_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+`compress_events` applies a vocabulary plan in one step: every event of the plan
+is kept, dropped, renamed, or merged with others into one label. It computes
+nothing of its own: the step is
+[`edit_events(delete=..., rename=...)`](/docs/data-processors/edit-events)
+followed by [`collapse_events(loops=[...])`](/docs/data-processors/collapse-events)
+on the merged labels, and the result is exactly what those two processors return.
+Like every processor, it returns a new eventstream and leaves the original as it
+was, and the step is recorded in the recipe (a plan frame as its rows).
+
+The plan comes in three shapes:
+
+- **a [`get_ab_compression`](/docs/tools/get-ab-compression) frame**, or its
+  rows as a list of dicts: the `action` column says what to do. `"drop"`
+  deletes the event; `"merge"` renames it to `label`, and each run of the label
+  becomes one event; `"other"` renames it to `label` and keeps its runs, so
+  every event keeps its position. A frame built `by` a segment holds one plan
+  per segment, and is refused unless it holds one segment's rows.
+- **a mapping `{event: label}`**: `None` drops the event, a label renames it,
+  and a label shared by two or more events is a merge (its runs collapse).
+- an event the plan does not name, and a plan event the stream does not have,
+  are left as they are.
+
+Before: `home → catalog → debug_ping → product_view → add_to_cart_v1 →
+add_to_cart_v2 → cart`
+
+```python
+stream.compress_events({
+    "debug_ping": None,
+    "add_to_cart_v1": "add_to_cart",
+    "add_to_cart_v2": "add_to_cart",
+})
+```
+
+After: `home → catalog → product_view → add_to_cart → cart` (the two variants are
+one run of the merged label, so they collapse into one event, with the run's
+first timestamp).
+
+Runs collapse within a path of `path_col` (by default the schema's path column).
+A plan frame records the path column it was built on, and a different one
+raises: a plan built on users and applied per session would collapse different
+runs than the ones it counted.
+
+With a plan of `get_ab_compression`, the compressed stream's screen has the
+numbers of the plan's step in `attrs["path"]`: its cells, testable cells and
+median MDE.
+
+```python
+plan = stream.get_ab_compression(diff, assignment=assignment, max_events=10)
+compact = stream.compress_events(plan)
+compact.get_ab_transitions(diff, assignment=assignment)   # the cells of the chosen step
+```
+
+{% endblock %}

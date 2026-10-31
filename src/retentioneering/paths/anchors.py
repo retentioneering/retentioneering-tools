@@ -874,13 +874,29 @@ class AnchorSpec:
     event_col: str | None = None
 
     def ordinal(self) -> int:
-        """`at` as a token ordinal; ``"start"``/``"end"`` are aliases for 0/-1."""
+        """`at` as a token ordinal; ``"start"``/``"end"`` are aliases for 0/-1.
+
+        Checked against the spec's own pattern, so an `at` past either end is
+        rejected before any query runs (`_anchor_part` needs it in range).
+        """
         if self.at == "start":
             return 0
         if self.at == "end":
             return -1
         if isinstance(self.at, bool) or not isinstance(self.at, int):
             raise InvalidParameterError("at", self.at, ["start", "end", "an integer"])
+        tokens = literal_tokens(self.pattern)
+        n = len(tokens)
+        if not -n <= self.at < n:
+            raise InvalidParameterError(
+                "at",
+                self.at,
+                [
+                    "start",
+                    "end",
+                    f"an integer from {-n} to {n - 1} over {', '.join(tokens)}",
+                ],
+            )
         return self.at
 
 

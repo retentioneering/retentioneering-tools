@@ -23,6 +23,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   `KeyError: 'user_di'`, which said neither which schema key was wrong nor what
   the columns were
   ([#197](https://github.com/retentioneering/retentioneering-tools/issues/197)).
+- An anchor spec's `at` past either end of its pattern raises
+  `InvalidParameterError` naming the valid range and the pattern's tokens, the
+  same type an `at` of the wrong type raises. `{"pattern": "a->b->.*->c", "at": -4}`
+  used to surface as the internal `ValueError: max() iterable argument is
+  empty`, and a positive overrun such as `at=3` raised `IndexError`; code
+  catching that `IndexError` needs to catch `InvalidParameterError` instead
+  ([#194](https://github.com/retentioneering/retentioneering-tools/issues/194)).
 
 ## [5.3.0] - 2026-10-27
 

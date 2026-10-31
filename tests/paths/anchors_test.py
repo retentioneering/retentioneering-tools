@@ -1078,3 +1078,56 @@ class TestGroupsEndToEnd:
                 anchors.normalize_pattern("A->.*->(B->.*->C->.*){2}")
                 == "A->.*->B->.*->C->.*->B->.*->C"
             )
+
+
+class TestAtRange:
+    """`at` past either end of the pattern is rejected while the spec is parsed,
+    with the same exception type as an `at` of the wrong type (#194)."""
+
+    # Three literal tokens: a gap is not a position, so `at` runs -3..2.
+    PATTERN = "a->b->.*->c"
+
+    @staticmethod
+    def _stream():
+        return TestResolveAnchorsSmallFixtures._stream({"u1": list("abxc")})
+
+    @pytest.mark.parametrize("at", [3, 7, -4, -9])
+    def test__out_of_range_names_the_range_and_tokens(self, at):
+        with pytest.raises(InvalidParameterError) as exc:
+            anchors.parse_spec({"pattern": self.PATTERN, "at": at})
+        message = str(exc.value)
+        assert f"Invalid value '{at}' for parameter 'at'" in message
+        assert "an integer from -3 to 2 over a, b, c" in message
+
+    @pytest.mark.parametrize("at", [0, 1, 2, -1, -2, -3, "start", "end"])
+    def test__in_range_values_still_resolve(self, at):
+        cut = self._stream().truncate_paths(
+            {"pattern": self.PATTERN, "at": at}, "path_end"
+        )
+        assert not cut.df.empty
+
+    def test__the_two_ends_agree_on_the_same_token(self):
+        def cut(at):
+            return (
+                self._stream()
+                .truncate_paths({"pattern": self.PATTERN, "at": at}, "path_end")
+                .df
+            )
+
+        assert cut(0).equals(cut(-3))
+        assert cut(2).equals(cut(-1))
+
+    @pytest.mark.parametrize("at", [5, -6])
+    def test__group_copies_count_towards_the_range(self, at):
+        """`A->(B->C){2}` unrolls to five tokens, so the range is -5..4."""
+        assert anchors.parse_spec({"pattern": "A->(B->C){2}", "at": 4}).ordinal() == 4
+        assert anchors.parse_spec({"pattern": "A->(B->C){2}", "at": -5}).ordinal() == -5
+        with pytest.raises(InvalidParameterError, match="from -5 to 4"):
+            anchors.parse_spec({"pattern": "A->(B->C){2}", "at": at})
+
+    def test__checked_before_any_query_runs(self):
+        """A stream with none of the pattern's events still reports the bad `at`,
+        not an empty match."""
+        stream = TestResolveAnchorsSmallFixtures._stream({"u1": list("zzz")})
+        with pytest.raises(InvalidParameterError, match="parameter 'at'"):
+            stream.step_matrix_data(anchor={"pattern": "a->b->c", "at": -4})

@@ -488,10 +488,18 @@ each other (`P(next = B | A)` and `P(prev = A | B)` both at least `chain_thresho
 drops a rare event that only interrupts transitions that exist anyway, relabels
 other rare events to one `other` event, and merges two events with the same
 neighbours when that pools thin cells. Each step is a row of `attrs["path"]` with
-the screen's numbers after it (cells, testable cells, median MDE, the share of the
-original transitions retained, and the artificial transitions: compressed edges no
-original direct transition maps to), and `target` picks the step (by default the
-most testable cells). [`compress_events(plan)`](/docs/data-processors/compress-events)
+the screen's numbers after it (cells, testable cells, the share of the
+observations in cells too thin to test, median MDE, the share of the original
+transitions retained, and the artificial transitions: compressed edges no
+original direct transition maps to), and `target` picks the step. By default it
+reads the information, not the cells: the earliest step, without an artificial
+transition, at which the share of the observations too thin to test is near its
+lowest. A chain merge removes a cell that tells nothing its first event does
+not, and a count of testable cells would read that as a loss. Under a cap
+(`max_events`), once nothing rare is left to drop, each further step is the
+cheapest merge of two neighbours (the one that loses the fewest events), never a
+drop of a frequent event; with `target_delta`, every step also says how many
+more users its vocabulary needs. [`compress_events(plan)`](/docs/data-processors/compress-events)
 applies the plan through `edit_events` and `collapse_events`, and the compressed
 stream's screen has the numbers of the chosen step:
 
@@ -499,25 +507,30 @@ stream's screen has the numbers of the chosen step:
 plan = stream.get_ab_compression(diff, assignment=assignment,
                                  keep=["quick_add", "cart"], max_events=10)
 plan.loc[plan["action"] != "keep", ["event", "action", "label"]]
-#                event action                   label
-# 3     checkout_start  merge  checkout_start+payment
-# 4   collections_view   drop                    None
-# 7            payment  merge  checkout_start+payment
-# 12     search_filter   drop                    None
-# 13      support_chat   drop                    None
-# 14      wishlist_add   drop                    None
+#              event action                                        label
+# 3   checkout_start  merge         checkout_start+payment+order_success
+# 5             home  merge  reviews_view+wishlist_add+support_chat+home
+# 6    order_success  merge         checkout_start+payment+order_success
+# 7          payment  merge         checkout_start+payment+order_success
+# 10    reviews_view  merge  reviews_view+wishlist_add+support_chat+home
+# 13    support_chat  merge  reviews_view+wishlist_add+support_chat+home
+# 14    wishlist_add  merge  reviews_view+wishlist_add+support_chat+home
 compact = stream.compress_events(plan)
 compact.get_ab_transitions(diff, assignment=assignment).attrs["n_tested"]
-# 58 (of 58 edges)
+# 60 (of 61 edges)
 ```
 
 This experiment is dense, so the default plan keeps the stream as it is (step 0:
-the screen already tests almost every edge); the cap of 10 events forces a
-compression to show it. All 58 edges of the compressed screen are tested, and its
-19 discoveries still include the planted ones (`cart -> cart`,
-`product_view -> quick_add`, `quick_add -> cart`), at a cost the path records: the
-dropped events took a quarter of the transitions with them, and the median MDE of
-the tested edges rose from 2.03 to 2.52 pp. The [A/B Compression](/docs/widgets/ab-compression)
+its thin edges hold less than 0.01 % of the observations); the cap of 10 events
+forces a compression to show it. The checkout chain becomes one event, and three
+rare detours merge with `home`, their closest neighbour; nothing is dropped. 60
+of the 61 edges of the compressed screen are tested, and its 17 discoveries still
+include the planted ones (`cart -> cart`, `product_view -> quick_add`,
+`quick_add -> cart`), at a cost the path records: 5 % of the transitions merged
+into longer runs, and the median MDE of the tested edges rose from 2.03 to
+2.55 pp. On a simulated store with 115 events and 40,000 users, where the screen
+is sparse, the default plan compresses on its own: the transition screen keeps
+81 events, with 195 untestable edges instead of 332 and no artificial transition. The [A/B Compression](/docs/widgets/ab-compression)
 widget draws the path, with a slider over its steps and the mapping at each.
 
 **Chosen without the arms.** Every statistic behind the plan is pooled over both
@@ -530,7 +543,7 @@ Gentleman and Huber, 2010). Permuting the arm labels leaves the plan identical. 
 true null the compressed screens find about as little as the full ones: over ten
 seeds of the A/A experiment with plans capped at 6 events, one edge in one run
 after compression and none before (the step screen: none either way); over five
-permutations of this experiment's arms, 6 edges in all after and 5 before. Two rules follow. Fix the plan before reading the screen
+permutations of this experiment's arms, 3 edges in all after and 5 before. Two rules follow. Fix the plan before reading the screen
 it is for, and never pick a step by its verdicts. And declare in `keep` the events
 the treatment introduces or changes, and the decision metric's: the plan cannot see
 the arms, so it cannot tell a synonym from the treatment's replacement of an event.
@@ -543,10 +556,15 @@ the transitions plan drops it. But only 57 % of them are insertions (in the path
 without it, the event before is more often followed by another event than by the
 one after), so dropping it would pull those paths' later events one step earlier
 than paths that never had it: the steps plan relabels it `other`, which keeps every
-position. Chains come first for the transitions and last for the steps. On
-`session_assignment`, where every session opens `session_start -> home`, the one
-chain merge moves every later event a step earlier into the window, and the step
-screen tests 65 of 66 cells instead of 57 of 59.
+position. On both screens, a drop that would join two events that never follow
+each other directly becomes `other` instead. Chains come first for the
+transitions and last for the steps. On `session_assignment`, where every session
+opens `session_start -> home`, the one chain merge moves every later event a step
+earlier into the window: with `target="testable"`, the step screen tests 65 of 66
+cells instead of 57 of 59. The default keeps the stream as it is: the two cells
+that fail are ones nearly every session has (they fail the support rule from the
+other side, with too few paths without them), and no observation sits in a thin
+cell.
 
 **Homogeneity.** `by=` builds one plan per segment fixed before exposure
 (`by_pre_exposure=True`, as for the scorecard's strata), with a summary per

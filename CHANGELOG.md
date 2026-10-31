@@ -23,9 +23,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   each other, drops rare events that only interrupt existing transitions,
   relabels other rare events to `other`, and merges thin synonyms, one step at a
   time, with the screen's numbers after every step in `attrs["path"]` (testable
-  cells, median MDE, transition mass retained, artificial transitions). Each
-  screen gets its own plan; `by=` builds one per pre-exposure segment with a
-  homogeneity summary; `keep=` protects the treatment's and the metric's events.
+  cells, the share of the observations in cells too thin to test, median MDE,
+  transition mass retained, artificial transitions). By default it takes the
+  earliest step at which that share is near its lowest, with no artificial
+  transition (`target="testable"` and `"mde"` remain), and no drop ever joins two
+  events that never follow each other. Under `max_events` it merges the cheapest
+  pair of neighbours rather than dropping a frequent event; `target_delta=` adds
+  the users each step's vocabulary needs. Each screen gets its own plan; `by=`
+  builds one per pre-exposure segment with a homogeneity summary; `keep=`
+  protects the treatment's and the metric's events.
 - `compress_events(plan)` applies a plan (the frame, its rows, or a
   `{event: label | None}` mapping) through `edit_events` and `collapse_events`.
 - The `ab_compression` widget (twin `ab_compression_data`) draws the plan's path,

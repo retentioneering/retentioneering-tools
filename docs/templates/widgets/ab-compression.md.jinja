@@ -13,13 +13,22 @@ widget is a row of the plan or of its `attrs["path"]`.
 
 One point per step of the greedy path, the vocabulary size on x (the full
 vocabulary on the right; the path moves left as events are merged, dropped or
-relabelled). Three panels share that axis, one measure each, so no panel needs a
+relabelled). Four panels share that axis, one measure each, so no panel needs a
 second scale:
 
 - **Testable cells**: the cells of the screen that pass the support rule;
+- **Observations too thin to test**: the share of the screen's observations
+  (each path's incidence on a cell) in cells below `min_support`, the measure
+  the default `target` reads;
 - **Median MDE** of the testable cells, at the family's `alpha / m`;
 - **Transition mass retained**: the share of the original transitions that are
   still transitions after compression, not artificial ones.
+
+With `target_delta`, a fifth panel shows the **users needed**, as a multiple of
+the current users on a log scale (the dotted line is the data as it is): the
+solid series is the multiple at which half of the step's testable cells detect
+`target_delta`, the dashed one the multiple at which 90 % of its cells pass the
+support rule. A legend names both.
 
 A step that creates artificial transitions (compressed edges no original direct
 transition maps to) is marked with a red ring, and the chosen step (by
@@ -33,8 +42,9 @@ carries every step's mapping. At the selected step, the mapping table lists the
 events whose label changed (or every event): the new label, dropped or `other`,
 the step that set it, its share of the paths and the reason in words, the same
 `reason` as the plan's. Before and after compares step 0 with the selected step:
-vocabulary, cells, testable and untestable cells, median MDE, transition mass
-retained and artificial transitions.
+vocabulary, cells, testable and untestable cells, the observations too thin to
+test, median MDE, transition mass retained and artificial transitions (and, with
+`target_delta`, the users needed).
 
 The header names the screen, the population, the chosen step and the arm sizes,
 and says that the plan is arm-blind: it reads the pooled paths, never which arm
@@ -51,8 +61,10 @@ compact = stream.compress_events(plan)
 
 ### Sidebar and view
 
-The sidebar edits `screen`, `min_path_share`, `chain_threshold`, `max_events` and
-`target`, and every change recomputes the plan; the other arguments are set in
+The sidebar edits `screen`, `min_path_share`, `chain_threshold`, `max_events`,
+`target` ("chosen step by": the least data too thin to test, the most testable
+cells or the lowest median MDE) and `target_delta` (empty: no users-needed
+panel), and every change recomputes the plan; the other arguments are set in
 code and shown read-only. Switching the screen sets aside the other screen's
 argument (`edge_weight` or `max_steps`). The selected step, the "changed only"
 filter and the segment are the view. A `state_file` keeps the data arguments and
@@ -75,12 +87,14 @@ assignment table, `load_ab_test_assignment()`, as `assignment`.
     max_events=10,
 )`} path="/docs-demos/widgets/ab-compression/transitions-capped.html" height={640} />
 
-The stream is dense (90 of 92 edges testable), so the default plan keeps it as it
-is; the cap of 10 events merges `checkout_start+payment` and drops four rare
-events, each of them only between events that already follow each other
-directly. All 58 edges of the compressed screen are testable, at a cost the
-chart shows: a quarter of the transitions dropped with those events, and a
-higher median MDE.
+The stream is dense (90 of 92 edges testable; its thin edges hold less than
+0.01 % of the observations), so the default plan keeps it as it is; the cap of
+10 events merges the checkout chain, `checkout_start+payment+order_success`,
+and three rare detours with their closest neighbour, `home`, into
+`reviews_view+wishlist_add+support_chat+home`, and drops nothing. 60 of the 61
+edges of the compressed screen are testable, at a cost the chart shows: 5 % of
+the transitions merged into longer runs, and a median MDE of 2.55 pp instead of
+2.03.
 
 ### The step screen's plan
 
@@ -93,8 +107,11 @@ higher median MDE.
     max_events=10,
 )`} path="/docs-demos/widgets/ab-compression/steps-capped.html" height={640} />
 
-The same cap on the step screen relabels the rare events `other` instead of
-dropping them: the transition mass stays where it was, and every later event
+The same cap on the step screen merges neighbours too (`add_to_cart+cart`, the
+checkout chain, `wishlist_add+support_chat+home`): every step cell of the
+compressed screen is testable (73 of 73, 93 of 93 before), and 92.5 % of the
+transitions remain. A rare event that a drop would move between two events that
+never follow each other is relabelled `other` instead, so every later event
 keeps its step.
 {% endblock %}
 {% block extra %}

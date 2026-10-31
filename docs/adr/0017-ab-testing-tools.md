@@ -342,7 +342,8 @@ Deviations from the first design, with their reason:
 
 - `target="testable"` maximises the *count* of testable cells (ties: the fewest
   untestable cells, the lowest median MDE, the earliest step), not their share: a
-  share rewards a tiny vocabulary with few cells, all testable.
+  share rewards a tiny vocabulary with few cells, all testable. It is no longer
+  the default (C7).
 - Synonym merges are gated: one member must be thin (at least half of the paths
   through its cells in untestable cells) and the merge must reduce the untestable
   cells without losing a testable one. Ungated, two well-measured events with
@@ -378,8 +379,9 @@ screens reproduce the plan's step in `attrs["path"]` (tested on every step of a
 toy stream and on Northwind).
 
 **C6 — the widget and MCP.** `ab_compression(diff, screen, ...)` with the twin
-`ab_compression_data` (an alias of `get_ab_compression`) draws the path as three
-panels sharing the vocabulary axis (testable cells, median MDE, mass retained;
+`ab_compression_data` (an alias of `get_ab_compression`) draws the path as
+panels sharing the vocabulary axis (testable cells, the observations too thin to
+test, median MDE, mass retained, and with `target_delta` the users needed;
 artificial steps ringed), a step slider, the mapping at the selected step and the
 numbers before and after. The payload holds every step (per event, the steps at
 which its label changes), so the slider works in a static export. The matrix and
@@ -390,9 +392,62 @@ plan's numbers before and after, the path up to the chosen step, the changed
 events and a ready `compress_events` step for `local_preprocessors`.
 `compress_events` is a documented preprocessor.
 
-Measured: on the bundled experiments the default plans keep five of six streams as
-they are (they are dense) and merge `session_start+home` on `session_assignment`
-(57 of 59 step cells testable before, 65 of 66 after); no default plan creates an
-artificial transition. On 40,000 and 200,000 simulated users of a 79-event
-store, the projection from 40,000 to ×5 predicted 1,386 testable edges at a median
-MDE of 0.106 pp, and the 200,000-user sample had 1,375 at 0.106 pp.
+**C7 — the information, not the cells; merges under a cap (2026-10, a review
+round).** Four changes after a run on a sparse 115-event simulated store, where
+the default plan was a no-op (step 0) although 33 steps cut the untestable edges
+from 332 to 226 with no artificial transition, and a cap of 40 events dropped
+frequent checkout events with six artificial transitions:
+
+- *The default target reads the information.* Every step records
+  `untestable_share`: the share of the screen's observations (path × cell
+  incidences, the screen's own weight: paths for `"unique_paths"` edges and step
+  cells, transitions for the count weights) in cells too thin to test (below
+  `min_support` paths; a cell that nearly every path has fails the support rule
+  on the other side, no merge can help it, and it does not count). The default
+  `target="untestable_share"` takes the earliest step within a tolerance of the
+  path's lowest share (10 % of it, and at least 0.0001 of the observations),
+  among the steps with the fewest artificial transitions (normally none). A cell
+  count misjudged chains: merging `A -> B`, where `B` always follows `A`,
+  removes a testable cell that carries nothing `A` does not. `"testable"` and
+  `"mde"` remain options.
+- *Under a cap, the cheapest merge of neighbours.* With `max_events`, once no
+  other operation applies, each step takes the candidate that loses the fewest
+  events: the strongest chain pair left (`min(P(next), P(prev))` at least 0.5),
+  the closest synonym pair (distance at most 0.5), and each of the three rarest
+  events with each of its three closest neighbours (`operation =
+  "merge_neighbour"`). The cost of a merge is the runs of the merged label that
+  hide which of the two happened (the runs not of the pair's most common
+  composition) plus the repeats its collapsed runs erase. A frequent event (at
+  least `min_path_share` of the paths) is never dropped or relabelled `other`
+  while a merge is left; only then is the rarest event dropped (or relabelled,
+  below `min_path_share`), its artificial transitions counted in the reason. A
+  cap can build long merged labels; `keep` holds the events the treatment
+  changes.
+- *No drop invents a transition.* On both screens, a drop that would join two
+  events that never follow each other directly (in the stream with the event
+  removed; collapsible repeats and emptied paths aside) becomes `other`, with the
+  count in the reason.
+- *How much data each vocabulary needs.* `target_delta=` adds two path columns
+  computed by the power machinery of C1 at each step: `median_scale_needed` (the
+  median over the testable cells of `max((mde / target)^2, scale_to_test)`) and
+  `scale_to_test_90` (the multiple at which 90 % of the cells pass the support
+  rule). At step 0 they equal `get_ab_*_power` (tested). The widget draws them as
+  one panel on a log scale, solid and dashed, with a legend.
+
+Measured: on the bundled experiments every default plan keeps the stream as it
+is (their thin cells hold less than 0.01 % of the observations); no plan, capped
+or not, creates an artificial transition. On Northwind, `max_events=10` with
+`keep=["quick_add", "cart"]` now merges the checkout chain and three rare
+detours with `home` and drops nothing: 60 of 61 edges testable (90 of 92
+before), mass retained 0.949 (0.755 when four events were dropped), median MDE
+2.55 pp (2.52), the planted edges found. On the 115-event store with 40,000
+users the default plan compresses: the transition screen at step 35 of 38 (115
+→ 81 events, 332 → 195 untestable edges, the thin edges' share of the
+observations 0.160 % → 0.112 %), the step screen at step 22 (52 → 30 untestable
+cells); with `max_events=40` both screens reach 40 events with no artificial
+transition and no frequent event dropped (mass retained 0.773 and 0.775). On
+40,000 and 200,000 simulated users of a 79-event store, the projection from
+40,000 to ×5 predicted 1,386 testable edges at a median MDE of 0.106 pp, and the
+200,000-user sample had 1,375 at 0.106 pp; there the default plan takes the
+transition screen to 67 events (264 → 213 untestable edges) and the step screen
+to 64 (61 → 29 cells), with no artificial transition.

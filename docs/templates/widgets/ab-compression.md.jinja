@@ -39,7 +39,9 @@ transition maps to) is marked with a red ring, and the chosen step (by
 The slider picks a step; it starts at the chosen one. It moves in the browser
 without a recompute, in a notebook and in a static export alike: the payload
 carries every step's mapping. At the selected step, the mapping table lists the
-events whose label changed (or every event): the new label, dropped or `other`,
+events whose label changed (or every event): the new label (a long one written
+`first+…+last (k)`, its events listed under it and in its tooltip), dropped or
+`other`,
 the step that set it, its share of the paths and the reason in words, the same
 `reason` as the plan's. Before and after compares step 0 with the selected step:
 vocabulary, cells, testable and untestable cells, the observations too thin to
@@ -90,11 +92,11 @@ assignment table, `load_ab_test_assignment()`, as `assignment`.
 The stream is dense (90 of 92 edges testable; its thin edges hold less than
 0.01 % of the observations), so the default plan keeps it as it is; the cap of
 10 events merges the checkout chain, `checkout_start+payment+order_success`,
-and three rare detours with their closest neighbour, `home`, into
-`reviews_view+wishlist_add+support_chat+home`, and drops nothing. 60 of the 61
-edges of the compressed screen are testable, at a cost the chart shows: 5 % of
-the transitions merged into longer runs, and a median MDE of 2.55 pp instead of
-2.03.
+and three pairs of direct neighbours (`support_chat+home`,
+`wishlist_add+collections_view`, `product_view+reviews_view`), and drops nothing.
+56 of the 57 edges of the compressed screen are testable, at a cost the chart
+shows: 10.5 % of the transitions merged into longer runs, and a median MDE of
+2.67 pp instead of 2.03.
 
 ### The step screen's plan
 
@@ -107,10 +109,10 @@ the transitions merged into longer runs, and a median MDE of 2.55 pp instead of
     max_events=10,
 )`} path="/docs-demos/widgets/ab-compression/steps-capped.html" height={640} />
 
-The same cap on the step screen merges neighbours too (`add_to_cart+cart`, the
-checkout chain, `wishlist_add+support_chat+home`): every step cell of the
-compressed screen is testable (73 of 73, 93 of 93 before), and 92.5 % of the
-transitions remain. A rare event that a drop would move between two events that
+The same cap on the step screen merges neighbours too (the checkout chain,
+`support_chat+home`, `add_to_cart+cart`, `wishlist_add+collections_view`): every
+step cell of the compressed screen is testable (73 of 73, 93 of 93 before), and
+92 % of the transitions remain. A rare event that a drop would move between two events that
 never follow each other is relabelled `other` instead, so every later event
 keeps its step.
 {% endblock %}

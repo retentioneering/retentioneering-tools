@@ -410,19 +410,30 @@ frequent checkout events with six artificial transitions:
   count misjudged chains: merging `A -> B`, where `B` always follows `A`,
   removes a testable cell that carries nothing `A` does not. `"testable"` and
   `"mde"` remain options.
-- *Under a cap, the cheapest merge of neighbours.* With `max_events`, once no
-  other operation applies, each step takes the candidate that loses the fewest
-  events: the strongest chain pair left (`min(P(next), P(prev))` at least 0.5),
-  the closest synonym pair (distance at most 0.5), and each of the three rarest
-  events with each of its three closest neighbours (`operation =
-  "merge_neighbour"`). The cost of a merge is the runs of the merged label that
-  hide which of the two happened (the runs not of the pair's most common
-  composition) plus the repeats its collapsed runs erase. A frequent event (at
-  least `min_path_share` of the paths) is never dropped or relabelled `other`
-  while a merge is left; only then is the rarest event dropped (or relabelled,
-  below `min_path_share`), its artificial transitions counted in the reason. A
-  cap can build long merged labels; `keep` holds the events the treatment
-  changes.
+- *Under a cap, the cheapest merge of direct neighbours, in small groups.*
+  With `max_events`, once no other operation applies, each step takes the
+  cheapest admissible candidate among: the strongest chain pair left
+  (`min(P(next), P(prev))` at least 0.5), the closest synonym pair within
+  `synonym_threshold`, and each of the three rarest events that have an
+  admissible neighbour with each of its three closest ones (`operation =
+  "merge_neighbour"`). A merge is admissible when its label holds at most
+  `max_group_size` events (default 5, a bound on every merge of the plan) and,
+  but for synonyms, the two are neighbours in the maintainers' sense, "direct
+  transitions between them for many users": a direct transition between them, in
+  at least `min_support` paths, carries at least 30 % of the runs of one of them
+  (`NEIGHBOUR_FLOOR`). A similar context alone is no reason to merge. The cost
+  of a merge is the events it loses, the runs of the merged label that hide which
+  of the two happened (the runs not of the pair's most common composition) plus
+  the repeats its collapsed runs erase, times the merged label's size minus one,
+  so two medium groups win over one growing group. A frequent event (at least
+  `min_path_share` of the paths) is never dropped or relabelled `other`: when no
+  admissible merge is left the path stops, and the plan takes the smallest
+  vocabulary reached with the "no step reaches max_events" warning. A label of
+  three events or more longer than 40 characters is written `first+…+last (k)`
+  (unique; the plan and the path carry the full `members`). The first version
+  of this round had no adjacency floor and no bound: on the 115-event store a
+  cap of 40 built a 17-event label joining `order_success` with help, FAQ and
+  app-open events, the "strange artificial" representation this rule prevents.
 - *No drop invents a transition.* On both screens, a drop that would join two
   events that never follow each other directly (in the stream with the event
   removed; collapsible repeats and emptied paths aside) becomes `other`, with the
@@ -437,15 +448,17 @@ frequent checkout events with six artificial transitions:
 Measured: on the bundled experiments every default plan keeps the stream as it
 is (their thin cells hold less than 0.01 % of the observations); no plan, capped
 or not, creates an artificial transition. On Northwind, `max_events=10` with
-`keep=["quick_add", "cart"]` now merges the checkout chain and three rare
-detours with `home` and drops nothing: 60 of 61 edges testable (90 of 92
-before), mass retained 0.949 (0.755 when four events were dropped), median MDE
-2.55 pp (2.52), the planted edges found. On the 115-event store with 40,000
+`keep=["quick_add", "cart"]` now merges the checkout chain and three pairs of
+direct neighbours (`support_chat+home`, `wishlist_add+collections_view`,
+`product_view+reviews_view`) and drops nothing: 56 of 57 edges testable (90 of 92
+before), mass retained 0.895 (0.755 when four events were dropped), median MDE
+2.67 pp (2.52), the planted edges found under their new labels. On the 115-event store with 40,000
 users the default plan compresses: the transition screen at step 35 of 38 (115
 → 81 events, 332 → 195 untestable edges, the thin edges' share of the
 observations 0.160 % → 0.112 %), the step screen at step 22 (52 → 30 untestable
 cells); with `max_events=40` both screens reach 40 events with no artificial
-transition and no frequent event dropped (mass retained 0.773 and 0.775). On
+transition, no frequent event dropped and no label of more than 5 events (mass
+retained 0.753 and 0.755). On
 40,000 and 200,000 simulated users of a 79-event store, the projection from
 40,000 to ×5 predicted 1,386 testable edges at a median MDE of 0.106 pp, and the
 200,000-user sample had 1,375 at 0.106 pp; there the default plan takes the

@@ -53,23 +53,34 @@ every path has fails the support rule on the other side, and no merge can help
 it, so it does not count. `target="testable"` (the most testable cells) and
 `target="mde"` (the lowest median MDE) remain.
 
-### Under a cap: merge neighbours
+### Under a cap: merge neighbours, in small groups
 
 With `max_events`, once no operation above applies and the vocabulary is still
-above the cap, each step takes the cheapest **merge of neighbours** among three
-kinds of candidates: the strongest chain pair left (`min(P(next), P(prev))` of
-at least 0.5), the closest synonym pair (Jensen-Shannon distance at most 0.5), and
-each of the three rarest events left with each of its three closest neighbours
-(the labels next to it in most of its runs, merged as `operation =
-"merge_neighbour"`). The cost of a merge is the events it loses: the runs of the
-merged label that hide which of the two happened, and the repeats its collapsed
-runs erase (a chain whose every run is `A B` costs nothing). A frequent event is
-never dropped, and never relabelled `other` (that takes only events below
-`min_path_share`), while a merge is left; only when none is, the rarest event is
-dropped, with its artificial transitions counted. A cap far below the vocabulary
-builds long merged labels, as a merged label is often the closest neighbour of
-the next rare event: declare in `keep` the events the decision rests on (the
-treatment's and the metric's), and read the labels before applying the plan.
+above the cap, each step takes the cheapest admissible merge among: the strongest
+chain pair left (`min(P(next), P(prev))` of at least 0.5), the closest synonym
+pair within `synonym_threshold`, and each of the three rarest events left with
+each of its three closest neighbours (`operation = "merge_neighbour"`).
+
+- **Neighbours only.** Two events may merge only when a direct transition between
+  them, in at least `min_support` paths, carries at least 30 % of the runs of one
+  of them. Two events with similar contexts that never follow each other do not
+  merge (synonyms within `synonym_threshold` aside).
+- **Small groups.** No merged label holds more than `max_group_size` events
+  (default 5), for every merge of the plan.
+- **The cost.** A merge loses events: the runs of the merged label that hide which
+  of the two happened, and the repeats its collapsed runs erase (a chain whose
+  every run is `A B` costs nothing). That loss is weighted by the merged label's
+  size minus one, so two medium groups win over one growing group.
+- **No drop to reach the cap.** A frequent event is never dropped or relabelled
+  `other` (that takes only events below `min_path_share`). When no admissible
+  merge is left, the path stops: the plan takes the smallest vocabulary reached
+  and warns that the cap was not.
+
+A label of three events or more longer than 40 characters is written
+`first+…+last (k)`; the plan's `members` column, the path's `members` and the
+widget list its events. Merged neighbours can still join a funnel step with the
+next one: declare in `keep` the events the decision rests on (the treatment's and
+the metric's), and read the labels before applying the plan.
 
 ### How much data each vocabulary needs
 
@@ -137,24 +148,23 @@ The bundled experiments are dense: on every one, the thin cells hold less than
 0.01 % of the observations, and the default plans keep the stream as it is. A cap
 forces a real compression: on `load_ab_test()`, `max_events=10` with
 `keep=["quick_add", "cart"]` merges the checkout chain into
-`checkout_start+payment+order_success` and three detours that mostly return
-home (`support_chat`, `wishlist_add`, `reviews_view`) into
-`reviews_view+wishlist_add+support_chat+home`; nothing is dropped. 60 of the 61
-edges of the compressed screen are testable (90 of 92 before), and its 17
-discoveries include the planted ones (`cart → cart`, `product_view → quick_add`,
-`quick_add → cart`). Compression is not free: the merged runs took 5.1 % of the
-transitions with them (`mass_retained` 0.949), and the median MDE of the testable
-edges rose from 2.03 to 2.55 pp, as the best-measured detour edges left the
-family. Neither the default plans nor these capped ones create an artificial
-transition.
+`checkout_start+payment+order_success`, and three pairs of direct neighbours:
+`support_chat+home`, `wishlist_add+collections_view` and
+`product_view+reviews_view` (a review is read on the product page); nothing is
+dropped. 56 of the 57 edges of the compressed screen are testable (90 of 92
+before), and its 15 discoveries include the planted ones under their new labels
+(`cart → cart`, `product_view+reviews_view → quick_add`, `quick_add → cart`).
+Compression is not free: the merged runs took 10.5 % of the transitions with
+them (`mass_retained` 0.895), and the median MDE of the testable edges rose from
+2.03 to 2.67 pp, as the best-measured edges left the family. Neither the default
+plans nor these capped ones create an artificial transition.
 
 On a 40,000-user simulated store with 115 events, the default plan does compress:
 on the transition screen it takes step 35 of 38 (332 untestable edges of 1,623
 → 195 of 1,357; the thin edges' share of the observations 0.160 % → 0.112 %), on
 the step screen step 22 of 38 (52 untestable cells → 30). With `max_events=40`
-both screens reach 40 events with no artificial transition, by merges of
-neighbours once nothing rare is left: only events below 1 % of the paths are
-dropped or relabelled `other`.
+both screens reach 40 events with no artificial transition, in groups of at most
+5 events: only events below 1 % of the paths are dropped or relabelled `other`.
 
 {% endblock %}
 

@@ -28,8 +28,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   earliest step at which that share is near its lowest, with no artificial
   transition (`target="testable"` and `"mde"` remain), and no drop ever joins two
   events that never follow each other. Under `max_events` it merges the cheapest
-  pair of neighbours rather than dropping a frequent event; `target_delta=` adds
-  the users each step's vocabulary needs. Each screen gets its own plan; `by=`
+  pair of direct neighbours rather than dropping a frequent event, and stops
+  short of the cap when none is left; `max_group_size` (default 5) bounds every
+  merged label, a long one is written `first+…+last (k)` with its events in
+  `members`; `target_delta=` adds the users each step's vocabulary needs. Each screen gets its own plan; `by=`
   builds one per pre-exposure segment with a homogeneity summary; `keep=`
   protects the treatment's and the metric's events.
 - `compress_events(plan)` applies a plan (the frame, its rows, or a

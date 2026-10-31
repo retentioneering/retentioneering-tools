@@ -497,9 +497,11 @@ transition, at which the share of the observations too thin to test is near its
 lowest. A chain merge removes a cell that tells nothing its first event does
 not, and a count of testable cells would read that as a loss. Under a cap
 (`max_events`), once nothing rare is left to drop, each further step is the
-cheapest merge of two neighbours (the one that loses the fewest events), never a
-drop of a frequent event; with `target_delta`, every step also says how many
-more users its vocabulary needs. [`compress_events(plan)`](/docs/data-processors/compress-events)
+cheapest merge of two direct neighbours (a transition between them carries at
+least 30 % of the runs of one), in labels of at most `max_group_size` events
+(5), never a drop of a frequent event: when no such merge is left, the plan
+stops short of the cap and says so. With `target_delta`, every step also says
+how many more users its vocabulary needs. [`compress_events(plan)`](/docs/data-processors/compress-events)
 applies the plan through `edit_events` and `collapse_events`, and the compressed
 stream's screen has the numbers of the chosen step:
 
@@ -507,28 +509,31 @@ stream's screen has the numbers of the chosen step:
 plan = stream.get_ab_compression(diff, assignment=assignment,
                                  keep=["quick_add", "cart"], max_events=10)
 plan.loc[plan["action"] != "keep", ["event", "action", "label"]]
-#              event action                                        label
-# 3   checkout_start  merge         checkout_start+payment+order_success
-# 5             home  merge  reviews_view+wishlist_add+support_chat+home
-# 6    order_success  merge         checkout_start+payment+order_success
-# 7          payment  merge         checkout_start+payment+order_success
-# 10    reviews_view  merge  reviews_view+wishlist_add+support_chat+home
-# 13    support_chat  merge  reviews_view+wishlist_add+support_chat+home
-# 14    wishlist_add  merge  reviews_view+wishlist_add+support_chat+home
+#                event action                                 label
+# 3     checkout_start  merge  checkout_start+payment+order_success
+# 4   collections_view  merge         wishlist_add+collections_view
+# 5               home  merge                     support_chat+home
+# 6      order_success  merge  checkout_start+payment+order_success
+# 7            payment  merge  checkout_start+payment+order_success
+# 8       product_view  merge             product_view+reviews_view
+# 10      reviews_view  merge             product_view+reviews_view
+# 13      support_chat  merge                     support_chat+home
+# 14      wishlist_add  merge         wishlist_add+collections_view
 compact = stream.compress_events(plan)
 compact.get_ab_transitions(diff, assignment=assignment).attrs["n_tested"]
-# 60 (of 61 edges)
+# 56 (of 57 edges)
 ```
 
 This experiment is dense, so the default plan keeps the stream as it is (step 0:
 its thin edges hold less than 0.01 % of the observations); the cap of 10 events
 forces a compression to show it. The checkout chain becomes one event, and three
-rare detours merge with `home`, their closest neighbour; nothing is dropped. 60
-of the 61 edges of the compressed screen are tested, and its 17 discoveries still
-include the planted ones (`cart -> cart`, `product_view -> quick_add`,
-`quick_add -> cart`), at a cost the path records: 5 % of the transitions merged
-into longer runs, and the median MDE of the tested edges rose from 2.03 to
-2.55 pp. On a simulated store with 115 events and 40,000 users, where the screen
+pairs of direct neighbours merge (a review is read on the product page:
+`product_view+reviews_view`); nothing is dropped. 56 of the 57 edges of the
+compressed screen are tested, and its 15 discoveries still include the planted
+ones under their new labels (`cart -> cart`,
+`product_view+reviews_view -> quick_add`, `quick_add -> cart`), at a cost the
+path records: 10.5 % of the transitions merged into longer runs, and the median
+MDE of the tested edges rose from 2.03 to 2.67 pp. On a simulated store with 115 events and 40,000 users, where the screen
 is sparse, the default plan compresses on its own: the transition screen keeps
 81 events, with 195 untestable edges instead of 332 and no artificial transition. The [A/B Compression](/docs/widgets/ab-compression)
 widget draws the path, with a slider over its steps and the mapping at each.

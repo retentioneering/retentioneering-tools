@@ -16,6 +16,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   groups and their signed difference, including millisecond values.
 - Graph settings identify path-ID-group comparisons instead of showing a missing
   segment warning; the diff help text states the group 1 minus group 2 direction.
+- A `path_cols`, `event_col`, `timestamp_col` or `segment_cols` entry naming a
+  column the DataFrame does not have raises `SchemaConfigError` naming the
+  schema key, the missing name and the available columns — as `custom_cols`
+  already did. The other four used to surface as pandas' bare
+  `KeyError: 'user_di'`, which said neither which schema key was wrong nor what
+  the columns were
+  ([#197](https://github.com/retentioneering/retentioneering-tools/issues/197)).
 
 ## [5.3.0] - 2026-10-27
 

@@ -526,9 +526,11 @@ the vocabulary from where the arms differ would be selection on the outcome: the
 compressed screen would find what the selection put there. A filter on a
 statistic that does not depend on the arms under the null, as the pooled support
 does not, keeps Benjamini–Hochberg valid ("independent filtering", Bourgon,
-Gentleman and Huber, 2010). Permuting the arm labels leaves the plan identical, and
-on the A/A experiment and on permuted Northwind arms the compressed screens stayed
-as clean as the full ones. Two rules follow. Fix the plan before reading the screen
+Gentleman and Huber, 2010). Permuting the arm labels leaves the plan identical. Under a
+true null the compressed screens find about as little as the full ones: over ten
+seeds of the A/A experiment with plans capped at 6 events, one edge in one run
+after compression and none before (the step screen: none either way); over five
+permutations of this experiment's arms, 6 edges in all after and 5 before. Two rules follow. Fix the plan before reading the screen
 it is for, and never pick a step by its verdicts. And declare in `keep` the events
 the treatment introduces or changes, and the decision metric's: the plan cannot see
 the arms, so it cannot tell a synonym from the treatment's replacement of an event.
@@ -552,8 +554,8 @@ segment in `attrs["homogeneity"]`: the effective vocabulary (`exp` of the entrop
 of the event distribution), the transition entropy and the share of distinct
 paths. A homogeneous segment, where a few events carry most of the paths, reaches
 enough testable cells with little compression; a heterogeneous one needs more. On
-this experiment desktop and mobile are alike (an effective vocabulary of 9.5 of 15
-events, 87 % and 86 % distinct paths) and neither needs compression.
+this experiment desktop and mobile are alike (effective vocabularies of 9.5 and 9.4
+of 15 events, 87 % and 86 % distinct paths) and neither needs compression.
 
 ## Sample ratio mismatch
 

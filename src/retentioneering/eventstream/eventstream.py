@@ -1807,6 +1807,216 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
         ],
     )
 
+    @_tracked("get_ab_compression")
+    def get_ab_compression(
+        self,
+        diff: T_Diff,
+        screen: str = "transitions",
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
+        path_col: str | None = None,
+        edge_weight: str | None = None,
+        max_steps: int | None = None,
+        edges: list | None = None,
+        min_path_share: float = 0.01,
+        chain_threshold: float = 0.8,
+        synonym_threshold: float = 0.1,
+        bridge_threshold: float = 0.9,
+        max_events: int | None = None,
+        target="testable",
+        step: int | None = None,
+        keep: list | None = None,
+        other: str = "other",
+        by: str | None = None,
+        by_pre_exposure: bool | None = None,
+        correction: str = "bh",
+        ci_level: float = 0.95,
+        power: float = 0.8,
+        min_support: int = 10,
+    ) -> pd.DataFrame:
+        """
+        Propose a smaller event vocabulary for an A/B screen, chosen without looking at the arms.
+
+        A screen of many events splits the paths over many edges (cells), and most
+        are too thin to test. This plan compresses the vocabulary one operation at
+        a time: it drops a rare event that only interrupts popular transitions,
+        relabels other rare events to one `other` event, merges a chain of events
+        that almost always follow each other into one, and merges synonyms (events
+        with the same neighbours) when that pools thin cells. Every statistic is
+        computed on the pooled paths of both arms — the arm of a path is never
+        read, only the two arm sizes — so the vocabulary is not selected on the
+        outcome. The transition and step screens get different plans (see
+        `screen`). Apply the plan with `compress_events(plan)`.
+
+        Parameters
+        ----------
+        diff : tuple
+            As in `get_ab_transitions`: it defines the compared paths; the plan
+            reads them pooled.
+        screen : {"transitions", "steps"}, default "transitions"
+            The screen the plan is for.
+
+            - `"transitions"` — fewer, richer edges with no artificial
+              transition: a rare event is dropped only when the events around it
+              already follow each other directly in at least `min_support` paths
+              (bridge fidelity), else relabelled `other`; chains are merged first.
+            - `"steps"` — aligned steps: a rare event is dropped when it is an
+              insertion (the paths without it go from the event before to the
+              event after directly at least as often as through one other
+              event), which realigns the later steps, else relabelled `other`,
+              which keeps every position; rare events are handled first, chains
+              last.
+
+            Both read the whole window of every path (the plan applies to the
+            stream, not to the first steps); the cells counted are the screen's.
+        assignment, horizon, path_col
+            As in `get_ab_transitions`: the population and window of the screen.
+        edge_weight : {"unique_paths", "avg_per_path", "proba_out", "proba_in", "share_of_total"}, optional
+            `screen="transitions"` only (default `"unique_paths"`): the weight whose
+            cells are counted. Testable cells and the MDE follow the getter for
+            `"unique_paths"`; the other weights use the pooled spread (a ratio
+            linearised), an arm-blind approximation of the getter's Welch and
+            bootstrap standard errors.
+        max_steps : int, optional
+            `screen="steps"` only (default 10): the steps of the screen.
+        edges : list of tuple, optional
+            `screen="transitions"` only: a declared family of `(source, target)`
+            edges; their events are never changed.
+        min_path_share : float, default 0.01
+            An event in fewer than this share of the compared paths is rare. A
+            rare event with a synonym (see `synonym_threshold`) is merged into it
+            when that pools its thin cells; otherwise it is dropped or relabelled
+            as `screen` describes.
+        chain_threshold : float, default 0.8
+            `A` and `B` merge into `A+B` when `P(next = B | A)` and `P(prev = A |
+            B)` are both at least this (pooled), with at least `min_support`
+            paths making the transition.
+        synonym_threshold : float, default 0.1
+            Two events merge into `A/B` when the Jensen-Shannon distance (bits)
+            between their outgoing transitions, and between their incoming ones,
+            is at most this, neither has self-loops above 5 % of its transitions,
+            one of them is thin (at least half of the paths through its cells are
+            in cells that are not testable) and the merge leaves fewer untestable
+            cells without losing a testable one: a merge only to pool thin cells,
+            never of two well-measured events.
+        bridge_threshold : float, default 0.9
+            The share of a rare event's runs that must bridge as the screen
+            requires (see `screen`) for it to be dropped rather than relabelled.
+        max_events : int, optional
+            A cap on the vocabulary: after the operations above, the rarest events
+            left are dropped or relabelled one by one until the vocabulary fits,
+            and the chosen step is the best one that fits.
+        target : {"testable", "mde"} or float, default "testable"
+            Which step of the path the plan is taken at.
+
+            - `"testable"` — the most testable cells; among those, the fewest
+              untestable cells, then the lowest median MDE, then the earliest
+              step. On a screen that is already testable this is step 0: the
+              stream as it is.
+            - `"mde"` — the lowest median MDE of the testable cells.
+            - a positive number — the earliest step whose median MDE is at most
+              it (in the screen's units), else the lowest median MDE.
+        step : int, optional
+            Take the plan at this step of the path instead (0 is the stream as it
+            is), e.g. to reproduce a step shown by the `ab_compression` widget.
+        keep : list of str, optional
+            Events never dropped, relabelled or merged. Declare the events the
+            treatment introduces or changes: the plan cannot see the arms, so it
+            cannot tell a synonym from the treatment's replacement of an event.
+        other : str, default "other"
+            The label of relabelled rare events; must not be an event already.
+        by : str, optional
+            A segment column fixed before exposure: one plan per segment (each row
+            carries the segment), and `attrs["homogeneity"]` per segment.
+        by_pre_exposure : bool, optional
+            Declare that `by` was fixed before exposure (as `strata_pre_exposure`
+            in `get_ab_test`); without it the recipe is read, and a segment not
+            known to be pre-exposure warns.
+        correction, ci_level, power, min_support
+            As in `get_ab_transitions`: the support rule and the MDE (at
+            `alpha / m`) the plan counts testable cells and median MDE with.
+
+        Returns
+        -------
+        pandas.DataFrame
+            The plan at the chosen step: one row per event of the compared paths.
+
+            - `event`; `action`: `"keep"`, `"merge"`, `"drop"` or `"other"`;
+              `label`: its new name (None when dropped); `step`: the step of the
+              path that set it (0: kept); `operation`: `"keep"`,
+              `"merge_chain"`, `"merge_synonym"`, `"drop"` or `"other"`.
+            - `path_share`, `occurrences`, `self_loop_share`: the event's pooled
+              numbers before compression.
+            - The evidence of its operation: `p_next`, `p_prev` (chain),
+              `js_distance` (synonym), `bridge_fidelity` (rare event: the share
+              of its runs that bridge as the screen requires).
+            - `reason`: the decision in words.
+
+            `attrs` holds `path`, the greedy path as a DataFrame — per step:
+            `step`, `operation`, `events`, `label`, `vocabulary`, `cells`,
+            `testable`, `untestable`, `median_mde` (of the testable cells, at the
+            projected family's `alpha / m`), `transitions`, `mass_retained` (the
+            share of the original transitions still transitions, not artificial),
+            `artificial_transitions` (compressed edges no original direct
+            transition maps to, counted once) and `artificial_mass` (the
+            transitions on them) — `chosen_step`, `mappings` (the
+            `{event: label}` of every step), `homogeneity` (effective vocabulary
+            size `exp(entropy)` of the event distribution, transition entropy in
+            bits, distinct-path share, and the numbers before and after) and the
+            arguments.
+
+        Raises
+        ------
+        DiffConfigError, InvalidParameterError, EmptyEventstreamError
+            As in `get_ab_transitions`; an argument of the other screen
+            (`max_steps` with `screen="transitions"`, `edge_weight` or `edges`
+            with `screen="steps"`), an unknown `keep` event or `by` column, or an
+            `other` label that is already an event raise `InvalidParameterError`.
+
+        Examples
+        --------
+            diff = ("exp_group", "treatment", "control")
+            plan = stream.get_ab_compression(diff, assignment=assignment,
+                                             keep=["quick_add"])
+            plan.attrs["path"][["step", "operation", "events", "vocabulary",
+                                "testable", "median_mde"]]
+            compact = stream.compress_events(plan)
+            compact.get_ab_transitions(diff, assignment=assignment)
+
+            # the step matrix needs its own plan
+            stream.get_ab_compression(diff, "steps", max_steps=8,
+                                      assignment=assignment)
+        """
+        from retentioneering.tools.ab_compression import ab_compression
+
+        return ab_compression(
+            self,
+            diff,
+            screen,
+            assignment=assignment,
+            horizon=horizon,
+            path_col=path_col,
+            edge_weight=edge_weight,
+            max_steps=max_steps,
+            edges=edges,
+            min_path_share=min_path_share,
+            chain_threshold=chain_threshold,
+            synonym_threshold=synonym_threshold,
+            bridge_threshold=bridge_threshold,
+            max_events=max_events,
+            target=target,
+            step=step,
+            keep=keep,
+            other=other,
+            by=by,
+            by_pre_exposure=by_pre_exposure,
+            correction=correction,
+            ci_level=ci_level,
+            power=power,
+            min_support=min_support,
+        )
+
     @_tracked("headless_describe")
     def describe(
         self,
@@ -2633,6 +2843,79 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             agg=agg,
             path_col=path_col,
         ).apply(self._df, self.schema)
+        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+
+    @_tracked("dp_compress_events")
+    @_op
+    def compress_events(self, plan, path_col: str | None = None) -> "Eventstream":
+        """
+        Apply a vocabulary plan: drop, relabel and merge events in one step.
+
+        The plan maps every event to its new label or to nothing: the frame of
+        `get_ab_compression`, its rows as a list of dicts, or a plain
+        `{event: label | None}` mapping. Nothing is computed here: the step is
+        `edit_events(delete=..., rename=...)` followed by
+        `collapse_events(loops=...)` on the merged labels, so each run of a merged
+        label becomes one event and a merge creates no self-loop. Events the plan
+        does not name, and plan events the stream does not have, are left as they
+        are.
+
+        Parameters
+        ----------
+        plan : pandas.DataFrame, list of dict or dict
+            What to do with each event.
+
+            - a `get_ab_compression` frame (or `frame.to_dict("records")`): its
+              `action` column says it — `"keep"`, `"drop"`, `"merge"` (renamed
+              to `label`; runs of the label collapse into one event) or
+              `"other"` (renamed to `label`, runs kept, so every event keeps its
+              position). A frame built `by` a segment is refused unless it holds
+              one segment's rows.
+            - a mapping `{event: label}`: `None` drops the event, a label renames
+              it; a label shared by two or more events is a merge (runs
+              collapse). To relabel several events without collapsing their runs,
+              pass a frame with `action="other"` or call `rename_events`.
+        path_col : str, optional
+            The grain within which runs collapse; defaults to `schema.path_col`.
+            A plan frame records the `path_col` it was built on, and a different
+            one raises: pass `path_col=plan.attrs["path_col"]`.
+
+        Examples
+        --------
+            plan = stream.get_ab_compression(("exp_group", "treatment", "control"))
+            compact = stream.compress_events(plan)
+
+            stream.compress_events({"debug_ping": None,
+                                    "add_to_cart_v1": "add_to_cart",
+                                    "add_to_cart_v2": "add_to_cart"})
+        """
+        from retentioneering.data_processors.compress_events import CompressEvents
+
+        recorded = (
+            (plan.attrs or {}).get("path_col")
+            if isinstance(plan, pd.DataFrame)
+            else None
+        )
+        grain = path_col or self.schema.path_col
+        if path_col is not None and path_col not in self.schema.path_cols:
+            from retentioneering.exceptions import InvalidParameterError
+
+            raise InvalidParameterError("path_col", path_col, self.schema.path_cols)
+        if recorded is not None and recorded != grain:
+            from retentioneering.exceptions import InvalidParameterError
+
+            raise InvalidParameterError(
+                "path_col",
+                path_col,
+                [recorded],
+                reason=(
+                    f"the plan was built on path_col='{recorded}', and merged runs "
+                    "collapse within that grain"
+                ),
+            )
+        new_df, new_schema = CompressEvents(plan, path_col=grain).apply(
+            self._df, self.schema
+        )
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
     @_tracked("dp_to_daily_states")

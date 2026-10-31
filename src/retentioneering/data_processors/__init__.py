@@ -3,6 +3,7 @@ from retentioneering.data_processors.add_events import AddEvents
 from retentioneering.data_processors.add_segment import AddSegment
 from retentioneering.data_processors.add_start_end_events import AddStartEndEvents
 from retentioneering.data_processors.collapse_events import CollapseEvents
+from retentioneering.data_processors.compress_events import CompressEvents
 from retentioneering.data_processors.drop_segment import DropSegment
 from retentioneering.data_processors.edit_events import EditEvents
 from retentioneering.data_processors.filter_events import FilterEvents
@@ -21,6 +22,7 @@ __all__ = [
     "AddSegment",
     "AddStartEndEvents",
     "CollapseEvents",
+    "CompressEvents",
     "DropSegment",
     "EditEvents",
     "FilterEvents",

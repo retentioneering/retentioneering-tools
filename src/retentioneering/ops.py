@@ -135,6 +135,7 @@ def op(func):
                     params[pname] = pval
                 for pname, pval in list(params.items()):
                     params.update(_json_safe_series(pname, pval))
+                    params.update(_json_safe_plan(pname, pval))
             result._lineage = list(self._lineage) + [{"type": op_type, **params}]
         return result
 
@@ -162,6 +163,31 @@ def _json_safe_series(name: str, value: Any) -> dict:
     if isinstance(flag, bool):
         out[_PRE_EXPOSURE_KEY.format(name)] = flag
     return out
+
+
+def _json_safe_plan(name: str, value: Any) -> dict:
+    """A ``get_ab_compression`` plan argument (a DataFrame) recorded as its rows
+    ``[{"event", "action", "label"}, ...]``, the form ``compress_events`` replays;
+    ``{}`` for anything else."""
+    import pandas as pd
+
+    if not isinstance(value, pd.DataFrame):
+        return {}
+    if not {"event", "action", "label"} <= set(value.columns):
+        return {}
+    rows = []
+    for record in value[["event", "action", "label"]].to_dict("records"):
+        label = record["label"]
+        if label is not None and not isinstance(label, str):
+            label = None if pd.isna(label) else str(label)
+        rows.append(
+            {
+                "event": str(record["event"]),
+                "action": str(record["action"]),
+                "label": label,
+            }
+        )
+    return {name: rows}
 
 
 def _native(value: Any) -> Any:

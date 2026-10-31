@@ -12,6 +12,9 @@ PROCESSOR_NAME = "edit_events"
 
 
 class EditEvents(DataProcessor):
+    # Cannot break the event order: filter_events(drop=) plus rename_events.
+    may_break_order = False
+
     rename: Dict[str, str]
     delete: List[str]
 

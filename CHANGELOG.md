@@ -20,8 +20,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
     repeats within a path or either column has missing values. This covers
     user-supplied `index`/`subindex` columns and derived streams, e.g. a
     `filter_events(sql=...)` query that returns a row twice.
-  - Every `Eventstream`, including the ones processors return, is laid out by
-    `(path_col, index, subindex)`.
+  - Within each path, rows of every `Eventstream` are laid out by
+    `(index, subindex)`, each path in one block. Processors that add or merge
+    rows (`add_events`, `add_start_end_events`, `collapse_events`,
+    `to_daily_states`, `filter_events(sql=...)`) have their output checked and
+    re-sorted if needed; the order of paths relative to each other is not
+    guaranteed.
+  - `sample_paths` keeps the rows of the sampled paths in their input order;
+    it used to return them in whatever order DuckDB's join produced.
   - `add_events(sql=...)` rows must keep the `index` of a row of their path;
     one that matches no event raises `PreprocessingConfigError`. The timestamp
     may be changed freely — the row still sits at its source position.

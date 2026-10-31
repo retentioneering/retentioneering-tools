@@ -34,6 +34,9 @@ class TruncatePaths(DataProcessor):
         Path ID column name. If None, taken from schema.
     """
 
+    # Cannot break the event order: keeps a window of each path, emitted in event order.
+    may_break_order = False
+
     def __init__(
         self,
         start_anchor,

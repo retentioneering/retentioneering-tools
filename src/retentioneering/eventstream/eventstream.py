@@ -7,6 +7,7 @@ import pandas as pd
 
 from retentioneering import engine
 from retentioneering.eventstream.event_type import EventTypes
+from retentioneering.eventstream.ordering import establish_order
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import SchemaConfigError
 from retentioneering.ops import op as _op
@@ -46,50 +47,6 @@ def _validate_path_cols_nesting(df: pd.DataFrame, path_cols: list) -> None:
                 f"spans {int(offenders.iloc[0])} different values of '{coarser}'. "
                 f"Reorder path_cols (coarsest first) or fix the data."
             )
-
-
-def _establish_event_order(df: pd.DataFrame, schema: EventstreamSchema) -> pd.DataFrame:
-    """
-    Lay `df` out in event order and check that the order is total (ADR-0017).
-
-    Every eventstream — source or derived — is sorted by
-    `(path_col, index, subindex)`, so no processor can leave the next one a
-    frame in some order of its own. The key must be unique: it is the only
-    thing that tells two events of a path apart, and a tie would leave every
-    order-dependent result (transitions, runs, sessions) to chance.
-    `subindex` is float: markers sharing a position take fractional values.
-    """
-    for col in (schema.index, schema.subindex):
-        if col not in df.columns:
-            raise SchemaConfigError(f"Technical column '{col}' is missing.")
-        if df[col].isna().any():
-            raise SchemaConfigError(
-                f"Column '{col}' contains missing values; every event needs a "
-                f"position (index, subindex) in its path."
-            )
-    if df[schema.subindex].dtype != "float64":
-        df[schema.subindex] = df[schema.subindex].astype("float64")
-
-    keys = schema.order_cols
-    df = df.sort_values(keys, kind="stable").reset_index(drop=True)
-
-    if len(df) > 1:
-        dup = pd.Series(True, index=df.index)
-        for col in keys:
-            values = df[col]
-            dup &= values.eq(values.shift())
-        if dup.any():
-            rows = df.loc[dup, keys + [schema.event_col]].head(5)
-            raise SchemaConfigError(
-                f"Events must have a unique position ({schema.index}, "
-                f"{schema.subindex}) within each '{schema.path_col}', but "
-                f"{int(dup.sum())} row(s) repeat the position of the row before "
-                f"them, e.g.:\n{rows.to_string(index=False)}\n"
-                f"If you pass your own '{schema.index}'/'{schema.subindex}' "
-                f"columns, make them unique per path, or drop them and let "
-                f"the Eventstream number events itself."
-            )
-    return df
 
 
 def _infer_caller_var_name(
@@ -139,10 +96,14 @@ class Eventstream:
         df: "pd.DataFrame | str",
         schema: dict | None = None,
         preprocess: bool = True,
+        _order: str = "unknown",
     ):
         self._df = df
         self._schema = schema
         self.preprocess = preprocess
+        # How far to trust the frame's row order (`ordering.establish_order`).
+        # Processor wiring passes "trusted"/"emitted"; anyone else gets checked.
+        self._order = _order
         self._lineage: list[dict] = []
         self._post_init()
 
@@ -170,7 +131,7 @@ class Eventstream:
         else:
             for col in [self.schema.event_col] + self.schema.segment_cols:
                 self._df[col] = self._df[col].astype("category")
-        self._df = _establish_event_order(self._df, self.schema)
+        self._df = establish_order(self._df, self.schema, self._order)
 
         schema = self.schema
         declared_cols = set(
@@ -269,8 +230,18 @@ class Eventstream:
                 kind="stable",
             ).reset_index(drop=True)
             df[schema.index] = df.groupby(schema.path_col).cumcount() + 1
+            self._order = "numbered"
+        else:
+            self._order = "user"
 
         self._df = df
+
+    def _derive(self, processor) -> "Eventstream":
+        """Apply a data processor and wrap its result. Only processors that
+        can break the event order get their output checked (ADR-0017)."""
+        new_df, new_schema = processor.apply(self._df, self.schema)
+        order = "emitted" if processor.may_break_order else "trusted"
+        return Eventstream(new_df, asdict(new_schema), preprocess=False, _order=order)
 
     def __repr__(self) -> str:
         chain = " → ".join(
@@ -533,11 +504,10 @@ class Eventstream:
         from retentioneering.data_processors.filter_events import FilterEvents
 
         if keep is None and drop is None and func is None and sql is None:
-            return Eventstream(self._df.copy(), asdict(self.schema), preprocess=False)
-        new_df, new_schema = FilterEvents(
-            keep=keep, drop=drop, func=func, sql=sql
-        ).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+            return Eventstream(
+                self._df.copy(), asdict(self.schema), preprocess=False, _order="trusted"
+            )
+        return self._derive(FilterEvents(keep=keep, drop=drop, func=func, sql=sql))
 
     @_tracked("dp_add_clusters")
     @_op
@@ -617,17 +587,18 @@ class Eventstream:
         """
         from retentioneering.data_processors.add_clusters import AddClusters
 
-        new_df, new_schema = AddClusters(
-            eventstream=self,
-            name=name,
-            features=features,
-            method=method,
-            method_args=method_args,
-            scaler=scaler,
-            nmf_components=nmf_components,
-            path_col=path_col,
-        ).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(
+            AddClusters(
+                eventstream=self,
+                name=name,
+                features=features,
+                method=method,
+                method_args=method_args,
+                scaler=scaler,
+                nmf_components=nmf_components,
+                path_col=path_col,
+            )
+        )
 
     @_tracked("dp_urls_to_events")
     @_op
@@ -701,19 +672,20 @@ class Eventstream:
         """
         from retentioneering.data_processors.urls_to_events import UrlsToEvents
 
-        new_df, new_schema = UrlsToEvents(
-            column=column,
-            nodes=nodes,
-            strip_host=strip_host,
-            strip_query=strip_query,
-            strip_locale=strip_locale,
-            keep_full_paths=keep_full_paths,
-            host_col=host_col,
-            query_col=query_col,
-            locale_col=locale_col,
-            slug_col=slug_col,
-        ).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(
+            UrlsToEvents(
+                column=column,
+                nodes=nodes,
+                strip_host=strip_host,
+                strip_query=strip_query,
+                strip_locale=strip_locale,
+                keep_full_paths=keep_full_paths,
+                host_col=host_col,
+                query_col=query_col,
+                locale_col=locale_col,
+                slug_col=slug_col,
+            )
+        )
 
     @_tracked("dp_filter_paths")
     @_op
@@ -921,15 +893,16 @@ class Eventstream:
         """
         from retentioneering.data_processors.add_events import AddEvents
 
-        new_df, new_schema = AddEvents(
-            name,
-            source_event=source_event,
-            sql=sql,
-            churn=churn,
-            anchor=anchor,
-            path_col=path_col,
-        ).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(
+            AddEvents(
+                name,
+                source_event=source_event,
+                sql=sql,
+                churn=churn,
+                anchor=anchor,
+                path_col=path_col,
+            )
+        )
 
     @_tracked("dp_add_segment")
     @_op
@@ -1055,18 +1028,19 @@ class Eventstream:
         """
         from retentioneering.data_processors.add_segment import AddSegment
 
-        new_df, new_schema = AddSegment(
-            name,
-            rules=rules,
-            func=func,
-            sql=sql,
-            funnel_events=funnel_events,
-            time_range=time_range,
-            metric_bins=metric_bins,
-            path_col=path_col,
-            eventstream=self,
-        ).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(
+            AddSegment(
+                name,
+                rules=rules,
+                func=func,
+                sql=sql,
+                funnel_events=funnel_events,
+                time_range=time_range,
+                metric_bins=metric_bins,
+                path_col=path_col,
+                eventstream=self,
+            )
+        )
 
     @_tracked("dp_collapse_events")
     @_op
@@ -1171,16 +1145,17 @@ class Eventstream:
         """
         from retentioneering.data_processors.collapse_events import CollapseEvents
 
-        new_df, new_schema = CollapseEvents(
-            loops=loops,
-            event_groups=event_groups,
-            bounds=bounds,
-            group_col=group_col,
-            name=name,
-            agg=agg,
-            path_col=path_col,
-        ).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(
+            CollapseEvents(
+                loops=loops,
+                event_groups=event_groups,
+                bounds=bounds,
+                group_col=group_col,
+                name=name,
+                agg=agg,
+                path_col=path_col,
+            )
+        )
 
     @_tracked("dp_to_daily_states")
     @_op
@@ -1229,13 +1204,14 @@ class Eventstream:
         """
         from retentioneering.data_processors.to_daily_states import ToDailyStates
 
-        new_df, new_schema = ToDailyStates(
-            active_events=active_events,
-            max_dormant_days=max_dormant_days,
-            agg=agg,
-            path_col=path_col,
-        ).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(
+            ToDailyStates(
+                active_events=active_events,
+                max_dormant_days=max_dormant_days,
+                agg=agg,
+                path_col=path_col,
+            )
+        )
 
     @_tracked("dp_drop_segment")
     @_op
@@ -1254,8 +1230,7 @@ class Eventstream:
         """
         from retentioneering.data_processors.drop_segment import DropSegment
 
-        new_df, new_schema = DropSegment(name).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(DropSegment(name))
 
     @_tracked("dp_edit_events")
     @_op
@@ -1282,10 +1257,7 @@ class Eventstream:
         """
         from retentioneering.data_processors.edit_events import EditEvents
 
-        new_df, new_schema = EditEvents(rename=rename, delete=delete).apply(
-            self._df, self.schema
-        )
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(EditEvents(rename=rename, delete=delete))
 
     @_tracked("dp_rename_events")
     @_op
@@ -1307,8 +1279,7 @@ class Eventstream:
         """
         from retentioneering.data_processors.rename_events import RenameEvents
 
-        new_df, new_schema = RenameEvents(mapping).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(RenameEvents(mapping))
 
     @_tracked("dp_rename_segment_levels")
     @_op
@@ -1343,10 +1314,7 @@ class Eventstream:
             RenameSegmentLevels,
         )
 
-        new_df, new_schema = RenameSegmentLevels(segment_col, mapping).apply(
-            self._df, self.schema
-        )
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(RenameSegmentLevels(segment_col, mapping))
 
     @_tracked("dp_drop_events")
     @_op
@@ -1367,8 +1335,7 @@ class Eventstream:
         """
         from retentioneering.data_processors.edit_events import EditEvents
 
-        new_df, new_schema = EditEvents(delete=names).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(EditEvents(delete=names))
 
     @_tracked("dp_sample_paths")
     @_op
@@ -1400,10 +1367,9 @@ class Eventstream:
         """
         from retentioneering.data_processors.sample_paths import SamplePaths
 
-        new_df, new_schema = SamplePaths(
-            n=n, frac=frac, random_state=random_state, path_col=path_col
-        ).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(
+            SamplePaths(n=n, frac=frac, random_state=random_state, path_col=path_col)
+        )
 
     @_tracked("dp_split_sessions")
     @_op
@@ -1455,15 +1421,16 @@ class Eventstream:
         """
         from retentioneering.data_processors.split_sessions import SplitSessions
 
-        new_df, new_schema = SplitSessions(
-            session_col=session_col,
-            session_index_col=session_index_col,
-            separator=separator,
-            bounds=bounds,
-            timeout=timeout,
-            path_col=path_col,
-        ).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(
+            SplitSessions(
+                session_col=session_col,
+                session_index_col=session_index_col,
+                separator=separator,
+                bounds=bounds,
+                timeout=timeout,
+                path_col=path_col,
+            )
+        )
 
     @_tracked("dp_truncate_paths")
     @_op
@@ -1569,12 +1536,13 @@ class Eventstream:
         """
         from retentioneering.data_processors.truncate_paths import TruncatePaths
 
-        new_df, new_schema = TruncatePaths(
-            start_anchor=start_anchor,
-            end_anchor=end_anchor,
-            path_col=path_col,
-        ).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(
+            TruncatePaths(
+                start_anchor=start_anchor,
+                end_anchor=end_anchor,
+                path_col=path_col,
+            )
+        )
 
     def _filter_by_segment_levels(
         self, segment_col: str, levels: list
@@ -1728,8 +1696,7 @@ class Eventstream:
         )
 
         dp = AddStartEndEvents(path_col)
-        new_df, new_schema = dp.apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(dp)
 
     @_tracked("headless_transition_graph")
     def transition_graph_data(

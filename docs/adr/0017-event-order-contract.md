@@ -71,14 +71,44 @@ one query to `(index, subindex)`. This ADR makes the same choice library-wide.
    aggregation, output `ORDER BY` and pandas sort uses them or the same columns.
    No code orders events by timestamp. AGENTS.md carries this rule.
 
-5. **Canonical physical order.** `Eventstream(..., preprocess=False)` sorts by
-   `(path, index, subindex)` (stable), so a chain of processors cannot drift
-   regardless of what order any one of them emits.
+5. **Layout.** Within a path, rows are laid out by `(index, subindex)`,
+   strictly increasing, and each path is one contiguous block. The order of
+   paths relative to each other is *not* part of the contract — e.g.
+   `sample_paths` may return paths in any order. Readers must not rely on
+   path order; they partition by path.
 
-6. **Uniqueness is validated.** The constructor checks that
-   `(path, index, subindex)` is unique and raises `SchemaConfigError` naming
-   offending rows otherwise. This also covers user-supplied `index`/`subindex`
-   columns.
+6. **The layout is established where it can break, and only there.**
+   Re-sorting every derived stream was measured at about 6 s per stream on
+   50M rows (+40% on `rename_events` / `edit_events`), so the check is
+   proportionate to the frame's origin (`eventstream/ordering.py`):
+   - *Source stream, no user `index`*: one stable sort by
+     `(path, timestamp, subindex)`, then `index` is numbered. Unique by
+     construction; nothing is checked.
+   - *Source stream with user `index`/`subindex`*: stable sort by
+     `(path, index, subindex)`, then missing values and adjacent duplicates
+     raise `SchemaConfigError` with example rows.
+   - *Derived streams*: each data processor declares `may_break_order`
+     (default `True`, so a new processor is checked unless it opts out).
+     Processors that only drop rows or edit columns of the frame they were
+     given opt out and cost nothing: `rename_events`, `edit_events`,
+     `rename_segment_levels`, `drop_segment`, `add_segment`, `add_clusters`,
+     `urls_to_events`, `filter_events` with `keep`/`drop`/`func`,
+     `filter_paths`, `truncate_paths`, `split_sessions`, `sample_paths`.
+     Processors that add, merge or re-read rows — `add_events`,
+     `add_start_end_events`, `collapse_events`, `to_daily_states`,
+     `filter_events(sql=...)` — emit `ORDER BY path, event_order(...)`, and
+     their output gets one numpy pass over neighbours (path non-decreasing,
+     `(index, subindex)` strictly increasing within a path). Only if it fails
+     is the frame stable-sorted and checked for missing or repeated
+     positions, which raise `SchemaConfigError` (most likely a `sql=` query
+     that returned a row twice).
+   - *Any other `Eventstream(df, preprocess=False)`* — a user's frame, a
+     tool's temporary stream — is checked the same way.
+   - *Test suite*: `tests/conftest.py` sets `ordering.STRICT`, which checks
+     every processor's output, opted out or not, against the contract itself
+     (as many path blocks as distinct paths, growing within each), and turns
+     the fallback sort into an `EventOrderError`. This is what proves the
+     opt-out list right.
 
 7. **Collapsed rows take the group's first position** — the minimum
    `(index, subindex)` of the run — not `ARG_MIN(index, timestamp)`.
@@ -101,8 +131,12 @@ one query to `(index, subindex)`. This ADR makes the same choice library-wide.
   anyone reading the technical columns. Raw events still carry `2.0`.
 - Frames whose user-supplied `index`/`subindex` collide now fail at
   construction instead of producing order-dependent results.
-- `preprocess=False` construction costs one stable sort; the frame is usually
-  already in order, so this is cheap relative to the processor that produced it.
+- Processors that cannot break the order cost nothing extra; the others pay
+  one pass over neighbours (well under a second on 50M rows) and a sort only
+  when their output is out of order.
+- A new processor is checked by default. Opting out (`may_break_order =
+  False`) is a claim the test suite verifies on every call it makes.
+- Code that needs paths in a particular order sorts them itself.
 - Rows with equal timestamps but different `index` are ordered by `index` —
   e.g. a `churn` marker sorts after its source event even when a later raw
   event shares the source's timestamp, because the marker inherits the

@@ -100,9 +100,14 @@ at construction. **Never order events by timestamp** — timestamps tie. Window
 or `schema.order_cols` (pandas); "first/last event" means `ARG_MIN/ARG_MAX(...,
 dialect.event_position(...))`. `index` is assigned once and never changes; a row a
 processor adds reuses its source row's `index`, and markers sharing one take
-fractional `subindex` via `eventstream/ordering.py`'s `marker_subindex`. Every
-`Eventstream` (including `preprocess=False`) is re-sorted by
-`(path_col, index, subindex)`, so processors need not preserve physical order.
+fractional `subindex` via `eventstream/ordering.py`'s `marker_subindex`. Layout
+contract: each path is one block growing in `(index, subindex)`; path-to-path order
+is free. A processor that adds, merges or re-reads rows keeps the default
+`may_break_order = True` and ends in `ORDER BY path, event_order(...)` — its output
+gets a cheap check and a fallback sort. One that only drops rows or edits columns
+sets `may_break_order = False` and is not checked at runtime; the test suite
+(`ordering.STRICT`, set in `tests/conftest.py`) checks every processor anyway, so
+a wrong opt-out fails the tests. Do not add re-sorts inside processors.
 
 ### Naming conventions (ADR-0008)
 

@@ -22,6 +22,9 @@ BOUNDS_KEYS = ("start_event", "end_event")
 
 @dataclass
 class SplitSessions(DataProcessor):
+    # Cannot break the event order: drops separator rows and adds columns, emitted in event order.
+    may_break_order = False
+
     session_col: str
     session_index_col: str
     separator: List[str] | None

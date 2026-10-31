@@ -349,3 +349,107 @@ class TestChainStability:
         )
         assert not key.duplicated().any()
         assert np.all(np.diff(df.index.to_numpy()) == 1)
+
+
+# ---------------------------------------------------------------------------
+# Where the order is checked
+# ---------------------------------------------------------------------------
+
+
+class _Reversed:
+    """A deliberately broken processor: returns every path backwards."""
+
+    def __init__(self, may_break_order):
+        self.may_break_order = may_break_order
+
+    def apply(self, df, schema):
+        return df.iloc[::-1].reset_index(drop=True), schema
+
+
+class TestOrderChecks:
+    def test__union_all_duplicates_raise(self):
+        stream = tied_stream(3)
+        with pytest.raises(SchemaConfigError, match="unique position"):
+            stream.filter_events(
+                sql="select * from eventstream union all select * from eventstream"
+            )
+
+    @pytest.mark.parametrize(
+        "call",
+        [
+            lambda s: s.rename_events({"a": "z"}),
+            lambda s: s.edit_events(delete=["b"]),
+            lambda s: s.filter_events(keep={"event": ["a", "c"]}),
+            lambda s: s.filter_events(func=lambda df: df["event"] != "b"),
+            lambda s: s.sample_paths(n=2, random_state=1),
+            lambda s: s.truncate_paths(start_anchor="b", end_anchor="end"),
+            lambda s: s.split_sessions(separator="b"),
+        ],
+    )
+    def test__opted_out_processors_are_not_checked(self, call, monkeypatch):
+        from retentioneering.eventstream import ordering
+
+        stream = tied_stream(5)
+        monkeypatch.setattr(ordering, "STRICT", False)
+
+        def boom(*args, **kwargs):
+            raise AssertionError("order checked for an opted-out processor")
+
+        monkeypatch.setattr(ordering, "is_laid_out", boom)
+        monkeypatch.setattr(ordering, "sort_and_validate", boom)
+        call(stream)
+
+    def test__checked_processors_are_checked(self, monkeypatch):
+        from retentioneering.eventstream import ordering
+
+        stream = tied_stream(5)
+        monkeypatch.setattr(ordering, "STRICT", False)
+        calls = []
+        real = ordering.is_laid_out
+        monkeypatch.setattr(
+            ordering,
+            "is_laid_out",
+            lambda df, schema: calls.append(1) or real(df, schema),
+        )
+        stream.add_events("x", source_event="a")
+        stream.collapse_events(loops=True)
+        stream.filter_events(sql="select * from eventstream")
+        assert len(calls) == 3
+
+    def test__broken_processor_is_resorted_in_production(self, monkeypatch):
+        from retentioneering.eventstream import ordering
+
+        monkeypatch.setattr(ordering, "STRICT", False)
+        res = tied_stream(3)._derive(_Reversed(may_break_order=True))
+        assert events(res, "u0") == ["a", "b", "c", "end"]
+
+    @pytest.mark.parametrize("may_break_order", [True, False])
+    def test__test_suite_net_catches_a_broken_processor(self, may_break_order):
+        from retentioneering.eventstream.ordering import EventOrderError
+
+        with pytest.raises(EventOrderError):
+            tied_stream(3)._derive(_Reversed(may_break_order))
+
+    def test__net_accepts_paths_in_any_relative_order(self):
+        class _PathsBackwards:
+            may_break_order = False
+
+            def apply(self, df, schema):
+                order = df["user_id"].astype(str).rank(method="dense", ascending=False)
+                return (
+                    df.assign(_o=order)
+                    .sort_values("_o", kind="stable")
+                    .drop(columns="_o")
+                    .reset_index(drop=True),
+                    schema,
+                )
+
+        res = tied_stream(3)._derive(_PathsBackwards())
+        assert list(dict.fromkeys(res.df["user_id"])) == ["u2", "u1", "u0"]
+
+    def test__user_frame_without_preprocess_is_checked_and_sorted(self):
+        base = tied_stream(3).df
+        res = Eventstream(
+            base.iloc[::-1].reset_index(drop=True), SCHEMA, preprocess=False
+        )
+        assert events(res, "u0") == ["a", "b", "c", "end"]

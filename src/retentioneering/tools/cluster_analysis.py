@@ -573,7 +573,8 @@ class ClusterAnalysis:
         segment_cols.append(SEGMENT_COL)
         schema_dict["segment_cols"] = segment_cols
 
-        return Eventstream(df, schema_dict, preprocess=False)
+        # Same rows in the same order, one column more.
+        return Eventstream(df, schema_dict, preprocess=False, _order="trusted")
 
     def get_metric_distribution(
         self,

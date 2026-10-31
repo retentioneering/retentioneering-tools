@@ -221,6 +221,34 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   verdict, the family size, group sizes, population and the top rows with their
   readings). The playbook's A/B scenario places them after the scorecard, as an
   exploratory screen, never the decision.
+- `ab_transitions(diff, edge_weight="unique_paths", ...)` and `ab_steps(diff,
+  max_steps=10, ...)` widgets draw the two screens as difference matrices (source
+  × target, event × step), with the twins `ab_transitions_data` and
+  `ab_steps_data`, documented aliases of `get_ab_transitions` / `get_ab_steps`.
+  Every cell is one row of the frame: the background is the delta (red where
+  group 1 is higher, blue where it is lower, the diff palette, scaled to the
+  largest `|delta|` shown or a clip), the text the delta and its per-cell
+  interval, and a wide outline reads `p_value_adjusted`: black when significant,
+  light grey with a grey cross when tested and not significant, dashed with the
+  cross and muted text when not tested (the tooltip says why); a cell without a
+  row stays empty. The tooltip holds the whole row, its reading included; the
+  header names the arms, the weight or steps, the population, the correction and
+  the family size. The sidebar recomputes the weight (or `max_steps`), the
+  correction, the level and `min_support`; view controls (intervals, a filter for
+  rows and columns without a significant cell, the colour clip, sorting, pinned
+  and hidden events, simultaneous Bonferroni intervals, a reading hint for the
+  conditional weights) do not recompute and are saved with `state_file`. Both
+  render in static HTML exports.
+- `get_ab_transitions_table(diff, edge_weight, ..., values=(...), styled=False)`
+  and `get_ab_steps_table(diff, max_steps, ..., values=(...), styled=False)`
+  return a screen in the shape of the diff matrix for export: index the sources
+  (events), columns `(target, stat)` (`(step, stat)`), by default the delta, its
+  interval and the adjusted p-value; any statistic column of the frame can be
+  asked for, NaN where the frame has no row, the frame's `attrs` carried over.
+  Nothing is recomputed. `styled=True` returns a pandas `Styler` with the
+  widgets' encoding, which `to_excel` keeps (with `openpyxl`, not a dependency;
+  the `Styler` itself needs `jinja2`, and without it `styled=True` raises an
+  `ImportError` before computing).
 - `add_segment(..., pre_exposure=True)` declares a segment fixed before
   exposure; the declaration is kept in the recipe, and `get_ab_test(strata_col=)`
   reads it as `strata_pre_exposure_source="declared"` without a warning.
@@ -294,11 +322,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   story found, every metric kind, test and correction, guardrails, `min_support`
   and each `support_warning`, strata with `strata_pre_exposure`, the unit guard,
   calendar and since-assignment periods, `horizon`, bootstrap contrasts,
-  `get_ab_paths`, funnel intervals, the widget and its `ab_test_data` twin, and
-  the MCP tools — with a closing cell that asserts every number its prose quotes.
+  `get_ab_paths`, funnel intervals, the widget and its `ab_test_data` twin, the
+  difference matrices and their tables, and the MCP tools — with a closing cell
+  that asserts every number its prose quotes.
 - Docs: a Tools reference section (`get_ab_test`, `get_ab_bootstrap`,
-  `get_ab_paths`, `get_ab_transitions`, `get_ab_steps`, `get_sample_ratio`) rendered from the docstrings and listed
-  in `llms.txt`.
+  `get_ab_paths`, `get_ab_transitions`, `get_ab_steps`, `get_ab_transitions_table`,
+  `get_ab_steps_table`, `get_sample_ratio`) rendered from the docstrings and listed
+  in `llms.txt`; widget pages for A/B Transitions and A/B Steps.
 - Docs: an A/B Testing guide (`docs/guide/ab-testing.md`) — the unit, the
   intention-to-treat population, `diff` and the metrics; a worked example on
   `load_ab_test()` with real outputs; how to read the scorecard (verdict, `mde`,

@@ -48,6 +48,10 @@ TITLE_OVERRIDES = {
     "get_ab_paths": "A/B Per-Path Table",
     "get_ab_transitions": "A/B Transition Screen",
     "get_ab_steps": "A/B Step Screen",
+    "get_ab_transitions_table": "A/B Transition Table",
+    "get_ab_steps_table": "A/B Step Table",
+    "ab_transitions": "A/B Transitions",
+    "ab_steps": "A/B Steps",
     "get_sample_ratio": "Sample Ratio Check",
 }
 
@@ -100,6 +104,8 @@ WIDGETS = [
     ("widgets/segment-overview.md.jinja", "segment_overview", "segment_overview_data"),
     ("widgets/cluster-analysis.md.jinja", "cluster_analysis", "cluster_analysis_data"),
     ("widgets/ab-test.md.jinja", "ab_test", "ab_test_data"),
+    ("widgets/ab-transitions.md.jinja", "ab_transitions", "ab_transitions_data"),
+    ("widgets/ab-steps.md.jinja", "ab_steps", "ab_steps_data"),
 ]
 
 DATA_PROCESSORS = [
@@ -132,6 +138,8 @@ TOOLS = [
     "get_ab_paths",
     "get_ab_transitions",
     "get_ab_steps",
+    "get_ab_transitions_table",
+    "get_ab_steps_table",
     "get_sample_ratio",
 ]
 

@@ -1,0 +1,58 @@
+{% extends "_tool_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+The table is [`get_ab_transitions`](/docs/tools/get-ab-transitions) called with
+the same arguments and pivoted, with nothing recomputed: the frame's
+`(source, target)` rows become the cells of a matrix shaped like the diff
+transition matrix of [`transition_graph_data`](/docs/widgets/transition-graph),
+and each cell becomes a group of explicit statistic columns, one per name in
+`values`. The default, `("delta", "delta_ci_low", "delta_ci_high",
+"p_value_adjusted")`, gives every edge its delta `group1 − group2`, its interval
+at `ci_level` and its adjusted p-value:
+
+```python
+table = stream.get_ab_transitions_table(diff, assignment=assignment)
+table.loc["add_to_cart", "cart"]
+# stat
+# delta              -3.121828e-01
+# delta_ci_low       -3.298453e-01
+# delta_ci_high      -2.942117e-01
+# p_value_adjusted   2.724655e-229
+```
+
+The rows are the sources with an edge in the frame and the column groups the
+targets, `path_start` first, `path_end` last and the other events by name, the
+order of the [A/B Transitions](/docs/widgets/ab-transitions) widget. A cell
+without a row in the frame (the transition never occurs in the compared paths)
+is NaN in every statistic; an untested edge keeps its delta and interval and
+has a NaN p-value. Any statistic column of the frame can be asked for, in any
+order, including text columns (`verdict`, `support_warning`, `reading`); the
+values are in the frame's units (shares for every weight but `avg_per_path`).
+The frame's `attrs` (`n_tested`, `correction`, `ci_level`, `alpha`, the arms,
+the population, `edge_weight`) travel with the table, plus `values`.
+
+The intervals are per edge, not simultaneous, and the family of the adjusted
+p-values is every tested edge, as in the frame. The table is the screen in a
+spreadsheet's shape; it does not make a screen a confirmatory test.
+
+### Export
+
+`to_csv` writes the two header rows, and `pd.read_csv(path, header=[0, 1],
+index_col=0)` reads them back. With `styled=True` the result is a pandas
+`Styler` of the same table (`.data`) drawn as the widget draws a cell: the
+`delta` column on a red or blue background by the delta's sign, its intensity
+proportional to `|delta|` over the largest one; a significant edge
+(`p_value_adjusted < alpha`) with a bold black border around its group and bold
+text; a tested, not significant one in grey with a thin grey border; an untested
+one in light grey italics with a dashed border. `Styler.to_excel` keeps the
+colours and the borders; it needs `openpyxl`, which the library does not
+install, and the `Styler` itself needs `jinja2` (without it `styled=True` raises
+an `ImportError` before computing anything).
+
+```python
+stream.get_ab_transitions_table(diff, assignment=assignment, styled=True).to_excel("edges.xlsx")
+```
+
+{% endblock %}

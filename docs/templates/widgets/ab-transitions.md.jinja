@@ -1,0 +1,161 @@
+{% extends "_widget_base.md.jinja" %}
+
+{% block how_it_works %}
+## How it works
+
+The A/B Transitions widget draws the edge screen of
+[`get_ab_transitions`](/docs/tools/get-ab-transitions) as a matrix: it computes
+nothing of its own. Its headless twin, `ab_transitions_data`, is an alias of
+`get_ab_transitions` (same arguments, same frame), and every cell of the matrix
+is one row of that frame: `source` is the row, `target` the column. Any number
+in the widget can be reproduced, and quoted, from code.
+
+### Reading a cell
+
+- **The background is the delta** `group1 − group2`: red where group 1 is
+  higher, blue where it is lower (the colours of the diff transition graph and
+  of its significance overlay), on a scale symmetric around 0 whose full colour
+  is the largest `|delta|` among the cells shown. A few large deltas wash out
+  the rest: set a smaller maximum in **Colour scale maximum** to see them.
+- **The text is the delta and its interval** at `ci_level`, in percentage points
+  of the arm's paths for `unique_paths` and the conditional weights, in
+  transitions per path for `avg_per_path`. When the cells get too small (more
+  than 24 targets, or **Cell size: Compact**), the interval moves to the tooltip.
+- **The wide outline is the test**, read off `p_value_adjusted`:
+  - **black**: the adjusted p-value is below `alpha = 1 − ci_level`, the delta
+    is significantly different from 0 after the correction;
+  - **light grey with a grey cross**: tested, not significant. The data cannot
+    tell this delta from 0; it is not evidence of no difference, read the
+    interval for the effects it still allows;
+  - **dashed light grey with a cross, muted text**: not tested (no adjusted
+    p-value): too little pooled support for `min_support`, no spread to
+    estimate, or bootstrap replicates without a value. The tooltip says which;
+  - **an empty cell** has no row in the frame: the transition never occurs in
+    the compared paths of either arm.
+
+The tooltip carries the whole row: both arms' values, the delta and its
+interval (and the simultaneous Bonferroni one when the correction is
+`bonferroni`), `rel_delta`, `p_value`, `p_value_adjusted` with the correction
+and the family size, the MDE, the arms' support and paths with the edge, the
+support warning, `conditional`, the verdict and the row's `reading`, verbatim.
+The header names the arms, the edge weight, the population (the stream's paths,
+or intention to treat with `assignment=`), the correction over how many tested
+edges, and `alpha`.
+
+**The intervals are per cell, not simultaneous.** Each holds at `ci_level` for
+its edge alone, while the outline reads the p-value adjusted over every tested
+edge, so a grey cell's interval can exclude 0. With `correction="bonferroni"`
+the frame also has simultaneous intervals; **Intervals: Simultaneous** shows
+them in the cells.
+
+### Conditional weights
+
+`proba_out`, `proba_in` and `share_of_total` divide by behaviour the treatment
+can change; their rows carry `conditional=True`. In each arm a `proba_out` row
+sums to 100 %, so the deltas of a row sum to 0: read across a row, as "where
+the transitions out of this source go". `proba_in` is the same down a column,
+and `share_of_total` over the whole matrix, so a cell also moves when any other
+transition changes. A hint above the matrix says so (**Reading hint** turns it
+off). For an effect of the treatment over every user, read `unique_paths` or
+`avg_per_path`.
+
+### Sidebar and view
+
+The sidebar edits `edge_weight`, `correction`, `ci_level` and `min_support`,
+and every change recomputes the frame. The other arguments (`assignment`,
+`horizon`, `path_col`, `edges`, `test`, `power`, `n_bootstrap`,
+`bootstrap_weights`, `random_state`) are set in code and shown read-only.
+View controls change nothing in the frame: show or hide the intervals; dim or
+hide the rows and columns without a significant cell; the colour scale maximum;
+sort rows and columns by name, by largest `|delta|` or by number of significant
+cells; pin an event to the top, or hide it (its row and column). A `state_file`
+keeps the data arguments and the view; `diff` and `assignment` are passed again
+when the widget is reopened. A static export keeps the view controls and locks
+the data ones.
+
+### What the screen is for
+
+The family is every edge with enough support, chosen after the data were
+seen: the matrix is a map of where the arms' paths part and a source of
+hypotheses, not a launch decision. A black cell is confirmed by declaring it
+as the metric of a new test. The
+[A/B Testing guide](/docs/ab-testing#which-edges-and-steps-differ-a-screen-with-fdr-control)
+reads the screen on the bundled experiment, with its pitfalls.
+
+{% endblock %}
+{% block demo_examples %}
+## Examples
+
+The examples run on the bundled synthetic experiment, `load_ab_test()`, with its
+assignment table, `load_ab_test_assignment()`, as `assignment`.
+
+### Share of users with each transition
+
+<DemoWidget cmd={`stream.ab_transitions(
+    ("exp_group", "treatment", "control"),
+    assignment=assignment,
+)`} path="/docs-demos/widgets/ab-transitions/unique-paths.html" height={640} />
+
+90 of 92 edges are tested and 19 are black. `add_to_cart -> cart` and
+`product_view -> add_to_cart` are much lower in the treatment arm, whose
+`quick_add` replaces them; `cart -> cart`, a loop only the treatment arm has,
+and `checkout_start -> home` are higher. `checkout_start -> payment` is grey: the
+share of users with a checkout followed by a payment does not move.
+
+### Where the transitions out of a source go
+
+<DemoWidget cmd={`stream.ab_transitions(
+    ("exp_group", "treatment", "control"),
+    "proba_out",
+    assignment=assignment,
+)`} path="/docs-demos/widgets/ab-transitions/proba-out.html" height={640} />
+
+With the row-normalised weight, `checkout_start -> payment` turns blue and black
+(−5.25 pp): the treatment's checkouts are more often abandoned. It is a
+conditional comparison: the shortcut filled the denominator with checkouts
+nobody meant to finish, while the share of users who pay after a checkout is
+unchanged (the example above).
+{% endblock %}
+{% block extra %}
+### edge_weight
+
+{{ bullets(doc.parameters, "edge_weight") }}
+
+### correction
+
+{{ bullets(doc.parameters, "correction") }}
+
+### bootstrap_weights
+
+{{ bullets(doc.parameters, "bootstrap_weights") }}
+
+## `ab_transitions_data` and `get_ab_transitions`
+
+`ab_transitions_data` and `get_ab_transitions` are the same method under two
+names. The library's docs use `get_ab_transitions`, the name of the analysis
+tools; `ab_transitions_data` exists so that every widget has a `<widget>_data`
+twin. The full parameter and column reference is on the
+[A/B Transition Screen](/docs/tools/get-ab-transitions) page.
+
+### As a table for export
+
+[`get_ab_transitions_table`](/docs/tools/get-ab-transitions-table) takes the
+same arguments and returns the frame pivoted into the shape of the diff
+transition matrix: one row per source, and for every target a group of
+statistic columns (`values=`, by default the delta, its interval and the
+adjusted p-value). Nothing is recomputed. `to_csv` and `to_excel` write the two
+header rows, and `styled=True` returns a pandas `Styler` with this widget's
+encoding (red and blue deltas, a black border around significant edges, grey
+text for the others), which `to_excel` keeps:
+
+```python
+table = stream.get_ab_transitions_table(diff, assignment=assignment)
+table.to_csv("edges.csv")             # pd.read_csv("edges.csv", header=[0, 1], index_col=0)
+stream.get_ab_transitions_table(diff, assignment=assignment, styled=True).to_excel("edges.xlsx")
+```
+
+See also [A/B Steps](/docs/widgets/ab-steps), the same matrix per step, and the
+[Transition Graph](/docs/widgets/transition-graph), which takes the frame as
+`ab_transitions=` and draws the same outlines on its edges.
+
+{% endblock %}

@@ -1,4 +1,4 @@
-.PHONY: install install-dev build build-viz build-widget export-metric-schema test watch clean release test-release rc-release
+.PHONY: install install-dev build build-viz build-widget export-metric-schema export-ab-encoding test watch clean release test-release rc-release
 
 install:
 	uv sync
@@ -16,13 +16,17 @@ build: build-viz build-widget
 build-viz:
 	cd js/viz-core && npm run build
 
-# Regenerate before building so js/widget/src/generated/metric_names.generated.ts
-# can't go stale between a metric_schema.py change and the next build.
-build-widget: export-metric-schema
+# Regenerate before building so js/widget/src/generated/*.generated.ts can't go
+# stale between a metric_schema.py (or ab_tables.py encoding) change and the
+# next build.
+build-widget: export-metric-schema export-ab-encoding
 	cd js/widget && npm run build
 
 export-metric-schema:
 	uv run python scripts/export_metric_schema.py
+
+export-ab-encoding:
+	uv run python scripts/export_ab_encoding.py
 
 watch:
 	cd js/widget && npm run dev

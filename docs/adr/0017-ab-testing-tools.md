@@ -240,3 +240,49 @@ tested weight, and the raw null p-values were uniform.
 Out of scope in this release: time weights (`time_median`, `time_q95`), `count`,
 `path_pattern` / `anchor` on steps (cut with `truncate_paths`), simultaneous
 intervals other than Bonferroni, a confidence interval on `rel_delta`.
+
+## Amendment (2026-10): the screens as matrices
+
+The two screens get widgets of their own, `ab_transitions(diff, edge_weight)` and
+`ab_steps(diff, max_steps)`, with the `_data` twins `ab_transitions_data` and
+`ab_steps_data`: documented aliases of `get_ab_transitions` / `get_ab_steps`, as
+`ab_test_data` is of `get_ab_test` (ADR-0006, D1). Each cell of the matrix is one
+row of the twin's frame, sent as it is; the widgets compute nothing. The rows travel
+column by column, a value repeated down a column once: 80 event types are 6,561
+rows with a long `reading` each, about 8 MB as one object per row and under 2 MB
+this way, every cell kept.
+
+**M1 — one encoding.** The background is the delta on a diverging scale around 0
+in the diff palette (red where group 1 is higher, blue where it is lower: the
+graph overlay's and the diff step matrix's hues), its full colour at the largest
+`|delta|` shown or at a clip the reader sets. A wide inset outline reads
+`p_value_adjusted`: black below alpha; light grey with a light grey cross when
+tested and not significant; dashed, with the cross and muted text, when the row
+has no adjusted p-value; nothing when the frame has no row. The outline reads the
+column, not the verdict's wording, so it does not depend on how an untested row's
+verdict is spelled. Intervals stay per cell; with Bonferroni the simultaneous ones
+can be shown instead.
+
+**M2 — what the reader varies.** The sidebar recomputes the weight (or
+`max_steps`), the correction, the level and `min_support`; the other arguments
+are fixed at construction and shown read-only. View controls (intervals shown,
+significance filter, colour clip, sorting, pinned and hidden events, cell size)
+never recompute and are saved with `state_file`; `diff` and `assignment` are not
+persisted. The static export draws the same matrix without a kernel.
+
+**M3 — tables for export.** `get_ab_transitions_table` / `get_ab_steps_table`
+take the getter's arguments plus `values=` (frame columns, validated) and
+`styled=`, and pivot the frame into the diff matrix shape: index the sources
+(events), columns `(target, stat)` (`(step, stat)`), NaN where the frame has no
+row, the frame's `attrs` plus `values`. They are named `get_*` because they return
+numbers (ADR-0008 rule 6); a bare noun would read as a widget. `styled=True`
+returns a pandas `Styler` with the M1 encoding in CSS that `to_excel` keeps;
+`openpyxl` stays optional. The encoding's colours and opacity are constants of
+`tools/ab_tables.py`, from which the widgets' are generated
+(`make export-ab-encoding`, checked by a test), so the table and the matrix
+cannot drift apart.
+
+The MCP server is unchanged: ADR-0009 asks that renames reach the server and
+that tool results stay compact; nothing is renamed, and the screens' MCP tools of
+the getters' names already return compact summaries. A report tab for the
+matrices is not part of this change.

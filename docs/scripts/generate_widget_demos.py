@@ -163,6 +163,8 @@ STREAM_BUILDERS = {
     # the A/B guide's worked example runs on the synthetic experiment dataset
     GUIDE_DIR / "ab-testing.md": load_ab_test,
     TEMPLATES_DIR / "widgets" / "ab-test.md.jinja": load_ab_test,
+    TEMPLATES_DIR / "widgets" / "ab-transitions.md.jinja": load_ab_test,
+    TEMPLATES_DIR / "widgets" / "ab-steps.md.jinja": load_ab_test,
 }
 
 # Names a page's <DemoWidget> commands use besides `stream`, each built on first
@@ -170,6 +172,12 @@ STREAM_BUILDERS = {
 # assignment table of the bundled experiment).
 EXTRA_GLOBALS = {
     TEMPLATES_DIR / "widgets" / "ab-test.md.jinja": {
+        "assignment": load_ab_test_assignment,
+    },
+    TEMPLATES_DIR / "widgets" / "ab-transitions.md.jinja": {
+        "assignment": load_ab_test_assignment,
+    },
+    TEMPLATES_DIR / "widgets" / "ab-steps.md.jinja": {
         "assignment": load_ab_test_assignment,
     },
 }

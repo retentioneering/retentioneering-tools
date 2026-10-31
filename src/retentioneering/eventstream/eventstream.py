@@ -1350,6 +1350,236 @@ class Eventstream:
             anchor=anchor,
         )
 
+    @_tracked("get_ab_transitions_table")
+    def get_ab_transitions_table(
+        self,
+        diff: T_Diff,
+        edge_weight: str = "unique_paths",
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
+        path_col: str | None = None,
+        edges: list | None = None,
+        test: str = "auto",
+        correction: str = "bh",
+        ci_level: float = 0.95,
+        power: float = 0.8,
+        n_bootstrap: int = 1000,
+        bootstrap_weights: str = "multinomial",
+        min_support: int = 10,
+        random_state: int = 42,
+        values=("delta", "delta_ci_low", "delta_ci_high", "p_value_adjusted"),
+        styled: bool = False,
+    ):
+        # The docstring is assembled below from get_ab_transitions'.
+        from retentioneering.tools.ab_tables import (
+            ab_table,
+            require_jinja2,
+            style_table,
+        )
+
+        if styled:
+            require_jinja2()
+        frame = self.get_ab_transitions(
+            diff,
+            edge_weight,
+            assignment=assignment,
+            horizon=horizon,
+            path_col=path_col,
+            edges=edges,
+            test=test,
+            correction=correction,
+            ci_level=ci_level,
+            power=power,
+            n_bootstrap=n_bootstrap,
+            bootstrap_weights=bootstrap_weights,
+            min_support=min_support,
+            random_state=random_state,
+        )
+        table = ab_table(frame, values)
+        return style_table(table, frame) if styled else table
+
+    @_tracked("get_ab_steps_table")
+    def get_ab_steps_table(
+        self,
+        diff: T_Diff,
+        max_steps: int = 10,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
+        path_col: str | None = None,
+        correction: str = "bh",
+        ci_level: float = 0.95,
+        power: float = 0.8,
+        min_support: int = 10,
+        path_pattern: str | None = None,
+        anchor: str | dict | None = None,
+        values=("delta", "delta_ci_low", "delta_ci_high", "p_value_adjusted"),
+        styled: bool = False,
+    ):
+        # The docstring is assembled below from get_ab_steps'.
+        from retentioneering.tools.ab_tables import (
+            ab_table,
+            require_jinja2,
+            style_table,
+        )
+
+        if styled:
+            require_jinja2()
+        frame = self.get_ab_steps(
+            diff,
+            max_steps,
+            assignment=assignment,
+            horizon=horizon,
+            path_col=path_col,
+            correction=correction,
+            ci_level=ci_level,
+            power=power,
+            min_support=min_support,
+            path_pattern=path_pattern,
+            anchor=anchor,
+        )
+        table = ab_table(frame, values)
+        return style_table(table, frame) if styled else table
+
+    _tr_summary, _tr_sections = _numpydoc_split(get_ab_transitions.__doc__ or "")
+    _st_summary, _st_sections = _numpydoc_split(get_ab_steps.__doc__ or "")
+    _TABLE_STYLED = """styled : bool, default False
+    Return a pandas `Styler` of the table instead, drawn as the {widget} widget
+    draws a cell: the `delta` column on a red (group 1 higher) or blue (group 1
+    lower) background, its intensity proportional to `|delta|` over the largest
+    one; a significant {row} (`p_value_adjusted < alpha`) with a bold black border
+    around its group of columns and bold text; a tested, not significant one in
+    grey text with a thin grey border; an untested one in light grey italics with a
+    dashed border; no style where the frame has no row. `Styler.to_excel(path)`
+    keeps the colours and borders (Excel export needs `openpyxl`, the `Styler`
+    itself `jinja2`, as for any pandas Styler)."""
+    get_ab_transitions_table.__doc__ = _numpydoc_join(
+        """Return the `get_ab_transitions` screen as a table shaped like the diff transition matrix.
+
+One row per source event and, for every target event, a group of statistic
+columns: each cell of the ordinary diff matrix becomes `len(values)` explicit
+cells, by default the delta `group1 - group2`, its per-edge interval and the
+adjusted p-value. The table is a pivot of `get_ab_transitions(...)` called with
+the same arguments; nothing is recomputed, so every number is a cell of that
+frame. A target with no row for a source (the transition never occurs in the
+compared paths) is NaN; an untested edge keeps its delta and interval, with a
+NaN p-value. Made for export: `to_csv` / `to_excel` write the two header rows
+(`pd.read_csv(path, header=[0, 1], index_col=0)` reads them back), and
+`styled=True` returns the widget's encoding as a pandas `Styler`.""",
+        [
+            (
+                "Parameters",
+                _tr_sections.get("Parameters", "")
+                + """
+values : str or list of str, default ("delta", "delta_ci_low", "delta_ci_high", "p_value_adjusted")
+    Columns of the `get_ab_transitions` frame shown for every edge, in this
+    order: any of its statistic columns (`group1_value`, `group2_value`,
+    `delta_se`, `rel_delta`, `p_value`, `mde`, `verdict`, `support_warning`,
+    `reading`, ...). The key columns `source` and `target` are refused, and so is
+    a name that is not a column of the frame.
+"""
+                + _TABLE_STYLED.format(widget="`ab_transitions`", row="edge"),
+            ),
+            (
+                "Returns",
+                """pandas.DataFrame or pandas.io.formats.style.Styler
+    Index `source`: the events with an edge in the frame, `path_start` first,
+    `path_end` last and the others by name. Columns: a MultiIndex `(target,
+    stat)`, the targets in the same order and `values` in the given order inside
+    each target. The values are the frame's, unchanged (shares for every weight
+    but `avg_per_path`, transitions per path for it). `attrs` are the frame's
+    (`n_tested`, `correction`, `ci_level`, `alpha`, `population`, the arms,
+    `edge_weight`, ...) plus `values`. With `styled=True`, the `Styler` of that
+    table (the table is its `.data`).""",
+            ),
+            (
+                "Raises",
+                """DiffConfigError, InvalidParameterError, EmptyEventstreamError
+    As in `get_ab_transitions`; a `values` entry that is not a statistic column
+    of its frame raises `InvalidParameterError`.
+ImportError
+    `styled=True` without `jinja2`, before anything is computed.""",
+            ),
+            (
+                "Examples",
+                """    diff = ("exp_group", "treatment", "control")
+    table = stream.get_ab_transitions_table(diff, assignment=assignment)
+    table.loc["cart", ("cart", "delta")]
+    table.to_csv("edges.csv")
+    pd.read_csv("edges.csv", header=[0, 1], index_col=0)
+
+    # the widget's colours and outlines, in Excel (needs openpyxl)
+    stream.get_ab_transitions_table(diff, styled=True).to_excel("edges.xlsx")""",
+            ),
+            (
+                "See Also",
+                """get_ab_transitions : The same rows as a long DataFrame, one row per edge.
+ab_transitions : The same frame drawn as an interactive matrix.""",
+            ),
+        ],
+    )
+    get_ab_steps_table.__doc__ = _numpydoc_join(
+        """Return the `get_ab_steps` screen as a table shaped like the diff step matrix.
+
+One row per event and, for every step, a group of statistic columns: each cell of
+the ordinary diff step matrix becomes `len(values)` explicit cells, by default the
+delta `group1 - group2`, its per-cell interval and the adjusted p-value. The table
+is a pivot of `get_ab_steps(...)` called with the same arguments; nothing is
+recomputed, so every number is a cell of that frame. An event with no row at a
+step (no compared path has it there) is NaN; an untested cell keeps its delta and
+interval, with a NaN p-value. Made for export: `to_csv` / `to_excel` write the two
+header rows (`pd.read_csv(path, header=[0, 1], index_col=0)` reads them back), and
+`styled=True` returns the widget's encoding as a pandas `Styler`.""",
+        [
+            (
+                "Parameters",
+                _st_sections.get("Parameters", "")
+                + """
+values : str or list of str, default ("delta", "delta_ci_low", "delta_ci_high", "p_value_adjusted")
+    Columns of the `get_ab_steps` frame shown for every cell, in this order: any
+    of its statistic columns (`group1_value`, `group2_value`, `delta_se`,
+    `rel_delta`, `p_value`, `mde`, `verdict`, `support_warning`, `reading`, ...).
+    The key columns `event` and `step` are refused, and so is a name that is not
+    a column of the frame.
+"""
+                + _TABLE_STYLED.format(widget="`ab_steps`", row="cell"),
+            ),
+            (
+                "Returns",
+                """pandas.DataFrame or pandas.io.formats.style.Styler
+    Index `event`: the events with a cell in the frame, `path_end` last and the
+    others by name. Columns: a MultiIndex `(step, stat)`, steps from 1 and
+    `values` in the given order inside each step. The values are the frame's,
+    unchanged (shares of the arm's paths). `attrs` are the frame's (`n_tested`,
+    `correction`, `ci_level`, `alpha`, `population`, the arms, `max_steps`, ...)
+    plus `values`. With `styled=True`, the `Styler` of that table (the table is
+    its `.data`).""",
+            ),
+            (
+                "Raises",
+                """DiffConfigError, InvalidParameterError, EmptyEventstreamError
+    As in `get_ab_steps`; a `values` entry that is not a statistic column of its
+    frame raises `InvalidParameterError`.
+ImportError
+    `styled=True` without `jinja2`, before anything is computed.""",
+            ),
+            (
+                "Examples",
+                """    diff = ("exp_group", "treatment", "control")
+    table = stream.get_ab_steps_table(diff, max_steps=8, assignment=assignment)
+    table.loc["cart", (8, "delta")]
+    stream.get_ab_steps_table(diff, values=["group1_value", "group2_value", "verdict"])
+    stream.get_ab_steps_table(diff, styled=True).to_excel("steps.xlsx")""",
+            ),
+            (
+                "See Also",
+                """get_ab_steps : The same rows as a long DataFrame, one row per cell.
+ab_steps : The same frame drawn as an interactive matrix.""",
+            ),
+        ],
+    )
+
     @_tracked("headless_describe")
     def describe(
         self,
@@ -3865,6 +4095,304 @@ get_ab_bootstrap : Joint bootstrap replicates, for contrasts between periods."""
         ],
     )
     del _ab_summary, _ab_sections, _ab_title, _ab_rest
+
+    @_tracked("widget_ab_transitions")
+    def ab_transitions(
+        self,
+        diff: T_Diff,
+        edge_weight: str | None = None,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
+        path_col: str | None = None,
+        edges: list | None = None,
+        test: str | None = None,
+        correction: str | None = None,
+        ci_level: float | None = None,
+        power: float | None = None,
+        n_bootstrap: int | None = None,
+        bootstrap_weights: str | None = None,
+        min_support: int | None = None,
+        random_state: int | None = None,
+        height: int | None = None,
+        sidebar_open: bool | None = None,
+        state_file: str | None = None,
+    ):
+        # The docstring is assembled below from get_ab_transitions'. None means
+        # "not passed": a value saved in state_file is then restored, otherwise the
+        # default of get_ab_transitions applies.
+        from retentioneering.widgets._base import _UNSET
+        from retentioneering.widgets.ab_transitions import ABTransitionsWidget
+
+        args = {
+            "edge_weight": edge_weight,
+            "horizon": horizon,
+            "path_col": path_col,
+            "edges": edges,
+            "test": test,
+            "correction": correction,
+            "ci_level": ci_level,
+            "power": power,
+            "n_bootstrap": n_bootstrap,
+            "bootstrap_weights": bootstrap_weights,
+            "min_support": min_support,
+            "random_state": random_state,
+            "height": height,
+            "sidebar_open": sidebar_open,
+        }
+        return ABTransitionsWidget(
+            self,
+            diff,
+            assignment=assignment,
+            state_file=state_file,
+            **{k: v if v is not None else _UNSET for k, v in args.items()},
+        )
+
+    @_tracked("headless_ab_transitions")
+    def ab_transitions_data(
+        self,
+        diff: T_Diff,
+        edge_weight: str = "unique_paths",
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
+        path_col: str | None = None,
+        edges: list | None = None,
+        test: str = "auto",
+        correction: str = "bh",
+        ci_level: float = 0.95,
+        power: float = 0.8,
+        n_bootstrap: int = 1000,
+        bootstrap_weights: str = "multinomial",
+        min_support: int = 10,
+        random_state: int = 42,
+    ) -> pd.DataFrame:
+        # The docstring is get_ab_transitions' with an alias note, assembled below.
+        return self.get_ab_transitions(
+            diff,
+            edge_weight,
+            assignment=assignment,
+            horizon=horizon,
+            path_col=path_col,
+            edges=edges,
+            test=test,
+            correction=correction,
+            ci_level=ci_level,
+            power=power,
+            n_bootstrap=n_bootstrap,
+            bootstrap_weights=bootstrap_weights,
+            min_support=min_support,
+            random_state=random_state,
+        )
+
+    @_tracked("widget_ab_steps")
+    def ab_steps(
+        self,
+        diff: T_Diff,
+        max_steps: int | None = None,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
+        path_col: str | None = None,
+        correction: str | None = None,
+        ci_level: float | None = None,
+        power: float | None = None,
+        min_support: int | None = None,
+        path_pattern: str | None = None,
+        anchor: str | dict | None = None,
+        height: int | None = None,
+        sidebar_open: bool | None = None,
+        state_file: str | None = None,
+    ):
+        # The docstring is assembled below from get_ab_steps'; None as in
+        # ab_transitions.
+        from retentioneering.widgets._base import _UNSET
+        from retentioneering.widgets.ab_steps import ABStepsWidget
+
+        args = {
+            "max_steps": max_steps,
+            "horizon": horizon,
+            "path_col": path_col,
+            "correction": correction,
+            "ci_level": ci_level,
+            "power": power,
+            "min_support": min_support,
+            "path_pattern": path_pattern,
+            "anchor": anchor,
+            "height": height,
+            "sidebar_open": sidebar_open,
+        }
+        return ABStepsWidget(
+            self,
+            diff,
+            assignment=assignment,
+            state_file=state_file,
+            **{k: v if v is not None else _UNSET for k, v in args.items()},
+        )
+
+    @_tracked("headless_ab_steps")
+    def ab_steps_data(
+        self,
+        diff: T_Diff,
+        max_steps: int = 10,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
+        path_col: str | None = None,
+        correction: str = "bh",
+        ci_level: float = 0.95,
+        power: float = 0.8,
+        min_support: int = 10,
+        path_pattern: str | None = None,
+        anchor: str | dict | None = None,
+    ) -> pd.DataFrame:
+        # The docstring is get_ab_steps' with an alias note, assembled below.
+        return self.get_ab_steps(
+            diff,
+            max_steps,
+            assignment=assignment,
+            horizon=horizon,
+            path_col=path_col,
+            correction=correction,
+            ci_level=ci_level,
+            power=power,
+            min_support=min_support,
+            path_pattern=path_pattern,
+            anchor=anchor,
+        )
+
+    _tr_title, _, _tr_rest = _tr_summary.partition("\n\n")
+    _st_title, _, _st_rest = _st_summary.partition("\n\n")
+    ab_transitions_data.__doc__ = _numpydoc_join(
+        f"{_tr_title}\n\n"
+        "Documented alias of `get_ab_transitions`, under the name of the\n"
+        "`ab_transitions` widget's headless twin: the same computation, arguments\n"
+        "and result. The docs use `get_ab_transitions`; the widget calls this\n"
+        f"method, so its numbers are the getter's.\n\n{_tr_rest}",
+        list(_tr_sections.items()),
+    )
+    ab_steps_data.__doc__ = _numpydoc_join(
+        f"{_st_title}\n\n"
+        "Documented alias of `get_ab_steps`, under the name of the `ab_steps`\n"
+        "widget's headless twin: the same computation, arguments and result. The\n"
+        "docs use `get_ab_steps`; the widget calls this method, so its numbers are\n"
+        f"the getter's.\n\n{_st_rest}",
+        list(_st_sections.items()),
+    )
+    _MATRIX_ENCODING = """Each cell is one row of the frame:
+
+- **background**: the delta `group1 - group2` on a diverging scale symmetric
+  around 0, red where group 1 is higher and blue where it is lower (the colours
+  of the diff graph and the diff step matrix), its intensity proportional to
+  `|delta|` up to the scale's maximum (the largest `|delta|` shown, or a smaller
+  clip set in the sidebar so that small effects stay visible);
+- **text**: the delta in the frame's units ({units}) and, below it in smaller
+  type, its interval at `ci_level`;
+- **wide outline**: black when the delta is significantly non-zero
+  (`p_value_adjusted < alpha`, the verdict `increase` / `decrease`); light grey
+  with a light grey cross over the cell when the test cannot say it is non-zero;
+  dashed light grey with the cross and muted text when the row was not tested
+  (support below `min_support`, no spread, no data; the tooltip says which); a
+  blank cell has no row: {empty}.
+
+Hover a cell for both arms' values, the delta and its interval, `rel_delta`,
+`p_value`, `p_value_adjusted` with the correction and the family size, `mde`, the
+supports, `support_warning`, `conditional`, the verdict and the row's `reading`.
+The intervals are per cell, not simultaneous; with `correction="bonferroni"` the
+sidebar can show the simultaneous ones instead. It is an exploratory screen:
+read it after the scorecard, as a map of where the arms' paths part."""
+    _MATRIX_DISPLAY = """
+height : int, default 600
+    Widget height in pixels.
+sidebar_open : bool, default True
+    Whether the sidebar starts open.
+state_file : str, optional
+    JSON file the widget state is bound to; see
+    [Saving widget state](/docs/widgets#saving-widget-state). It keeps the data
+    parameters and the view (intervals, filter, colour scale, sorting, hidden and
+    pinned events); `diff` and the `assignment` table are passed again when you
+    reopen the widget."""
+    ab_transitions.__doc__ = _numpydoc_join(
+        """Interactive A/B difference matrix of transitions for Jupyter notebooks.
+
+The screen of `get_ab_transitions` drawn as a source x target matrix: one cell per
+edge, its numbers those of `ab_transitions_data(...)` (the widget's headless twin,
+an alias of `get_ab_transitions`). """
+        + _MATRIX_ENCODING.format(
+            units="percentage points for the shares, transitions per path for "
+            "`avg_per_path`",
+            empty="the transition never occurs in either arm",
+        )
+        + """
+
+The sidebar edits `edge_weight`, `correction`, `ci_level` and `min_support`, and
+every change recomputes; the other arguments are fixed at construction and shown
+read-only there. The view (intervals on or off, only the rows and columns with a
+significant cell, the colour-scale clip, sorting by name, largest `|delta|` or
+number of significant cells, hidden and pinned events, and for the conditional
+weights a hint that rows or columns sum to 100 %) changes in the browser without
+a recompute, also in a static HTML export.""",
+        [
+            (
+                "Parameters",
+                _tr_sections.get("Parameters", "") + _MATRIX_DISPLAY,
+            ),
+            (
+                "Examples",
+                """    diff = ("exp_group", "treatment", "control")
+    stream.ab_transitions(diff, assignment=assignment)
+
+    # where transitions out of each event go (conditional on reaching it)
+    stream.ab_transitions(diff, "proba_out", n_bootstrap=200)""",
+            ),
+            (
+                "See Also",
+                """get_ab_transitions : The screen as a DataFrame (`ab_transitions_data` is its alias).
+get_ab_transitions_table : The same rows as a source x target table with explicit statistic columns, for export.
+transition_graph : `transition_graph(diff=..., ab_transitions=frame)` draws the frame on the diff graph.""",
+            ),
+        ],
+    )
+    ab_steps.__doc__ = _numpydoc_join(
+        """Interactive A/B difference step matrix for Jupyter notebooks.
+
+The screen of `get_ab_steps` drawn as an event x step matrix: one cell per
+`(event, step)`, its numbers those of `ab_steps_data(...)` (the widget's headless
+twin, an alias of `get_ab_steps`). """
+        + _MATRIX_ENCODING.format(
+            units="percentage points of the arm's paths",
+            empty="no compared path has the event at that step",
+        )
+        + """
+
+The sidebar edits `max_steps`, `correction`, `ci_level` and `min_support`, and
+every change recomputes; the other arguments are fixed at construction and shown
+read-only there. The view (intervals on or off, only the rows and steps with a
+significant cell, the colour-scale clip, sorting the events by name, largest
+`|delta|` or number of significant cells, hidden and pinned events) changes in
+the browser without a recompute, also in a static HTML export. Steps stay in
+their order.""",
+        [
+            (
+                "Parameters",
+                _st_sections.get("Parameters", "") + _MATRIX_DISPLAY,
+            ),
+            (
+                "Examples",
+                """    diff = ("exp_group", "treatment", "control")
+    stream.ab_steps(diff, max_steps=8, assignment=assignment)""",
+            ),
+            (
+                "See Also",
+                """get_ab_steps : The screen as a DataFrame (`ab_steps_data` is its alias).
+get_ab_steps_table : The same rows as an event x step table with explicit statistic columns, for export.
+step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.""",
+            ),
+        ],
+    )
+    del _tr_summary, _tr_sections, _tr_title, _tr_rest
+    del _st_summary, _st_sections, _st_title, _st_rest
+    del _MATRIX_ENCODING, _MATRIX_DISPLAY, _TABLE_STYLED
 
     @_tracked("widget_cluster_analysis")
     def cluster_analysis(

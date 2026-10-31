@@ -372,6 +372,29 @@ the interval and the adjusted p-value. `get_ab_steps(diff, max_steps=8, assignme
 does the same per step: 93 cells tested, `quick_add` higher and `add_to_cart` lower
 at steps 3 to 8, and `cart` at step 8 higher by +1.71 pp [+0.89, +2.55].
 
+**As a matrix.** [`stream.ab_transitions(diff, assignment=assignment)`](/docs/widgets/ab-transitions)
+draws the same frame as a source × target matrix, and
+[`stream.ab_steps(diff, max_steps=8, assignment=assignment)`](/docs/widgets/ab-steps)
+as an event × step matrix. Each cell is one row: its background is the delta (red
+where the treatment is higher, blue where it is lower, the diff graph's colours),
+its text the delta and the per-cell interval, and a wide outline reads the adjusted
+p-value: black when it is below alpha, light grey with a grey cross when the edge
+was tested and is not significant, dashed when it was not tested; an empty cell has
+no row. The tooltip holds the whole row, its reading included. The sidebar changes
+the weight (or the number of steps), the correction, the level and `min_support`
+and recomputes; the significance filter, the colour scale, sorting and pinning only
+change the view. For a spreadsheet,
+[`get_ab_transitions_table`](/docs/tools/get-ab-transitions-table) and
+[`get_ab_steps_table`](/docs/tools/get-ab-steps-table) pivot the same frame into the
+shape of the diff matrix, a group of columns per target (step) with the delta, its
+interval and the adjusted p-value by default, and `styled=True` carries the
+colours and outlines into `to_excel`:
+
+```python
+table = stream.get_ab_transitions_table(diff, assignment=assignment)
+table.loc["cart", "cart"]   # delta 0.0478, delta_ci_low 0.0421, delta_ci_high 0.0541, p_value_adjusted 1.6e-54
+```
+
 **When to use it.** After the scorecard, to find where the arms' paths part, and as
 a source of hypotheses for the next test. Not for the launch decision: the family is
 every edge with enough support, chosen after the data were seen. A discovery is

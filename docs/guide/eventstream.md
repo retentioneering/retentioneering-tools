@@ -385,6 +385,8 @@ stream.transition_graph(diff=("exp_group", "treatment", "control"), ab_transitio
 
 The family is every edge with enough support, found by looking, so these are screens: a discovery is a hypothesis for a declared metric of a new test, read after the scorecard. See [A/B Transition Screen](/docs/tools/get-ab-transitions), [A/B Step Screen](/docs/tools/get-ab-steps) and the [A/B Testing guide](/docs/ab-testing#which-edges-and-steps-differ-a-screen-with-fdr-control).
 
+The widgets [`ab_transitions()`](/docs/widgets/ab-transitions) and [`ab_steps()`](/docs/widgets/ab-steps) draw the same frames as difference matrices (one cell per row, its background the delta, a wide outline for its adjusted p-value), and [`get_ab_transitions_table()`](/docs/tools/get-ab-transitions-table) / [`get_ab_steps_table()`](/docs/tools/get-ab-steps-table) return them in the shape of the diff matrix, a group of statistic columns per target (step), for `to_csv` and `to_excel`.
+
 ### Reproducing an eventstream
 
 Every processor call is recorded, so a derived eventstream can describe how it was built:

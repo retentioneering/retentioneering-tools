@@ -130,9 +130,14 @@ class TestProjection:
         power = stream.get_ab_transitions_power(
             DIFF, assignment=assignment, target_delta=target
         )
-        one = power[(power["scale"] == 1) & power["testable"]].dropna(
-            subset=["scale_needed"]
-        )
+        at_one = power[power["scale"] == 1]
+        # never fewer paths than the support rule needs; none for a row that no
+        # multiple makes testable
+        assert (at_one["scale_needed"] >= at_one["scale_to_test"] - 1e-12).all()
+        assert at_one.loc[at_one["scale_to_test"].isna(), "scale_needed"].isna().all()
+        one = at_one[at_one["testable"]].dropna(subset=["scale_needed"])
+        # where the MDE, not the support rule, sets the paths needed
+        one = one[one["scale_needed"] > one["scale_to_test"] + 1e-9]
         assert len(one)
         # the getter's own MDE at the needed paths, at the family level of scale 1
         level = float(one["mde_alpha"].iloc[0])
@@ -156,7 +161,8 @@ class TestProjection:
         )
         assert (fewer > target - 1e-4).all()
         curve = {c["scale"]: c for c in power.attrs["curve"]}
-        reached = (one["mde"] <= target).mean()
+        testable = at_one[at_one["testable"]]
+        reached = (testable["mde"] <= target).mean()
         assert curve[1.0]["share_reaching_target"] == pytest.approx(reached)
 
     def test_bootstrap_rows_scale_the_bootstrap_se(self, stream, assignment):

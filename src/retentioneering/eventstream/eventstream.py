@@ -1668,9 +1668,9 @@ scale : list of float, default (0.25, 0.5, 1, 2, 4, 8, 16)
     arms; 1 (the data as it is) is always included.
 target_delta : float, optional
     An absolute effect in the frame's units (a share: `0.01` is 1 pp; for
-    `avg_per_path` transitions per path). Adds the paths per arm a {row} needs for
-    its `mde` to reach it, and `attrs["curve"]` the share of testable {rows}
-    that reach it."""
+    `avg_per_path` transitions per path). Adds the paths per arm a {row} needs to
+    be tested with an `mde` that reaches it, and `attrs["curve"]` the share of
+    testable {rows} that reach it."""
     _POWER_RETURNS = """pandas.DataFrame
     One row per {row} of `{getter}` and per `scale`, sorted by {keys} and `scale`;
     * marks the columns added with `target_delta`.
@@ -1696,8 +1696,9 @@ target_delta : float, optional
     - `scale_to_test`: the smallest multiple of the paths at which the {row}
       passes the support rule (NaN when it never does).
     - `group1_paths_needed`*, `group2_paths_needed`*, `scale_needed`*: the paths
-      per arm (and their multiple of the current ones) at which the {row}'s `mde`
-      reaches `target_delta`, keeping the family level of this scale.
+      per arm (and their multiple of the current ones) at which the {row} passes
+      the support rule and its `mde` reaches `target_delta`, keeping the family
+      level of this scale (NaN when no multiple makes it testable).
 
     `attrs` are the getter's plus `scale`, `target_delta`, `power`, `assumption`
     and `curve`: one dict per scale with the paths per arm, `cells`, `testable`,

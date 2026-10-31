@@ -354,6 +354,9 @@ test('users needed: (mde / target)^2, the scale to test for an untested cell, no
   assert.equal(scaleNeeded(tested, 0.01), 4);
   assert.equal(scaleNeeded(tested, 0.04), 0.25);
   assert.equal(scaleNeeded(tested, null), null);
+  // never fewer users than the support rule needs
+  assert.equal(scaleNeeded(tested, 0.04, 0.5), 0.5);
+  assert.equal(scaleNeeded(tested, 0.01, 0.5), 4);
   assert.equal(scaleNeeded({ ...sig, mde: null }, 0.01), null);
   assert.deepEqual(needOf(tested, null, 0.05, 0.01), { testable: true, mde: 0.02, times: 4, timesFor: 'target' });
   assert.deepEqual(needOf(tested, null, 0.05, null), { testable: true, mde: 0.02, times: null, timesFor: null });

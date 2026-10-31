@@ -499,13 +499,17 @@ export function intervalNote(level: number, kind: IntervalKind, simultaneous: bo
 // ── data needed ────────────────────────────────────────────────────────────
 
 /** The multiple of users a tested row needs for its MDE to reach `target`, at
- *  the current family's level: `(mde / target)^2` (the power getters'
- *  `scale_needed` at `scale=1`); null without a target or an MDE. */
-export function scaleNeeded(row: MatrixRow | undefined | null, target: number | null | undefined): number | null {
+ *  the current family's level: `(mde / target)^2`, and never fewer than the
+ *  multiple that passes the support rule (`scaleToTest`) — the power getters'
+ *  `scale_needed` at `scale=1`; null without a target or an MDE. */
+export function scaleNeeded(
+  row: MatrixRow | undefined | null, target: number | null | undefined, scaleToTest?: number | null,
+): number | null {
   if (!row || !isNum(target) || !(target > 0)) return null;
   const mde = row.mde;
   if (!isNum(mde) || !(mde > 0)) return null;
-  return (mde / target) ** 2;
+  const needed = (mde / target) ** 2;
+  return isNum(scaleToTest) ? Math.max(needed, scaleToTest) : needed;
 }
 
 /** What a cell shows in the "data needed" view. */
@@ -537,7 +541,7 @@ export function needOf(
     };
   }
   const mde = isNum(row?.mde) ? (row?.mde as number) : null;
-  const times = scaleNeeded(row, target);
+  const times = scaleNeeded(row, target, scaleToTest);
   return { testable: true, mde, times, timesFor: times != null ? "target" : null };
 }
 

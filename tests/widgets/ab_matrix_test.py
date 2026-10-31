@@ -760,12 +760,14 @@ class TestDataNeeded:
                 assert value is None or value <= 1 + 1e-12
 
     def test__the_browsers_users_for_a_target_are_the_getters(self, stream) -> None:
-        # ab_matrix_encoding.ts computes (mde / target) ** 2 from the row: the
-        # power getter's scale_needed at scale 1
+        # ab_matrix_encoding.ts computes (mde / target) ** 2 from the row, never
+        # below the row's scale_to_test: the power getter's scale_needed at scale 1
         target = 0.01
         power = stream.get_ab_transitions_power(DIFF, target_delta=target)
         one = power[(power["scale"] == 1) & power["testable"]].dropna(subset=["mde"])
-        np.testing.assert_allclose(one["scale_needed"], (one["mde"] / target) ** 2)
+        browser = np.maximum((one["mde"] / target) ** 2, one["scale_to_test"])
+        np.testing.assert_allclose(one["scale_needed"], browser)
+        assert (one["scale_needed"] > (one["mde"] / target) ** 2).any()
 
     def test__view_mode_and_target_are_view_state(self, stream, tmp_path) -> None:
         assert VIEW_DEFAULTS["view_mode"] == "delta"

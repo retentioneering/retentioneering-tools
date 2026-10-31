@@ -240,6 +240,11 @@ def power_frame(
             with np.errstate(invalid="ignore", divide="ignore"):
                 needed = (mde / target) ** 2 * factor
             needed = np.where(np.isfinite(mde) & (mde > 0), needed, np.nan)
+            # the row is tested only once it passes the support rule: a rare edge's
+            # small MDE does not count before it has min_support paths
+            needed = np.where(
+                np.isfinite(scale_to_test), np.maximum(needed, scale_to_test), np.nan
+            )
             part["group1_paths_needed"] = _ceil_paths(n1 * needed)
             part["group2_paths_needed"] = _ceil_paths(n2 * needed)
             part["scale_needed"] = needed

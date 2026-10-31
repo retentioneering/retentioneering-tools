@@ -73,6 +73,13 @@ Nearly every data processor and tool is exposed as an `Eventstream` method (`add
 `tools/`, and `widgets/` respectively, then wired onto the class. Processors are immutable:
 every method returns a **new** `Eventstream`.
 
+**One path order (ADR-0018)**: anything that reads a path in sequence orders by
+`(index, subindex)` (`session_detection.path_order` in SQL), never by timestamp; the
+timestamp is for time arithmetic only. Positions are unique within a path: a processor that
+adds rows gives each one a position of its own (`add_events` takes the next free `subindex`
+slot). `tests/conftest.py` checks every processor's output for unique positions, timestamps
+non-decreasing along the order, and rows returned in order.
+
 **Unified query engine (L1, supersedes ADR-0002)**: all DuckDB execution goes through
 `src/retentioneering/engine/` — `engine.run(sql, **tables)` registers each pandas frame
 on a private connection under the keyword name it's passed as, then executes and

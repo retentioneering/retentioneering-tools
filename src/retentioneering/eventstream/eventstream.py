@@ -7,6 +7,11 @@ import pandas as pd
 
 from retentioneering import engine
 from retentioneering.eventstream.event_type import EventTypes
+from retentioneering.eventstream.positions import (
+    as_positions,
+    order_problems,
+    upgrade_legacy_ranks,
+)
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import SchemaConfigError
 from retentioneering.ops import op as _op
@@ -17,6 +22,12 @@ from retentioneering.utils.sequences import find_delimiter_collisions
 #: `diff`/`get_segment_levels` sentinel standing in for a missing (None/NaN)
 #: segment level, since it can't be a real dict/query value the way `<REST>` can.
 SEGMENT_MISSING = "<MISSING>"
+
+_POSITIONS_HINT = (
+    "The schema's index and subindex columns are the library's record of each "
+    "event's position in its path. Drop them to have them rebuilt from the "
+    "timestamps, or rename a column of your own that shares one of their names."
+)
 
 
 def _to_datetime_auto(series: pd.Series) -> pd.Series:
@@ -193,14 +204,47 @@ class Eventstream:
 
         if schema.event_type not in df.columns:
             df[schema.event_type] = event_types.RAW_EVENT.type
-        if schema.subindex not in df.columns:
-            df[schema.subindex] = df[schema.event_type].map(event_types.get_order())
+        if schema.subindex in df.columns:
+            df[schema.subindex] = upgrade_legacy_ranks(df[schema.subindex])
+        else:
+            ranks = event_types.get_order()
+            unknown = sorted(set(df[schema.event_type].dropna()) - set(ranks))
+            if unknown or df[schema.event_type].isna().any():
+                raise SchemaConfigError(
+                    f"'{schema.event_type}' holds values that are not event types: "
+                    f"{unknown or [None]}. Known types: {sorted(ranks)}. Drop the "
+                    f"column to mark every row as a raw event."
+                )
+            df[schema.subindex] = df[schema.event_type].map(ranks)
 
-        df = df.sort_values(
-            [schema.path_col, schema.timestamp_col, schema.subindex]
-        ).reset_index(drop=True)
+        # Supplied positions are kept, so they must form a path order (ADR-0018).
+        position_cols = [schema.subindex]
+        index_supplied = schema.index in df.columns
+        if index_supplied:
+            position_cols.append(schema.index)
+        for col in position_cols:
+            df[col], problem = as_positions(df[col], col)
+            if problem:
+                raise SchemaConfigError(f"{problem}. {_POSITIONS_HINT}")
 
-        if schema.index not in df.columns:
+        if index_supplied:
+            df = df.sort_values(
+                [schema.path_col, schema.index, schema.subindex], kind="stable"
+            ).reset_index(drop=True)
+            problems = order_problems(
+                df,
+                schema.path_col,
+                schema.index,
+                schema.subindex,
+                schema.timestamp_col,
+            )
+            if problems:
+                raise SchemaConfigError(f"{'; '.join(problems)}. {_POSITIONS_HINT}")
+        else:
+            df = df.sort_values(
+                [schema.path_col, schema.timestamp_col, schema.subindex],
+                kind="stable",
+            ).reset_index(drop=True)
             df[schema.index] = df.groupby(schema.path_col).cumcount() + 1
 
         self._df = df
@@ -793,7 +837,8 @@ class Eventstream:
         A synthetic event shares its source row's timestamp and sorts *before*
         it, so it marks the moment the source event opens. The exception is a
         `churn` event, which closes a stretch of inactivity and so sorts after
-        the last active event (and always before `path_end`).
+        the last active event (and always before `path_end`). Markers added
+        at the same event by several calls stand in the order of the calls.
 
         Parameters
         ----------
@@ -806,7 +851,8 @@ class Eventstream:
         sql : str, optional
             DuckDB SQL SELECT statement that reads from the `eventstream` table alias
             and returns rows in the eventstream schema. Each returned row is added as a
-            new synthetic event.
+            new synthetic event at that row's position, so the query must select rows
+            of the stream, not change their path, `index` or timestamp.
         churn : dict, optional
             Creates a churn event after a period of inactivity.
               - `inactivity_days` (int or float, required) — gap in days after which
@@ -1068,9 +1114,8 @@ class Eventstream:
             Aggregation rules for non-event columns when rows are merged, as a
             `{column: agg_func}` dict. `agg_func` is one of `"first"` (default),
             `"last"`, `"min"`, `"max"`, `"mean"`, `"mode"`, `"any"`. `"first"`
-            and `"last"` take the first (last) non-null value, reading events
-            that share a timestamp in their order in the path; `"any"` and a
-            tied `"mode"` pick no particular value. See
+            and `"last"` take the first (last) non-null value in path order;
+            `"any"` and a tied `"mode"` pick no particular value. See
             [agg](/docs/data-processors/collapse-events#agg) below. Example:
             `{"price": "max"}`.
         path_col : str, optional

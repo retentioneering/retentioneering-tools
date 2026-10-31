@@ -5,6 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Changed
+
+- `subindex`, the rank of an event's type at its position, is on a wider scale:
+  `path_start` 0, `synthetic` 100, `raw` and `collapsed` 200, `churn` 300,
+  `path_end` 400, so that markers added at one event each get a rank of their
+  own (101, 102, …; 301, …). It shows in `stream.df` and `to_dataframe()`. A
+  DataFrame saved with the old ranks, 0 to 4, is moved to the new scale when an
+  `Eventstream` is created from it. `to_daily_states` gives its rows the
+  `collapsed` rank instead of 1.
+
 ### Fixed
 
 - `collapse_events` and `split_sessions` read a path in the order (timestamp,
@@ -14,11 +24,32 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   to run. That order decided the runs, the windows, the sessions, a merged
   event's `"first"` and `"last"` values, and the order of the returned rows.
   `"first"` and `"last"` now follow the same order. Results on streams without
-  tied timestamps are unchanged. Two cases stay open: a marker from
-  `add_events` sorts before every raw event with its timestamp, where path
-  patterns and the transition tools see it next to its source event, and
-  markers added at the same source event by two `add_events` calls still have
-  no order between themselves.
+  tied timestamps are unchanged.
+- Every tool and data processor reads a path in one order, by position
+  (`index`, then `subindex`), as recorded in ADR-0018. `collapse_events`,
+  `split_sessions`, `truncate_paths`, `to_daily_states` and
+  `add_events(churn=...)` used to read it by timestamp first. A marker from
+  `add_events` at a timestamp shared with other events now stays next to its
+  own source event, where path patterns and the transition and step tools
+  always saw it. With two `A` at one timestamp, each marked `M`,
+  `collapse_events(loops=True)` used to read `M M A A` and return `M → A`, while
+  `matches_pattern("M->A->M->A")` was true. Both now read `M → A → M → A`.
+  `split_sessions(separator=...)` keeps its rule that a separator opens its
+  session before the other events of its timestamp.
+- Markers added at the same event by several `add_events` calls stand in the
+  order of the calls. They used to share one position, so their order, and every
+  result that depended on it, could change between runs.
+- `add_events(churn=...)` follows the last of several events that share a
+  timestamp, and `to_daily_states` takes a day's `"first"` and `"last"` values in
+  path order. Both used to pick among tied events arbitrarily.
+- `Eventstream` checks the `index` and `subindex` columns of a DataFrame that
+  already has them: whole numbers, unique within each path, and in time order,
+  otherwise `SchemaConfigError`. They used to be taken as given, so a column of
+  your own named `index` could silently reorder every path.
+- `add_events(sql=...)` requires each returned row to be a row of the stream
+  (path, `index` and timestamp), since the new event is placed at its position.
+  A changed timestamp used to give a marker whose place in the path disagreed
+  with its time.
 - `time_median` and `time_q95` edge weights in `transition_graph` and
   `transition_graph_data` measure the exact gap between events instead of
   counting whole-second boundaries, so a 125 ms span no longer reads as 0 s or

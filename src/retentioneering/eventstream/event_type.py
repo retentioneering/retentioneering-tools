@@ -22,25 +22,33 @@ class EventTypes:
     are needed: a marker that opens something (``synthetic``) has to precede the
     event it marks, while a marker that closes one (``churn``) has to follow it
     and still stay inside the path's own boundaries.
+
+    Ranks are a hundred apart so that markers added at one position by several
+    ``add_events`` calls each get a rank of their own (``synthetic`` 100, 101,
+    ...; ``churn`` 300, 301, ...): ``(index, subindex)`` stays unique within a
+    path, which is what makes it the path order (ADR-0018).
     """
+
+    #: How many markers of one kind ``add_events`` can place at one position.
+    SLOTS = 100
 
     PATH_START: Event = field(
         default_factory=lambda: Event(name="path_start", type="path_start", index=0)
     )
     SYNTHETIC_EVENT: Event = field(
-        default_factory=lambda: Event(name="synthetic", type="synthetic", index=1)
+        default_factory=lambda: Event(name="synthetic", type="synthetic", index=100)
     )
     RAW_EVENT: Event = field(
-        default_factory=lambda: Event(name="raw", type="raw", index=2)
+        default_factory=lambda: Event(name="raw", type="raw", index=200)
     )
     COLLAPSED_EVENT: Event = field(
-        default_factory=lambda: Event(name="collapsed", type="collapsed", index=2)
+        default_factory=lambda: Event(name="collapsed", type="collapsed", index=200)
     )
     CHURN_EVENT: Event = field(
-        default_factory=lambda: Event(name="churn", type="churn", index=3)
+        default_factory=lambda: Event(name="churn", type="churn", index=300)
     )
     PATH_END: Event = field(
-        default_factory=lambda: Event(name="path_end", type="path_end", index=4)
+        default_factory=lambda: Event(name="path_end", type="path_end", index=400)
     )
 
     def get_order(self):

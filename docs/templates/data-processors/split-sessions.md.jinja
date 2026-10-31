@@ -63,14 +63,14 @@ After:
 
 `event_1 → event_2`, with `session_id` = `user_1_1, user_1_1`
 
-### Events with the same timestamp
+### Path order
 
-Every mode reads a path in the order (timestamp, `subindex`, `index`): by time,
-then by the event-type rank (`subindex`), then by the event's position in the
-path (`index`), so raw events that share a timestamp keep their order in the
-path, however the rows are stored. A tie never splits a session on `timeout`:
-the gap between tied events is zero, and only a gap longer than `timeout`
-starts a new session.
+Every mode reads a path in [path order](/docs/eventstream#key-concepts): by
+position (`index`), then by the event-type rank at that position (`subindex`).
+Events that share a timestamp therefore keep their order in the path, however
+the rows are stored, and a marker from `add_events` stays next to its source
+event. A tie never splits a session on `timeout`: the gap between tied events is
+zero, and only a gap longer than `timeout` starts a new session.
 
 `separator` adds one rule of its own: a separator sorts before every other
 event with its timestamp, whatever their positions, so they fall in the session
@@ -87,10 +87,8 @@ session `sep` starts:
 
 `A → X → B`, with `session_id` = `(none), user_1_1, user_1_1`
 
-The same two cases as in
-[Collapse Events](/docs/data-processors/collapse-events#events-with-the-same-timestamp)
-are not covered yet: a marker from `add_events` sorts before every raw event
-with its timestamp, and markers added at the same source event by two
-`add_events` calls have no order between themselves.
+The rule also applies to separator markers added by `add_events`. Two `A` at one
+timestamp, each marked by `add_events(name="sep", source_event="A")`, form one
+session, not two sessions that start at the same instant.
 
 {% endblock %}

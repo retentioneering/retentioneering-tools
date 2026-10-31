@@ -5,8 +5,9 @@ Each public function builds a chain of CTEs (from `tagged` through `with_session
 that can be embedded directly into a WITH clause.
 
 The last CTE is always `with_session_id`, which exposes:
-  _rn              — row number within path (ORDER BY ts, subindex, index): events
-                     that share a timestamp keep their order in the path
+  _rn              — row number within path, in path order (ORDER BY index,
+                     subindex; the separator mode lifts separators to the front
+                     of their timestamp)
   _in_session      — 1 if the event belongs to a session, 0 otherwise
   _session_counter — monotonically increasing session counter within path
                      (same value for all events in the same session)
@@ -50,10 +51,8 @@ def build_session_ctes(
     Dispatches to the appropriate CTE builder based on the boundary mode in `group`.
     `group` may additionally carry `timeout` (seconds) to add time-gap breaks.
 
-    `index_col`, the event's position within the path, breaks ties between
-    events with the same timestamp and subindex. Without it their order would be
-    whatever order the rows reach the engine in, which can change from run to
-    run.
+    Rows are numbered in path order, `(index_col, subindex_col)`: the order
+    every tool reads a path in (ADR-0018). The timestamp only measures gaps.
 
     A separator marks the START of a new session and is not itself in-session,
     which is what `split_sessions` means by it. `collapse_events` used to call in
@@ -61,7 +60,7 @@ def build_session_ctes(
     — giving one word two meanings across the two processors; that mode is gone.
     """
     mode = detect_mode(group)
-    position = _position_order(subindex_col, index_col)
+    position = path_order(index_col, subindex_col)
     if mode == _MODE_EVENTS:
         return _ctes_events(group, path_col, event_col, ts_col, position)
     if mode == _MODE_SEPARATOR:
@@ -71,9 +70,12 @@ def build_session_ctes(
     return _ctes_timeout(group["timeout"], path_col, ts_col, position)
 
 
-def _position_order(subindex_col: str, index_col: str) -> str:
-    """The ORDER BY terms after the timestamp: subindex, then the index."""
-    return f"{engine.quote_ident(subindex_col)}, {engine.quote_ident(index_col)}"
+def path_order(index_col: str, subindex_col: str, table: str = "") -> str:
+    """ORDER BY terms for path order: the position, then the rank at it (ADR-0018).
+
+    `table` qualifies the columns (``"w."``) when the query joins.
+    """
+    return f"{table}{engine.quote_ident(index_col)}, {table}{engine.quote_ident(subindex_col)}"
 
 
 # ---------------------------------------------------------------------------
@@ -100,7 +102,6 @@ def _ctes_events(group, path_col, event_col, ts_col, position):
 
     path_col_q = engine.quote_ident(path_col)
     event_col_q = engine.quote_ident(event_col)
-    ts_col_q = engine.quote_ident(ts_col)
 
     tag_expr = f"CASE WHEN {event_col_q} IN ({sql_list(events)}) THEN 'group'"
     if skip:
@@ -112,7 +113,7 @@ tagged AS (
     SELECT *,
         {tag_expr} AS _tag,
         ROW_NUMBER() OVER (
-            PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {position}
+            PARTITION BY {path_col_q} ORDER BY {position}
         ) AS _rn
     FROM df
 ),
@@ -169,6 +170,9 @@ def _ctes_separator_start(group, path_col, event_col, ts_col, position):
     event_col_q = engine.quote_ident(event_col)
     ts_col_q = engine.quote_ident(ts_col)
 
+    # The separator's own rule: it sorts first among the events with its
+    # timestamp. Timestamps never decrease along path order (ADR-0018), so
+    # ordering by the timestamp first leaves every other row in path order.
     return f"""
 tagged AS (
     SELECT *,
@@ -221,7 +225,6 @@ def _ctes_start_end(group, path_col, event_col, ts_col, position):
 
     path_col_q = engine.quote_ident(path_col)
     event_col_q = engine.quote_ident(event_col)
-    ts_col_q = engine.quote_ident(ts_col)
 
     return f"""
 tagged AS (
@@ -230,7 +233,7 @@ tagged AS (
              WHEN {event_col_q} IN ({sql_list(ends)}) THEN 'end'
              ELSE 'inner' END AS _tag,
         ROW_NUMBER() OVER (
-            PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {position}
+            PARTITION BY {path_col_q} ORDER BY {position}
         ) AS _rn
     FROM df
 ),
@@ -286,7 +289,7 @@ def _ctes_timeout(timeout, path_col, ts_col, position):
 tagged AS (
     SELECT *,
         ROW_NUMBER() OVER (
-            PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {position}
+            PARTITION BY {path_col_q} ORDER BY {position}
         ) AS _rn
     FROM df
 ),

@@ -19,6 +19,8 @@ Need to group by something that *isn't* a nested grain of your path — a device
 
 **Step** is a position within a path — its 1st event, its 2nd, and so on. Steps are what [Step Matrix and Step Sankey](/docs/path-analysis) count over, and they are always relative to an anchor: the start of the path by default, or any event you choose.
 
+**Path order** is the order in which every tool and data processor reads a path. Each event has a position: `index`, its place in the path, counted from the timestamps when the eventstream is created, and `subindex`, the rank of its event type at that place. Events that share a timestamp keep the order they had in your DataFrame, and every tool and data processor reads them in that order from then on. An event added by [`add_events`](/docs/data-processors/add-events) takes its source event's `index` and ranks just before it (a churn marker just after), so it always stands next to the event it marks. See [ADR-0018](https://github.com/retentioneering/retentioneering-tools/blob/master/docs/adr/0018-one-path-order.md).
+
 **Segment** is a way to split paths into meaningful groups. A split is defined by a *segment column* that maps each event to a group: for example, a `country` column assigns one of the segment levels `US`, `DE`, `FR` to every event of a path. Segments can be static (acquisition channel, user age group, etc.) or dynamic — changing along the path, like weekend/weekday or an evolving user state (new/returning/loyal). Segment columns are declared in the [schema](#schema) (`segment_cols`) or created with the [Add Segment](/docs/data-processors/add-segment) data processor, and drive all segment-aware tools. See the [Segments](/docs/segments) page for the full story.
 
 ### Coming from Amplitude, Mixpanel or GA4
@@ -93,6 +95,12 @@ stream = rete.Eventstream(df, schema={
 | `timestamp_col` | `"timestamp"` | The timestamp column. |
 | `segment_cols` | `[]` | Columns treated as segmentations, available in widgets and metrics. See [Key concepts](#key-concepts). |
 | `custom_cols` | `None` | Extra columns you may need for working with the eventstream. Left as `None`, every column not covered by the rest of the schema is included automatically. Set to a list — even `[]` — and only those columns (plus the ones already covered by the schema) are kept; anything else is dropped. |
+
+### Technical columns
+
+The eventstream adds three columns of its own: `event_type` (`raw`, `synthetic`, `churn`, `collapsed`, `path_start`, `path_end`), and the position, `index` and `subindex`. `stream.df` and `stream.to_dataframe()` include them.
+
+A DataFrame that already has them, such as one saved from `stream.to_dataframe()`, keeps them, and the positions are checked. They must be whole numbers, unique within each path, and in time order. Otherwise creating the Eventstream raises `SchemaConfigError`. A column of your own named `index`, such as the one `reset_index()` leaves, is read as a position too: rename or drop it if it is not one. `subindex` values saved by earlier versions on the old 0–4 scale are moved to the current one.
 
 ## Sample dataset
 

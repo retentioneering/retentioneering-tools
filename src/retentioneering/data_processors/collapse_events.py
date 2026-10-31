@@ -12,6 +12,7 @@ from retentioneering.metrics.condition_ast import ast_to_sql, extract_metric_con
 from retentioneering.metrics.metric_builder import combined_metric_name
 from retentioneering.utils.session_detection import (
     build_session_ctes,
+    path_order,
     sql_list,
     to_list,
 )
@@ -473,21 +474,17 @@ class CollapseEvents(DataProcessor):
 
         path_col_q = engine.quote_ident(path_col)
         event_col_q = engine.quote_ident(event_col)
-        ts_col_q = engine.quote_ident(ts_col)
         event_type_col_q = engine.quote_ident(schema.event_type)
-        subindex_col_q = engine.quote_ident(schema.subindex)
-        index_col_q = engine.quote_ident(schema.index)
+        position = path_order(schema.index, schema.subindex)
 
         # A run of one event keeps that event's own name unless `name` overrides it.
         name_expr, metric_agg_chunk = self._name_sql("_event", event_col, ts_col)
 
-        # LAG/SUM below must be ordered by a unique key: (timestamp, subindex) can
-        # tie (subindex is the same for all raw events), and DuckDB's default RANGE
+        # LAG/SUM below must be ordered by a unique key, and DuckDB's default RANGE
         # window frame lumps tied peer rows into one group, silently merging
-        # distinct consecutive events that share a timestamp. A precomputed
-        # ROW_NUMBER (_rn) plus an explicit ROWS frame makes grouping deterministic,
-        # and the index (the event's position in the path) orders the tied rows
-        # themselves: without it they come in whatever order DuckDB reads them.
+        # distinct consecutive events. A precomputed ROW_NUMBER (_rn) in path
+        # order, (index, subindex), unique within a path (ADR-0018), plus an
+        # explicit ROWS frame makes grouping deterministic.
         if self.loops is True:
             is_start_condition = f"LAG({event_col_q}) OVER (PARTITION BY {path_col_q} ORDER BY _rn) = {event_col_q}"
         else:
@@ -506,8 +503,7 @@ class CollapseEvents(DataProcessor):
         WITH ordered AS (
             SELECT *,
                 ROW_NUMBER() OVER (
-                    PARTITION BY {path_col_q}
-                    ORDER BY {ts_col_q}, {subindex_col_q}, {index_col_q}
+                    PARTITION BY {path_col_q} ORDER BY {position}
                 ) AS _rn
             FROM df
         ),
@@ -584,7 +580,7 @@ class CollapseEvents(DataProcessor):
         event_col_q = engine.quote_ident(event_col)
         ts_col_q = engine.quote_ident(ts_col)
         subindex_col_q = engine.quote_ident(subindex_col)
-        index_col_q = engine.quote_ident(schema.index)
+        position = path_order(schema.index, schema.subindex)
         event_type_col_q = engine.quote_ident(event_type_col)
         col_q = engine.quote_ident(col)
 
@@ -606,8 +602,7 @@ class CollapseEvents(DataProcessor):
         ordered AS (
             SELECT *,
                 ROW_NUMBER() OVER (
-                    PARTITION BY {path_col_q}
-                    ORDER BY {ts_col_q}, {subindex_col_q}, {index_col_q}
+                    PARTITION BY {path_col_q} ORDER BY {position}
                 ) AS _rn
             FROM df
         ),
@@ -630,7 +625,7 @@ class CollapseEvents(DataProcessor):
             SELECT
                 {path_col_q},
                 MIN({ts_col_q}) AS {ts_col_q},
-                MIN({subindex_col_q}) AS {subindex_col_q},
+                ARG_MIN({subindex_col_q}, _rn) AS {subindex_col_q},
                 ANY_VALUE({col_q}) AS _run_value,
                 '{collapsed_event_type}' AS {event_type_col_q}
                 {run_col_select}
@@ -641,7 +636,7 @@ class CollapseEvents(DataProcessor):
         )
         SELECT {collapsed_select}
         FROM grouped
-        ORDER BY {path_col_q}, {ts_col_q}, {subindex_col_q}, {index_col_q}
+        ORDER BY {path_col_q}, {position}
         """
         return engine.run(query, df=df)
 
@@ -666,8 +661,7 @@ class CollapseEvents(DataProcessor):
 
         path_col_q = engine.quote_ident(path_col)
         ts_col_q = engine.quote_ident(ts_col)
-        subindex_col_q = engine.quote_ident(subindex_col)
-        index_col_q = engine.quote_ident(schema.index)
+        position = path_order(schema.index, schema.subindex)
         event_type_col_q = engine.quote_ident(event_type_col)
         event_col_q = engine.quote_ident(event_col)
 
@@ -719,7 +713,7 @@ class CollapseEvents(DataProcessor):
         SELECT {cols_list} FROM collapsed
         UNION ALL
         SELECT {cols_list} FROM uncollapsed
-        ORDER BY {path_col_q}, {ts_col_q}, {subindex_col_q}, {index_col_q}
+        ORDER BY {path_col_q}, {position}
         """
         return engine.run(query, df=df)
 

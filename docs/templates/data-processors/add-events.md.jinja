@@ -112,6 +112,24 @@ For anything the three modes above don't cover, `sql` takes a DuckDB `SELECT`
 over the `eventstream` table alias returning rows in the eventstream schema;
 each returned row becomes one synthetic event.
 
+The new event is placed at the returned row's position, so the query must
+select rows of the stream rather than change them. A returned row whose path,
+`index` or timestamp matches no row of the stream raises an error.
+
+### Several markers at one event
+
+Each call gives its markers positions of their own, so markers added at the
+same event by several calls stand in the order of the calls, and every tool sees
+the same order:
+
+```python
+stream.add_events("visit", source_event="login").add_events("first_visit", anchor="login")
+```
+
+A user's first `login` then reads `visit → first_visit → login`. A churn marker
+added by a second call follows the first one. See
+[path order](/docs/eventstream#key-concepts).
+
 {% endblock %}
 {% block extra %}
 ### Churn keys

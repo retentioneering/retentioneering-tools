@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
+from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.eventstream.eventstream import Eventstream
+
+RANK = EventTypes().get_order()
 
 
 class TestAddStartEndEvents:
@@ -90,14 +93,14 @@ class TestAddStartEndEvents:
         assert pd.isna(u1_start["campaign"])
         assert u1_start["timestamp"] == pd.Timestamp("2020-01-01 00:00:00")
         assert u1_start["event_type"] == "path_start"
-        assert u1_start["subindex"] == 0
+        assert u1_start["subindex"] == RANK["path_start"]
 
         # path_end carries the last ROW's values: NaN, last timestamp
         assert pd.isna(u1_end["utm_source"])
         assert pd.isna(u1_end["campaign"])
         assert u1_end["timestamp"] == pd.Timestamp("2020-01-01 00:02:00")
         assert u1_end["event_type"] == "path_end"
-        assert u1_end["subindex"] == 4
+        assert u1_end["subindex"] == RANK["path_end"]
 
         # non-null path keeps its values on the synthetic rows
         u2_start = res_df[
@@ -115,7 +118,11 @@ class TestAddStartEndEvents:
         u1 = res_df[res_df["user_id"] == "user_1"]
         assert list(u1["event"]) == ["path_start", "A", "B", "C", "path_end"]
         assert list(u1["event_type"]) == ["path_start", "raw", "raw", "raw", "path_end"]
-        assert list(u1["subindex"]) == [0, 2, 2, 2, 4]
+        assert list(u1["subindex"]) == [
+            RANK["path_start"],
+            *[RANK["raw"]] * 3,
+            RANK["path_end"],
+        ]
 
     def test__existing_start_end(self) -> None:
         df = pd.DataFrame(

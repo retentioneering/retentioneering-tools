@@ -5,7 +5,8 @@ Each public function builds a chain of CTEs (from `tagged` through `with_session
 that can be embedded directly into a WITH clause.
 
 The last CTE is always `with_session_id`, which exposes:
-  _rn              — row number within path (ORDER BY ts, subindex)
+  _rn              — row number within path, in event order (index, subindex;
+                     ADR-0017) — never by timestamp
   _in_session      — 1 if the event belongs to a session, 0 otherwise
   _session_counter — monotonically increasing session counter within path
                      (same value for all events in the same session)
@@ -42,6 +43,7 @@ def build_session_ctes(
     path_col: str,
     event_col: str,
     ts_col: str,
+    index_col: str,
     subindex_col: str,
 ) -> str:
     """
@@ -54,13 +56,16 @@ def build_session_ctes(
     — giving one word two meanings across the two processors; that mode is gone.
     """
     mode = detect_mode(group)
+    order = dialect.event_order(
+        engine.quote_ident(index_col), engine.quote_ident(subindex_col)
+    )
     if mode == _MODE_EVENTS:
-        return _ctes_events(group, path_col, event_col, ts_col, subindex_col)
+        return _ctes_events(group, path_col, event_col, ts_col, order)
     if mode == _MODE_SEPARATOR:
-        return _ctes_separator_start(group, path_col, event_col, ts_col, subindex_col)
+        return _ctes_separator_start(group, path_col, event_col, ts_col, order)
     if mode == _MODE_START_END:
-        return _ctes_start_end(group, path_col, event_col, ts_col, subindex_col)
-    return _ctes_timeout(group["timeout"], path_col, ts_col, subindex_col)
+        return _ctes_start_end(group, path_col, event_col, ts_col, order)
+    return _ctes_timeout(group["timeout"], path_col, ts_col, order)
 
 
 # ---------------------------------------------------------------------------
@@ -80,15 +85,13 @@ def _timeout_or_clause(group: Dict[str, Any], path_col: str, ts_col: str) -> str
     )
 
 
-def _ctes_events(group, path_col, event_col, ts_col, subindex_col):
+def _ctes_events(group, path_col, event_col, ts_col, order):
     events = to_list(group["events"])
     skip = to_list(group.get("skip", []))
     timeout_or = _timeout_or_clause(group, path_col, ts_col)
 
     path_col_q = engine.quote_ident(path_col)
     event_col_q = engine.quote_ident(event_col)
-    ts_col_q = engine.quote_ident(ts_col)
-    subindex_col_q = engine.quote_ident(subindex_col)
 
     tag_expr = f"CASE WHEN {event_col_q} IN ({sql_list(events)}) THEN 'group'"
     if skip:
@@ -100,7 +103,7 @@ tagged AS (
     SELECT *,
         {tag_expr} AS _tag,
         ROW_NUMBER() OVER (
-            PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
+            PARTITION BY {path_col_q} ORDER BY {order}
         ) AS _rn
     FROM df
 ),
@@ -144,7 +147,7 @@ with_session_id AS (
 )"""
 
 
-def _ctes_separator_start(group, path_col, event_col, ts_col, subindex_col):
+def _ctes_separator_start(group, path_col, event_col, ts_col, order):
     """
     Separator marks the START of a new session. Events after the separator are in-session;
     the separator itself is not (_in_session = 0, but _is_sep = 1 so callers can filter it).
@@ -155,17 +158,13 @@ def _ctes_separator_start(group, path_col, event_col, ts_col, subindex_col):
 
     path_col_q = engine.quote_ident(path_col)
     event_col_q = engine.quote_ident(event_col)
-    ts_col_q = engine.quote_ident(ts_col)
-    subindex_col_q = engine.quote_ident(subindex_col)
 
     return f"""
 tagged AS (
     SELECT *,
         CASE WHEN {event_col_q} IN ({sql_list(separators)}) THEN 1 ELSE 0 END AS _is_sep,
         ROW_NUMBER() OVER (
-            PARTITION BY {path_col_q} ORDER BY {ts_col_q},
-            CASE WHEN {event_col_q} IN ({sql_list(separators)}) THEN 0 ELSE 1 END,
-            {subindex_col_q}
+            PARTITION BY {path_col_q} ORDER BY {order}
         ) AS _rn
     FROM df
 ),
@@ -203,15 +202,13 @@ with_session_id AS (
 )"""
 
 
-def _ctes_start_end(group, path_col, event_col, ts_col, subindex_col):
+def _ctes_start_end(group, path_col, event_col, ts_col, order):
     starts = to_list(group["start_event"])
     ends = to_list(group["end_event"])
     timeout_or = _timeout_or_clause(group, path_col, ts_col)
 
     path_col_q = engine.quote_ident(path_col)
     event_col_q = engine.quote_ident(event_col)
-    ts_col_q = engine.quote_ident(ts_col)
-    subindex_col_q = engine.quote_ident(subindex_col)
 
     return f"""
 tagged AS (
@@ -220,7 +217,7 @@ tagged AS (
              WHEN {event_col_q} IN ({sql_list(ends)}) THEN 'end'
              ELSE 'inner' END AS _tag,
         ROW_NUMBER() OVER (
-            PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
+            PARTITION BY {path_col_q} ORDER BY {order}
         ) AS _rn
     FROM df
 ),
@@ -264,20 +261,19 @@ with_session_id AS (
 )"""
 
 
-def _ctes_timeout(timeout, path_col, ts_col, subindex_col):
+def _ctes_timeout(timeout, path_col, ts_col, order):
     """
     Pure timeout mode: every event is in-session; a new session starts when the
     gap to the previous event exceeds `timeout` seconds (or at the start of a path).
     """
     path_col_q = engine.quote_ident(path_col)
     ts_col_q = engine.quote_ident(ts_col)
-    subindex_col_q = engine.quote_ident(subindex_col)
 
     return f"""
 tagged AS (
     SELECT *,
         ROW_NUMBER() OVER (
-            PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
+            PARTITION BY {path_col_q} ORDER BY {order}
         ) AS _rn
     FROM df
 ),

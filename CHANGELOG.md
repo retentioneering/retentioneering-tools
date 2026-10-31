@@ -5,7 +5,44 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Changed
+
+- Events within a path are ordered by `(index, subindex)` everywhere, and that
+  key is unique per path
+  ([ADR-0017](https://github.com/retentioneering/retentioneering-tools/blob/master/docs/adr/0017-event-order-contract.md)).
+  Behaviour changes:
+  - `subindex` is `float64` (raw events carry `2.0`). Markers that
+    `add_events` places at one position take fractional values —
+    `1.0, 1.5, 1.667, …` for synthetic markers, `3.0, 3.5, …` for churn — so
+    `add_events("x", ...).add_events("y", ...)` on the same source event gives
+    `x → y → source` instead of a tie.
+  - The constructor raises `SchemaConfigError` when `(index, subindex)`
+    repeats within a path or either column has missing values. This covers
+    user-supplied `index`/`subindex` columns and derived streams, e.g. a
+    `filter_events(sql=...)` query that returns a row twice.
+  - Every `Eventstream`, including the ones processors return, is laid out by
+    `(path_col, index, subindex)`.
+  - `add_events(sql=...)` rows must keep the `index` of a row of their path;
+    one that matches no event raises `PreprocessingConfigError`. The timestamp
+    may be changed freely — the row still sits at its source position.
+  - `split_sessions(separator=...)` no longer moves a separator ahead of
+    events sharing its timestamp: it stays at its own position.
+  - `collapse_events` merged rows take the `index` and `subindex` of the
+    group's first event, and `agg` "first"/"last" mean first/last in event
+    order rather than by timestamp.
+
 ### Fixed
+
+- Processors that ordered events by `(timestamp, subindex)` gave
+  order-dependent results whenever events of a path shared a timestamp:
+  session detection (`split_sessions`, `collapse_events` windows),
+  `collapse_events` runs and aggregates, `add_events(churn=...)`,
+  `truncate_paths`, `to_daily_states`. Example: a path `a, b, a` at one
+  timestamp split with `split_sessions(separator="b")` put both `a` into the
+  session after `b`. They now follow `(index, subindex)`, like the tools always
+  did. Markers added from one source row no longer tie with each other, which
+  made `collapse_events`, `transition_graph_data` and `step_matrix_data` return
+  different results between identical calls.
 
 - `time_median` and `time_q95` edge weights in `transition_graph` and
   `transition_graph_data` measure the exact gap between events instead of

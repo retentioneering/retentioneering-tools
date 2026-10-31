@@ -92,6 +92,18 @@ string first. The `sql=` kwarg some data processors accept (`filter_events`, `ad
 `add_segment`) still exposes the caller's frame under the fixed name `eventstream` — that
 contract is unchanged, it's just registered via `engine.run(sql, eventstream=df)` now.
 
+### Event order (ADR-0017)
+
+Events within a path are ordered by `(index, subindex)`, unique per path and checked
+at construction. **Never order events by timestamp** — timestamps tie. Window
+`ORDER BY`, ordered aggregation and output sorts use `dialect.event_order(...)` (SQL)
+or `schema.order_cols` (pandas); "first/last event" means `ARG_MIN/ARG_MAX(...,
+dialect.event_position(...))`. `index` is assigned once and never changes; a row a
+processor adds reuses its source row's `index`, and markers sharing one take
+fractional `subindex` via `eventstream/ordering.py`'s `marker_subindex`. Every
+`Eventstream` (including `preprocess=False`) is re-sorted by
+`(path_col, index, subindex)`, so processors need not preserve physical order.
+
 ### Naming conventions (ADR-0008)
 
 One concept — one name: `path_col` / `event_col` / `timestamp_col` / `session_col` /

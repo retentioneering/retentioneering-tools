@@ -48,6 +48,50 @@ def _validate_path_cols_nesting(df: pd.DataFrame, path_cols: list) -> None:
             )
 
 
+def _establish_event_order(df: pd.DataFrame, schema: EventstreamSchema) -> pd.DataFrame:
+    """
+    Lay `df` out in event order and check that the order is total (ADR-0017).
+
+    Every eventstream — source or derived — is sorted by
+    `(path_col, index, subindex)`, so no processor can leave the next one a
+    frame in some order of its own. The key must be unique: it is the only
+    thing that tells two events of a path apart, and a tie would leave every
+    order-dependent result (transitions, runs, sessions) to chance.
+    `subindex` is float: markers sharing a position take fractional values.
+    """
+    for col in (schema.index, schema.subindex):
+        if col not in df.columns:
+            raise SchemaConfigError(f"Technical column '{col}' is missing.")
+        if df[col].isna().any():
+            raise SchemaConfigError(
+                f"Column '{col}' contains missing values; every event needs a "
+                f"position (index, subindex) in its path."
+            )
+    if df[schema.subindex].dtype != "float64":
+        df[schema.subindex] = df[schema.subindex].astype("float64")
+
+    keys = schema.order_cols
+    df = df.sort_values(keys, kind="stable").reset_index(drop=True)
+
+    if len(df) > 1:
+        dup = pd.Series(True, index=df.index)
+        for col in keys:
+            values = df[col]
+            dup &= values.eq(values.shift())
+        if dup.any():
+            rows = df.loc[dup, keys + [schema.event_col]].head(5)
+            raise SchemaConfigError(
+                f"Events must have a unique position ({schema.index}, "
+                f"{schema.subindex}) within each '{schema.path_col}', but "
+                f"{int(dup.sum())} row(s) repeat the position of the row before "
+                f"them, e.g.:\n{rows.to_string(index=False)}\n"
+                f"If you pass your own '{schema.index}'/'{schema.subindex}' "
+                f"columns, make them unique per path, or drop them and let "
+                f"the Eventstream number events itself."
+            )
+    return df
+
+
 def _infer_caller_var_name(
     obj: object, default: str = "stream", max_depth: int = 8
 ) -> str:
@@ -126,6 +170,7 @@ class Eventstream:
         else:
             for col in [self.schema.event_col] + self.schema.segment_cols:
                 self._df[col] = self._df[col].astype("category")
+        self._df = _establish_event_order(self._df, self.schema)
 
         schema = self.schema
         declared_cols = set(
@@ -214,11 +259,15 @@ class Eventstream:
         if schema.subindex not in df.columns:
             df[schema.subindex] = df[schema.event_type].map(event_types.get_order())
 
-        df = df.sort_values(
-            [schema.path_col, schema.timestamp_col, schema.subindex]
-        ).reset_index(drop=True)
-
+        # `index` is the event's position in its path (ADR-0017). When it is
+        # derived here, events tied on timestamp keep their input row order —
+        # the sort is stable and nothing else breaks the tie, because the order
+        # the log arrived in usually carries more signal than any rule would.
         if schema.index not in df.columns:
+            df = df.sort_values(
+                [schema.path_col, schema.timestamp_col, schema.subindex],
+                kind="stable",
+            ).reset_index(drop=True)
             df[schema.index] = df.groupby(schema.path_col).cumcount() + 1
 
         self._df = df
@@ -824,7 +873,8 @@ class Eventstream:
         sql : str, optional
             DuckDB SQL SELECT statement that reads from the `eventstream` table alias
             and returns rows in the eventstream schema. Each returned row is added as a
-            new synthetic event.
+            new synthetic event at the position (`index`) of the row it was selected
+            from; an `index` that matches no event of the path raises.
         churn : dict, optional
             Creates a churn event after a period of inactivity.
               - `inactivity_days` (int or float, required) — gap in days after which

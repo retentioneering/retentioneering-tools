@@ -611,3 +611,82 @@ class TestValidation:
             path = plan.attrs["path"]
             assert path["cells"].iloc[0] == len(toy.get_ab_transitions(TOY, weight))
             assert plan.attrs["edge_weight"] == weight
+
+    def test_nothing_qualifies(self):
+        # independent uniform events: no rare event, no chain, every cell testable
+        rng = np.random.default_rng(3)
+        rows = [
+            (
+                f"u{u}",
+                f"e{rng.integers(5)}",
+                pd.Timestamp("2026-01-01") + pd.Timedelta(minutes=k),
+                "t" if u % 2 else "c",
+            )
+            for u in range(300)
+            for k in range(10)
+        ]
+        df = pd.DataFrame(rows, columns=["user_id", "event", "timestamp", "arm"])
+        flat = Eventstream(df, {"segment_cols": ["arm"]})
+        plan = flat.get_ab_compression(("arm", "t", "c"))
+        path = plan.attrs["path"]
+        assert list(path["step"]) == [0] and path["members"].tolist() == [""]
+        assert plan.attrs["chosen_step"] == 0 and (plan["action"] == "keep").all()
+        # the widget draws a path of one step
+        widget = flat.ab_compression(("arm", "t", "c"))
+        assert not widget.error and widget.result != "{}"
+
+
+def _wide_stream() -> Eventstream:
+    """10,000 users, 80 event types drawn independently (a dense, structureless
+    vocabulary): about 6,500 edges, most of them thin."""
+    rng = np.random.default_rng(0)
+    lengths = rng.integers(5, 40, 10_000)
+    users = np.repeat(np.arange(10_000), lengths)
+    events = rng.zipf(1.3, len(users)) % 80
+    df = pd.DataFrame(
+        {
+            "user_id": users,
+            "event": [f"e{e:02d}" for e in events],
+            "timestamp": pd.Timestamp("2026-01-01")
+            + pd.to_timedelta(np.arange(len(users)), unit="s"),
+            "exp_group": np.where(users % 2 == 0, "treatment", "control"),
+        }
+    )
+    return Eventstream(df, {"segment_cols": ["exp_group"]})
+
+
+class TestScale:
+    @pytest.mark.slow
+    def test_eighty_event_types_within_budget(self):
+        import time
+
+        wide = _wide_stream()
+        diff = ("exp_group", "treatment", "control")
+        for screen in ("transitions", "steps"):
+            started = time.perf_counter()
+            plan = wide.get_ab_compression(diff, screen, max_events=40)
+            assert time.perf_counter() - started < 60, screen
+            path = plan.attrs["path"].set_index("step")
+            chosen = plan.attrs["chosen_step"]
+            assert path.loc[chosen, "vocabulary"] <= 40
+            assert path.loc[chosen, "untestable"] <= path.loc[0, "untestable"]
+            # the plan's numbers are the compressed stream's screen
+            frame = _screen(wide.compress_events(plan), diff, screen, plan)
+            tested = np.isfinite(frame["p_value_adjusted"].to_numpy(dtype=float))
+            assert len(frame) == path.loc[chosen, "cells"]
+            assert int(tested.sum()) == path.loc[chosen, "testable"]
+
+    @pytest.mark.slow
+    def test_aa_seeds_stay_clean_after_compression(self):
+        """Under a complete null the compressed screens find about as little as the
+        full ones: 10 A/A seeds, both screens, plans capped at 6 events."""
+        before = after = 0
+        for seed in range(10):
+            stream = datasets.load_ab_test("aa_calibration", seed=seed)
+            diff = ("exp_group", "treatment", "control")
+            for screen in ("transitions", "steps"):
+                plan = stream.get_ab_compression(diff, screen, max_events=6)
+                compact = stream.compress_events(plan)
+                before += _discoveries(_screen(stream, diff, screen, plan)) > 0
+                after += _discoveries(_screen(compact, diff, screen, plan)) > 0
+        assert before <= 3 and after <= 3, (before, after)

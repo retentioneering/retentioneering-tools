@@ -149,3 +149,14 @@ test('the header: the screen, the population, the chosen step, arm-blindness and
   assert.equal((panel.match(/data-testid="abc-chosen"/g) ?? []).length, 1);
   assert.match(panel, /19 of 29/);
 });
+
+test('a path of one step (nothing qualifies) draws without NaN', () => {
+  const changes: Segment['changes'] = Object.fromEntries(SEGMENT.events.map((e) => [e, [[0, e]] as [number, string | null][]]));
+  const one: Segment = { ...SEGMENT, chosen_step: 0, path: [PATH[0]], changes };
+  const html = renderToStaticMarkup(React.createElement(CompressionBody, {
+    payload: { ...PAYLOAD, segments: [one] }, segment: one, view, onStep: () => {},
+  }));
+  assert.doesNotMatch(html, /NaN/);
+  assert.match(html, /data-testid="abc-mapping-empty"/);
+  assert.match(html, /data-testid="abc-step"[^>]*>0 \/ 0</);
+});

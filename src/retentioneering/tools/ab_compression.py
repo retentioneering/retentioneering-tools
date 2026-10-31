@@ -1435,10 +1435,13 @@ def ab_compression(
     plan["step"] = plan["step"].astype(int)
     path = pd.concat(path_parts, ignore_index=True)
     path["events"] = path["events"].map(lambda e: ", ".join(map(str, e)))
-    if "members" in path.columns:
-        path["members"] = path["members"].map(
-            lambda e: ", ".join(map(str, e)) if isinstance(e, list) else ""
-        )
+    # a path without a step (nothing qualifies) has no members column yet
+    members = path["members"] if "members" in path.columns else None
+    path["members"] = (
+        members.map(lambda e: ", ".join(map(str, e)) if isinstance(e, list) else "")
+        if members is not None
+        else ""
+    )
     path = path[lead + [c for c in PATH_COLUMNS if c in path.columns] + ["members"]]
     plan.attrs = {
         "tool": "get_ab_compression",

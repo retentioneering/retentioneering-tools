@@ -157,7 +157,10 @@ def test_static_transitions_every_cell_is_its_row(stream, tmp_path):
             # the header names the arms, the weight, the population, the family
             header = page.locator("[data-testid=ab-header]").inner_text()
             assert "unique_paths" in header and "the stream's paths" in header
-            assert f"bh over {frame.attrs['n_tested']} of {len(frame)}" in header
+            assert (
+                f"bh over {frame.attrs['n_tested']} tested of {len(frame)} edges"
+                in header
+            )
             # a static export locks the data controls, keeps the view controls
             assert page.get_by_label("Edge weight").is_disabled()
             assert page.get_by_label("Correction").is_disabled()

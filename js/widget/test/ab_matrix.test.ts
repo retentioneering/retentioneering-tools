@@ -214,7 +214,7 @@ test('axes: sort by largest |delta| or by significant cells, pinned first; the f
 });
 
 test('words: the family, the population, the interval note and the reading hints', () => {
-  assert.equal(familyText(payload), 'bh over 3 of 5 tested edges');
+  assert.equal(familyText(payload), 'bh over 3 tested of 5 edges');
   assert.equal(familyText({ ...payload, correction: 'none' }), 'no correction, 3 of 5 edges tested');
   assert.equal(populationText(payload), "the stream's paths");
   assert.match(populationText({ population: 'assignment', horizon: '7D' }), /^ITT.*horizon 7D$/);
@@ -287,7 +287,7 @@ test('the legend names the arms, the scale and every encoding', () => {
   for (const status of ['significant', 'not_significant', 'untested', 'empty']) {
     assert.match(html, new RegExp(`data-testid="ab-legend-${status}"`));
   }
-  assert.match(html, /bh over 3 of 5 tested edges/);
+  assert.match(html, /bh over 3 tested of 5 edges/);
   assert.match(html, /not simultaneous/);
 });
 
@@ -295,13 +295,13 @@ test('the header names a declared family of edges and its size; steps name their
   const declared = { ...payload, edges: 'declared', n_tested: 2, n_rows: 2, correction: 'holm' };
   const html = renderToStaticMarkup(React.createElement(Legend, { payload: declared, kind: 'transitions', scale: 0.1, view }));
   assert.match(html, /edge weight unique_paths \(declared edges\)/);
-  assert.match(html, /holm over 2 of 2 tested edges/);
+  assert.match(html, /holm over 2 tested of 2 edges/);
   const screen = renderToStaticMarkup(React.createElement(Legend, { payload, kind: 'transitions', scale: 0.1, view }));
   assert.doesNotMatch(screen, /declared/);
   const steps = { ...payload, tool: 'get_ab_steps', max_steps: 8, n_tested: 40, n_rows: 52, edges: undefined };
   const stepsHtml = renderToStaticMarkup(React.createElement(Legend, { payload: steps, kind: 'steps', scale: 0.1, view }));
   assert.match(stepsHtml, /steps 1–8/);
-  assert.match(stepsHtml, /bh over 40 of 52 tested cells/);
+  assert.match(stepsHtml, /bh over 40 tested of 52 cells/);
 });
 
 // ── data needed ────────────────────────────────────────────────────────────

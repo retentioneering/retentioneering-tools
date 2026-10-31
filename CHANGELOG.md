@@ -33,17 +33,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
-- Processors that ordered events by `(timestamp, subindex)` gave
-  order-dependent results whenever events of a path shared a timestamp:
-  session detection (`split_sessions`, `collapse_events` windows),
-  `collapse_events` runs and aggregates, `add_events(churn=...)`,
-  `truncate_paths`, `to_daily_states`. Example: a path `a, b, a` at one
-  timestamp split with `split_sessions(separator="b")` put both `a` into the
-  session after `b`. They now follow `(index, subindex)`, like the tools always
-  did. Markers added from one source row no longer tie with each other, which
-  made `collapse_events`, `transition_graph_data` and `step_matrix_data` return
+- The `(index, subindex)` ordering that #141's fix (below) gave
+  `collapse_events` run detection now applies to every processor that still
+  ordered events by `(timestamp, subindex)` and so gave order-dependent results
+  whenever events of a path shared a timestamp: session detection
+  (`split_sessions`, `collapse_events` windows), `collapse_events` aggregates
+  and merged-row positions, `add_events(churn=...)`, `truncate_paths`,
+  `to_daily_states`. Example: a path `a, b, a` at one timestamp split with
+  `split_sessions(separator="b")` put both `a` into the session after `b`.
+  Markers added from one source row no longer tie with each other, which made
+  `collapse_events`, `transition_graph_data` and `step_matrix_data` return
   different results between identical calls.
-
 - `time_median` and `time_q95` edge weights in `transition_graph` and
   `transition_graph_data` measure the exact gap between events instead of
   counting whole-second boundaries, so a 125 ms span no longer reads as 0 s or
@@ -67,6 +67,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   empty`, and a positive overrun such as `at=3` raised `IndexError`; code
   catching that `IndexError` needs to catch `InvalidParameterError` instead
   ([#194](https://github.com/retentioneering/retentioneering-tools/issues/194)).
+- `collapse_events` now detects runs in the order the eventstream is laid out by,
+  `(index, subindex)`, instead of `(timestamp, subindex)`. `subindex` is the
+  event-type rank, so it is equal for every raw event, which left the
+  `ROW_NUMBER` feeding the `LAG`/`SUM` windows numbering same-timestamp rows in
+  an arbitrary order. `collapse_events(loops=True)` therefore compared each event
+  to an arbitrary tied neighbour and identical calls on the same eventstream
+  returned different results whenever events in a path shared a timestamp — five
+  calls on a 100,000-row stream that must collapse nothing returned 99,994 /
+  99,992 / 100,000 / 99,998 / 99,992 rows. `group_col` runs were built from the
+  same key and its output is now ordered by the run's first position rather than
+  by a tied `(timestamp, subindex)`
+  ([#141](https://github.com/retentioneering/retentioneering-tools/issues/141)).
 
 ## [5.3.0] - 2026-10-27
 

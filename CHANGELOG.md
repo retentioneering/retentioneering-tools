@@ -7,6 +7,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 
+- `add_events` keeps the event column categorical while appending markers, avoiding
+  a full string decode/re-encode of large streams. Existing categories (including
+  unused levels and their ordering) are retained; marker placement and the public
+  method signature are unchanged.
+
 - Events within a path are ordered by `(index, subindex)` everywhere, and that
   key is unique per path
   ([ADR-0017](https://github.com/retentioneering/retentioneering-tools/blob/master/docs/adr/0017-event-order-contract.md)).

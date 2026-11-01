@@ -861,11 +861,6 @@ class TestCollapseEventsAgg:
         )
         return Eventstream(df, {**SCHEMA, "custom_cols": ["score"]})
 
-    def test_agg_sum(self):
-        """`sum` adds the group's values up, as the `agg` docs' example implies."""
-        res = self._scored_stream().collapse_events(loops=True, agg={"score": "sum"})
-        assert res.df["score"].tolist() == [60]
-
     @pytest.mark.parametrize(
         "agg_name, expected",
         [
@@ -879,24 +874,23 @@ class TestCollapseEventsAgg:
         ],
     )
     def test_every_documented_agg_is_distinct_from_first(self, agg_name, expected):
-        """Each documented name does its own thing, rather than quietly meaning `first`."""
+        """Values are chosen so that no function gives the same result as `first`."""
         res = self._scored_stream().collapse_events(loops=True, agg={"score": agg_name})
         assert res.df["score"].iloc[0] == expected
 
     @pytest.mark.parametrize("agg_name", ["SUM", "total", "count", "median", "nope"])
     def test_unknown_agg_raises_instead_of_falling_back(self, agg_name):
-        """An unrecognised name used to be silently treated as `first`."""
+        """The error names the value, the column and every valid name."""
         with pytest.raises(PreprocessingConfigError) as exc:
             self._scored_stream().collapse_events(loops=True, agg={"score": agg_name})
         message = str(exc.value)
         assert agg_name in message
         assert "score" in message
-        # The house style is to list what is valid.
         for valid in ("first", "last", "min", "max", "mean", "sum", "mode", "any"):
             assert valid in message
 
     def test_unknown_agg_raises_for_an_excluded_column(self):
-        """Validated over the whole config, not only the columns it aggregates."""
+        """`event` is never aggregated, but a wrong name for it still raises."""
         with pytest.raises(PreprocessingConfigError):
             self._scored_stream().collapse_events(loops=True, agg={"event": "nope"})
 

@@ -71,7 +71,7 @@ class TestDailyStatesAgg:
         return Eventstream(df, {"custom_cols": ["revenue"]})
 
     def test_agg_sum_adds_the_days_values(self):
-        """The `agg` docstring's own example — `{"revenue": "sum"}`."""
+        """`sum` adds up each day's values: `[10, 5]` and `[100, 1]`."""
         res = self._revenue_stream().to_daily_states(
             agg={"revenue": "sum"}, max_dormant_days=0
         )

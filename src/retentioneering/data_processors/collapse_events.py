@@ -20,10 +20,9 @@ from retentioneering.utils.sql_quoting import quote_literal
 
 PROCESSOR_NAME = "collapse_events"
 
-#: SQL for each `agg` function `collapse_events` and `to_daily_states` accept,
-#: keyed by the name the user writes. `first` / `last` mean first / last in
-#: event order (ADR-0017), so every builder takes the quoted value column and
-#: the integer row-number column that encodes that order.
+#: SQL for each `agg` function name. Every builder takes the quoted value
+#: column and the integer row number in event order, which `first` / `last`
+#: need (ADR-0017).
 AGG_SQL = {
     "first": lambda col, pos: f"ARG_MIN({col}, {pos})",
     "last": lambda col, pos: f"ARG_MAX({col}, {pos})",
@@ -379,9 +378,8 @@ class CollapseEvents(DataProcessor):
         takes the group's first position, so `index` and `subindex` always
         come from the same, first row whatever `agg_config` says about them.
         """
-        # Validated over the whole config rather than per column, so a name
-        # that is wrong is reported even when its column is excluded from this
-        # particular aggregation.
+        # Check the whole config, not only the columns aggregated below, so a
+        # wrong name raises even for a column this aggregation skips.
         for col, agg_name in sorted(agg_config.items()):
             if agg_name not in AGG_SQL:
                 raise PreprocessingConfigError(

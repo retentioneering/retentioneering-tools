@@ -37,6 +37,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- A seeded `sample_paths(..., random_state=...)` no longer switches DuckDB to
+  one thread. It ran `set threads = 1` to make the sample reproducible, and
+  since every `engine.run()` call shares one DuckDB instance, every later query
+  in the process stayed single-threaded. The sample is now drawn from the path
+  IDs in sorted order instead, which is reproducible at any thread count and,
+  unlike before, does not depend on the order of rows in the frame. A given
+  `random_state` therefore selects different paths than in earlier versions.
+
 - An anchor spec naming its own `event_col`
   (`{"pattern": "returning->loyal", "event_col": "user_lifecycle"}`) is
   validated against that column in `add_events(anchor=...)`,

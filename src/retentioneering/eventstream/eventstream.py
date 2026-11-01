@@ -1360,7 +1360,9 @@ class Eventstream:
             Fraction of total paths to keep, in the range `(0.0, 1.0]`.
             Passing `1.0` returns the eventstream unchanged.
         random_state : int, optional
-            Seed for the random number generator; pass an integer for reproducible results.
+            Seed for the random number generator; pass an integer for reproducible
+            results. The same seed selects the same paths from the same set of
+            path IDs, whatever the order of rows.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
 

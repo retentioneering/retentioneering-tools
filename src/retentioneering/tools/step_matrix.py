@@ -29,16 +29,11 @@ class StepMatrix:
         path_pattern: str | None = None,
         anchor: str | dict | None = None,
     ) -> Tuple[pd.DataFrame, ...]:
-        path_col = path_col or self.eventstream.schema.path_col
+        path_col = self.eventstream.schema.resolve_path_col(path_col)
 
         if self.eventstream.is_empty():
             raise EmptyEventstreamError(
                 "Cannot calculate step matrix for empty eventstream"
-            )
-
-        if path_col not in self.eventstream.schema.path_cols:
-            raise InvalidParameterError(
-                "path_col", path_col, self.eventstream.schema.path_cols
             )
 
         if anchor is not None and path_pattern is not None:
@@ -276,7 +271,7 @@ class StepMatrix:
         selection falls out of it: a path where the anchor does not resolve has
         no centre, so it is not in the matrix.
         """
-        path_col = path_col or self.eventstream.schema.path_col
+        path_col = self.eventstream.schema.resolve_path_col(path_col)
         path_end = EventTypes().PATH_END.name
         spec = self._parse_anchor(anchor)
 
@@ -349,7 +344,7 @@ class StepMatrix:
     def _process_pattern_matrix(self, max_steps, diff, path_pattern, path_col):
         from retentioneering.exceptions import EmptyEventstreamError as _Empty
 
-        path_col = path_col or self.eventstream.schema.path_col
+        path_col = self.eventstream.schema.resolve_path_col(path_col)
         event_col = self.eventstream.schema.event_col
         path_start = EventTypes().PATH_START.name
         path_end = EventTypes().PATH_END.name

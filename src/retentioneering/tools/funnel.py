@@ -20,11 +20,7 @@ class Funnel:
         diff: T_Diff = None,
         path_col: str | None = None,
     ) -> dict:
-        path_col = path_col or self.eventstream.schema.path_col
-        if path_col not in self.eventstream.schema.path_cols:
-            raise InvalidParameterError(
-                "path_col", path_col, self.eventstream.schema.path_cols
-            )
+        path_col = self.eventstream.schema.resolve_path_col(path_col)
         event_col = self.eventstream.schema.event_col
         available_events = set(self.eventstream.df[event_col].unique().tolist())
         for step in steps:

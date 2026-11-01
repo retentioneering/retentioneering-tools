@@ -52,6 +52,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Unknown column keys in `collapse_events(agg=...)` and `to_daily_states(agg=...)`
+  raise `PreprocessingColumnNotFoundError` with the available columns instead of
+  silently falling back to `"first"`. Existing columns excluded from aggregation
+  remain accepted. Processors, metrics and tools now resolve `path_col` through
+  the schema and raise `InvalidParameterError` listing `schema.path_cols` for
+  undeclared names, including modes that do not use the parameter
+  ([#235](https://github.com/retentioneering/retentioneering-tools/issues/235)).
+
 - The bundled ecom dataset (`rete.datasets.load_ecom`) no longer reorders events
   within a session. Each event's timestamp was `base + gap * index` with a fresh
   random `gap` per event, so a later event could get an earlier timestamp; 205 of

@@ -509,7 +509,9 @@ class TestAddEventsByAnchor:
             )
 
     def test__unknown_path_col_raises(self) -> None:
-        with pytest.raises(PreprocessingConfigError):
+        from retentioneering.exceptions import InvalidParameterError
+
+        with pytest.raises(InvalidParameterError):
             Eventstream(self.get_anchor_df()).add_events(
                 name="M", anchor="cart", path_col="nope"
             )

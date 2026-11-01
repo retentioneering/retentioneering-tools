@@ -7,7 +7,10 @@ from retentioneering.engine import dialect
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.eventstream.event_type import EventTypes
-from retentioneering.exceptions import PreprocessingConfigError
+from retentioneering.exceptions import (
+    PreprocessingColumnNotFoundError,
+    PreprocessingConfigError,
+)
 from retentioneering.metrics.condition_ast import ast_to_sql, extract_metric_configs
 from retentioneering.metrics.metric_builder import combined_metric_name
 from retentioneering.utils.session_detection import (
@@ -278,7 +281,7 @@ class CollapseEvents(DataProcessor):
     def apply(
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
-        path_col = self.path_col or schema.path_col
+        path_col = schema.resolve_path_col(self.path_col)
         event_col = schema.event_col
 
         if self.mode == "loops":
@@ -384,6 +387,10 @@ class CollapseEvents(DataProcessor):
         # Check the whole config, not only the columns aggregated below, so a
         # wrong name raises even for a column this aggregation skips.
         for col, agg_name in sorted(agg_config.items()):
+            if col not in df.columns:
+                raise PreprocessingColumnNotFoundError(
+                    f"{processor}(agg)", col, list(df.columns)
+                )
             if agg_name not in AGG_SQL:
                 raise PreprocessingConfigError(
                     processor,

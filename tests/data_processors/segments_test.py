@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 
 from retentioneering.eventstream.eventstream import Eventstream
-from retentioneering.exceptions import PreprocessingConfigError
+from retentioneering.exceptions import InvalidParameterError, PreprocessingConfigError
 
 
 def get_df():
@@ -265,7 +265,7 @@ class TestFilterEvents:
             columns=["user_id", "event", "timestamp"],
         )
         stream = Eventstream(df, {"path_cols": ["user_id"]})
-        with pytest.raises(PreprocessingConfigError):
+        with pytest.raises(InvalidParameterError, match="path_col"):
             stream.add_segment(
                 name="seg", funnel_events=["A", "B"], path_col="not_a_path_col"
             )

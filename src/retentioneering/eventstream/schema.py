@@ -3,7 +3,7 @@ from dataclasses import dataclass, field, fields
 from difflib import get_close_matches
 from typing import List
 
-from retentioneering.exceptions import SchemaConfigError
+from retentioneering.exceptions import InvalidParameterError, SchemaConfigError
 
 
 @dataclass
@@ -42,6 +42,13 @@ class EventstreamSchema:
     @property
     def path_col(self):
         return self.path_cols[0]
+
+    def resolve_path_col(self, path_col: str | None = None) -> str:
+        """Resolve the default path grain and reject undeclared column names."""
+        resolved = self.path_col if path_col is None else path_col
+        if resolved not in self.path_cols:
+            raise InvalidParameterError("path_col", resolved, self.path_cols)
+        return resolved
 
     @property
     def order_cols(self) -> List[str]:

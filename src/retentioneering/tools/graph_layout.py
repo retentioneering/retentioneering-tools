@@ -12,7 +12,6 @@ from retentioneering import engine
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.exceptions import (
     EmptyEventstreamError,
-    InvalidParameterError,
 )
 from .transition_matrix import TransitionMatrix
 
@@ -67,11 +66,7 @@ class GraphLayout:
         min_trajectory_length: int = 3,
         use_original_trajectories: bool = True,
     ) -> dict[str, dict[str, float]]:
-        path_col = path_col or self.eventstream.schema.path_col
-        if path_col not in self.eventstream.schema.path_cols:
-            raise InvalidParameterError(
-                "path_col", path_col, self.eventstream.schema.path_cols
-            )
+        path_col = self.eventstream.schema.resolve_path_col(path_col)
         if self.eventstream.is_empty():
             raise EmptyEventstreamError(
                 "Cannot compute graph layout for empty eventstream"

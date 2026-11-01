@@ -89,6 +89,12 @@ def main() -> int:
     ap.add_argument("--out", default="artifacts")
     a = ap.parse_args()
 
+    # A redirected console may use an encoding without some character printed
+    # below (a column name, a dash): show it as "?" rather than crash. The JSON
+    # profile is written in UTF-8 and keeps it.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
+
     if a.path.endswith((".parquet", ".pq")):
         df = pd.read_parquet(a.path)
         sep = None
@@ -132,7 +138,12 @@ def main() -> int:
         },
     }
 
-    if user_col and event_col:
+    if df.empty:
+        problems.append("event log contains no rows — provide a non-empty export")
+        profile["n_paths"] = 0
+        profile["n_event_types"] = 0
+
+    if user_col and event_col and not df.empty:
         nulls_user = int(df[user_col].isna().sum())
         nulls_event = int(df[event_col].isna().sum())
         profile["n_paths"] = int(df[user_col].nunique(dropna=True))
@@ -210,7 +221,7 @@ def main() -> int:
         json.dump(profile, fh, indent=2, ensure_ascii=False, default=str)
 
     print(
-        f"rows={profile['rows_read']:,}  paths={profile.get('n_paths', '?'):,}  "
+        f"rows={profile['rows_read']:,}  paths={profile.get('n_paths', '?')}  "
         f"event_types={profile.get('n_event_types', '?')}"
     )
     if ts_col and "timestamp" in profile:
@@ -220,7 +231,7 @@ def main() -> int:
         f"segments={segment_cols}"
     )
     for p in problems:
-        print(f"  ⚠ {p}")
+        print(f"  WARNING: {p}")
     print(f"\nprofile written: {out_path}\n")
     print("suggested schema:\n")
     seg = ", ".join(f'"{c}"' for c in segment_cols)
@@ -232,7 +243,7 @@ stream = Eventstream(df, schema={{
     "segment_cols": [{seg}],
 }})
 stream.describe()""")
-    return 1 if (not user_col or not event_col or not ts_ok) else 0
+    return 1 if (df.empty or not user_col or not event_col or not ts_ok) else 0
 
 
 if __name__ == "__main__":

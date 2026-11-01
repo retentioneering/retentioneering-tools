@@ -37,6 +37,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- The agent skill's event-log profiler handles an export with no rows: it
+  writes a zero-count profile with a warning instead of raising `IndexError`.
+  It also no longer crashes when it cannot infer the user or event column, or
+  when its output goes to a console whose encoding lacks a character it prints
+  (a redirected Windows console, for example).
+
 - A seeded `sample_paths(..., random_state=...)` no longer switches DuckDB to
   one thread. It ran `set threads = 1` to make the sample reproducible, and
   since every `engine.run()` call shares one DuckDB instance, every later query

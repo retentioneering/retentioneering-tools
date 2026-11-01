@@ -1171,8 +1171,9 @@ class Eventstream:
         Convert the eventstream into daily lifecycle-state events.
 
         Each path is expanded to one row per calendar day from its first event
-        to `max_dormant_days` days after its last event. Every row is labelled
-        with one of six engagement states.
+        to `max_dormant_days` days after its last event, with days taken in the
+        timestamp column's timezone if it has one. Every row is labelled with
+        one of six engagement states.
 
         Active days:
             `new`          — first-ever active day for this path

@@ -12,7 +12,7 @@ Path metrics are scalar values computed per path (see [Key concepts](/docs/event
 |---|---|---|
 | `length` | Total number of events in the path. | — |
 | `duration` | Time in seconds between the first and last event. | — |
-| `active_days` | Number of distinct calendar days with at least one event. Optionally restricted to specific events. | `active_events`: list[str] (optional) |
+| `active_days` | Number of distinct calendar days with at least one event, in the timestamp column's timezone if it has one. Optionally restricted to specific events. | `active_events`: list[str] (optional) |
 | `event_count` | Number of times a single event occurred. | `event`: str (required) |
 | `has_event` | 1 if a single event occurred at least once, 0 otherwise. | `event`: str (required) |
 | `event_count_bulk` | Number of times each event occurred, expanded into one column per event. Omit `events` (or pass `None`) to count every event in the stream — an explicit empty list is invalid. | `events`: list[str] (optional; omit/`None` for all events) |

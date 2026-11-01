@@ -37,6 +37,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- The `active_days` metric, `to_daily_states` and an `active_days` condition in
+  `collapse_events`' `name` cases take the calendar day in the timestamp
+  column's own timezone. For a tz-aware column they used DuckDB's session
+  timezone, which defaults to the host's, so the same eventstream gave
+  different answers on different machines: two events at 23:30 and 00:30
+  Moscow time counted as two active days in `Europe/Moscow` and one on a
+  machine in New York. tz-naive columns are unchanged
+  ([#190](https://github.com/retentioneering/retentioneering-tools/issues/190)).
+
 - `collapse_events` and `to_daily_states` support `agg={"col": "sum"}` — the
   example the `to_daily_states` docstring gives — and raise on an agg function
   they do not know instead of quietly treating it as `"first"`. `"sum"` used to

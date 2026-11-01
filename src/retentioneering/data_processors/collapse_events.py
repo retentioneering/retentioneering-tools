@@ -17,6 +17,7 @@ from retentioneering.utils.session_detection import (
 )
 from retentioneering.utils.sequences import find_delimiter_collisions
 from retentioneering.utils.sql_quoting import quote_literal
+from retentioneering.utils.timezones import column_timezone
 
 PROCESSOR_NAME = "collapse_events"
 
@@ -298,7 +299,7 @@ class CollapseEvents(DataProcessor):
     # ── naming SQL ───────────────────────────────────────────────────────────
 
     def _name_sql(
-        self, default_expr: str, event_col: str, ts_col: str
+        self, default_expr: str, event_col: str, ts_col: str, tz: str | None = None
     ) -> Tuple[str, str]:
         """
         Build the merged event's name expression, plus any aggregates it needs.
@@ -335,7 +336,9 @@ class CollapseEvents(DataProcessor):
                 if key in seen_keys:
                     continue
                 seen_keys.add(key)
-                for col_name, agg_sql in self._metric_agg_sql(mc, event_col, ts_col):
+                for col_name, agg_sql in self._metric_agg_sql(
+                    mc, event_col, ts_col, tz
+                ):
                     if col_name not in metric_col_names:
                         metric_col_names.append(col_name)
                         metric_agg_parts.append(
@@ -402,7 +405,7 @@ class CollapseEvents(DataProcessor):
 
     @staticmethod
     def _metric_agg_sql(
-        mc: Dict[str, Any], event_col: str, ts_col: str
+        mc: Dict[str, Any], event_col: str, ts_col: str, tz: str | None = None
     ) -> List[Tuple[str, str]]:
         metric = mc["metric"]
         args = mc.get("metric_args") or {}
@@ -462,7 +465,8 @@ class CollapseEvents(DataProcessor):
             )
             return [(f"time_from_{ef}_to_{et}", agg_sql)]
         elif metric == "active_days":
-            return [("active_days", f"COUNT(DISTINCT CAST({ts_col_q} AS DATE))")]
+            day_expr = dialect.calendar_date(ts_col_q, tz)
+            return [("active_days", f"COUNT(DISTINCT {day_expr})")]
         else:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
@@ -499,7 +503,9 @@ class CollapseEvents(DataProcessor):
         )
 
         # A run of one event keeps that event's own name unless `name` overrides it.
-        name_expr, metric_agg_chunk = self._name_sql("_event", event_col, ts_col)
+        name_expr, metric_agg_chunk = self._name_sql(
+            "_event", event_col, ts_col, column_timezone(df[ts_col])
+        )
 
         # LAG/SUM below walk the path in event order (ADR-0017). `_rn` numbers
         # rows by `(index, subindex)`, which is unique, and the explicit ROWS
@@ -608,7 +614,10 @@ class CollapseEvents(DataProcessor):
 
         # Without `name`, the group is named after the value it is a run of.
         name_expr, metric_agg_chunk = self._name_sql(
-            "CAST(_run_value AS VARCHAR)", event_col, ts_col
+            "CAST(_run_value AS VARCHAR)",
+            event_col,
+            ts_col,
+            column_timezone(df[ts_col]),
         )
 
         run_col_select = (
@@ -693,7 +702,9 @@ class CollapseEvents(DataProcessor):
         default = quote_literal(
             self.event_groups[0] if self.event_groups else "session"
         )
-        name_expr, metric_agg_chunk = self._name_sql(default, event_col, ts_col)
+        name_expr, metric_agg_chunk = self._name_sql(
+            default, event_col, ts_col, column_timezone(df[ts_col])
+        )
 
         session_ctes = build_session_ctes(
             self._as_group(), path_col, event_col, ts_col, schema.index, subindex_col

@@ -86,9 +86,7 @@ class ConversionRate:
         schema = es.schema
         df = es.df
 
-        path_col = path_col or schema.path_col
-        if path_col not in schema.path_cols:
-            raise InvalidParameterError("path_col", path_col, schema.path_cols)
+        path_col = schema.resolve_path_col(path_col)
 
         starts = self._parse_side(start_anchor, "start_anchor", df, schema)
         ends = self._parse_side(end_anchor, "end_anchor", df, schema)

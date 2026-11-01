@@ -144,12 +144,7 @@ class TruncatePaths(DataProcessor):
     def apply(
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
-        path_col = self.path_col or schema.path_col
-        if path_col not in schema.path_cols:
-            raise PreprocessingConfigError(
-                PROCESSOR_NAME,
-                f"path_col '{path_col}' must be one of schema.path_cols: {schema.path_cols}.",
-            )
+        path_col = schema.resolve_path_col(self.path_col)
 
         self._validate_tokens(df, schema)
 

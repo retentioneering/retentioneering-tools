@@ -57,9 +57,7 @@ def route_stats(
       - ``proba`` — Markov probability of the route: the product of
         ``P(next | source)`` over its consecutive event pairs.
     """
-    path_col = path_col or eventstream.schema.path_col
-    if path_col not in eventstream.schema.path_cols:
-        raise InvalidParameterError("path_col", path_col, eventstream.schema.path_cols)
+    path_col = eventstream.schema.resolve_path_col(path_col)
     nodes = [str(n) for n in (nodes or [])]
     if len(nodes) < 2:
         raise InvalidParameterError(

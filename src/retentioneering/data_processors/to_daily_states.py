@@ -80,7 +80,7 @@ class ToDailyStates(DataProcessor):
     def apply(
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
-        path_col = self.path_col or schema.path_col
+        path_col = schema.resolve_path_col(self.path_col)
         event_col = schema.event_col
         timestamp_col = schema.timestamp_col
         event_type_col = schema.event_type

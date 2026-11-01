@@ -3,7 +3,7 @@
 ## Requirements
 
 - Python: 3.11 - 3.13
-- Environment: Jupyter (Jupyter Notevook, JupyterLab, JupyterLab Desktop), VS Code, Cursor Google Colab
+- Environment: Jupyter (Jupyter Notebook, JupyterLab, JupyterLab Desktop), VS Code, Cursor, Google Colab
 
 ## Install the package
 

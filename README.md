@@ -65,7 +65,7 @@ periods = stream.add_segment("period", time_range=("2024-05-19", "2024-06-07"))
 periods.transition_graph(diff=("period", "inside", "outside"))
 ```
 
-<a href="https://retentioneering.com/docs/widgets/transition-graph#diff-mode"><img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/kpi-diff.png" width="760" alt="Transition graph in diff mode focused on payment_details: inside the window, transitions to payment_error and support_chat rise while the transition to purchase falls."></a>
+<a href="https://retentioneering.com/docs/widgets/transition-graph#diff-mode"><img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/kpi-diff.png" width="760" alt="Transition graph in diff mode focused on payment_details: inside the window, the transition to payment_error rises while the transition to purchase falls."></a>
 
 Click a node (e.g. `payment_details`) to inspect the routes that pass this node. With this comparison configuration, red means a higher next-step probability inside the period; blue means lower. This locates a behavioral difference to investigate.
 
@@ -83,7 +83,7 @@ steps = ["cart", "shipping_details", "purchase"]
 stream.funnel(steps=steps, path_col="session_id")
 ```
 
-<a href="https://retentioneering.com/docs/widgets/funnel"><img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/funnel.png" width="760" alt="Funnel of sessions from cart to shipping_details to purchase: 28.3%, 14.2% and 4.8% of 3,605 sessions."></a>
+<a href="https://retentioneering.com/docs/widgets/funnel"><img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/funnel.png" width="760" alt="Funnel of sessions from cart to shipping_details to purchase: 28.3%, 22.1% and 13.0% of 3,605 sessions."></a>
 
 Then compare sessions that stopped at the shipping stage of this funnel with those that completed it using the [step matrix widget](https://retentioneering.com/docs/widgets/step-matrix) in diff mode:
 
@@ -117,7 +117,7 @@ stream.step_sankey(
 )
 ```
 
-<a href="https://retentioneering.com/docs/widgets/step-sankey"><img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/error-sankey.png" width="760" alt="Step Sankey centred on payment_error, showing the two steps before and after it; support_chat and path_end are the most common next steps."></a>
+<a href="https://retentioneering.com/docs/widgets/step-sankey"><img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/error-sankey.png" width="760" alt="Step Sankey centred on payment_error, showing the two steps before and after it; support_chat follows almost every error."></a>
 
 A plain event name anchors each path on its first occurrence. An [anchor spec](https://retentioneering.com/docs/data-processors/truncate-paths#anchoring-on-a-sequence-not-just-an-event) chooses the position more precisely: which occurrence to use, which event of a [pattern](https://retentioneering.com/docs/path-patterns) to center on (`at`), or how far to shift from it (`offset`). For example, align sessions on their *last* payment error to see whether users recover after it or give up:
 
@@ -128,9 +128,9 @@ stream.step_sankey(
 )
 ```
 
-<a href="https://retentioneering.com/docs/widgets/step-sankey"><img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/last-error-sankey.png" width="760" alt="Step Sankey centred on each session's last payment_error: path_end is the most common next step and takes 35% of the step after it."></a>
+<a href="https://retentioneering.com/docs/widgets/step-sankey"><img src="https://raw.githubusercontent.com/retentioneering/retentioneering-tools/master/.github/readme/last-error-sankey.png" width="760" alt="Step Sankey centred on each session's last payment_error: support_chat is the most common next step, and path_end takes 41% of the step after it."></a>
 
-After the last error, sessions end more often than after the first one: `path_end` takes 19% of the next step instead of 14%, and 35% two steps later instead of 26%.
+After the last error, sessions end more often than after the first one: two steps later, `path_end` takes 41% instead of 32%. Either way, the next step is almost always `support_chat` (89%).
 </details>
 
 <details>

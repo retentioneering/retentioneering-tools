@@ -51,14 +51,14 @@ Between 19 May and 7 June, sessions ended in a purchase half as often: **7.0%** 
 
 ## Where the paths changed
 
-- The step from payment details to a purchase is **13 p.p.** less likely inside the window [Payment flow:payment_details->purchase].
-- Instead, payment details lead to a payment error: **12%** of transitions inside the window against `0.5%` outside [Payment flow:payment_details->payment_error].
+- The step from payment details to a purchase is **52 p.p.** less likely inside the window [Payment flow:payment_details->purchase].
+- Instead, payment details lead to a payment error: **61%** of transitions inside the window against `2.0%` outside [Payment flow:payment_details->payment_error].
 - **14.9%** of sessions in the window hit a payment error [Periods:has_event_payment_error@inside], and **16.7%** open a support chat [Periods:has_event_support_chat@inside].
 
 ## What follows a payment error
 
-- Right after the error, **18%** of sessions open a support chat [After payment error:support_chat@1].
-- Two steps later, **26%** of sessions have already ended [After payment error:path_end@2].
+- Right after the error, **89%** of sessions open a support chat [After payment error:support_chat@1].
+- Two steps later, **32%** of sessions have already ended [After payment error:path_end@2].
 
 The comparison locates where behavior changed; confirming the cause needs the payment logs for the same period.
 """

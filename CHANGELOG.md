@@ -5,6 +5,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Removed
+
+- Python 3.10 is no longer supported: retentioneering now requires Python 3.11
+  or later. Python 3.10 reached end of life in October 2026, and current
+  releases of several dependencies (Pillow, Tornado, filelock, virtualenv) have
+  dropped it, so the security fixes below could not reach a 3.10 environment.
+
+### Security
+
+- The development lock file (`uv.lock`) and the JS lock file pick up fixes for
+  open advisories in certifi, Pillow, Tornado, filelock, virtualenv, urllib3,
+  nbconvert, notebook, JupyterLab, PyJWT, OpenTelemetry, setuptools, Vite and
+  source-map-js. The published package is unaffected: its dependency ranges
+  have no upper bounds, so installs already resolve to current versions.
+
 ### Changed
 
 - Events within a path are ordered by `(index, subindex)` everywhere, and that

@@ -74,7 +74,7 @@ width are set for presentation only.
 
 ## Reproduce
 
-Use Python 3.10–3.13 and the repository's [development setup](../../CONTRIBUTING.md),
+Use Python 3.11–3.13 and the repository's [development setup](../../CONTRIBUTING.md),
 then build the widget JavaScript:
 
 ```bash

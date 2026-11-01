@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13"]
     env:
       # setup-uv@v3 has no python-version input, so without this uv falls
       # back to the runner's system interpreter (CPython 3.14 on the current

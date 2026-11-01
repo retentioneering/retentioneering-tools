@@ -209,7 +209,7 @@ paths. `.github/readme/ASSETS.md` maps each README image to the script that make
 ### CI/CD (ADR-0011)
 
 - `.github/workflows/ci.yml` — on push/PR: `lint` job (pre-commit --all-files) + `test` job
-  (matrix over Python 3.10-3.13, builds JS, runs pytest).
+  (matrix over Python 3.11-3.13, builds JS, runs pytest).
 - `.github/workflows/deps-latest.yml` — nightly + `workflow_dispatch`: installs with pip's own
   resolution instead of `uv.lock`, then `pip check` + pytest. Does not block merges; a failure
   opens an issue labelled `deps-latest`. Rationale is in the workflow's header comment.

@@ -26,7 +26,8 @@ Supports metrics:
   - active_events: event name (string or list of strings)
 - matches_pattern - whether path matches a token pattern (0/1)
   - pattern: string pattern like "login->.*->purchase" (literal events matched as whole
-    tokens, not substrings; ".*" matches any run of whole events)
+    tokens, not substrings; ".*" matches any run of whole events, ".{0,4}" a bounded
+    one, "(cart->.*){2}" a repeated sequence — see paths/tokens.py for the syntax)
 - in_segment - binary metric showing if a path belongs to a segment level (0/1)
   - segment_name: segment column name
   - segment_level: segment level (string, list of strings, or None for all levels)
@@ -71,6 +72,7 @@ from retentioneering.exceptions import (
 )
 from retentioneering.paths import anchors
 from retentioneering.utils.sql_quoting import quote_list, quote_literal
+from retentioneering.utils.timezones import column_timezone
 
 
 # Valid metric names
@@ -1112,14 +1114,17 @@ class MetricBuilder:
         path_col_q = engine.quote_ident(path_col)
         event_col_q = engine.quote_ident(event_col)
         timestamp_col_q = engine.quote_ident(timestamp_col)
+        day_expr = dialect.calendar_date(
+            timestamp_col_q, column_timezone(self.df[timestamp_col])
+        )
         if active_events:
             ev_list = (
                 active_events if isinstance(active_events, list) else [active_events]
             )
             quoted = quote_list(ev_list)
-            count_expr = f"COUNT(DISTINCT CASE WHEN {event_col_q} IN ({quoted}) THEN CAST({timestamp_col_q} AS DATE) END)"
+            count_expr = f"COUNT(DISTINCT CASE WHEN {event_col_q} IN ({quoted}) THEN {day_expr} END)"
         else:
-            count_expr = f"COUNT(DISTINCT CAST({timestamp_col_q} AS DATE))"
+            count_expr = f"COUNT(DISTINCT {day_expr})"
         query = f"""
         SELECT {path_col_q}, {count_expr} AS active_days
         FROM df

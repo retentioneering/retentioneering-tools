@@ -1,6 +1,8 @@
 import pandas as pd
 import pytest
 
+from retentioneering import engine
+from retentioneering.data_processors.sample_paths import SamplePaths
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.exceptions import PreprocessingConfigError
 
@@ -27,6 +29,25 @@ SCHEMA = {"segment_cols": ["country"]}
 
 def _make_stream() -> Eventstream:
     return Eventstream(get_df(), SCHEMA)
+
+
+def _many_paths_df() -> pd.DataFrame:
+    n = 500
+    return pd.DataFrame(
+        {
+            "user_id": [f"user_{i}" for i in range(n) for _ in range(2)],
+            "event": ["A", "B"] * n,
+            "timestamp": pd.to_datetime(["2020-01-01 00:00", "2020-01-01 00:01"] * n),
+        }
+    )
+
+
+def _threads() -> int:
+    return int(engine.run("SELECT current_setting('threads') AS t")["t"].iloc[0])
+
+
+def _set_threads(n: int) -> None:
+    engine.run(f"SET threads = {int(n)}; SELECT 1")
 
 
 def _sampled_users(stream: Eventstream) -> list[str]:
@@ -57,10 +78,42 @@ class TestSamplePaths:
         res1 = _make_stream().sample_paths(frac=0.5, random_state=42)
         res2 = _make_stream().sample_paths(frac=0.5, random_state=42)
         assert res1.equals(res2)
-
         res3 = _make_stream().sample_paths(n=2, random_state=7)
         res4 = _make_stream().sample_paths(n=2, random_state=7)
         assert res3.equals(res4)
+
+    def test__random_state_leaves_the_thread_count_unchanged(self) -> None:
+        # `threads` is a setting of the DuckDB instance every engine.run() call
+        # shares, so a seeded sample must not change it.
+        before = _threads()
+        try:
+            _set_threads(3)
+            _make_stream().sample_paths(frac=0.5, random_state=42)
+            assert _threads() == 3
+            _make_stream().sample_paths(n=2, random_state=7)
+            assert _threads() == 3
+        finally:
+            _set_threads(before)
+
+    @pytest.mark.parametrize("kwargs", [{"frac": 0.3}, {"n": 50}])
+    def test__random_state_ignores_row_order_and_thread_count(self, kwargs) -> None:
+        df = _many_paths_df()
+        shuffled = df.sample(frac=1, random_state=1).reset_index(drop=True)
+        schema = Eventstream(df).schema
+
+        def users(frame, threads):
+            _set_threads(threads)
+            sp = SamplePaths(random_state=42, **kwargs)
+            return sorted(sp.apply(frame, schema)[0]["user_id"].unique())
+
+        before = _threads()
+        try:
+            expected = users(df, 1)
+            assert users(shuffled, 1) == expected
+            assert users(df, 4) == expected
+            assert users(shuffled, 4) == expected
+        finally:
+            _set_threads(before)
 
     def test__frac_1_returns_stream_unchanged(self) -> None:
         res = _make_stream().sample_paths(frac=1.0, random_state=42)

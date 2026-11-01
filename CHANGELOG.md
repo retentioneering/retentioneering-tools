@@ -5,11 +5,238 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Changed
+
+- Events within a path are ordered by `(index, subindex)` everywhere, and that
+  key is unique per path
+  ([ADR-0017](https://github.com/retentioneering/retentioneering-tools/blob/master/docs/adr/0017-event-order-contract.md)).
+  Behaviour changes:
+  - `subindex` is `float64` (raw events carry `2.0`). Markers that
+    `add_events` places at one position take fractional values —
+    `1.0, 1.5, 1.667, …` for synthetic markers, `3.0, 3.5, …` for churn — so
+    `add_events("x", ...).add_events("y", ...)` on the same source event gives
+    `x → y → source` instead of a tie.
+  - The constructor raises `SchemaConfigError` when `(index, subindex)`
+    repeats within a path or either column has missing values. This covers
+    user-supplied `index`/`subindex` columns and derived streams, e.g. a
+    `filter_events(sql=...)` query that returns a row twice.
+  - Within each path, rows of every `Eventstream` are laid out by
+    `(index, subindex)`, each path in one block. Processors that add or merge
+    rows (`add_events`, `add_start_end_events`, `collapse_events`,
+    `to_daily_states`, `filter_events(sql=...)`) have their output checked and
+    re-sorted if needed; the order of paths relative to each other is not
+    guaranteed.
+  - `add_events(sql=...)` rows must keep the `index` of a row of their path;
+    one that matches no event raises `PreprocessingConfigError`. The timestamp
+    may be changed freely — the row still sits at its source position.
+  - `split_sessions(separator=...)` no longer moves a separator ahead of
+    events sharing its timestamp: it stays at its own position.
+  - `collapse_events` merged rows take the `index` and `subindex` of the
+    group's first event, and `agg` "first"/"last" mean first/last in event
+    order rather than by timestamp.
+
 ### Fixed
 
-- The agent skill's event-log profiler now writes an actionable zero-count profile
-  for empty exports instead of raising IndexError. Warning output uses an ASCII
-  marker so redirected Windows consoles can display it.
+- The agent skill's event-log profiler handles an export with no rows: it
+  writes a zero-count profile with a warning instead of raising `IndexError`.
+  It also no longer crashes when it cannot infer the user or event column, or
+  when its output goes to a console whose encoding lacks a character it prints
+  (a redirected Windows console, for example).
+
+- A seeded `sample_paths(..., random_state=...)` no longer switches DuckDB to
+  one thread. It ran `set threads = 1` to make the sample reproducible, and
+  since every `engine.run()` call shares one DuckDB instance, every later query
+  in the process stayed single-threaded. The sample is now drawn from the path
+  IDs in sorted order instead, which is reproducible at any thread count and,
+  unlike before, does not depend on the order of rows in the frame. A given
+  `random_state` therefore selects different paths than in earlier versions.
+
+- An anchor spec naming its own `event_col`
+  (`{"pattern": "returning->loyal", "event_col": "user_lifecycle"}`) is
+  validated against that column in `add_events(anchor=...)`,
+  `get_conversion_rate`, `step_matrix_data` and `step_sankey_data`, as
+  `truncate_paths` already did. These checked it against the event vocabulary
+  instead, so the levels of that column were rejected as unknown events, while
+  real event names passed and then matched nothing: `add_events` inserted no
+  events and raised no error. `get_conversion_rate` also takes the end anchor's
+  `event_col` into account for `base_rate` and `lift`
+  ([#138](https://github.com/retentioneering/retentioneering-tools/issues/138)).
+
+- The `active_days` metric, `to_daily_states` and an `active_days` condition in
+  `collapse_events`' `name` cases take the calendar day in the timestamp
+  column's own timezone. For a tz-aware column they used DuckDB's session
+  timezone, which defaults to the host's, so the same eventstream gave
+  different answers on different machines: two events at 23:30 and 00:30
+  Moscow time counted as two active days in `Europe/Moscow` and one on a
+  machine in New York. tz-naive columns are unchanged
+  ([#190](https://github.com/retentioneering/retentioneering-tools/issues/190)).
+
+- `collapse_events` and `to_daily_states` support `agg={"col": "sum"}` — the
+  example the `to_daily_states` docstring gives — and raise on an agg function
+  they do not know instead of quietly treating it as `"first"`. `"sum"` used to
+  return the group's first value, so a day holding `[10, 5]` reported a revenue
+  total of `10`, and a typo such as `"SUM"`, `"total"` or `"median"` did the
+  same with nothing to signal it
+  ([#192](https://github.com/retentioneering/retentioneering-tools/issues/192)).
+
+- The `(index, subindex)` ordering that #141's fix (below) gave
+  `collapse_events` run detection now applies to every processor that still
+  ordered events by `(timestamp, subindex)` and so gave order-dependent results
+  whenever events of a path shared a timestamp: session detection
+  (`split_sessions`, `collapse_events` windows), `collapse_events` aggregates
+  and merged-row positions, `add_events(churn=...)`, `truncate_paths`,
+  `to_daily_states`. Example: a path `a, b, a` at one timestamp split with
+  `split_sessions(separator="b")` put both `a` into the session after `b`.
+  Markers added from one source row no longer tie with each other, which made
+  `collapse_events`, `transition_graph_data` and `step_matrix_data` return
+  different results between identical calls.
+- `time_median` and `time_q95` edge weights in `transition_graph` and
+  `transition_graph_data` measure the exact gap between events instead of
+  counting whole-second boundaries, so a 125 ms span no longer reads as 0 s or
+  1 s depending on where it starts. Time-weighted results computed before this
+  release can shift by up to a second per transition.
+- Time-weighted graph and Ego-view diff tooltips display duration units for both
+  groups and their signed difference, including millisecond values.
+- Graph settings identify path-ID-group comparisons instead of showing a missing
+  segment warning; the diff help text states the group 1 minus group 2 direction.
+- A `path_cols`, `event_col`, `timestamp_col` or `segment_cols` entry naming a
+  column the DataFrame does not have raises `SchemaConfigError` naming the
+  schema key, the missing name and the available columns — as `custom_cols`
+  already did. The other four used to surface as pandas' bare
+  `KeyError: 'user_di'`, which said neither which schema key was wrong nor what
+  the columns were
+  ([#197](https://github.com/retentioneering/retentioneering-tools/issues/197)).
+- An anchor spec's `at` past either end of its pattern raises
+  `InvalidParameterError` naming the valid range and the pattern's tokens, the
+  same type an `at` of the wrong type raises. `{"pattern": "a->b->.*->c", "at": -4}`
+  used to surface as the internal `ValueError: max() iterable argument is
+  empty`, and a positive overrun such as `at=3` raised `IndexError`; code
+  catching that `IndexError` needs to catch `InvalidParameterError` instead
+  ([#194](https://github.com/retentioneering/retentioneering-tools/issues/194)).
+- `collapse_events` now detects runs in the order the eventstream is laid out by,
+  `(index, subindex)`, instead of `(timestamp, subindex)`. `subindex` is the
+  event-type rank, so it is equal for every raw event, which left the
+  `ROW_NUMBER` feeding the `LAG`/`SUM` windows numbering same-timestamp rows in
+  an arbitrary order. `collapse_events(loops=True)` therefore compared each event
+  to an arbitrary tied neighbour and identical calls on the same eventstream
+  returned different results whenever events in a path shared a timestamp — five
+  calls on a 100,000-row stream that must collapse nothing returned 99,994 /
+  99,992 / 100,000 / 99,998 / 99,992 rows. `group_col` runs were built from the
+  same key and its output is now ordered by the run's first position rather than
+  by a tied `(timestamp, subindex)`
+  ([#141](https://github.com/retentioneering/retentioneering-tools/issues/141)).
+
+## [5.3.0] - 2026-10-27
+
+### Added
+
+- Path patterns accept the regex quantifier family on gaps: `.{m,n}`, `{n}`,
+  `{m,}`, `{,n}`, `+` and `?` after `.` or a class, alongside `*`. Bounds are
+  inclusive and count the events strictly between the anchors, so
+  `add_to_cart->.{0,4}->purchase` is "bought within five steps", and
+  `cart->[shipping|payment]+->purchase` no longer matches an adjacent
+  cart/purchase the way `*` does. A bounded gap takes no ordinal, so `at=` and
+  Step Matrix centring are unchanged (#110).
+- Round-bracket groups repeat a sequence: `(B->.*->C->.*){2}` is unrolled into
+  two copies before matching. `{k,}` and `+` are accepted where a `.*` absorbs
+  the extra repetitions; an upper bound is rejected with the `NOT` condition
+  that expresses it, and a group whose copies would be glued back to back
+  despite a gap inside (`(B->.*->C){2}`) is rejected with both readings.
+  Step Sankey lays its blocks out from the unrolled pattern, so each copy gets
+  a block of its own.
+- Condition leaves for 0/1 metrics have a shorthand: `{"has_event": "purchase"}`,
+  `{"matches_pattern": "A->.*->B"}`, `{"has_any_event": ["A", "B"]}`, or
+  `{metric: metric_args}` for any of `has_event`, `has_any_event`,
+  `has_all_events`, `matches_pattern`, `in_segment`. Each means
+  `{"op": "=", "metric": ..., "metric_args": ..., "value": True}`, and works
+  in `filter_paths`, in MCP `filter_paths` steps, and in `collapse_events` name
+  cases for the 0/1 metrics those support (`has_event`, `has_any_event`,
+  `has_all_events`).
+- `method_args` of the `"kmeans"` method accepts `n_init` (`"auto"` or a positive
+  int, default `"auto"`) and `random_state` (int or None, default 42) on all three
+  clustering surfaces (`add_clusters`, `cluster_analysis_data`, `cluster_analysis`).
+  The library used to hard-code scikit-learn's single k-means++ run, so the same
+  features clustered under another seed could land in a different local optimum
+  and there was no way to ask for more initialisations; `n_init=10` now does
+  that. The values you pass are carried into `best_params`, so the saved
+  `add_clusters` call reproduces the split. Defaults are unchanged.
+- `transition_graph(label_scale=...)` scales every node and edge label on the
+  canvas (0.5–3, default 1), since the default sizes read too small on slides
+  and in screenshots. HTML exports keep the scale.
+
+### Changed
+
+- Segment Overview and Cluster Analysis tables group the rows of a bulk metric
+  (`event_count_bulk`, `has_event_bulk`, `in_segment_bulk`) under one collapsible
+  header such as `event_count_bulk · mean`, and label each row with just its event
+  or segment level, instead of repeating the metric and aggregation on every row.
+
+### Fixed
+
+- A condition node with no `op` that is not a shorthand leaf now raises
+  `PreprocessingConfigError` naming the node, instead of
+  `AttributeError: 'NoneType' object has no attribute 'upper'`.
+
+- Cluster Analysis Save/Copy use the features and path column from the displayed
+  analysis even after sidebar edits. Copied code explicitly preserves
+  `scaler=None`, and clearing a result also clears its saved call.
+
+- Cluster Analysis records the realized seed for `random_state=None` in
+  `best_params`, so saving clusters replays the displayed split. The widget
+  persists its KMeans settings and current seed in `state_file`; grid selection
+  and restoration reuse that seed, while a new Apply chooses a fresh one.
+
+- `describe()["segments"]` reports the events that have no value for a segment
+  column under the `<MISSING>` sentinel, the same level `get_segment_levels`
+  lists. Those events used to be dropped, and because `share` was normalized
+  over the remaining rows it still summed to 1.0 — a segment built with
+  `add_segment(func=...)` that left 3 of 5 events unassigned reported a 50/50
+  split instead of 20/20/60, with nothing marking the table as partial. The
+  docstring now states that these counts are over events, not paths
+  ([#188](https://github.com/retentioneering/retentioneering-tools/issues/188)).
+- `get_conversion_rate` counts paths rather than anchor positions when an anchor
+  spec uses `occurrence="all"`. `paths_with_start` used to count one per
+  occurrence, and a `within` window counted matching `(start, end)` pairs, so a
+  single path with one start and two ends inside the window reported
+  `converted=2` against `paths_with_start=1` — a `conversion_rate` of 2.0, with
+  `lift` carrying the same factor. The inflated denominator also understated the
+  rate (0.667 where both paths converted), and the `within=None` and windowed
+  branches disagreed with each other. A `within` window is also measured forward
+  from each start occurrence: an end that preceded a later start no longer
+  counts as converting from it
+  ([#186](https://github.com/retentioneering/retentioneering-tools/issues/186)).
+- The MCP tools `add_transition_graph`, `add_step_matrix`, `add_segment_overview`
+  and `get_conversion_rate` now return `{"error": "local_preprocessors: ..."}`
+  when a `local_preprocessors` step is invalid, as `update_base_stream` does for
+  the same step. The exception used to escape the tool, so the agent saw only
+  `Error executing tool <name>` with no message.
+- `n_clusters` and `nmf_components` in `cluster_analysis` / `cluster_analysis_data`
+  are now parsed and validated by one rule: a positive int, a non-empty list of
+  positive ints, or a string `"3"`, `"3-8"`, `"3,5,7"`, `"[3,5,7]"`.
+  `cluster_analysis_data(nmf_components="3-8")` used to pass the raw string to
+  scikit-learn and fail with an error about `n_components`; an invalid
+  `n_clusters` string used to fall back to the default `"3-8"` range silently, and
+  an invalid value typed into either Cluster Analysis sidebar field was silently
+  replaced. Any invalid value now raises a `ValueError` naming the parameter (in
+  the widget it is shown as the error)
+  ([#148](https://github.com/retentioneering/retentioneering-tools/issues/148)).
+- Funnels and `add_segment(funnel_events=...)` now compare the full event position
+  `(index, subindex)`. A synthetic marker immediately before its source event used
+  to share the same `index`, so `marker -> purchase` incorrectly reported zero
+  completions and assigned only the marker as the deepest stage. Path boundary
+  events were affected too. Matching remains strictly ordered: one occurrence
+  cannot satisfy repeated steps, and reversing the pair does not count as a
+  conversion.
+- On-demand widget computations in Jupyter (for example route stats in Transition
+  Graph) no longer fail or hang when a result contains NaN or Infinity. Python used
+  to send them as bare `NaN` tokens that the browser cannot parse, and one such
+  response rejected every other request waiting at the same time. Non-finite values
+  now come back as `null`, including through `dispatch_compute` for platform
+  backends. A response that still cannot be parsed affects no other request.
+  Interrupting the kernel mid-computation now answers the waiting request with an
+  error, and a request with no answer at all fails after 10 minutes instead of
+  waiting forever
+  ([#175](https://github.com/retentioneering/retentioneering-tools/issues/175)).
 
 ## [5.2.4] - 2026-10-07
 

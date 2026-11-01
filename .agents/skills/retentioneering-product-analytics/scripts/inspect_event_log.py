@@ -89,6 +89,12 @@ def main() -> int:
     ap.add_argument("--out", default="artifacts")
     a = ap.parse_args()
 
+    # A redirected console may use an encoding without some character printed
+    # below (a column name, a dash): show it as "?" rather than crash. The JSON
+    # profile is written in UTF-8 and keeps it.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
+
     if a.path.endswith((".parquet", ".pq")):
         df = pd.read_parquet(a.path)
         sep = None
@@ -215,7 +221,7 @@ def main() -> int:
         json.dump(profile, fh, indent=2, ensure_ascii=False, default=str)
 
     print(
-        f"rows={profile['rows_read']:,}  paths={profile.get('n_paths', '?'):,}  "
+        f"rows={profile['rows_read']:,}  paths={profile.get('n_paths', '?')}  "
         f"event_types={profile.get('n_event_types', '?')}"
     )
     if ts_col and "timestamp" in profile:

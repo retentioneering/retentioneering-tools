@@ -7,6 +7,7 @@ import pandas as pd
 
 from retentioneering import engine
 from retentioneering.eventstream.event_type import EventTypes
+from retentioneering.eventstream.ordering import establish_order
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import SchemaConfigError
 from retentioneering.ops import op as _op
@@ -95,10 +96,14 @@ class Eventstream:
         df: "pd.DataFrame | str",
         schema: dict | None = None,
         preprocess: bool = True,
+        _order: str = "unknown",
     ):
         self._df = df
         self._schema = schema
         self.preprocess = preprocess
+        # How far to trust the frame's row order (`ordering.establish_order`).
+        # Processor wiring passes "trusted"/"emitted"; anyone else gets checked.
+        self._order = _order
         self._lineage: list[dict] = []
         self._post_init()
 
@@ -126,6 +131,7 @@ class Eventstream:
         else:
             for col in [self.schema.event_col] + self.schema.segment_cols:
                 self._df[col] = self._df[col].astype("category")
+        self._df = establish_order(self._df, self.schema, self._order)
 
         schema = self.schema
         declared_cols = set(
@@ -164,6 +170,24 @@ class Eventstream:
         schema = self.schema
         event_types = EventTypes()
 
+        # Before anything indexes into the frame. `custom_cols` is checked in
+        # `_post_init`; without this the other four keys surfaced only as the
+        # bare `KeyError` pandas raises at the first use of the name, which
+        # names neither the schema key that was wrong nor the columns on offer.
+        declared = [
+            ("event_col", [schema.event_col]),
+            ("timestamp_col", [schema.timestamp_col]),
+            ("path_cols", list(schema.path_cols)),
+            ("segment_cols", list(schema.segment_cols)),
+        ]
+        for key, names in declared:
+            missing = [c for c in names if c not in df.columns]
+            if missing:
+                raise SchemaConfigError(
+                    f"{key} column(s) not found in the DataFrame: {missing}. "
+                    f"Available columns: {list(df.columns)}."
+                )
+
         df[schema.timestamp_col] = _to_datetime_auto(df[schema.timestamp_col])
 
         for col in schema.path_cols:
@@ -196,14 +220,28 @@ class Eventstream:
         if schema.subindex not in df.columns:
             df[schema.subindex] = df[schema.event_type].map(event_types.get_order())
 
-        df = df.sort_values(
-            [schema.path_col, schema.timestamp_col, schema.subindex]
-        ).reset_index(drop=True)
-
+        # `index` is the event's position in its path (ADR-0017). When it is
+        # derived here, events tied on timestamp keep their input row order —
+        # the sort is stable and nothing else breaks the tie, because the order
+        # the log arrived in usually carries more signal than any rule would.
         if schema.index not in df.columns:
+            df = df.sort_values(
+                [schema.path_col, schema.timestamp_col, schema.subindex],
+                kind="stable",
+            ).reset_index(drop=True)
             df[schema.index] = df.groupby(schema.path_col).cumcount() + 1
+            self._order = "numbered"
+        else:
+            self._order = "user"
 
         self._df = df
+
+    def _derive(self, processor) -> "Eventstream":
+        """Apply a data processor and wrap its result. Only processors that
+        can break the event order get their output checked (ADR-0017)."""
+        new_df, new_schema = processor.apply(self._df, self.schema)
+        order = "emitted" if processor.may_break_order else "trusted"
+        return Eventstream(new_df, asdict(new_schema), preprocess=False, _order=order)
 
     def __repr__(self) -> str:
         chain = " → ".join(
@@ -407,7 +445,10 @@ class Eventstream:
               count/mean/std/min/percentiles/max rows and `length`/`duration`
               columns
             - `segments`: DataFrame of segment_col/value/count/share, one row
-              per segment level across all segment columns
+              per segment level across all segment columns. `count` is the number
+              of events carrying the value and `share` its fraction of all events,
+              per column. Events with no value are reported under the `<MISSING>`
+              level `get_segment_levels` uses.
 
         Examples
         --------
@@ -463,11 +504,10 @@ class Eventstream:
         from retentioneering.data_processors.filter_events import FilterEvents
 
         if keep is None and drop is None and func is None and sql is None:
-            return Eventstream(self._df.copy(), asdict(self.schema), preprocess=False)
-        new_df, new_schema = FilterEvents(
-            keep=keep, drop=drop, func=func, sql=sql
-        ).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+            return Eventstream(
+                self._df.copy(), asdict(self.schema), preprocess=False, _order="trusted"
+            )
+        return self._derive(FilterEvents(keep=keep, drop=drop, func=func, sql=sql))
 
     @_tracked("dp_add_clusters")
     @_op
@@ -513,7 +553,11 @@ class Eventstream:
             `nmf_components` are not method arguments — they are pipeline steps
             applied before clustering, so they stay outside this dict.
 
-            - `"kmeans"` — `n_clusters` (int, required).
+            - `"kmeans"` — `n_clusters` (int, required); optionally `n_init`
+              (`"auto"` or a positive int, default `"auto"`: how many k-means++
+              initialisations to run, keeping the best) and `random_state`
+              (int or None, default 42). More starts can reduce sensitivity to
+              the seed; a fixed seed makes a run repeatable.
             - `"hdbscan"` — `min_cluster_size` (int, default 5),
               `cluster_selection_epsilon` (float, default 0.0).
         scaler : str or None, default "minmax"
@@ -543,17 +587,18 @@ class Eventstream:
         """
         from retentioneering.data_processors.add_clusters import AddClusters
 
-        new_df, new_schema = AddClusters(
-            eventstream=self,
-            name=name,
-            features=features,
-            method=method,
-            method_args=method_args,
-            scaler=scaler,
-            nmf_components=nmf_components,
-            path_col=path_col,
-        ).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(
+            AddClusters(
+                eventstream=self,
+                name=name,
+                features=features,
+                method=method,
+                method_args=method_args,
+                scaler=scaler,
+                nmf_components=nmf_components,
+                path_col=path_col,
+            )
+        )
 
     @_tracked("dp_urls_to_events")
     @_op
@@ -627,19 +672,20 @@ class Eventstream:
         """
         from retentioneering.data_processors.urls_to_events import UrlsToEvents
 
-        new_df, new_schema = UrlsToEvents(
-            column=column,
-            nodes=nodes,
-            strip_host=strip_host,
-            strip_query=strip_query,
-            strip_locale=strip_locale,
-            keep_full_paths=keep_full_paths,
-            host_col=host_col,
-            query_col=query_col,
-            locale_col=locale_col,
-            slug_col=slug_col,
-        ).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(
+            UrlsToEvents(
+                column=column,
+                nodes=nodes,
+                strip_host=strip_host,
+                strip_query=strip_query,
+                strip_locale=strip_locale,
+                keep_full_paths=keep_full_paths,
+                host_col=host_col,
+                query_col=query_col,
+                locale_col=locale_col,
+                slug_col=slug_col,
+            )
+        )
 
     @_tracked("dp_filter_paths")
     @_op
@@ -674,7 +720,12 @@ class Eventstream:
               - `metric_args` (optional) — dict of extra arguments for the metric.
                 `has_event`/`event_count` take a single `event` string; for a
                 multi-event AND/OR condition use `has_all_events`/`has_any_event`
-                with an `event_groups` list.
+                with an `events` list.
+            A leaf comparing a 0/1 metric (`has_event`, `has_any_event`,
+            `has_all_events`, `matches_pattern`, `in_segment`) with `True` may be
+            written as `{metric: metric_args}`, or as `{metric: value}` for a metric
+            with one required argument: `{"has_event": "purchase"}`,
+            `{"matches_pattern": "A->.*->B"}`, `{"has_any_event": ["A", "B"]}`.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
 
@@ -686,6 +737,9 @@ class Eventstream:
             # Keep paths that contain a promo_view or a discount_applied event
             stream.filter_paths({"op": "=", "metric": "has_any_event", "value": True,
                                   "metric_args": {"events": ["promo_view", "discount_applied"]}})
+
+            # The same, with the shorthand for a 0/1 metric compared with True
+            stream.filter_paths({"has_any_event": ["promo_view", "discount_applied"]})
 
             # Keep paths longer than 3 events that match a funnel pattern
             # (a top-level list means AND)
@@ -791,7 +845,8 @@ class Eventstream:
         sql : str, optional
             DuckDB SQL SELECT statement that reads from the `eventstream` table alias
             and returns rows in the eventstream schema. Each returned row is added as a
-            new synthetic event.
+            new synthetic event at the position (`index`) of the row it was selected
+            from; an `index` that matches no event of the path raises.
         churn : dict, optional
             Creates a churn event after a period of inactivity.
               - `inactivity_days` (int or float, required) — gap in days after which
@@ -802,7 +857,7 @@ class Eventstream:
             Mark a *position* in each path rather than an event name: an event
             name, or an anchor spec — the same form `truncate_paths` takes for
             `start_anchor`, and the same keys (`pattern`, `at`, `occurrence`,
-            `offset`, `offset_side`); see
+            `offset`, `offset_side`, `event_col`); see
             [Path Patterns](/docs/path-patterns). One anchor per call, not a
             list. By default the anchor resolves once per path
             (`occurrence="first"`); pass `occurrence="all"` to mark every
@@ -838,15 +893,16 @@ class Eventstream:
         """
         from retentioneering.data_processors.add_events import AddEvents
 
-        new_df, new_schema = AddEvents(
-            name,
-            source_event=source_event,
-            sql=sql,
-            churn=churn,
-            anchor=anchor,
-            path_col=path_col,
-        ).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(
+            AddEvents(
+                name,
+                source_event=source_event,
+                sql=sql,
+                churn=churn,
+                anchor=anchor,
+                path_col=path_col,
+            )
+        )
 
     @_tracked("dp_add_segment")
     @_op
@@ -972,18 +1028,19 @@ class Eventstream:
         """
         from retentioneering.data_processors.add_segment import AddSegment
 
-        new_df, new_schema = AddSegment(
-            name,
-            rules=rules,
-            func=func,
-            sql=sql,
-            funnel_events=funnel_events,
-            time_range=time_range,
-            metric_bins=metric_bins,
-            path_col=path_col,
-            eventstream=self,
-        ).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(
+            AddSegment(
+                name,
+                rules=rules,
+                func=func,
+                sql=sql,
+                funnel_events=funnel_events,
+                time_range=time_range,
+                metric_bins=metric_bins,
+                path_col=path_col,
+                eventstream=self,
+            )
+        )
 
     @_tracked("dp_collapse_events")
     @_op
@@ -1047,11 +1104,13 @@ class Eventstream:
               plain string used as the fallback for groups no case matched.
               A condition is the `filter_paths` condition tree, over the metrics
               `has_event`, `event_count`, `has_all_events`, `has_any_event`,
-              `duration`, `length`, `time_between`, `active_days`.
+              `duration`, `length`, `time_between`, `active_days`, including its
+              shorthand leaves (`{"has_event": "purchase"}`).
         agg : dict, optional
             Aggregation rules for non-event columns when rows are merged, as a
             `{column: agg_func}` dict. `agg_func` is one of `"first"` (default),
-            `"last"`, `"min"`, `"max"`, `"mean"`, `"mode"`, `"any"`. See
+            `"last"`, `"min"`, `"max"`, `"mean"`, `"sum"`, `"mode"`, `"any"`;
+            anything else raises. See
             [agg](/docs/data-processors/collapse-events#agg) below. Example:
             `{"price": "max"}`.
         path_col : str, optional
@@ -1087,16 +1146,17 @@ class Eventstream:
         """
         from retentioneering.data_processors.collapse_events import CollapseEvents
 
-        new_df, new_schema = CollapseEvents(
-            loops=loops,
-            event_groups=event_groups,
-            bounds=bounds,
-            group_col=group_col,
-            name=name,
-            agg=agg,
-            path_col=path_col,
-        ).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(
+            CollapseEvents(
+                loops=loops,
+                event_groups=event_groups,
+                bounds=bounds,
+                group_col=group_col,
+                name=name,
+                agg=agg,
+                path_col=path_col,
+            )
+        )
 
     @_tracked("dp_to_daily_states")
     @_op
@@ -1111,8 +1171,9 @@ class Eventstream:
         Convert the eventstream into daily lifecycle-state events.
 
         Each path is expanded to one row per calendar day from its first event
-        to `max_dormant_days` days after its last event. Every row is labelled
-        with one of six engagement states.
+        to `max_dormant_days` days after its last event, with days taken in the
+        timestamp column's timezone if it has one. Every row is labelled with
+        one of six engagement states.
 
         Active days:
             `new`          — first-ever active day for this path
@@ -1134,7 +1195,9 @@ class Eventstream:
             Capped at the last day present in the dataset, so paths active near
             the end of the observation window get fewer trailing rows.
         agg : dict, optional
-            Per-column aggregation overrides (e.g. `{"revenue": "sum"}`).
+            Per-column aggregation overrides, as a `{column: agg_func}` dict
+            (e.g. `{"revenue": "sum"}`). Same `agg_func` values as
+            `collapse_events`.
         path_col : str, optional
             Override the path ID column.
 
@@ -1145,13 +1208,14 @@ class Eventstream:
         """
         from retentioneering.data_processors.to_daily_states import ToDailyStates
 
-        new_df, new_schema = ToDailyStates(
-            active_events=active_events,
-            max_dormant_days=max_dormant_days,
-            agg=agg,
-            path_col=path_col,
-        ).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(
+            ToDailyStates(
+                active_events=active_events,
+                max_dormant_days=max_dormant_days,
+                agg=agg,
+                path_col=path_col,
+            )
+        )
 
     @_tracked("dp_drop_segment")
     @_op
@@ -1170,8 +1234,7 @@ class Eventstream:
         """
         from retentioneering.data_processors.drop_segment import DropSegment
 
-        new_df, new_schema = DropSegment(name).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(DropSegment(name))
 
     @_tracked("dp_edit_events")
     @_op
@@ -1198,10 +1261,7 @@ class Eventstream:
         """
         from retentioneering.data_processors.edit_events import EditEvents
 
-        new_df, new_schema = EditEvents(rename=rename, delete=delete).apply(
-            self._df, self.schema
-        )
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(EditEvents(rename=rename, delete=delete))
 
     @_tracked("dp_rename_events")
     @_op
@@ -1223,8 +1283,7 @@ class Eventstream:
         """
         from retentioneering.data_processors.rename_events import RenameEvents
 
-        new_df, new_schema = RenameEvents(mapping).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(RenameEvents(mapping))
 
     @_tracked("dp_rename_segment_levels")
     @_op
@@ -1259,10 +1318,7 @@ class Eventstream:
             RenameSegmentLevels,
         )
 
-        new_df, new_schema = RenameSegmentLevels(segment_col, mapping).apply(
-            self._df, self.schema
-        )
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(RenameSegmentLevels(segment_col, mapping))
 
     @_tracked("dp_drop_events")
     @_op
@@ -1283,8 +1339,7 @@ class Eventstream:
         """
         from retentioneering.data_processors.edit_events import EditEvents
 
-        new_df, new_schema = EditEvents(delete=names).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(EditEvents(delete=names))
 
     @_tracked("dp_sample_paths")
     @_op
@@ -1305,7 +1360,9 @@ class Eventstream:
             Fraction of total paths to keep, in the range `(0.0, 1.0]`.
             Passing `1.0` returns the eventstream unchanged.
         random_state : int, optional
-            Seed for the random number generator; pass an integer for reproducible results.
+            Seed for the random number generator; pass an integer for reproducible
+            results. The same seed selects the same paths from the same set of
+            path IDs, whatever the order of rows.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
 
@@ -1316,10 +1373,9 @@ class Eventstream:
         """
         from retentioneering.data_processors.sample_paths import SamplePaths
 
-        new_df, new_schema = SamplePaths(
-            n=n, frac=frac, random_state=random_state, path_col=path_col
-        ).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(
+            SamplePaths(n=n, frac=frac, random_state=random_state, path_col=path_col)
+        )
 
     @_tracked("dp_split_sessions")
     @_op
@@ -1371,15 +1427,16 @@ class Eventstream:
         """
         from retentioneering.data_processors.split_sessions import SplitSessions
 
-        new_df, new_schema = SplitSessions(
-            session_col=session_col,
-            session_index_col=session_index_col,
-            separator=separator,
-            bounds=bounds,
-            timeout=timeout,
-            path_col=path_col,
-        ).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(
+            SplitSessions(
+                session_col=session_col,
+                session_index_col=session_index_col,
+                separator=separator,
+                bounds=bounds,
+                timeout=timeout,
+                path_col=path_col,
+            )
+        )
 
     @_tracked("dp_truncate_paths")
     @_op
@@ -1485,12 +1542,13 @@ class Eventstream:
         """
         from retentioneering.data_processors.truncate_paths import TruncatePaths
 
-        new_df, new_schema = TruncatePaths(
-            start_anchor=start_anchor,
-            end_anchor=end_anchor,
-            path_col=path_col,
-        ).apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(
+            TruncatePaths(
+                start_anchor=start_anchor,
+                end_anchor=end_anchor,
+                path_col=path_col,
+            )
+        )
 
     def _filter_by_segment_levels(
         self, segment_col: str, levels: list
@@ -1644,8 +1702,7 @@ class Eventstream:
         )
 
         dp = AddStartEndEvents(path_col)
-        new_df, new_schema = dp.apply(self._df, self.schema)
-        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+        return self._derive(dp)
 
     @_tracked("headless_transition_graph")
     def transition_graph_data(
@@ -1750,14 +1807,14 @@ class Eventstream:
         anchor : str or dict, optional
             Centre everything on one position instead, given as an anchor spec —
             the same form `truncate_paths` takes for `start_anchor`, and the same
-            keys (`pattern`, `at`, `occurrence`, `offset`, `offset_side`). Yields
-            a single block. Mutually exclusive with `path_pattern`, which lays
-            the pattern's parts out side by side; use `anchor` when the position
-            needs `occurrence` or an `offset`, neither of which a pattern can
-            express. Paths where the anchor does not resolve are absent, so it
-            selects as well as centres. `occurrence="all"` is rejected: several
-            positions per path would make a path count more than once, and the
-            cells are shares of paths.
+            keys (`pattern`, `at`, `occurrence`, `offset`, `offset_side`,
+            `event_col`). Yields a single block. Mutually exclusive with
+            `path_pattern`, which lays the pattern's parts out side by side; use
+            `anchor` when the position needs `occurrence` or an `offset`, neither
+            of which a pattern can express. Paths where the anchor does not
+            resolve are absent, so it selects as well as centres.
+            `occurrence="all"` is rejected: several positions per path would make
+            a path count more than once, and the cells are shares of paths.
 
         Returns
         -------
@@ -1832,14 +1889,14 @@ class Eventstream:
         anchor : str or dict, optional
             Centre everything on one position instead, given as an anchor spec —
             the same form `truncate_paths` takes for `start_anchor`, and the same
-            keys (`pattern`, `at`, `occurrence`, `offset`, `offset_side`). Yields
-            a single block. Mutually exclusive with `path_pattern`, which lays
-            the pattern's parts out side by side; use `anchor` when the position
-            needs `occurrence` or an `offset`, neither of which a pattern can
-            express. Paths where the anchor does not resolve are absent, so it
-            selects as well as centres. `occurrence="all"` is rejected: several
-            positions per path would make a path count more than once, and the
-            cells are shares of paths.
+            keys (`pattern`, `at`, `occurrence`, `offset`, `offset_side`,
+            `event_col`). Yields a single block. Mutually exclusive with
+            `path_pattern`, which lays the pattern's parts out side by side; use
+            `anchor` when the position needs `occurrence` or an `offset`, neither
+            of which a pattern can express. Paths where the anchor does not
+            resolve are absent, so it selects as well as centres.
+            `occurrence="all"` is rejected: several positions per path would make
+            a path count more than once, and the cells are shares of paths.
 
         Returns
         -------
@@ -2026,6 +2083,7 @@ class Eventstream:
         path_pattern=None,
         height=None,
         sidebar_open=None,
+        label_scale=None,
         views=None,
         view=None,
         state_file=None,
@@ -2061,6 +2119,9 @@ class Eventstream:
             Widget height in pixels.
         sidebar_open : bool, default True
             Whether the sidebar starts open.
+        label_scale : float, default 1.0
+            Multiplier on node and edge label font sizes, from 0.5 to 3.
+            Raise it for slides and screenshots.
         views : list of dict, optional
             Named visual presets rendered as pills above the graph. Each view
             is a dict with the keys `name`, `focus`, `edgeFilter`,
@@ -2109,6 +2170,7 @@ class Eventstream:
             path_col=path_col if path_col is not None else _UNSET,
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
+            label_scale=label_scale if label_scale is not None else _UNSET,
             views=views if views is not None else _UNSET,
             view=view if view is not None else _UNSET,
             state_file=state_file,
@@ -2237,7 +2299,10 @@ class Eventstream:
         ----------
         start_anchor : str or dict or list
             The condition — where the window opens. `occurrence` (default
-            `"first"`) picks which occurrence of it counts.
+            `"first"`) picks which occurrence of it counts. With `within`,
+            `occurrence="all"` opens a window at every occurrence, and the path
+            converts if any of them is followed by the end anchor in time;
+            without `within` it gives the same result as `"first"`.
         end_anchor : str or dict or list
             The target(s) looked for after it. The whole pattern has to fall
             after the start anchor, lead-in included.
@@ -2451,18 +2516,23 @@ class Eventstream:
 
             - `"kmeans"` — `n_clusters` (int, list of int, or a range string like
               `"3-8"`; a list or range runs a silhouette-scored grid search).
-              Defaults to `"3-8"`.
+              Defaults to `"3-8"`. Optionally `n_init` and `random_state`, which
+              the sidebar has no fields for either: they apply to every Apply
+              and travel into the saved `add_clusters` call. With
+              `random_state=None`, each Apply chooses a fresh seed; selecting
+              a grid point or restoring `state_file` reuses the current seed.
             - `"hdbscan"` — `min_cluster_size`, `cluster_selection_epsilon`.
         scaler : {"minmax", "std"}, optional
             Feature scaler applied before clustering; default `"minmax"`.
-        nmf_components : int or list of int, optional
+        nmf_components : int, list of int, or str, optional
             Number of components for an optional NMF (non-negative matrix
             factorization) step applied to the scaled features before
             clustering; if omitted, NMF is skipped (the sidebar's "NMF
             Decomposition" toggle starts off). Passing it turns the toggle on
             and pre-fills the field, so it is a starting point you can edit
             rather than a lock. A list triggers a silhouette-scored grid search
-            over the given values.
+            over the given values; a string is parsed like `n_clusters`
+            (`"3"`, `"3-8"`, `"3,5,7"`, `"[3,5,7]"`).
         overview_metrics : list of dict, optional
             Metrics shown in the overview heatmap after clustering (independent
             of `features`). If omitted, the sidebar starts pre-filled with a
@@ -2487,6 +2557,12 @@ class Eventstream:
         state_file : str, optional
             JSON file the widget state is bound to; see
             [Saving widget state](/docs/widgets#saving-widget-state).
+
+        Notes
+        -----
+        Save Clusters and Copy code use the last displayed analysis, including
+        its features, path column, and scaler. Sidebar edits take effect after
+        Apply; copied code preserves an explicitly disabled scaler (`None`).
 
         Examples
         --------
@@ -2570,16 +2646,24 @@ class Eventstream:
             rather than being ignored.
 
             - `"kmeans"` — `n_clusters` (int, list of int, or a range string like
-              `"3-8"`). Defaults to `"3-8"`, i.e. a grid search.
+              `"3-8"`). Defaults to `"3-8"`, i.e. a grid search. Optionally
+              `n_init` (`"auto"` or a positive int, default `"auto"`) and
+              `random_state` (int or None, default 42): settings, not grid
+              coordinates — every fit of the search uses them, and the ones you
+              pass are carried into `best_params`. `random_state=None` chooses
+              one random seed per call and returns that integer in `best_params`
+              so the resulting split can be replayed.
             - `"hdbscan"` — `min_cluster_size` (int, default 5),
               `cluster_selection_epsilon` (float, default 0.0).
         scaler : {"minmax", "std"}, optional
             Feature scaler applied before clustering; default `"minmax"`.
-        nmf_components : int or list of int, optional
+        nmf_components : int, list of int, or str, optional
             Number of components for an optional NMF (non-negative matrix
             factorization) step applied to the scaled features before
             clustering; if omitted, NMF is skipped. A list triggers a
-            silhouette-scored grid search over the given values.
+            silhouette-scored grid search over the given values. A string is
+            parsed like `n_clusters`: `"3"`, a range `"3-8"`, or a list
+            `"3,5,7"` / `"[3,5,7]"`.
         overview_metrics : list of dict, optional
             Metrics shown in the overview heatmap after clustering (independent
             of `features`); if omitted, `overview_df` only has segment_size and

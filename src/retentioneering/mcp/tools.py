@@ -276,7 +276,10 @@ def add_transition_graph(
     """
     if (err := _require_stream(session)) is not None:
         return err
-    src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
     widget = src.transition_graph(
         edge_weight=edge_weight,
         diff=diff,
@@ -338,7 +341,9 @@ def add_step_matrix(
     path_pattern:
         Filter paths by an event sequence: "add_to_cart->.*->purchase", or
         "add_to_cart->[^support_chat]*->purchase" for the same without support
-        in between. Full syntax: the Path Patterns docs page.
+        in between, "add_to_cart->.{0,4}->purchase" for at most four events in
+        between, "(cart->.*){2}->purchase" for two carts before it (each copy is
+        its own block). Full syntax: the Path Patterns docs page.
     path_col:
         Override the path ID column.
 
@@ -351,7 +356,10 @@ def add_step_matrix(
     """
     if (err := _require_stream(session)) is not None:
         return err
-    src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
     widget = src.step_matrix(
         max_steps=max_steps,
         diff=diff,
@@ -459,7 +467,10 @@ def add_segment_overview(
     """
     if (err := _require_stream(session)) is not None:
         return err
-    src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
     widget = src.segment_overview(
         segment_col=segment_col,
         metrics=metrics or [],
@@ -554,7 +565,10 @@ def get_conversion_rate(
     """
     if (err := _require_stream(session)) is not None:
         return err
-    src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
     try:
         frame = src.get_conversion_rate(
             start_anchor=start_anchor,

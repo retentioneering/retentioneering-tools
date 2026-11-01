@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -148,6 +149,155 @@ class TestClusterAnalysis:
         ]
         assert result["best_params"]["method_args"]["n_clusters"] in [2, 3, 4, 5]
 
+    def test_kmeans_init_args_reach_the_fit_and_best_params(self) -> None:
+        """`n_init` / `random_state` are settings, not grid coordinates: the grid
+        stays `n_clusters` only, every fit uses them, and `best_params` carries
+        the ones passed so the saved `add_clusters` call reproduces the split."""
+        stream = Eventstream(get_df())
+        features = [{"metric": "length"}, {"metric": "duration"}]
+
+        fixed = stream.cluster_analysis_data(
+            features=features,
+            method_args={"n_clusters": 2, "n_init": 10, "random_state": 7},
+        )
+        assert fixed["best_params"]["method_args"] == {
+            "n_clusters": 2,
+            "n_init": 10,
+            "random_state": 7,
+        }
+        # ... and the split it describes is the one `add_clusters` reproduces.
+        again = stream.add_clusters(
+            name="cluster", features=features, **fixed["best_params"]
+        )
+        labels = again.df.groupby("user_id")["cluster"].first()
+        assert labels.to_dict() == fixed["cluster_labels"].to_dict()
+
+        searched = stream.cluster_analysis_data(
+            features=features, method_args={"n_clusters": [2, 3], "n_init": 10}
+        )
+        assert searched["silhouette"]["params"] == [
+            {"n_clusters": 2},
+            {"n_clusters": 3},
+        ]
+        assert searched["best_params"]["method_args"]["n_init"] == 10
+        assert "random_state" not in searched["best_params"]["method_args"]
+
+        picked = stream.cluster_analysis_data(
+            features=features,
+            method_args={"n_clusters": [2, 3], "n_init": 10},
+            select={"n_clusters": 3},
+        )
+        assert picked["best_params"]["method_args"] == {"n_clusters": 3, "n_init": 10}
+
+    def test_kmeans_invalid_init_args_raise(self) -> None:
+        stream = Eventstream(get_df())
+        with pytest.raises(ValueError, match="n_init"):
+            stream.cluster_analysis_data(
+                features=[{"metric": "length"}],
+                method_args={"n_clusters": 2, "n_init": "ten"},
+            )
+        with pytest.raises(ValueError, match="random_state"):
+            stream.cluster_analysis_data(
+                features=[{"metric": "length"}],
+                method_args={"n_clusters": 2, "random_state": 1.5},
+            )
+
+    @pytest.mark.parametrize(
+        "n_clusters,nmf_components,select",
+        [
+            (2, None, None),
+            ([2, 3], 2, None),
+            ([2, 3], [1, 2], {"n_clusters": 3, "nmf_components": 2}),
+        ],
+        ids=["fixed", "grid-fixed-nmf", "selected-joint-grid"],
+    )
+    def test_kmeans_none_seed_best_params_reproduce_exact_labels(
+        self, n_clusters, nmf_components, select
+    ) -> None:
+        stream = Eventstream(get_df())
+        features = [{"metric": "length"}, {"metric": "duration"}]
+        method_args = {"n_clusters": n_clusters, "n_init": 10, "random_state": None}
+
+        result = stream.cluster_analysis_data(
+            features=features,
+            method_args=method_args,
+            nmf_components=nmf_components,
+            select=select,
+        )
+        used = result["best_params"]["method_args"]
+        assert type(used["random_state"]) is int
+        assert 0 <= used["random_state"] < 2**32
+        assert method_args == {
+            "n_clusters": n_clusters,
+            "n_init": 10,
+            "random_state": None,
+        }
+        if select is not None:
+            assert used["n_clusters"] == select["n_clusters"]
+            assert result["best_params"]["nmf_components"] == select["nmf_components"]
+        if isinstance(n_clusters, list):
+            assert all(
+                "random_state" not in point and "n_init" not in point
+                for point in result["silhouette"]["params"]
+            )
+
+        saved = stream.add_clusters(
+            name="cluster", features=features, **result["best_params"]
+        )
+        labels = saved.df.groupby("user_id")["cluster"].first()
+        assert labels.to_dict() == result["cluster_labels"].to_dict()
+
+    @pytest.mark.parametrize("extra_args", [{}, {"random_state": 7}])
+    def test_kmeans_deterministic_seed_does_not_advance_global_rng(
+        self, extra_args
+    ) -> None:
+        stream = Eventstream(get_df())
+        state = np.random.get_state()
+        try:
+            np.random.seed(913)
+            expected = np.random.randint(0, 2**32, size=5, dtype=np.uint32)
+            np.random.seed(913)
+            result = stream.cluster_analysis_data(
+                features=[{"metric": "length"}, {"metric": "duration"}],
+                method_args={"n_clusters": [2, 3], "n_init": 10, **extra_args},
+            )
+            np.testing.assert_array_equal(
+                np.random.randint(0, 2**32, size=5, dtype=np.uint32), expected
+            )
+        finally:
+            np.random.set_state(state)
+        assert result["best_params"]["method_args"] == {
+            "n_clusters": result["best_params"]["method_args"]["n_clusters"],
+            "n_init": 10,
+            **extra_args,
+        }
+
+    def test_kmeans_none_seed_respects_global_numpy_seed(self) -> None:
+        stream = Eventstream(get_df())
+        state = np.random.get_state()
+        try:
+            results = []
+            for _ in range(2):
+                np.random.seed(913)
+                results.append(
+                    stream.cluster_analysis_data(
+                        features=[{"metric": "length"}, {"metric": "duration"}],
+                        method_args={
+                            "n_clusters": [2, 3],
+                            "n_init": 10,
+                            "random_state": None,
+                        },
+                    )
+                )
+        finally:
+            np.random.set_state(state)
+        assert type(results[0]["best_params"]["method_args"]["random_state"]) is int
+        assert results[0]["best_params"] == results[1]["best_params"]
+        assert results[0]["silhouette"] == results[1]["silhouette"]
+        pd.testing.assert_series_equal(
+            results[0]["cluster_labels"], results[1]["cluster_labels"]
+        )
+
     def test_hdbscan_basic(self) -> None:
         """Test hdbscan clustering with overview"""
         df = get_df()
@@ -256,6 +406,52 @@ class TestClusterAnalysis:
         for name, means in nmf["W_cluster_means"].items():
             assert name.startswith("cluster_")
             assert len(means) == 2  # nmf_components=2 components
+
+    @staticmethod
+    def _grid_kwargs(param: str, value) -> dict:
+        """Call kwargs that put `value` into `param` and keep the other fixed."""
+        kwargs = {"features": [{"metric": "length"}, {"metric": "duration"}]}
+        if param == "n_clusters":
+            kwargs["method_args"] = {"n_clusters": value}
+        else:
+            kwargs["method_args"] = {"n_clusters": 2}
+            kwargs["nmf_components"] = value
+        return kwargs
+
+    @pytest.mark.parametrize("param", ["n_clusters", "nmf_components"])
+    @pytest.mark.parametrize(
+        "value, expected",
+        [
+            ("2-3", [2, 3]),
+            ("2,3", [2, 3]),
+            ("[2, 3]", [2, 3]),
+            ("2", 2),
+            ((2, 3), [2, 3]),
+        ],
+    )
+    def test_grid_param_forms_are_equivalent(self, param, value, expected) -> None:
+        """`n_clusters` and `nmf_components` accept the same forms (#148): each
+        string form gives the same result as its int / list equivalent."""
+        stream = Eventstream(get_df())
+
+        got = stream.cluster_analysis_data(**self._grid_kwargs(param, value))
+        want = stream.cluster_analysis_data(**self._grid_kwargs(param, expected))
+
+        assert got.get("silhouette") == want.get("silhouette")
+        assert got["nmf"] == want["nmf"]
+        assert got.get("best_params") == want.get("best_params")
+
+    @pytest.mark.parametrize("param", ["n_clusters", "nmf_components"])
+    @pytest.mark.parametrize(
+        "value",
+        ["a-b", "", "two", "2.5", "0", "[]", '["a"]', 0, -1, 2.5, True, [], [2, 0]],
+    )
+    def test_invalid_grid_param_raises_naming_it(self, param, value) -> None:
+        """Both parameters reject the same values with a `ValueError` naming the
+        parameter — no silent fallback to the default range, no sklearn error."""
+        stream = Eventstream(get_df())
+        with pytest.raises(ValueError, match=f"^{param}="):
+            stream.cluster_analysis_data(**self._grid_kwargs(param, value))
 
     def test_nmf_silhouette(self) -> None:
         """Test NMF + silhouette mode returns silhouette data but no H matrix"""

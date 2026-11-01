@@ -45,6 +45,14 @@ export function render({ host, el, isStatic = false }: RenderContext) {
   }
   syncResultToStore();
 
+  // The pattern as Python matched it — a group like `(cart->.*){2}` unrolled
+  // into its copies. Blocks are laid out from this, not from the pattern as
+  // typed, or a group would render as one block where Python computed several.
+  function readLayoutPattern(): string | null {
+    const d = parseJson<{ layout_pattern?: string | null }>((host.get("result") as string) || "{}", {});
+    return d?.layout_pattern ?? null;
+  }
+
   // Anchor mode: the step-0 event Python resolved from the `anchor` spec.
   function readAnchorEvent(): string | null {
     const d = parseJson<{ anchor_event?: string | null }>((host.get("result") as string) || "{}", {});
@@ -62,6 +70,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
     const [maxSteps, setMaxSteps]         = React.useState<number>(() => (host.get("max_steps") as number) ?? 10);
     const [pathPattern, setPathPattern]   = React.useState<string>(() => (host.get("path_pattern") as string) || "");
     const [anchorEvent, setAnchorEvent]   = React.useState<string | null>(readAnchorEvent);
+    const [layoutPattern, setLayoutPattern] = React.useState<string | null>(readLayoutPattern);
     // Initialize diff from host immediately so isDiff is correct on first render
     const [diffSegment, setDiffSegment] = React.useState<string | null>(() => {
       const d = parseJson<string[]>(host.get("diff") || "[]", []);
@@ -110,7 +119,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
     }, []);
 
     useHostSubscriptions(host, [
-      ["result",         () => { syncResultToStore(); setAnchorEvent(readAnchorEvent()); }],
+      ["result",         () => { syncResultToStore(); setAnchorEvent(readAnchorEvent()); setLayoutPattern(readLayoutPattern()); }],
       ["is_loading",     () => setIsLoading((host.get("is_loading") as boolean) ?? false)],
       ["max_steps",      () => setMaxSteps((host.get("max_steps") as number) ?? 10)],
       ["path_pattern",   () => setPathPattern((host.get("path_pattern") as string) || "")],
@@ -167,7 +176,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
                 store={store}
                 maxSteps={maxSteps}
                 stepWindow={stepWindow}
-                pathPattern={pathPattern}
+                pathPattern={(pathPattern && layoutPattern) || pathPattern}
                 anchorEvent={anchorEvent}
                 onPatternChange={isStatic ? undefined : (p) => {
                   setPathPattern(p);

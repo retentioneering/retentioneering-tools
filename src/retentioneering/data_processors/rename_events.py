@@ -11,6 +11,9 @@ PROCESSOR_NAME = "rename_events"
 
 
 class RenameEvents(DataProcessor):
+    # Cannot break the event order: edits the event column only.
+    may_break_order = False
+
     mapping: Dict[str, str]
 
     def __init__(self, mapping: Dict[str, str]) -> None:

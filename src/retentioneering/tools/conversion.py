@@ -17,7 +17,7 @@ matrix on a subpopulation for those.
 """
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
@@ -90,9 +90,8 @@ class ConversionRate:
         if path_col not in schema.path_cols:
             raise InvalidParameterError("path_col", path_col, schema.path_cols)
 
-        available = df[schema.event_col].unique().tolist()
-        starts = self._parse_side(start_anchor, "start_anchor", available)
-        ends = self._parse_side(end_anchor, "end_anchor", available)
+        starts = self._parse_side(start_anchor, "start_anchor", df, schema)
+        ends = self._parse_side(end_anchor, "end_anchor", df, schema)
         window = parse_within(within)
 
         total_paths = int(df[path_col].nunique())
@@ -103,7 +102,11 @@ class ConversionRate:
             start_pos = anchors.resolve_positions(
                 df, schema, start_spec, offset_side="start", path_col=path_col
             )
-            paths_with_start = int(len(start_pos))
+            # One row per *position* comes back, not per path: `resolve_positions`
+            # documents that "with occurrence="all" a path appears once per
+            # position its anchor can occupy". The unit of observation here is
+            # the path, so collapse to distinct paths before counting.
+            paths_with_start = int(start_pos[path_col].nunique())
             # Step space, strictly after: an end anchor at the same position as
             # the start one is the start one (`start_anchor == end_anchor` asks
             # about a *repeat*), and only steps put a `path_end` sentinel after
@@ -138,7 +141,7 @@ class ConversionRate:
         return result
 
     @staticmethod
-    def _parse_side(value, param: str, available: Sequence[str]) -> list:
+    def _parse_side(value, param: str, df: pd.DataFrame, schema) -> list:
         """Anchor specs for one side, with their event names validated.
 
         Unlike `truncate_paths`, a list here is a fan-out — several separate
@@ -149,7 +152,10 @@ class ConversionRate:
         specs = anchors.parse_specs(value, param=param)
         for spec in specs:
             anchors.validate_pattern_tokens(
-                spec.pattern, available, param=param, stacklevel=6
+                spec.pattern,
+                anchors.spec_vocabulary(df, schema, spec),
+                param=param,
+                stacklevel=6,
             )
         return specs
 
@@ -169,6 +175,7 @@ class ConversionRate:
             spec.pattern,
             occurrence=spec.occurrence,
             path_col=path_col,
+            event_col=spec.event_col,
         )
         return len(match.paths()) / total_paths
 
@@ -199,7 +206,7 @@ class ConversionRate:
         if end_pos.empty:
             return 0
         if window is None:
-            return int(len(end_pos))
+            return int(end_pos[path_col].nunique())
 
         schema = self.eventstream.schema
         path_q = engine.quote_ident(path_col)
@@ -233,9 +240,9 @@ class ConversionRate:
                 SELECT x.{path_q} AS p, x.step AS step, b.ts AS ts
                 FROM ends x JOIN base b ON b.p = x.{path_q} AND b.idx = x.bound
             )
-            SELECT COUNT(*) AS converted
+            SELECT COUNT(DISTINCT s.p) AS converted
             FROM s JOIN e ON e.p = s.p
-            WHERE {condition}
+            WHERE e.step > s.step AND {condition}
         """
         result = engine.run(
             query, df=self.eventstream.df, starts=start_pos, ends=end_pos

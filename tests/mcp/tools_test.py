@@ -96,6 +96,43 @@ class TestUpdateAndResetBaseStream:
         assert session.base_preprocessors == []
 
 
+class TestBadLocalPreprocessors:
+    BAD_STEP = {"type": "filter_events", "events": ["noise"]}
+
+    @pytest.mark.parametrize(
+        "call",
+        [
+            lambda s, pre: tools.add_transition_graph(
+                s, label="Flow", local_preprocessors=pre
+            ),
+            lambda s, pre: tools.add_step_matrix(
+                s, label="Steps", local_preprocessors=pre
+            ),
+            lambda s, pre: tools.add_segment_overview(
+                s, label="Segments", segment_col="platform", local_preprocessors=pre
+            ),
+            lambda s, pre: tools.get_conversion_rate(
+                s, "view", "purchase", local_preprocessors=pre
+            ),
+        ],
+        ids=[
+            "add_transition_graph",
+            "add_step_matrix",
+            "add_segment_overview",
+            "get_conversion_rate",
+        ],
+    )
+    def test__returns_an_error_not_an_exception(self, call) -> None:
+        session = get_session()
+
+        result = call(session, [self.BAD_STEP])
+
+        # Same message update_base_stream reports for the same step.
+        expected = tools.update_base_stream(get_session(), [self.BAD_STEP])["error"]
+        assert result["error"] == f"local_preprocessors: {expected}"
+        assert session.pending_tabs == []
+
+
 class TestLoadDataAndDataAgnosticMode:
     def test__tools_error_before_any_data_is_loaded(self) -> None:
         session = ReportSession(None, None)

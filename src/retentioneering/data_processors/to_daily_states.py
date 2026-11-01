@@ -1,3 +1,4 @@
+import numpy as np
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
@@ -9,6 +10,7 @@ from retentioneering.data_processors.collapse_events import _session_agg_exprs
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.eventstream.schema import EventstreamSchema
+from retentioneering.utils.timezones import column_timezone
 
 PROCESSOR_NAME = "to_daily_states"
 
@@ -92,8 +94,7 @@ class ToDailyStates(DataProcessor):
         index_col_q = engine.quote_ident(schema.index)
         subindex_col_q = engine.quote_ident(schema.subindex)
         day_expr = dialect.calendar_date(
-            timestamp_col_q,
-            tz_aware=isinstance(df[timestamp_col].dtype, pd.DatetimeTZDtype),
+            timestamp_col_q, column_timezone(df[timestamp_col])
         )
 
         if self.active_events:
@@ -107,7 +108,14 @@ class ToDailyStates(DataProcessor):
             is_active_today = "TRUE"
 
         exclude = {path_col, schema.event_col, schema.event_type}
-        agg_exprs = _session_agg_exprs(df, self.agg, exclude, timestamp_col)
+        agg_exprs = _session_agg_exprs(
+            df,
+            self.agg,
+            exclude,
+            schema.index,
+            schema.subindex,
+            processor=PROCESSOR_NAME,
+        )
         agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
 
         other_path_cols = [c for c in schema.path_cols if c != path_col]
@@ -213,15 +221,20 @@ class ToDailyStates(DataProcessor):
             END AS {event_col_q},
             '{collapsed_event_type}' AS {event_type_col_q},
             1 AS {subindex_col_q},
+            -- A new grain: one row per path and day, so the day is unique
+            -- within the path and numbers the new positions (ADR-0017).
             ROW_NUMBER() OVER (
-                PARTITION BY {path_col_q}
-                ORDER BY {timestamp_col_q}, {subindex_col_q}
+                PARTITION BY {path_col_q} ORDER BY {timestamp_col_q}
             ) AS {index_col_q}
             {(", " + special_cols_chunk) if special_cols_chunk else ""}
         FROM states
-        ORDER BY {path_col_q}, {timestamp_col_q}, {subindex_col_q}
+        ORDER BY {path_col_q}, {index_col_q}
         """
-        res = engine.run(query, df=df)
+        # "first"/"last" aggregates read the event order off an integer row
+        # number: within a path, physical order is the event order (ADR-0017),
+        # and an int key is far cheaper for ARG_MIN/ARG_MAX than the
+        # (index, subindex) row value.
+        res = engine.run(query, df=df.assign(_rn=np.arange(len(df))))
 
         for col in [schema.event_col] + schema.segment_cols:
             if col in res.columns:

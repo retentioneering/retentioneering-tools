@@ -17,18 +17,23 @@ from retentioneering.utils.session_detection import (
 )
 from retentioneering.utils.sequences import find_delimiter_collisions
 from retentioneering.utils.sql_quoting import quote_literal
+from retentioneering.utils.timezones import column_timezone
 
 PROCESSOR_NAME = "collapse_events"
 
-
-def _is_tz_aware(df: pd.DataFrame, ts_col: str) -> bool:
-    """Whether the timestamp column carries a timezone.
-
-    Decides how a calendar day is taken from it — see
-    :func:`engine.dialect.calendar_date`.
-    """
-    return isinstance(df[ts_col].dtype, pd.DatetimeTZDtype)
-
+#: SQL for each `agg` function name. Every builder takes the quoted value
+#: column and the integer row number in event order, which `first` / `last`
+#: need (ADR-0017).
+AGG_SQL = {
+    "first": lambda col, pos: f"ARG_MIN({col}, {pos})",
+    "last": lambda col, pos: f"ARG_MAX({col}, {pos})",
+    "min": lambda col, pos: f"MIN({col})",
+    "max": lambda col, pos: f"MAX({col})",
+    "mean": lambda col, pos: f"AVG({col})",
+    "sum": lambda col, pos: f"SUM({col})",
+    "mode": lambda col, pos: f"MODE({col})",
+    "any": lambda col, pos: f"ANY_VALUE({col})",
+}
 
 BOUNDS_KEYS = ("start_event", "end_event")
 
@@ -294,7 +299,7 @@ class CollapseEvents(DataProcessor):
     # ── naming SQL ───────────────────────────────────────────────────────────
 
     def _name_sql(
-        self, default_expr: str, event_col: str, ts_col: str, tz_aware: bool = False
+        self, default_expr: str, event_col: str, ts_col: str, tz: str | None = None
     ) -> Tuple[str, str]:
         """
         Build the merged event's name expression, plus any aggregates it needs.
@@ -332,7 +337,7 @@ class CollapseEvents(DataProcessor):
                     continue
                 seen_keys.add(key)
                 for col_name, agg_sql in self._metric_agg_sql(
-                    mc, event_col, ts_col, tz_aware
+                    mc, event_col, ts_col, tz
                 ):
                     if col_name not in metric_col_names:
                         metric_col_names.append(col_name)
@@ -361,36 +366,46 @@ class CollapseEvents(DataProcessor):
         df: pd.DataFrame,
         agg_config: Dict[str, str],
         exclude_cols: Set[str],
-        ts_col: str,
+        index_col: str,
+        subindex_col: str,
+        rank_col: str = "_rn",
+        processor: str = PROCESSOR_NAME,
     ) -> List[str]:
+        """
+        Aggregates carrying the remaining columns into a merged row.
+
+        "first" / "last" mean first / last in event order (ADR-0017), read off
+        `rank_col` — the query's integer row number in `(index, subindex)`
+        order. An integer key is much cheaper for ARG_MIN/ARG_MAX than the
+        `(index, subindex)` row value, and orders the same. The merged row
+        takes the group's first position, so `index` and `subindex` always
+        come from the same, first row whatever `agg_config` says about them.
+        """
+        # Check the whole config, not only the columns aggregated below, so a
+        # wrong name raises even for a column this aggregation skips.
+        for col, agg_name in sorted(agg_config.items()):
+            if agg_name not in AGG_SQL:
+                raise PreprocessingConfigError(
+                    processor,
+                    f"unknown agg function {agg_name!r} for column {col!r}. "
+                    f"agg_func is one of {sorted(AGG_SQL)}.",
+                )
+
         agg_exprs = []
-        ts_col_q = engine.quote_ident(ts_col)
+        pos = rank_col
         for c in df.columns:
-            if c in exclude_cols:
+            if c in exclude_cols or c == rank_col:
                 continue
             c_q = engine.quote_ident(c)
             agg_name = agg_config.get(c, "first")
-            if agg_name == "first":
-                agg_exprs.append(f"ARG_MIN({c_q}, {ts_col_q}) AS {c_q}")
-            elif agg_name == "last":
-                agg_exprs.append(f"ARG_MAX({c_q}, {ts_col_q}) AS {c_q}")
-            elif agg_name == "min":
-                agg_exprs.append(f"MIN({c_q}) AS {c_q}")
-            elif agg_name == "max":
-                agg_exprs.append(f"MAX({c_q}) AS {c_q}")
-            elif agg_name == "mean":
-                agg_exprs.append(f"AVG({c_q}) AS {c_q}")
-            elif agg_name == "mode":
-                agg_exprs.append(f"MODE({c_q}) AS {c_q}")
-            elif agg_name == "any":
-                agg_exprs.append(f"ANY_VALUE({c_q}) AS {c_q}")
-            else:
-                agg_exprs.append(f"ARG_MIN({c_q}, {ts_col_q}) AS {c_q}")
+            if c in (index_col, subindex_col):
+                agg_name = "first"
+            agg_exprs.append(f"{AGG_SQL[agg_name](c_q, pos)} AS {c_q}")
         return agg_exprs
 
     @staticmethod
     def _metric_agg_sql(
-        mc: Dict[str, Any], event_col: str, ts_col: str, tz_aware: bool = False
+        mc: Dict[str, Any], event_col: str, ts_col: str, tz: str | None = None
     ) -> List[Tuple[str, str]]:
         metric = mc["metric"]
         args = mc.get("metric_args") or {}
@@ -450,7 +465,7 @@ class CollapseEvents(DataProcessor):
             )
             return [(f"time_from_{ef}_to_{et}", agg_sql)]
         elif metric == "active_days":
-            day_expr = dialect.calendar_date(ts_col_q, tz_aware=tz_aware)
+            day_expr = dialect.calendar_date(ts_col_q, tz)
             return [("active_days", f"COUNT(DISTINCT {day_expr})")]
         else:
             raise PreprocessingConfigError(
@@ -475,25 +490,26 @@ class CollapseEvents(DataProcessor):
         ts_col = schema.timestamp_col
         collapsed_event_type = EventTypes().COLLAPSED_EVENT.type
         exclude = {path_col, event_col, schema.event_type}
-        agg_exprs = self._session_agg_exprs(df, self.agg, exclude, ts_col)
+        agg_exprs = self._session_agg_exprs(
+            df, self.agg, exclude, schema.index, schema.subindex
+        )
         agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
 
         path_col_q = engine.quote_ident(path_col)
         event_col_q = engine.quote_ident(event_col)
-        ts_col_q = engine.quote_ident(ts_col)
         event_type_col_q = engine.quote_ident(schema.event_type)
-        subindex_col_q = engine.quote_ident(schema.subindex)
+        order = dialect.event_order(
+            engine.quote_ident(schema.index), engine.quote_ident(schema.subindex)
+        )
 
         # A run of one event keeps that event's own name unless `name` overrides it.
         name_expr, metric_agg_chunk = self._name_sql(
-            "_event", event_col, ts_col, _is_tz_aware(df, ts_col)
+            "_event", event_col, ts_col, column_timezone(df[ts_col])
         )
 
-        # LAG/SUM below must be ordered by a unique key: (timestamp, subindex) can
-        # tie (subindex is the same for all raw events), and DuckDB's default RANGE
-        # window frame lumps tied peer rows into one group, silently merging
-        # distinct consecutive events that share a timestamp. A precomputed
-        # ROW_NUMBER (_rn) plus an explicit ROWS frame makes grouping deterministic.
+        # LAG/SUM below walk the path in event order (ADR-0017). `_rn` numbers
+        # rows by `(index, subindex)`, which is unique, and the explicit ROWS
+        # frame keeps DuckDB's default RANGE frame from lumping peers together.
         if self.loops is True:
             is_start_condition = f"LAG({event_col_q}) OVER (PARTITION BY {path_col_q} ORDER BY _rn) = {event_col_q}"
         else:
@@ -512,7 +528,7 @@ class CollapseEvents(DataProcessor):
         WITH ordered AS (
             SELECT *,
                 ROW_NUMBER() OVER (
-                    PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
+                    PARTITION BY {path_col_q} ORDER BY {order}
                 ) AS _rn
             FROM df
         ),
@@ -534,7 +550,7 @@ class CollapseEvents(DataProcessor):
             SELECT
                 {path_col_q},
                 ANY_VALUE({event_col_q}) AS _event,
-                CASE WHEN COUNT(*) > 1 THEN '{collapsed_event_type}' ELSE ARG_MIN({event_type_col_q}, {ts_col_q}) END AS {event_type_col_q},
+                CASE WHEN COUNT(*) > 1 THEN '{collapsed_event_type}' ELSE ARG_MIN({event_type_col_q}, _rn) END AS {event_type_col_q},
                 MIN(_rn) AS _first_rn
                 {metric_agg_chunk}
                 {agg_chunk}
@@ -581,20 +597,27 @@ class CollapseEvents(DataProcessor):
                 f"repeats of the same event use loops=True",
             )
 
-        explicit_cols = {path_col, event_col, event_type_col, ts_col, subindex_col, col}
-        agg_exprs = self._session_agg_exprs(df, self.agg, explicit_cols, ts_col)
+        explicit_cols = {path_col, event_col, event_type_col, ts_col, col}
+        agg_exprs = self._session_agg_exprs(
+            df, self.agg, explicit_cols, schema.index, subindex_col
+        )
         agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
 
         path_col_q = engine.quote_ident(path_col)
         event_col_q = engine.quote_ident(event_col)
         ts_col_q = engine.quote_ident(ts_col)
-        subindex_col_q = engine.quote_ident(subindex_col)
         event_type_col_q = engine.quote_ident(event_type_col)
         col_q = engine.quote_ident(col)
+        index_col_q = engine.quote_ident(schema.index)
+        subindex_col_q = engine.quote_ident(subindex_col)
+        order = dialect.event_order(index_col_q, subindex_col_q)
 
         # Without `name`, the group is named after the value it is a run of.
         name_expr, metric_agg_chunk = self._name_sql(
-            "CAST(_run_value AS VARCHAR)", event_col, ts_col, _is_tz_aware(df, ts_col)
+            "CAST(_run_value AS VARCHAR)",
+            event_col,
+            ts_col,
+            column_timezone(df[ts_col]),
         )
 
         run_col_select = (
@@ -610,7 +633,7 @@ class CollapseEvents(DataProcessor):
         ordered AS (
             SELECT *,
                 ROW_NUMBER() OVER (
-                    PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
+                    PARTITION BY {path_col_q} ORDER BY {order}
                 ) AS _rn
             FROM df
         ),
@@ -633,7 +656,6 @@ class CollapseEvents(DataProcessor):
             SELECT
                 {path_col_q},
                 MIN({ts_col_q}) AS {ts_col_q},
-                MIN({subindex_col_q}) AS {subindex_col_q},
                 ANY_VALUE({col_q}) AS _run_value,
                 '{collapsed_event_type}' AS {event_type_col_q}
                 {run_col_select}
@@ -644,7 +666,7 @@ class CollapseEvents(DataProcessor):
         )
         SELECT {collapsed_select}
         FROM grouped
-        ORDER BY {path_col_q}, {ts_col_q}, {subindex_col_q}
+        ORDER BY {path_col_q}, {order}
         """
         return engine.run(query, df=df)
 
@@ -669,9 +691,11 @@ class CollapseEvents(DataProcessor):
 
         path_col_q = engine.quote_ident(path_col)
         ts_col_q = engine.quote_ident(ts_col)
-        subindex_col_q = engine.quote_ident(subindex_col)
         event_type_col_q = engine.quote_ident(event_type_col)
         event_col_q = engine.quote_ident(event_col)
+        order = dialect.event_order(
+            engine.quote_ident(schema.index), engine.quote_ident(subindex_col)
+        )
 
         # A window has no natural name of its own — `name` is required here, so
         # the default below is only ever reached through a cases fallback.
@@ -679,15 +703,17 @@ class CollapseEvents(DataProcessor):
             self.event_groups[0] if self.event_groups else "session"
         )
         name_expr, metric_agg_chunk = self._name_sql(
-            default, event_col, ts_col, _is_tz_aware(df, ts_col)
+            default, event_col, ts_col, column_timezone(df[ts_col])
         )
 
         session_ctes = build_session_ctes(
-            self._as_group(), path_col, event_col, ts_col, subindex_col
+            self._as_group(), path_col, event_col, ts_col, schema.index, subindex_col
         )
 
         exclude_cols = {path_col, event_col, event_type_col, ts_col}
-        agg_exprs = self._session_agg_exprs(df, self.agg, exclude_cols, ts_col)
+        agg_exprs = self._session_agg_exprs(
+            df, self.agg, exclude_cols, schema.index, subindex_col
+        )
         agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
 
         collapsed_select = ", ".join(
@@ -723,7 +749,7 @@ class CollapseEvents(DataProcessor):
         SELECT {cols_list} FROM collapsed
         UNION ALL
         SELECT {cols_list} FROM uncollapsed
-        ORDER BY {path_col_q}, {ts_col_q}, {subindex_col_q}
+        ORDER BY {path_col_q}, {order}
         """
         return engine.run(query, df=df)
 

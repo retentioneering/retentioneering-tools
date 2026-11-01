@@ -7,6 +7,7 @@ is absent; CI runs it with Chromium on Python 3.12.
 """
 
 import os
+import re
 
 import pandas as pd
 import pytest
@@ -62,5 +63,97 @@ def test_static_graph_mount_and_resize_have_no_stale_frame_errors(tmp_path):
             assert page.get_by_role(
                 "button", name="Search event", exact=True
             ).is_visible()
+        finally:
+            browser.close()
+
+
+@pytest.mark.parametrize("path_groups", [False, True])
+def test_millisecond_diff_hover_and_ego_keep_units(tmp_path, path_groups):
+    origin = pd.Timestamp("2026-01-01")
+    stream = Eventstream(
+        pd.DataFrame(
+            [
+                (1, "request", origin, "fast"),
+                (1, "ready", origin + pd.Timedelta(milliseconds=125), "fast"),
+                (2, "request", origin, "slow"),
+                (2, "ready", origin + pd.Timedelta(milliseconds=375), "slow"),
+            ],
+            columns=["user_id", "event", "timestamp", "cohort"],
+        ),
+        schema={"segment_cols": ["cohort"]},
+    )
+    export = tmp_path / "diff.html"
+    stream.transition_graph(
+        edge_weight="time_median",
+        diff=([1], [2]) if path_groups else ("cohort", "fast", "slow"),
+        height=500,
+    ).export_html(str(export))
+    with playwright.sync_playwright() as runtime:
+        browser = runtime.chromium.launch(
+            executable_path=os.environ.get("RETENTIONEERING_TEST_CHROME")
+        )
+        try:
+            page = browser.new_page(viewport={"width": 1280, "height": 850})
+            errors = []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.goto(export.as_uri())
+            page.locator("#retentioneering-root canvas").first.wait_for(state="visible")
+            _drain_frames(page)
+            assert (
+                page.locator(
+                    '[title="Compare two groups: group 1 minus group 2. Positive differences are red; negative differences are blue."]'
+                ).count()
+                == 1
+            )
+            if path_groups:
+                assert (
+                    page.locator("option:checked")
+                    .filter(has_text="Path ID groups")
+                    .count()
+                    == 1
+                )
+                assert page.get_by_text(
+                    "Comparing Group 1 − Group 2 from supplied path IDs."
+                ).is_visible()
+                assert (
+                    page.get_by_text("Not enough values in this segment.").count() == 0
+                )
+            # Read canvas geometry, then use real pointer events for both tooltips.
+            point = page.evaluate(
+                """() => {
+                    const cy = [...document.querySelectorAll('*')].find(e => e.__cy).__cy;
+                    const edge = cy.edges().filter(e => e.data('source') === 'request' && e.data('target') === 'ready');
+                    const p = edge.renderedMidpoint(), r = cy.container().getBoundingClientRect();
+                    return {x: r.x + p.x, y: r.y + p.y};
+                }"""
+            )
+            page.mouse.move(point["x"], point["y"])
+            for value in ("125ms", "375ms", "-250ms"):
+                # The Ego ribbon also has a tspan with the delta; require the
+                # tooltip's HTML span so a missing tooltip cannot pass this check.
+                playwright.expect(
+                    page.locator("span").filter(
+                        has_text=re.compile(r"^" + re.escape(value) + r"$")
+                    )
+                ).to_be_visible()
+            point = page.evaluate(
+                """() => {
+                    const cy = [...document.querySelectorAll('*')].find(e => e.__cy).__cy;
+                    const p = cy.getElementById('request').renderedPosition(), r = cy.container().getBoundingClientRect();
+                    return {x: r.x + p.x, y: r.y + p.y};
+                }"""
+            )
+            page.mouse.click(point["x"], point["y"])
+            page.get_by_role("button", name="Ego view: request", exact=True).click()
+            page.locator("svg g path").first.hover()
+            for value in ("125ms", "375ms", "-250ms"):
+                # The Ego ribbon also has a tspan with the delta; require the
+                # tooltip's HTML span so a missing tooltip cannot pass this check.
+                playwright.expect(
+                    page.locator("span").filter(
+                        has_text=re.compile(r"^" + re.escape(value) + r"$")
+                    )
+                ).to_be_visible()
+            assert not errors
         finally:
             browser.close()

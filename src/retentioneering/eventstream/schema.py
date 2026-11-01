@@ -44,6 +44,13 @@ class EventstreamSchema:
         return self.path_cols[0]
 
     @property
+    def order_cols(self) -> List[str]:
+        """Columns that lay the eventstream out: path, then event order
+        `(index, subindex)` within it (ADR-0017). The key is unique; use it for
+        every pandas sort of events."""
+        return [self.path_col, self.index, self.subindex]
+
+    @property
     def public_cols(self):
         return (
             self.path_cols

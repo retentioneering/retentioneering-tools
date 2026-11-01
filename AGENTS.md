@@ -92,6 +92,25 @@ string first. The `sql=` kwarg some data processors accept (`filter_events`, `ad
 `add_segment`) still exposes the caller's frame under the fixed name `eventstream` — that
 contract is unchanged, it's just registered via `engine.run(sql, eventstream=df)` now.
 
+### Event order (ADR-0017)
+
+Events within a path are ordered by `(index, subindex)`, unique per path and checked
+at construction. **Never order events by timestamp** — timestamps tie. Window
+`ORDER BY`, ordered aggregation and output sorts use `dialect.event_order(...)` (SQL)
+or `schema.order_cols` (pandas); for "first/last event" in an aggregate, number
+rows with `ROW_NUMBER() OVER (PARTITION BY path ORDER BY event_order(...))` and use
+`ARG_MIN/ARG_MAX(..., _rn)` — a `ROW(...)` key from `event_position` is ~3x slower
+than a timestamp there, an integer row number ~2x faster. `index` is assigned once and never changes; a row a
+processor adds reuses its source row's `index`, and markers sharing one take
+fractional `subindex` via `eventstream/ordering.py`'s `marker_subindex`. Layout
+contract: each path is one block growing in `(index, subindex)`; path-to-path order
+is free. A processor that adds, merges or re-reads rows keeps the default
+`may_break_order = True` and ends in `ORDER BY path, event_order(...)` — its output
+gets a cheap check and a fallback sort. One that only drops rows or edits columns
+sets `may_break_order = False` and is not checked at runtime; the test suite
+(`ordering.STRICT`, set in `tests/conftest.py`) checks every processor anyway, so
+a wrong opt-out fails the tests. Do not add re-sorts inside processors.
+
 ### Naming conventions (ADR-0008)
 
 One concept — one name: `path_col` / `event_col` / `timestamp_col` / `session_col` /
@@ -123,6 +142,18 @@ Follow these rules for any new API.
 clustering (`features`), segment comparison (`metrics` / `overview_metrics`), and
 `filter_paths` conditions. Adding a metric also requires updating the JS metric editor and the
 Path Metrics docs page.
+Conditions (`metrics/condition_ast.py`) accept shorthand leaves for 0/1 metrics —
+`{"has_event": "purchase"}` — expanded node by node (ADR-0016); a new 0/1 metric belongs in
+`BOOLEAN_METRICS` there.
+
+### Path patterns (ADR-0015)
+
+One pattern language (`paths/tokens.py` parses, `paths/anchors.py` matches in SQL) serves
+`matches_pattern`, anchors and Step Matrix/Sankey centring. Non-gap tokens are positions with
+ordinals; quantified classes (`.{0,4}`, `[a|b]+`) are gaps and take none; groups `(P){k}` are
+unrolled by `normalize_pattern`, so everything downstream sees plain tokens. Changes to the
+matcher must keep agreeing with the brute-force oracle in `tests/paths/anchors_test.py`; JS
+that splits a pattern into blocks must use `isGapToken` and the unrolled `layout_pattern`.
 
 ### JS: two workspace packages, one build target (ADR-0005)
 

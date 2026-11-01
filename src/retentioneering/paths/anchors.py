@@ -168,12 +168,18 @@ def normalize_pattern(
     pattern: str, *, warn: bool = True, stacklevel: int = 3, param: str = "pattern"
 ) -> str:
     """
-    Strip redundant leading ``".*->"`` / trailing ``"->.*"`` and collapse repeated gaps.
+    Unroll groups, strip redundant leading ``".*->"`` / trailing ``"->.*"`` and
+    collapse repeated gaps.
 
     A pattern already matches anywhere in the path, so boundary wildcards select
     exactly the same paths — but they also shift anchor bookkeeping, putting the
     anchor's own column off 0. Normalizing up front keeps every pattern on the
     bare-literal form, which anchors correctly.
+
+    A quantified group ``(P){k}`` comes back unrolled into `k` copies of ``P``
+    (see :func:`tokens.expand_groups`), so everything downstream — the matcher,
+    ``at=``, step-matrix centring — sees plain tokens, and each copy has its
+    own ordinals.
     """
     if not isinstance(pattern, str) or not pattern.strip():
         raise InvalidParameterError(param, pattern, ["a non-empty pattern string"])
@@ -191,24 +197,54 @@ def normalize_pattern(
     # `tokens.check_class_spans`), and a token that cannot be read at all should
     # not reach the gap bookkeeping below.
     tokens_mod.check_class_spans(tokens)
+
+    # Judged on what the user wrote, before groups are unrolled: unrolling
+    # `(B->.*->C->.*){2}` at the end of a pattern leaves a trailing gap that
+    # is stripped below, and that is not the user's redundancy to warn about.
+    redundant = (
+        tokens_mod.is_plain_gap(tokens[0])
+        or tokens_mod.is_plain_gap(tokens[-1])
+        or any(
+            tokens_mod.is_plain_gap(a) and tokens_mod.is_plain_gap(b)
+            for a, b in zip(tokens, tokens[1:])
+        )
+    )
+    tokens = tokens_mod.expand_groups(tokens, pattern)
     for token in tokens:
         if token != GAP:
             tokens_mod.parse_token(token)
 
-    # A restricted gap says what may lie *between* two anchors, so it needs one
-    # on each side. At either end of a pattern its outer side is unpinned, and
-    # since a gap also matches the empty run it would simply be true — silently
-    # doing nothing. Refuse it and name the fix.
+    # A restricted or bounded gap says what may lie *between* two anchors, so
+    # it needs one on each side. At either end of a pattern its outer side is
+    # unpinned, so the run can be cut wherever suits — a restriction is then
+    # satisfied by the empty run, a bound by a run of the right length, and
+    # either silently does nothing. Refuse it and name the fix.
     for token, side, fix in (
         (tokens[0], "start", f"{PATH_START}{PATH_DELIMITER}{pattern}"),
         (tokens[-1], "end", f"{pattern}{PATH_DELIMITER}{PATH_END}"),
     ):
         parsed = tokens_mod.parse_token(token)
-        if isinstance(parsed, tokens_mod.Gap) and parsed.constraint is not None:
+        if isinstance(parsed, tokens_mod.Gap) and not parsed.is_plain:
+            if parsed.min_len == 0:
+                raise PatternSyntaxError(
+                    f"{token!r} at the {side} of {pattern!r} has nothing on its "
+                    f"outer side to bound it, so it would match the empty run "
+                    f"and mean nothing. Anchor it — e.g. {fix!r}."
+                )
+            # A required run at an edge does say something — that such a run
+            # exists — but a gap is a run *between* anchors and takes no
+            # position, so the thing that says it is a group.
+            stem, quantifier = tokens_mod.split_quantifier(token)
+            constraint = parsed.constraint
+            if constraint is not None and not constraint.negated:
+                if len(constraint.members) == 1:
+                    stem = constraint.members[0]
             raise PatternSyntaxError(
-                f"{token!r} at the {side} of {pattern!r} has nothing on its outer "
-                f"side to bound it, so it would match the empty run and mean "
-                f"nothing. Anchor it — e.g. {fix!r}."
+                f"{token!r} at the {side} of {pattern!r} has nothing on its "
+                f"outer side to bound it: a gap is the run between two anchors "
+                f"and takes no position. For events repeated in a row write a "
+                f"group, '({stem}){quantifier}'; to bound the run, anchor it — "
+                f"e.g. {fix!r}."
             )
 
     collapsed: list[str] = []
@@ -217,19 +253,21 @@ def normalize_pattern(
             collapsed.append(token)
             continue
         if collapsed and tokens_mod.is_gap(collapsed[-1]):
-            if token == GAP and collapsed[-1] == GAP:
+            if tokens_mod.is_plain_gap(token) and tokens_mod.is_plain_gap(
+                collapsed[-1]
+            ):
                 continue  # two plain gaps in a row say nothing extra
             raise PatternSyntaxError(
                 f"Two gaps in a row in {pattern!r} ({collapsed[-1]!r} then "
                 f"{token!r}). A gap already spans any number of events; to say "
-                f"what may lie in it, use a single restricted gap."
+                f"what may lie in it or how long it is, use a single gap."
             )
         collapsed.append(token)
 
     trimmed = list(collapsed)
-    while trimmed and trimmed[0] == GAP:
+    while trimmed and tokens_mod.is_plain_gap(trimmed[0]):
         trimmed.pop(0)
-    while trimmed and trimmed[-1] == GAP:
+    while trimmed and tokens_mod.is_plain_gap(trimmed[-1]):
         trimmed.pop()
 
     if not trimmed:
@@ -238,7 +276,7 @@ def normalize_pattern(
         )
 
     normalized = PATH_DELIMITER.join(trimmed)
-    if warn and normalized != pattern:
+    if warn and redundant:
         warnings.warn(
             f"{param} {pattern!r} has a redundant leading/trailing '{GAP}' or a "
             f"repeated gap — a pattern already matches anywhere in the path by "
@@ -376,6 +414,12 @@ def validate_pattern_tokens(
         # unknown name in `[^Purchse]*` stops excluding anything, so the gap
         # quietly admits the very events it was written to rule out.
         if isinstance(token, tokens_mod.Gap):
+            if raw != GAP and raw in available:
+                raise PatternSyntaxError(
+                    f"{raw!r} reads as a gap, but this eventstream also has an "
+                    f"event named {raw!r}. Rename the event (see "
+                    f"`rename_events`) to use it in a pattern."
+                )
             if token.constraint is not None:
                 _validate_class(
                     token.constraint,
@@ -619,8 +663,18 @@ def resolve_anchors(
     # gap `max_b` is absent and the test degenerates to "some previous end
     # exists". `kind` breaks ties so that markers sharing a step with the
     # candidate stay outside its frame, keeping both comparisons strict.
+    #
+    # A bounded gap (`.{m,n}`) narrows only which previous ends are admissible —
+    # those leaving between m and n events before the candidate — so `max_e`
+    # reads a bounded frame while `max_b` keeps the unbounded one. The latest
+    # admissible end is still the best witness: it leaves the shortest run to
+    # keep clean. Frames are RANGE offsets over `2 * step + kind`, a single
+    # numeric key (which RANGE offsets require) that keeps the tie-break; in
+    # its units, a previous end leaving `r` events before a candidate sits
+    # `2r + 1` below it.
     ctes.append(f"fwd0 AS (SELECT {_PATH}, s FROM cand0)")
     for i in range(1, len(parts)):
+        gap = tokens_mod.parse_token(gaps[i])
         prev_end = f"s + {len(parts[i - 1]) - 1}"
         marks = [
             f"SELECT {_PATH}, s AS {_STEP}, 0 AS kind, "
@@ -632,16 +686,29 @@ def resolve_anchors(
             marks.append(
                 f"SELECT {_PATH}, {_STEP}, 1, CAST(NULL AS BIGINT), {_STEP} FROM bad{i}"
             )
+        far = (
+            "UNBOUNDED PRECEDING"
+            if gap.max_len is None
+            else f"{2 * gap.max_len + 1} PRECEDING"
+        )
         ctes.append(
             f"""fscan{i} AS (
                 SELECT {_PATH}, {_STEP}, kind,
-                       MAX(e) OVER w AS max_e,
-                       MAX(b) OVER w AS max_b
-                FROM ({" UNION ALL ".join(marks)})
-                WINDOW w AS (
-                    PARTITION BY {_PATH} ORDER BY {_STEP}, kind
-                    ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+                       MAX(e) OVER we AS max_e,
+                       MAX(b) OVER wb AS max_b
+                FROM (
+                    SELECT *, 2 * {_STEP} + kind AS __rete_key
+                    FROM ({" UNION ALL ".join(marks)})
                 )
+                WINDOW
+                    we AS (
+                        PARTITION BY {_PATH} ORDER BY __rete_key
+                        RANGE BETWEEN {far} AND {2 * gap.min_len + 1} PRECEDING
+                    ),
+                    wb AS (
+                        PARTITION BY {_PATH} ORDER BY __rete_key
+                        RANGE BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+                    )
             )"""
         )
         ctes.append(
@@ -658,6 +725,7 @@ def resolve_anchors(
     last = len(parts) - 1
     ctes.append(f"bwd{last} AS (SELECT {_PATH}, s FROM cand{last})")
     for i in reversed(range(last)):
+        gap = tokens_mod.parse_token(gaps[i + 1])
         own_end = f"s + {len(parts[i]) - 1}"
         marks = [
             f"SELECT {_PATH}, {own_end} AS {_STEP}, 1 AS kind, s AS start, "
@@ -670,16 +738,29 @@ def resolve_anchors(
                 f"SELECT {_PATH}, {_STEP}, 0, CAST(NULL AS BIGINT), "
                 f"CAST(NULL AS BIGINT), {_STEP} FROM bad{i + 1}"
             )
+        far = (
+            "UNBOUNDED FOLLOWING"
+            if gap.max_len is None
+            else f"{2 * gap.max_len + 1} FOLLOWING"
+        )
         ctes.append(
             f"""bscan{i} AS (
                 SELECT {_PATH}, {_STEP}, kind, start,
-                       MIN(f) OVER w AS min_f,
-                       MIN(b) OVER w AS min_b
-                FROM ({" UNION ALL ".join(marks)})
-                WINDOW w AS (
-                    PARTITION BY {_PATH} ORDER BY {_STEP}, kind
-                    ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING
+                       MIN(f) OVER wf AS min_f,
+                       MIN(b) OVER wb AS min_b
+                FROM (
+                    SELECT *, 2 * {_STEP} + kind AS __rete_key
+                    FROM ({" UNION ALL ".join(marks)})
                 )
+                WINDOW
+                    wf AS (
+                        PARTITION BY {_PATH} ORDER BY __rete_key
+                        RANGE BETWEEN {2 * gap.min_len + 1} FOLLOWING AND {far}
+                    ),
+                    wb AS (
+                        PARTITION BY {_PATH} ORDER BY __rete_key
+                        RANGE BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING
+                    )
             )"""
         )
         ctes.append(
@@ -694,7 +775,11 @@ def resolve_anchors(
     # so the componentwise extremum over these is exactly what `occurrence`
     # names. (That the extremum is itself a valid match still holds with
     # restricted gaps: pushing either end of a run inwards only shortens what
-    # has to stay clean.)
+    # has to stay clean. It holds with bounded gaps too: the componentwise
+    # minimum pairs the earlier left end, which lengthens the run, with the
+    # earlier right end, which shortens it — each no further than the match
+    # that supplied it, so both bounds are inherited. Symmetric for the
+    # maximum.)
     keep_all = occurrence == "all"
     agg = "MIN" if occurrence == "first" else "MAX"
     for i in range(len(parts)):
@@ -789,13 +874,29 @@ class AnchorSpec:
     event_col: str | None = None
 
     def ordinal(self) -> int:
-        """`at` as a token ordinal; ``"start"``/``"end"`` are aliases for 0/-1."""
+        """`at` as a token ordinal; ``"start"``/``"end"`` are aliases for 0/-1.
+
+        Checked against the spec's own pattern, so an `at` past either end is
+        rejected before any query runs (`_anchor_part` needs it in range).
+        """
         if self.at == "start":
             return 0
         if self.at == "end":
             return -1
         if isinstance(self.at, bool) or not isinstance(self.at, int):
             raise InvalidParameterError("at", self.at, ["start", "end", "an integer"])
+        tokens = literal_tokens(self.pattern)
+        n = len(tokens)
+        if not -n <= self.at < n:
+            raise InvalidParameterError(
+                "at",
+                self.at,
+                [
+                    "start",
+                    "end",
+                    f"an integer from {-n} to {n - 1} over {', '.join(tokens)}",
+                ],
+            )
         return self.at
 
 

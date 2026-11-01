@@ -13,6 +13,10 @@ jobs:
     permissions:
       id-token: write   # PyPI trusted publishing (OIDC) — no API token needed
       contents: write   # create the GitHub Release
+    env:
+      # setup-uv@v3 has no python-version input; without this uv falls back to
+      # the runner's system interpreter (CPython 3.14 on ubuntu-26.04).
+      UV_PYTHON: "3.12"
     steps:
       - uses: actions/checkout@v4
 
@@ -33,8 +37,6 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
-        with:
-          python-version: "3.12"
 
       - name: Install Python dependencies
         run: uv sync

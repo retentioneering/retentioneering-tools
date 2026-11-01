@@ -16,8 +16,11 @@ string-returning functions.
 
 from __future__ import annotations
 
+from retentioneering.utils.sql_quoting import quote_literal
+
 __all__ = [
     "calendar_date",
+    "event_order",
     "event_position",
     "epoch",
     "interval_seconds",
@@ -37,6 +40,19 @@ def event_position(index_expr: str, subindex_expr: str) -> str:
     return f"ROW({index_expr}, {subindex_expr})"
 
 
+def event_order(index_expr: str, subindex_expr: str) -> str:
+    """`ORDER BY` list for events within a path: `index`, then `subindex`.
+
+    The one order every window, ordered aggregation and output sort uses
+    (ADR-0017). `(index, subindex)` is unique within a path, so the order is
+    total and stable; never order events by timestamp, which ties. Use with
+    `PARTITION BY <path>` in windows, or prefix the path column in an outer
+    `ORDER BY`. Expressions must already contain any required identifier
+    quoting (and table qualifiers, if needed).
+    """
+    return f"{index_expr}, {subindex_expr}"
+
+
 def interval_seconds(seconds: float) -> str:
     """
     A DuckDB INTERVAL of `seconds` seconds, for timestamp arithmetic
@@ -45,26 +61,22 @@ def interval_seconds(seconds: float) -> str:
     return f"to_seconds({float(seconds)})"
 
 
-def calendar_date(ts_expr: str, *, tz_aware: bool) -> str:
+def calendar_date(ts_expr: str, tz: str | None) -> str:
     """
     The calendar day of a timestamp expression, as a DuckDB DATE.
 
-    A ``TIMESTAMP WITH TIME ZONE`` resolves to a calendar day in DuckDB's
-    session timezone, which defaults to the host's. Pinning that setting is not
-    an option here: it is not inherited by the per-call cursors
-    :func:`engine.run` executes on. So a bare ``CAST(ts AS DATE)`` would bucket
-    the same tz-aware eventstream into different days on two different
-    machines, and the day has to be taken in a fixed zone instead.
-
-    A tz-naive column carries no zone to convert from and is cast directly.
-    Routing it through ``AT TIME ZONE`` would read it *as* UTC and hand back a
-    tz-aware value, reintroducing the session-timezone dependency the
-    conversion exists to remove — hence `tz_aware` rather than one expression
-    for both.
+    `tz` is the timestamp column's own timezone (see
+    `utils.timezones.column_timezone`), or None for a tz-naive column. A
+    ``TIMESTAMP WITH TIME ZONE`` cast straight to DATE takes the day in DuckDB's
+    session timezone, which defaults to the host's, so the same data would fall
+    into different days on different machines. Converting to the column's zone
+    first gives the day the user sees in pandas (``.dt.date``). A tz-naive
+    value is cast directly: ``AT TIME ZONE`` would read it as UTC and return a
+    tz-aware value, bringing the session timezone back.
     """
-    if tz_aware:
-        return f"CAST({ts_expr} AT TIME ZONE 'UTC' AS DATE)"
-    return f"CAST({ts_expr} AS DATE)"
+    if tz is None:
+        return f"CAST({ts_expr} AS DATE)"
+    return f"CAST({ts_expr} AT TIME ZONE {quote_literal(tz)} AS DATE)"
 
 
 def epoch(expr: str) -> str:

@@ -1,23 +1,26 @@
-"""Calendar-day bucketing must not depend on the host's timezone.
+"""Calendar days are taken in the timestamp column's own timezone.
 
 DuckDB resolves a `TIMESTAMP WITH TIME ZONE` to a calendar day in its session
-timezone, which defaults to the host's. These tests pin that setting to a
-non-UTC zone for the duration of the test so the assertions hold on any
-machine — including a UTC CI runner, where the defect is invisible.
+timezone, which defaults to the host's. These tests pin that setting to a zone
+different from the data's for the duration of the test, so the assertions hold
+on any machine — including a UTC CI runner, where the defect is invisible.
 
 `SET GLOBAL` is what the fixture uses because the per-call cursors
 `engine.run` executes on do not inherit a connection-level `SET`.
 """
+
+import datetime as dt
 
 import pandas as pd
 import pytest
 
 from retentioneering import engine
 from retentioneering.eventstream.eventstream import Eventstream
+from retentioneering.exceptions import SchemaConfigError
 
-# 23:30 and 00:30 UTC: two distinct UTC calendar days, but a single one in any
-# zone far enough east, which is what makes the host's zone observable.
-UTC_TIMESTAMPS = ["2024-01-01 23:30:00", "2024-01-02 00:30:00"]
+# 23:30 and 00:30 local time: two calendar days in the column's own zone, but a
+# single one in any zone far enough away, which makes the wrong zone observable.
+LOCAL_TIMESTAMPS = ["2024-01-01 23:30:00", "2024-01-02 00:30:00"]
 AWAY_ZONE = "Asia/Tokyo"
 
 
@@ -33,8 +36,8 @@ def eastern_session_timezone():
         conn.execute(f"SET GLOBAL TimeZone = '{original}'")
 
 
-def _stream(tz: str | None, values=("a", "a")) -> Eventstream:
-    timestamps = pd.to_datetime(UTC_TIMESTAMPS)
+def _stream(tz, values=("a", "a")) -> Eventstream:
+    timestamps = pd.to_datetime(LOCAL_TIMESTAMPS)
     if tz is not None:
         timestamps = timestamps.tz_localize(tz)
     df = pd.DataFrame(
@@ -45,6 +48,10 @@ def _stream(tz: str | None, values=("a", "a")) -> Eventstream:
         }
     )
     return Eventstream(df, {"event_col": "event"})
+
+
+def _active_days(tz) -> list:
+    return _stream(tz).get_metrics([{"metric": "active_days"}])["active_days"].tolist()
 
 
 class TestCalendarDayIsTimezoneIndependent:
@@ -79,12 +86,33 @@ class TestCalendarDayIsTimezoneIndependent:
         )
         assert result.df["event"].tolist() == ["spanned_two_days"]
 
+    @pytest.mark.parametrize(
+        "tz",
+        [
+            "Europe/Moscow",
+            # Behind UTC: both events fall on Jan 2 in UTC, and on one day too
+            # if the offset's sign were read the POSIX way round.
+            dt.timezone(dt.timedelta(hours=-5)),
+        ],
+        ids=["named", "fixed-offset"],
+    )
+    def test_day_is_taken_in_the_columns_zone(self, eastern_session_timezone, tz):
+        assert _active_days(tz) == [2]
+
+    def test_to_daily_states_uses_the_columns_zone(
+        self, eastern_session_timezone
+    ) -> None:
+        assert len(_stream("Europe/Moscow").to_daily_states().df) == 2
+
+    def test_a_zone_without_a_name_raises(self) -> None:
+        dateutil_tz = pytest.importorskip("dateutil.tz")
+        with pytest.raises(SchemaConfigError, match="tz_convert"):
+            _active_days(dateutil_tz.gettz("Europe/Moscow"))
+
     def test_tz_naive_timestamps_are_unaffected(self, eastern_session_timezone) -> None:
         # A tz-naive column carries no zone, so its days are read off the
         # literal values and the session timezone must not enter at all.
-        assert _stream(None).get_metrics([{"metric": "active_days"}])[
-            "active_days"
-        ].tolist() == [2]
+        assert _active_days(None) == [2]
 
     def test_tz_naive_same_day_stays_one_day(self, eastern_session_timezone) -> None:
         df = pd.DataFrame(

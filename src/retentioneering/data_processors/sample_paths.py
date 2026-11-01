@@ -13,6 +13,11 @@ PROCESSOR_NAME = "sample_paths"
 
 @dataclass
 class SamplePaths(DataProcessor):
+    # Cannot break the event order: keeps whole paths. The JOIN may return paths
+    # in any order, which the layout contract allows; within a path the scan
+    # order is kept (the test suite's strict check verifies it).
+    may_break_order = False
+
     n: int | None
     frac: float | None
     random_state: int | None

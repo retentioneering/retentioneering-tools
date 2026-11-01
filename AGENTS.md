@@ -97,8 +97,10 @@ contract is unchanged, it's just registered via `engine.run(sql, eventstream=df)
 Events within a path are ordered by `(index, subindex)`, unique per path and checked
 at construction. **Never order events by timestamp** — timestamps tie. Window
 `ORDER BY`, ordered aggregation and output sorts use `dialect.event_order(...)` (SQL)
-or `schema.order_cols` (pandas); "first/last event" means `ARG_MIN/ARG_MAX(...,
-dialect.event_position(...))`. `index` is assigned once and never changes; a row a
+or `schema.order_cols` (pandas); for "first/last event" in an aggregate, number
+rows with `ROW_NUMBER() OVER (PARTITION BY path ORDER BY event_order(...))` and use
+`ARG_MIN/ARG_MAX(..., _rn)` — a `ROW(...)` key from `event_position` is ~3x slower
+than a timestamp there, an integer row number ~2x faster. `index` is assigned once and never changes; a row a
 processor adds reuses its source row's `index`, and markers sharing one take
 fractional `subindex` via `eventstream/ordering.py`'s `marker_subindex`. Layout
 contract: each path is one block growing in `(index, subindex)`; path-to-path order

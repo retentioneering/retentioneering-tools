@@ -556,13 +556,7 @@ class TestAddEventsByAnchor:
     }
 
     def test__anchor_event_col_is_validated_against_its_own_column(self) -> None:
-        """
-        A spec naming its own `event_col` must be validated against *that*
-        column's values, as `anchors.spec_vocabulary` documents and as
-        `truncate_paths` already does. Before the fix the levels of
-        `user_lifecycle` were checked against the event vocabulary, so this
-        valid spec raised PreprocessingConfigError.
-        """
+        """A spec naming its own `event_col` is validated against that column."""
         stream = Eventstream(self.get_state_df(), self.STATE_SCHEMA)
         spec = {
             "pattern": "returning->loyal",
@@ -572,7 +566,7 @@ class TestAddEventsByAnchor:
 
         res = stream.add_events(name="became_loyal", anchor=spec)
 
-        # the same spec is accepted by truncate_paths - the two must agree
+        # truncate_paths accepts the same spec.
         stream.truncate_paths(start_anchor=spec, end_anchor="path_end")
 
         assert self.events_of(res, "user_1") == [
@@ -586,12 +580,7 @@ class TestAddEventsByAnchor:
         assert self.events_of(res, "user_2") == ["main", "cart", "pay"]
 
     def test__anchor_event_col_rejects_a_name_absent_from_its_own_column(self) -> None:
-        """
-        The mirror case. `cart`/`pay` are real events but never values of
-        `user_lifecycle`, so the literal check must reject them. Before the fix
-        validation ran against the event vocabulary, passed, and the call
-        returned the stream unchanged - the always-true hazard inverted.
-        """
+        """Real events that are not values of that column are rejected."""
         stream = Eventstream(self.get_state_df(), self.STATE_SCHEMA)
 
         with pytest.raises(PreprocessingConfigError, match="cart"):

@@ -660,6 +660,18 @@ class TestCollapseEventsGroupsCases:
         )
         assert events(res) == ["purchase_session", "no_purchase_session"]
 
+    def test_cases_accept_the_shorthand_leaf(self):
+        """`{"has_event": "purchase"}` is the same condition as the full leaf."""
+        stream = self._windows(["A", "purchase", "B"], ["C", "D"])
+        res = stream.collapse_events(
+            bounds=self.BOUNDS,
+            name=[
+                {"condition": {"has_event": "purchase"}, "name": "purchase_session"},
+                "no_purchase_session",
+            ],
+        )
+        assert events(res) == ["purchase_session", "no_purchase_session"]
+
     def test_cases_event_count_metric(self):
         """'event_count' (documented 'event' key) names windows by threshold."""
         stream = self._windows(["click", "click"], ["click", "A"])
@@ -1037,3 +1049,83 @@ class TestCollapseEventsInactivity:
             group_col="session_id", name="burst"
         )
         assert events(res) == ["burst", "burst"]
+
+
+# ---------------------------------------------------------------------------
+# Determinism when events share a timestamp (#141)
+# ---------------------------------------------------------------------------
+
+
+class TestCollapseEventsTiedTimestamps:
+    """
+    The eventstream is laid out by `(path_col, index, subindex)` -- see the note
+    in `add_start_end_events`. Run detection must walk that order, not
+    `(timestamp, subindex)`, which ties whenever events share a timestamp
+    because `subindex` is the event-type rank and so is equal for every raw
+    event. A tied key makes `ROW_NUMBER` number those rows arbitrarily, so
+    `LAG` compares each event to an arbitrary tied neighbour.
+    """
+
+    @staticmethod
+    def tied_stream():
+        """
+        Four events at one timestamp. `index` lays the path out as a, b, a, b,
+        so no two neighbours are equal and nothing may collapse -- while the
+        rows arrive physically ordered a, a, b, b.
+        """
+        df = pd.DataFrame(
+            {
+                "user_id": ["user_1"] * 4,
+                "event": ["a", "a", "b", "b"],
+                "timestamp": pd.to_datetime(["2020-01-01 00:00:00"] * 4),
+                "index": [1, 3, 2, 4],
+            }
+        )
+        return Eventstream(df, SCHEMA)
+
+    def test__loops_follow_the_index_order_not_the_arrival_order(self):
+        stream = self.tied_stream()
+        assert list(
+            stream.df.sort_values(["user_id", "index", "subindex"])["event"].astype(str)
+        ) == ["a", "b", "a", "b"]
+
+        res = stream.collapse_events(loops=True)
+
+        # a, b, a, b -- no two neighbours are equal, so nothing collapses
+        assert events(res) == ["a", "b", "a", "b"]
+
+    def test__group_col_runs_follow_the_index_order(self):
+        df = pd.DataFrame(
+            {
+                "user_id": ["user_1"] * 4,
+                "event": ["a", "b", "c", "d"],
+                "timestamp": pd.to_datetime(["2020-01-01 00:00:00"] * 4),
+                "index": [1, 3, 2, 4],
+                "screen": ["x", "y", "x", "y"],
+            }
+        )
+        stream = Eventstream(df, {**SCHEMA, "custom_cols": ["screen"]})
+
+        res = stream.collapse_events(group_col="screen", name="run")
+
+        # by index the screens run x, x, y, y -> two runs, not four
+        assert list(res.df["screen"].astype(str)) == ["x", "y"]
+
+    def test__repeated_identical_calls_agree(self):
+        """
+        The user-visible symptom: identical calls returned different row counts.
+        Every path here is a, b, a, b at one timestamp then c, so the collapsed
+        result must equal the input on every call.
+        """
+        rows = []
+        for p in range(400):
+            t0 = pd.Timestamp("2026-01-01") + pd.Timedelta(seconds=p)
+            rows += [[f"u{p}", e, t0] for e in ["a", "b", "a", "b"]]
+            rows += [[f"u{p}", "c", t0 + pd.Timedelta(seconds=1)]]
+        stream = Eventstream(
+            pd.DataFrame(rows, columns=["user_id", "event", "timestamp"]), SCHEMA
+        )
+
+        counts = [len(stream.collapse_events(loops=True).df) for _ in range(5)]
+
+        assert counts == [len(stream.df)] * 5

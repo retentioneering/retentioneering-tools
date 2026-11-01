@@ -6,6 +6,7 @@ from retentioneering import engine
 from retentioneering.engine import dialect
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.event_type import EventTypes
+from retentioneering.eventstream.ordering import marker_subindex
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import (
     InvalidParameterError,
@@ -152,11 +153,13 @@ class AddEvents(DataProcessor):
         df_new = df_source.copy()
         df_new[schema.event_col] = self.name
         df_new[schema.event_type] = marker.type
-        df_new[schema.subindex] = marker.index
+        # The marker takes its source row's position (`index`); `subindex`
+        # places it after the markers of its rank already there (ADR-0017).
+        df_new[schema.subindex] = marker_subindex(df, df_new, schema, marker.index)
 
         df = (
             pd.concat([df, df_new])
-            .sort_values([schema.path_col, schema.timestamp_col, schema.subindex])
+            .sort_values(schema.order_cols, kind="stable")
             .reset_index(drop=True)
         )
 
@@ -227,6 +230,33 @@ class AddEvents(DataProcessor):
                 PROCESSOR_NAME,
                 "The SQL query must return the same columns as the eventstream.",
             )
+        # A new row is placed at the position of the row it came from
+        # (ADR-0017), so it must carry a `(path, index)` that exists. Its
+        # timestamp is an attribute and is taken as given.
+        path_q = engine.quote_ident(schema.path_col)
+        index_q = engine.quote_ident(schema.index)
+        unknown = engine.run(
+            f"""
+            SELECT COUNT(*) OVER () AS _n, {path_q}, {index_q}
+            FROM (SELECT {path_q}, {index_q} FROM result) r
+            ANTI JOIN (SELECT {path_q}, {index_q} FROM df) d
+            USING ({path_q}, {index_q})
+            LIMIT 1
+            """,
+            result=result,
+            df=df,
+        )
+        if not unknown.empty:
+            example = unknown.iloc[0]
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"The SQL query returned {int(example['_n'])} row(s) whose "
+                f"({schema.path_col}, {schema.index}) matches no event of the "
+                f"eventstream, e.g. {schema.path_col}={example[schema.path_col]!r}, "
+                f"{schema.index}={example[schema.index]!r}. A new event takes the "
+                f"position of the row it is derived from: select rows from "
+                f"`eventstream` and keep their '{schema.index}'.",
+            )
         return result
 
     def _get_by_churn(
@@ -240,6 +270,7 @@ class AddEvents(DataProcessor):
         ts_col_q = engine.quote_ident(ts_col)
         subindex_col_q = engine.quote_ident(subindex_col)
         event_col_q = engine.quote_ident(event_col)
+        order = dialect.event_order(engine.quote_ident(schema.index), subindex_col_q)
 
         inactivity_days = self.churn["inactivity_days"]
         active_events = self.churn.get("active_events")
@@ -260,7 +291,7 @@ class AddEvents(DataProcessor):
             WITH windowed AS (
                 SELECT *,
                     LEAD({ts_col_q}) OVER (
-                        PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
+                        PARTITION BY {path_col_q} ORDER BY {order}
                     ) AS _hop_next_ts,
                     (SELECT MAX({ts_col_q}) FROM df) AS _hop_dataset_end
                 FROM df

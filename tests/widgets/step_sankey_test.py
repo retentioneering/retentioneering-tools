@@ -63,3 +63,22 @@ class TestStepSankeyWidgetAnchorEvent:
         widget.path_pattern = "cart->.*->pay"
 
         assert self._anchor_event(widget) is None
+
+
+class TestStepSankeyWidgetLayoutPattern:
+    """The frontend splits the pattern into blocks itself, so a group has to
+    reach it unrolled — `(cart->.*){2}` is two blocks, not one."""
+
+    def test__a_group_is_sent_unrolled(self) -> None:
+        stream = TestStepSankeyWidgetAnchorEvent._stream()
+        widget = StepSankeyWidget(stream, path_pattern="(cart->.*){2}->pay")
+
+        result = json.loads(widget.result)
+        assert widget.error == ""
+        assert result["layout_pattern"] == "cart->.*->cart->.*->pay"
+        assert len(result["matrices"]) == 3
+
+    def test__no_pattern_no_layout(self) -> None:
+        widget = StepSankeyWidget(TestStepSankeyWidgetAnchorEvent._stream())
+
+        assert json.loads(widget.result)["layout_pattern"] is None

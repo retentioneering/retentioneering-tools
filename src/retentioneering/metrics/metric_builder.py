@@ -26,7 +26,8 @@ Supports metrics:
   - active_events: event name (string or list of strings)
 - matches_pattern - whether path matches a token pattern (0/1)
   - pattern: string pattern like "login->.*->purchase" (literal events matched as whole
-    tokens, not substrings; ".*" matches any run of whole events)
+    tokens, not substrings; ".*" matches any run of whole events, ".{0,4}" a bounded
+    one, "(cart->.*){2}" a repeated sequence — see paths/tokens.py for the syntax)
 - in_segment - binary metric showing if a path belongs to a segment level (0/1)
   - segment_name: segment column name
   - segment_level: segment level (string, list of strings, or None for all levels)

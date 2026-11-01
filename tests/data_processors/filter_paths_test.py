@@ -659,3 +659,69 @@ class TestFilterPathsConditionSugar:
             ]
         )
         assert set(res.df["user_id"].astype(str)) == {"user_1"}
+
+
+class TestShorthandLeaves:
+    """`{metric: args}` and `{metric: scalar}` mean `{"op": "=", "metric": ...,
+    "value": True, "metric_args": ...}` — for 0/1 metrics only."""
+
+    @staticmethod
+    def _ids(condition):
+        return sorted(build_stream().filter_paths(condition).df["user_id"].unique())
+
+    @pytest.mark.parametrize(
+        "shorthand,full",
+        [
+            ({"has_event": "cancellation"}, {"event": "cancellation"}),
+            ({"has_event": {"event": "cancellation"}}, {"event": "cancellation"}),
+            (
+                {"matches_pattern": "purchase->purchase"},
+                {"pattern": "purchase->purchase"},
+            ),
+        ],
+    )
+    def test__agrees_with_the_full_form(self, shorthand, full):
+        metric = next(iter(shorthand))
+        long_form = {"op": "=", "metric": metric, "value": True, "metric_args": full}
+        assert self._ids(shorthand) == self._ids(long_form)
+
+    def test__event_lists(self):
+        assert self._ids({"has_any_event": ["cancellation", "logout"]}) == [
+            "user_1",
+            "user_3",
+        ]
+        assert self._ids({"has_all_events": ["promo_view", "logout"]}) == ["user_1"]
+
+    def test__a_multi_argument_metric_takes_a_dict(self):
+        condition = {"in_segment": {"segment_name": "country", "segment_level": "UK"}}
+        assert self._ids(condition) == ["user_3"]
+
+    def test__composes_with_branches_and_lists(self):
+        condition = {
+            "op": "or",
+            "args": [
+                {"has_event": "cancellation"},
+                [
+                    {"has_event": "logout"},
+                    {"op": "not", "args": [{"has_event": "purchase"}]},
+                ],
+            ],
+        }
+        # user_1 logged out but did purchase, so the inner AND fails for it
+        assert self._ids(condition) == ["user_3"]
+
+    @pytest.mark.parametrize(
+        "bad,message",
+        [
+            ({"length": {}}, "only 0/1 metrics"),
+            ({"event_count": "purchase"}, "only 0/1 metrics"),
+            ({"has_event": ["purchase"]}, "must be a str"),
+            ({"has_any_event": "purchase"}, "must be a list"),
+            ({"in_segment": "UK"}, "more than one argument"),
+            ({"has_event": "purchase", "matches_pattern": "a"}, "Cannot read"),
+            ({"metric": "length", "value": 3}, "needs an 'op'"),
+        ],
+    )
+    def test__refused(self, bad, message):
+        with pytest.raises(PreprocessingConfigError, match=message):
+            build_stream().filter_paths(bad)

@@ -12,9 +12,11 @@ class Event:
 class EventTypes:
     """The event types a row can carry, and the rank each one sorts at.
 
-    ``index`` is a *sort rank*, not an id: rows sharing a timestamp are ordered
-    by it (``schema.subindex``), so the scale says what stands before what
-    within one instant. It is deliberately not injective — ``raw`` and
+    ``index`` is a *sort rank*, not an id: rows sharing a position
+    (``schema.index``) are ordered by it (``schema.subindex``), so the scale
+    says what stands before what at one position. Several markers of one rank
+    at one position take fractional values between it and the next rank
+    (ADR-0017, ``eventstream/ordering.py``). It is deliberately not injective — ``raw`` and
     ``collapsed`` share a rank because collapsing an event does not move it, and
     the distinct type only records where the row came from.
 

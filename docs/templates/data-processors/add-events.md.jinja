@@ -3,9 +3,13 @@
 {% block how_it_works %}
 ## How it works
 
-New events are marked `synthetic` and inserted at the same timestamp as the row
-that produced them, ordered immediately *before* it: a marker names the moment
-its source event opens. Nothing is removed. The one exception is `churn`, which
+New events are marked `synthetic` and inserted at the same
+[position](/docs/eventstream#event-order) and timestamp as the row that
+produced them, ordered immediately *before* it: a marker names the moment its
+source event opens. Nothing is removed. Markers added at one position by
+successive calls keep the order of the calls —
+`add_events("x", ...).add_events("y", ...)` on the same source gives
+`x → y → source`. The one exception is `churn`, which
 closes a stretch of inactivity rather than opening anything — it carries its own
 `churn` event type and sorts *after* the last active event.
 
@@ -110,7 +114,10 @@ them with `event_type == "churn"`.
 
 For anything the three modes above don't cover, `sql` takes a DuckDB `SELECT`
 over the `eventstream` table alias returning rows in the eventstream schema;
-each returned row becomes one synthetic event.
+each returned row becomes one synthetic event. Select the rows from
+`eventstream` and keep their `index`: the new event is placed at the position
+of the row it came from, and a row whose `index` matches no event of its path
+is an error. Other columns, the timestamp included, may be changed freely.
 
 {% endblock %}
 {% block extra %}

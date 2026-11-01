@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
 
 from retentioneering import engine
+from retentioneering.engine import dialect
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import PreprocessingConfigError
@@ -21,6 +22,9 @@ BOUNDS_KEYS = ("start_event", "end_event")
 
 @dataclass
 class SplitSessions(DataProcessor):
+    # Cannot break the event order: drops separator rows and adds columns, emitted in event order.
+    may_break_order = False
+
     session_col: str
     session_index_col: str
     separator: List[str] | None
@@ -116,7 +120,6 @@ class SplitSessions(DataProcessor):
         path_col = self.path_col or schema.path_col
         event_col = schema.event_col
         ts_col = schema.timestamp_col
-        subindex_col = schema.subindex
 
         for col in (self.session_col, self.session_index_col):
             if col in schema.cols:
@@ -126,13 +129,11 @@ class SplitSessions(DataProcessor):
 
         group = self._as_group()
         session_ctes = build_session_ctes(
-            group, path_col, event_col, ts_col, subindex_col
+            group, path_col, event_col, ts_col, schema.index, schema.subindex
         )
 
         path_col_q = engine.quote_ident(path_col)
         event_col_q = engine.quote_ident(event_col)
-        ts_col_q = engine.quote_ident(ts_col)
-        subindex_col_q = engine.quote_ident(subindex_col)
         session_col_q = engine.quote_ident(self.session_col)
         session_index_col_q = engine.quote_ident(self.session_index_col)
 
@@ -144,6 +145,10 @@ class SplitSessions(DataProcessor):
         else:
             where_clause = ""
 
+        order = dialect.event_order(
+            f"w.{engine.quote_ident(schema.index)}",
+            f"w.{engine.quote_ident(schema.subindex)}",
+        )
         query = f"""
         WITH
         {session_ctes}
@@ -155,7 +160,7 @@ class SplitSessions(DataProcessor):
             END AS {session_col_q}
         FROM with_session_id w
         {where_clause}
-        ORDER BY w.{path_col_q}, w.{ts_col_q}, w.{subindex_col_q}
+        ORDER BY w.{engine.quote_ident(schema.path_col)}, {order}
         """
 
         result = engine.run(query, df=df)

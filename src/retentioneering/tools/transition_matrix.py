@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, get_args
 import pandas as pd
 
 from retentioneering import engine
+from retentioneering.engine import dialect
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.exceptions import EmptyEventstreamError, InvalidParameterError
 from .types import T_Diff, T_TransitionMatrixValues
@@ -153,7 +154,7 @@ class TransitionMatrix:
                             partition by {path_col_q}
                             order by {order_by}
                         ) as next_{timestamp_col},
-                        date_diff('second', {timestamp_col_q}, next_{timestamp_col}) as timedelta
+                        {dialect.epoch(f"next_{timestamp_col} - {timestamp_col_q}")} as timedelta
                     from df
                 ) where next_{event_col} is not null
                 group by {event_col_q}, next_{event_col}

@@ -63,7 +63,11 @@ one query to `(index, subindex)`. This ADR makes the same choice library-wide.
    `add_events("x").add_events("y")` places `y` after `x`. This applies to all
    `add_events` modes and to any processor that creates rows sharing an index.
    `subindex` becomes `float64`; it is used only for ordering, never compared
-   for equality against ranks (in Python or JS).
+   for equality against ranks (in Python or JS). The column keeps its name:
+   "subindex" names its role — the second component of the order key within
+   an `index` — not an integer type, and renaming a user-visible column would
+   cost more than it clarifies. Its values are opaque; the user guide tells
+   users to compare them, not to filter by them.
 
 4. **One ordering helper.** `engine/dialect.py` provides the within-path order
    (`event_order`) next to `event_position`, and `EventstreamSchema.order_cols`

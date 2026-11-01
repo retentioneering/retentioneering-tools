@@ -109,6 +109,11 @@ columns the constructor adds:
   churn marker after it, and several markers at one position in the order they
   were added (`1.0`, `1.5`, `1.667`, …, so it is a float).
 
+Treat `subindex` as a sort key, not a number to look up: compare values, but
+don't rely on particular ones. Only its order carries meaning — a filter like
+`subindex == 1` silently misses markers at `1.5` — so select rows by `event`
+or `event_type` instead.
+
 Once assigned, `index` never changes: filtering leaves gaps, and the timestamp
 is only an attribute of an event, not its position. If you pass your own
 `index`/`subindex`, each `(index, subindex)` pair must be unique within a path;

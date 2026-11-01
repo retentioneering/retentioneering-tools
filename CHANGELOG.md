@@ -37,6 +37,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- The bundled ecom dataset (`rete.datasets.load_ecom`) no longer reorders events
+  within a session. Each event's timestamp was `base + gap * index` with a fresh
+  random `gap` per event, so a later event could get an earlier timestamp; 205 of
+  470 purchase sessions showed `purchase` before `payment_details`. Gaps now
+  accumulate, and `ecom.csv.gz` is regenerated: events, sessions and users are
+  unchanged, only timestamps within a session differ. Results that depend on
+  event order (transition weights, step matrices, funnels, conversion rates)
+  change accordingly
+  ([#88](https://github.com/retentioneering/retentioneering-tools/issues/88)).
+
 - The agent skill's event-log profiler handles an export with no rows: it
   writes a zero-count profile with a warning instead of raising `IndexError`.
   It also no longer crashes when it cannot infer the user or event column, or
@@ -185,13 +195,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   `best_params`, so saving clusters replays the displayed split. The widget
   persists its KMeans settings and current seed in `state_file`; grid selection
   and restoration reuse that seed, while a new Apply chooses a fresh one.
-
-- The bundled ecom dataset (`rete.datasets.load_ecom`) no longer reorders events
-  within a session. Each event's timestamp was `base + gap * index` with a fresh
-  random `gap` per event, so a later event could get an earlier timestamp; 205 of
-  470 purchase sessions showed `purchase` before `payment_details`. Gaps now
-  accumulate, and `ecom.csv.gz` is regenerated: events, sessions and users are
-  unchanged, only timestamps within a session differ.
 
 - `describe()["segments"]` reports the events that have no value for a segment
   column under the `<MISSING>` sentinel, the same level `get_segment_levels`

@@ -1489,6 +1489,15 @@ class Eventstream:
         (`["purchase", "path_end"]` cuts at the purchase, or at the end of the
         path for those who never purchased).
 
+        Names are validated against the whole matching column (including a
+        spec's `event_col`), not against each individual path. Unknown names
+        raise `PreprocessingConfigError`. For compatibility with lists reused
+        on filtered streams, absent positive names emit `UserWarning` instead
+        if another anchor on the same side has a valid vocabulary. If every
+        alternative contains unknown names, the call raises. Syntax errors and
+        unknown names in negated classes always raise, even in fallback lists.
+        Spaces around `->` are part of event names, not formatting.
+
         Parameters
         ----------
         start_anchor : str or dict or list

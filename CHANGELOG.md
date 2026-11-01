@@ -37,6 +37,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- `truncate_paths` rejects globally unknown anchor names instead of silently
+  returning an empty stream (#230). Fallback lists retain absent positive names
+  with a warning when another anchor on that side has a valid vocabulary;
+  missing events within individual paths still use the existing fallback rules.
+  Syntax errors and unknown exclusions always raise. Shared pattern validation
+  now explains stray whitespace around `->` without changing real event names.
+
 - The `(index, subindex)` ordering that #141's fix (below) gave
   `collapse_events` run detection now applies to every processor that still
   ordered events by `(timestamp, subindex)` and so gave order-dependent results

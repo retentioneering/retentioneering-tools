@@ -343,6 +343,24 @@ def literal_tokens(pattern: str) -> list[str]:
     return [t for t in pattern.split(PATH_DELIMITER) if not tokens_mod.is_gap(t)]
 
 
+def _validate_whitespace(name: str, available: set, *, param: str) -> None:
+    """Explain stray spacing without rewriting real names containing spaces."""
+    stripped = name.strip()
+    if name == stripped or name in available:
+        return
+    suggestion = (
+        f" Did you mean {stripped!r}?"
+        if stripped in available or stripped in (PATH_START, PATH_END, ".", GAP)
+        else ""
+    )
+    raise PatternSyntaxError(
+        f"Unknown event/token {name!r} in parameter {param!r} has leading or "
+        f"trailing whitespace. Whitespace around '->' "
+        f"is part of the event name; remove it if it was only formatting."
+        f"{suggestion}"
+    )
+
+
 def _validate_class(
     token: "tokens_mod.EventClass",
     available: set,
@@ -394,11 +412,10 @@ def validate_pattern_tokens(
     Names inside a *negated* class are checked for a sharper reason: a typo in
     ``[^Purchse]`` does not produce an empty result but an always-true
     position, which corrupts the output while looking perfectly healthy. That
-    asymmetry is what `check_literals=False` turns on — ``truncate_paths``
-    accepts a *list* of anchors of which some are expected not to resolve
-    (``["purchase", "path_end"]``), so there a name that names nothing is
-    legitimate wherever its absence *narrows* the pattern (a bare token, a
-    member of a positive class) and never where its absence widens it.
+    asymmetry is what `check_literals=False` turns on. It lets callers check
+    syntax and exclusions before handling absent positive names separately
+    (e.g. warning for an optional ``truncate_paths`` fallback). It never
+    suppresses syntax diagnostics, including accidental whitespace.
 
     `param` names the caller's user-facing parameter, so the error points at
     ``path_pattern`` / ``start_anchor`` rather than at this module's internals.
@@ -432,6 +449,7 @@ def validate_pattern_tokens(
         if isinstance(token, str):
             if token in (PATH_START, PATH_END) or token in available:
                 continue
+            _validate_whitespace(token, available, param=param)
             hint = tokens_mod.describe_unknown_token(token)
             if hint is not None:
                 raise PatternSyntaxError(hint)

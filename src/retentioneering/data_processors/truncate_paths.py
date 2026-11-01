@@ -1,3 +1,4 @@
+import warnings
 from typing import Tuple
 
 import pandas as pd
@@ -77,31 +78,48 @@ class TruncatePaths(DataProcessor):
         return specs
 
     def _validate_tokens(self, df: pd.DataFrame, schema: EventstreamSchema) -> None:
-        """Reject anchor patterns naming events this eventstream does not have.
+        """Validate against the whole stream, not each individual path.
 
-        Deferred to `apply` because the vocabulary is only known once there is a
-        frame, and narrowed by `check_literals=False` to the names whose absence
-        would *widen* a pattern. A name that resolves nowhere is legitimate here
-        — a list of anchors is a fallback chain, and `["purchase", "path_end"]`
-        relies on the first spec not resolving for paths that never purchased —
-        but that argument only covers names whose absence removes a way to
-        match. Inside `[^...]` an unknown name removes an *exclusion*, so the
-        window silently opens in the wrong place instead of not opening.
+        Absent positive names in a fallback list warn only when another spec on
+        that side is vocabulary-valid. Syntax errors and unknown exclusions
+        always raise, since they can silently widen the selected window.
         """
         for param, specs in (
             ("start_anchor", self.start_specs),
             ("end_anchor", self.end_specs),
         ):
+            missing = []
             for spec in specs:
                 try:
+                    vocabulary = anchors.spec_vocabulary(df, schema, spec)
+                    # Check the entire pattern first: an absent positive name
+                    # must not hide a later typo in an exclusion or in syntax.
                     anchors.validate_pattern_tokens(
                         spec.pattern,
-                        anchors.spec_vocabulary(df, schema, spec),
+                        vocabulary,
                         param=param,
                         check_literals=False,
                     )
+                    try:
+                        anchors.validate_pattern_tokens(
+                            spec.pattern, vocabulary, param=param, warn=False
+                        )
+                    except InvalidParameterError as exc:
+                        missing.append((spec, exc))
                 except (InvalidParameterError, PatternSyntaxError) as exc:
                     raise PreprocessingConfigError(PROCESSOR_NAME, exc.message) from exc
+            if missing and len(missing) == len(specs):
+                exc = missing[0][1]
+                raise PreprocessingConfigError(PROCESSOR_NAME, exc.message) from exc
+            for spec, exc in missing:
+                warnings.warn(
+                    f"[{PROCESSOR_NAME}] {exc.message}. Pattern {spec.pattern!r} "
+                    f"contains names absent from the whole stream's matching "
+                    f"column; continuing with fallback anchors for '{param}'. "
+                    f"Check spelling or remove unavailable alternatives.",
+                    UserWarning,
+                    stacklevel=7,
+                )
 
     def _bounds(
         self,

@@ -555,7 +555,8 @@ class TestAnchorLists:
 
     def test__path_dropped_when_no_spec_on_a_side_resolves(self):
         stream = _stream({1: ["A", "B"], 2: ["X", "Y"]})
-        result = stream.truncate_paths(start_anchor=["A", "Q"], end_anchor="B")
+        with pytest.warns(UserWarning, match="Q.*fallback"):
+            result = stream.truncate_paths(start_anchor=["A", "Q"], end_anchor="B")
         assert _events(result, 1) == ["A", "B"]
         assert _events(result, 2) == []
 
@@ -745,7 +746,8 @@ class TestEventClassAnchors:
         """The fallback-list contract: `["A", "Q"]` must not become an error
         just because Q is absent — it simply does not constrain."""
         stream = _stream({1: ["A", "B", "C"]})
-        result = stream.truncate_paths(start_anchor=["A", "Q"], end_anchor="C")
+        with pytest.warns(UserWarning, match="Q.*fallback"):
+            result = stream.truncate_paths(start_anchor=["A", "Q"], end_anchor="C")
         assert _events(result, 1) == ["A", "B", "C"]
 
     def test__unsupported_syntax_is_reported_as_a_config_error(self):
@@ -754,7 +756,7 @@ class TestEventClassAnchors:
             stream.truncate_paths(start_anchor="[^A->B]", end_anchor="C")
 
     def test__class_anchor_works_inside_a_spec_dict(self):
-        stream = _stream({1: ["A", "B", "C", "D", "E"]})
+        stream = _stream({1: ["A", "B", "C", "D", "E"], 2: ["X"]})
         result = stream.truncate_paths(
             start_anchor={"pattern": "[B|X]->.*->D", "at": 0}, end_anchor="E"
         )
@@ -834,3 +836,102 @@ class TestOccurrenceAllRejected:
                 start_anchor={"pattern": "A", "occurrence": "all"},
                 end_anchor="path_end",
             )
+
+
+class TestAnchorVocabularyValidation:
+    @pytest.mark.parametrize("side", ["start_anchor", "end_anchor"])
+    @pytest.mark.parametrize(
+        "anchor",
+        [
+            "zzz",
+            ["zzz"],
+            ["zzz", "qqq"],
+            "A->zzz",
+            "[A|zzz]",
+            "A->[zzz]*->C",
+            "(zzz){2}",
+        ],
+    )
+    def test_unknown_names_raise_on_either_bound(self, side, anchor):
+        stream = _stream({1: ["A", "B", "C"]})
+        kwargs = dict(start_anchor="path_start", end_anchor="path_end")
+        kwargs[side] = anchor
+        with pytest.raises(PreprocessingConfigError, match=side):
+            stream.truncate_paths(**kwargs)
+
+    @pytest.mark.parametrize("side", ["start_anchor", "end_anchor"])
+    @pytest.mark.parametrize("as_tuple", [False, True])
+    def test_globally_absent_fallback_warns_and_preserves_result(self, side, as_tuple):
+        stream = _stream({1: ["A", "B", "C"], 2: ["A", "C"]})
+        kwargs = dict(start_anchor="path_start", end_anchor="path_end")
+        chain = ["purchase", kwargs[side]]
+        kwargs[side] = tuple(chain) if as_tuple else chain
+        with pytest.warns(UserWarning, match=rf"{side}.*purchase.*fallback") as caught:
+            result = stream.truncate_paths(**kwargs)
+        pd.testing.assert_frame_equal(result.df, stream.df)
+        assert caught[0].filename == __file__
+
+    def test_missing_only_in_some_paths_is_not_a_warning(self, recwarn):
+        stream = _stream({1: ["A", "purchase", "C"], 2: ["A", "C"]})
+        result = stream.truncate_paths("path_start", ["purchase", "path_end"])
+        assert _events(result, 1) == ["A", "purchase"]
+        assert _events(result, 2) == ["A", "C"]
+        assert not recwarn
+
+    def test_known_names_without_a_matching_sequence_still_return_empty(self, recwarn):
+        stream = _stream({1: ["A", "B"], 2: ["C"]})
+        assert stream.truncate_paths("A->C", "path_end").df.empty
+        assert not recwarn
+
+    @pytest.mark.parametrize(
+        "pattern", ["A -> B -> C", "A-> B", "A->\tB", "A|B", "A{2}"]
+    )
+    def test_obvious_syntax_errors_are_not_hidden_by_fallback(self, pattern):
+        stream = _stream({1: ["A", "B", "C"]})
+        with pytest.raises(PreprocessingConfigError):
+            stream.truncate_paths([pattern, "path_start"], "path_end")
+
+    @pytest.mark.parametrize("pattern", ["zzz->[^qqq]", "zzz->[^qqq]*->C"])
+    def test_unknown_exclusion_after_unknown_literal_is_always_an_error(self, pattern):
+        stream = _stream({1: ["A", "B", "C"]})
+        with pytest.raises(PreprocessingConfigError, match="qqq"):
+            stream.truncate_paths([pattern, "path_start"], "path_end")
+
+    @pytest.mark.parametrize("pattern", ["A->zzz", "[A|zzz]", "A->[zzz]*->C"])
+    def test_compound_fallback_keeps_existing_matching_semantics(self, pattern):
+        stream = _stream({1: ["A", "C"]})
+        with pytest.warns(UserWarning, match="zzz.*fallback"):
+            result = stream.truncate_paths([pattern, "path_start"], "path_end")
+        expected = ["C"] if pattern == "A->[zzz]*->C" else ["A", "C"]
+        assert _events(result, 1) == expected
+
+    def test_spec_uses_its_own_column_vocabulary(self):
+        frame = _stream({1: ["A", "B", "C"]}).df.assign(
+            screen=["home", "cart", "checkout"]
+        )
+        stream = Eventstream(frame)
+        result = stream.truncate_paths(
+            {"pattern": "home->cart", "event_col": "screen"}, "path_end"
+        )
+        assert _events(result, 1) == ["B", "C"]
+        with pytest.raises(PreprocessingConfigError, match="start_anchor"):
+            stream.truncate_paths({"pattern": "A", "event_col": "screen"}, "path_end")
+
+    def test_unused_categories_do_not_count_as_observed_events(self):
+        stream = _stream({1: ["A", "B"]})
+        stream._df["event"] = stream._df["event"].cat.add_categories(["zzz"])
+        with pytest.raises(PreprocessingConfigError, match="zzz"):
+            stream.truncate_paths("zzz", "path_end")
+
+    def test_empty_stream_accepts_sentinels_but_has_no_literal_vocabulary(self):
+        stream = _stream({1: ["A"]}).filter_events(
+            sql="SELECT * FROM eventstream WHERE FALSE"
+        )
+        assert stream.truncate_paths("path_start", "path_end").df.empty
+        with pytest.raises(PreprocessingConfigError, match="A"):
+            stream.truncate_paths("A", "path_end")
+
+    def test_padded_real_event_name_is_preserved(self):
+        stream = _stream({1: [" A ", "B", "C"]})
+        result = stream.truncate_paths(" A ->B", "path_end")
+        assert _events(result, 1) == ["B", "C"]

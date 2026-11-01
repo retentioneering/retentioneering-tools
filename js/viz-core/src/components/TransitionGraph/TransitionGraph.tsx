@@ -1249,6 +1249,17 @@ export const TransitionGraph = observer(function TransitionGraph({
   // them in place), yet a rebuild still creates edges with the correct
   // `filtered` class — otherwise the first painted frame after any rebuild
   // flashes every edge.
+  // Label font sizes are written in px at scale 1 and multiplied by the
+  // label_scale setting at use time. Read through a ref so the stylesheet
+  // functions and applyFocusState pick up the current scale without a
+  // graph rebuild (see the store.labelScale effect below).
+  const labelScaleRef = React.useRef(store.labelScale);
+  labelScaleRef.current = store.labelScale;
+  const fontPx = React.useCallback(
+    (px: number) => px * labelScaleRef.current,
+    [],
+  );
+
   const isEdgeVisibleRef = React.useRef(isEdgeVisible);
   isEdgeVisibleRef.current = isEdgeVisible;
 
@@ -1551,7 +1562,7 @@ export const TransitionGraph = observer(function TransitionGraph({
           "shadow-offset-x": 0,
           "shadow-offset-y": 1,
           label: "data(label)",
-          "font-size": 14,
+          "font-size": () => fontPx(14),
           "font-weight": "bold",
           color: labelColor,
           "text-valign": "center",
@@ -1598,7 +1609,7 @@ export const TransitionGraph = observer(function TransitionGraph({
           label: "data(label)",
           "font-size": (ele: cytoscape.EdgeSingular) => {
             const normalized = ele.data("normalizedWeight") as number;
-            return 11 + normalized * 7; // 11-18px range
+            return fontPx(11 + normalized * 7); // 11-18px range at scale 1
           },
           "font-weight": "bold",
           // Text color: dark in dark theme (light outline), light in light theme (dark outline)
@@ -2181,7 +2192,7 @@ export const TransitionGraph = observer(function TransitionGraph({
             (node.data("nodeSize") as number) ?? NODE_BASE_MAX_SIZE;
           node.style({
             label: node.data("label"),
-            "font-size": 14,
+            "font-size": fontPx(14),
             width: baseSize,
             height: baseSize,
           });
@@ -2267,7 +2278,7 @@ export const TransitionGraph = observer(function TransitionGraph({
                     ? `← ${baseValue}`
                     : `${baseValue} →`
                   : "",
-                "font-size": showLabel ? 13 + relativeWeight * 6 : "",
+                "font-size": showLabel ? fontPx(13 + relativeWeight * 6) : "",
                 "target-arrow-shape":
                   relativeWeight >= FOCUS_ARROW_MIN_VISIBLE_RATIO
                     ? "triangle"
@@ -2351,7 +2362,7 @@ export const TransitionGraph = observer(function TransitionGraph({
                   ? `← ${baseValue}`
                   : `${baseValue} →`
               : "",
-            "font-size": showLabel ? 13 + relativeWeight * 9 : "",
+            "font-size": showLabel ? fontPx(13 + relativeWeight * 9) : "",
             "target-arrow-shape": showArrow ? "triangle" : "none",
             "text-outline-color": amberOutline,
             "text-background-opacity": 0,
@@ -2359,7 +2370,7 @@ export const TransitionGraph = observer(function TransitionGraph({
           });
         });
         pathEles.nodes().forEach((nodeElement) => {
-          nodeElement.style("font-size", 15);
+          nodeElement.style("font-size", fontPx(15));
         });
         return;
       }
@@ -2414,7 +2425,7 @@ export const TransitionGraph = observer(function TransitionGraph({
           nodeElement.style({
             width: currentSize,
             height: currentSize,
-            "font-size": 17,
+            "font-size": fontPx(17),
           });
         });
 
@@ -2434,7 +2445,7 @@ export const TransitionGraph = observer(function TransitionGraph({
         edge.style({
           width: startWidth + (targetWidth - startWidth) * progress,
           label: progress > 0.2 ? label : "",
-          "font-size": 15,
+          "font-size": fontPx(15),
           "target-arrow-shape": "triangle",
           "text-background-opacity": 0,
           "text-background-padding": 0,
@@ -2618,7 +2629,7 @@ export const TransitionGraph = observer(function TransitionGraph({
           width: currentWidth,
           label,
           "target-arrow-shape": showArrow ? "triangle" : "none",
-          "font-size": showFocusLabel ? 13 + relativeWeight * 9 : "",
+          "font-size": showFocusLabel ? fontPx(13 + relativeWeight * 9) : "",
           "text-background-opacity": 0,
           "text-background-padding": 0,
         });
@@ -2643,7 +2654,7 @@ export const TransitionGraph = observer(function TransitionGraph({
           width: currentWidth,
           label,
           "target-arrow-shape": showArrow ? "triangle" : "none",
-          "font-size": showFocusLabel ? 13 + relativeWeight * 9 : "",
+          "font-size": showFocusLabel ? fontPx(13 + relativeWeight * 9) : "",
           "text-background-opacity": 0,
           "text-background-padding": 0,
         });
@@ -2663,7 +2674,7 @@ export const TransitionGraph = observer(function TransitionGraph({
           width: (edge.data("edgeSize") as number) + progress * 2,
           label,
           "target-arrow-shape": showArrow ? "triangle" : "none",
-          "font-size": showFocusLabel ? 13 + relativeWeight * 9 : "",
+          "font-size": showFocusLabel ? fontPx(13 + relativeWeight * 9) : "",
           "text-background-opacity": 0,
           "text-background-padding": 0,
         });
@@ -2700,7 +2711,7 @@ export const TransitionGraph = observer(function TransitionGraph({
         );
       });
       activeFocusNodes.forEach((nodeId) => {
-        cy.getElementById(nodeId).style("font-size", 17);
+        cy.getElementById(nodeId).style("font-size", fontPx(17));
       });
     },
     [
@@ -2798,6 +2809,17 @@ export const TransitionGraph = observer(function TransitionGraph({
       element.style("opacity", dimOpacity);
     });
   }, [store.focusDimStrength]);
+
+  // Live-reflect label_scale changes (e.g. `widget.label_scale = 2` from
+  // Python): re-evaluate the stylesheet's
+  // font-size functions, and redo the focus pass, whose inline bypass
+  // font sizes would otherwise keep the old scale.
+  React.useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    cy.style().update();
+    applyFocusStateRef.current?.(cy, focusProgressRef.current);
+  }, [store.labelScale]);
 
   // Apply the viewport requested by a view AFTER the commit it triggered has
   // fully settled — declared after the build/filter effects so it runs last
@@ -3202,6 +3224,7 @@ export const TransitionGraph = observer(function TransitionGraph({
           formatValue={formatValue}
           isDark={isDark}
           isDifferential={isDifferential}
+          isTime={isTimeValue}
           getDiffBreakdown={(source, target) =>
             store.getDiffCellBreakdown(source, target)
           }
@@ -3690,6 +3713,7 @@ export const TransitionGraph = observer(function TransitionGraph({
             />
           ) : isDifferential ? (
             <DiffBreakdownTooltip
+              isTime={isTimeValue}
               title={
                 <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span>{tooltip.from}</span>

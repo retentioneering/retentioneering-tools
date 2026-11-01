@@ -45,6 +45,9 @@ class AddClusters(DataProcessor):
         path_col: Path ID column name (optional)
     """
 
+    # Cannot break the event order: adds a column only.
+    may_break_order = False
+
     name: str
     features: List[Dict[str, Any]]
     method: T_ClusteringMethod

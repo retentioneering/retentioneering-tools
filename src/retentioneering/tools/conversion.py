@@ -17,7 +17,7 @@ matrix on a subpopulation for those.
 """
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
@@ -90,9 +90,8 @@ class ConversionRate:
         if path_col not in schema.path_cols:
             raise InvalidParameterError("path_col", path_col, schema.path_cols)
 
-        available = df[schema.event_col].unique().tolist()
-        starts = self._parse_side(start_anchor, "start_anchor", available)
-        ends = self._parse_side(end_anchor, "end_anchor", available)
+        starts = self._parse_side(start_anchor, "start_anchor", df, schema)
+        ends = self._parse_side(end_anchor, "end_anchor", df, schema)
         window = parse_within(within)
 
         total_paths = int(df[path_col].nunique())
@@ -142,7 +141,7 @@ class ConversionRate:
         return result
 
     @staticmethod
-    def _parse_side(value, param: str, available: Sequence[str]) -> list:
+    def _parse_side(value, param: str, df: pd.DataFrame, schema) -> list:
         """Anchor specs for one side, with their event names validated.
 
         Unlike `truncate_paths`, a list here is a fan-out — several separate
@@ -153,7 +152,10 @@ class ConversionRate:
         specs = anchors.parse_specs(value, param=param)
         for spec in specs:
             anchors.validate_pattern_tokens(
-                spec.pattern, available, param=param, stacklevel=6
+                spec.pattern,
+                anchors.spec_vocabulary(df, schema, spec),
+                param=param,
+                stacklevel=6,
             )
         return specs
 
@@ -173,6 +175,7 @@ class ConversionRate:
             spec.pattern,
             occurrence=spec.occurrence,
             path_col=path_col,
+            event_col=spec.event_col,
         )
         return len(match.paths()) / total_paths
 

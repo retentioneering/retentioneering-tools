@@ -37,6 +37,12 @@ def _validate_column_filter(arg_name: str, value: Dict) -> None:
 
 
 class FilterEvents(DataProcessor):
+    @property
+    def may_break_order(self) -> bool:
+        # keep/drop/func only drop rows; a `sql=` query can return any rows,
+        # duplicates included, so its (re-sorted) result is checked.
+        return self.sql is not None
+
     keep: Dict | None
     drop: Dict | None
     func: Callable[[pd.DataFrame], pd.Series] | None

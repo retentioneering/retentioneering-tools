@@ -94,6 +94,26 @@ stream = rete.Eventstream(df, schema={
 | `segment_cols` | `[]` | Columns treated as segmentations, available in widgets and metrics. See [Key concepts](#key-concepts). |
 | `custom_cols` | `None` | Extra columns you may need for working with the eventstream. Left as `None`, every column not covered by the rest of the schema is included automatically. Set to a list — even `[]` — and only those columns (plus the ones already covered by the schema) are kept; anything else is dropped. |
 
+## Event order
+
+Every tool reads the events of a path in one order, kept in two technical
+columns the constructor adds:
+
+- `index` — the event's position in its path, numbered from 1 by timestamp.
+  Events with **equal timestamps keep the order of your input rows**: the
+  library never reorders them, so sort your frame first if the logged order is
+  not the one you want, or pass an `index` column of your own.
+- `subindex` — orders rows that share a position. Events added later (such as
+  [`add_events`](/docs/data-processors/add-events) markers) take the `index` of
+  the row they came from; `subindex` puts a marker before its source event, a
+  churn marker after it, and several markers at one position in the order they
+  were added (`1.0`, `1.5`, `1.667`, …, so it is a float).
+
+Once assigned, `index` never changes: filtering leaves gaps, and the timestamp
+is only an attribute of an event, not its position. If you pass your own
+`index`/`subindex`, each `(index, subindex)` pair must be unique within a path;
+a repeated one raises `SchemaConfigError`.
+
 ## Sample dataset
 
 retentioneering ships with a synthetic e-commerce dataset you can use to try the library without your own data. It contains six months of user sessions on a consumer electronics store, with several embedded behavioral patterns designed to showcase the analysis tools.

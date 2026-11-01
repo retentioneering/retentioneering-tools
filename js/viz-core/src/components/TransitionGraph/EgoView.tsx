@@ -33,6 +33,7 @@ interface EgoViewProps {
   formatValue: (value: number) => string;
   isDark: boolean;
   isDifferential: boolean;
+  isTime?: boolean;
   // Diff mode only: per-group breakdown for a transition, and the segment
   // labels — the same data and copy the graph's own edge-hover tooltip
   // uses, so ego view ribbons explain a diff exactly like graph edges do.
@@ -143,6 +144,7 @@ export const EgoView: React.FC<EgoViewProps> = ({
   formatValue,
   isDark,
   isDifferential,
+  isTime = false,
   getDiffBreakdown,
   diffLabels,
   onNavigate,
@@ -553,6 +555,7 @@ export const EgoView: React.FC<EgoViewProps> = ({
               }}
             >
               <DiffBreakdownTooltip
+                isTime={isTime}
                 title={
                   <span
                     style={{ display: "flex", alignItems: "center", gap: 8 }}

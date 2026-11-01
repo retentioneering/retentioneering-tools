@@ -5,8 +5,147 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Changed
+
+- Events within a path are ordered by `(index, subindex)` everywhere, and that
+  key is unique per path
+  ([ADR-0017](https://github.com/retentioneering/retentioneering-tools/blob/master/docs/adr/0017-event-order-contract.md)).
+  Behaviour changes:
+  - `subindex` is `float64` (raw events carry `2.0`). Markers that
+    `add_events` places at one position take fractional values —
+    `1.0, 1.5, 1.667, …` for synthetic markers, `3.0, 3.5, …` for churn — so
+    `add_events("x", ...).add_events("y", ...)` on the same source event gives
+    `x → y → source` instead of a tie.
+  - The constructor raises `SchemaConfigError` when `(index, subindex)`
+    repeats within a path or either column has missing values. This covers
+    user-supplied `index`/`subindex` columns and derived streams, e.g. a
+    `filter_events(sql=...)` query that returns a row twice.
+  - Within each path, rows of every `Eventstream` are laid out by
+    `(index, subindex)`, each path in one block. Processors that add or merge
+    rows (`add_events`, `add_start_end_events`, `collapse_events`,
+    `to_daily_states`, `filter_events(sql=...)`) have their output checked and
+    re-sorted if needed; the order of paths relative to each other is not
+    guaranteed.
+  - `add_events(sql=...)` rows must keep the `index` of a row of their path;
+    one that matches no event raises `PreprocessingConfigError`. The timestamp
+    may be changed freely — the row still sits at its source position.
+  - `split_sessions(separator=...)` no longer moves a separator ahead of
+    events sharing its timestamp: it stays at its own position.
+  - `collapse_events` merged rows take the `index` and `subindex` of the
+    group's first event, and `agg` "first"/"last" mean first/last in event
+    order rather than by timestamp.
+
+### Fixed
+
+- A seeded `sample_paths(..., random_state=...)` no longer switches DuckDB to
+  one thread. It ran `set threads = 1` to make the sample reproducible, and
+  since every `engine.run()` call shares one DuckDB instance, every later query
+  in the process stayed single-threaded. The sample is now drawn from the path
+  IDs in sorted order instead, which is reproducible at any thread count and,
+  unlike before, does not depend on the order of rows in the frame. A given
+  `random_state` therefore selects different paths than in earlier versions.
+
+- An anchor spec naming its own `event_col`
+  (`{"pattern": "returning->loyal", "event_col": "user_lifecycle"}`) is
+  validated against that column in `add_events(anchor=...)`,
+  `get_conversion_rate`, `step_matrix_data` and `step_sankey_data`, as
+  `truncate_paths` already did. These checked it against the event vocabulary
+  instead, so the levels of that column were rejected as unknown events, while
+  real event names passed and then matched nothing: `add_events` inserted no
+  events and raised no error. `get_conversion_rate` also takes the end anchor's
+  `event_col` into account for `base_rate` and `lift`
+  ([#138](https://github.com/retentioneering/retentioneering-tools/issues/138)).
+
+- The `active_days` metric, `to_daily_states` and an `active_days` condition in
+  `collapse_events`' `name` cases take the calendar day in the timestamp
+  column's own timezone. For a tz-aware column they used DuckDB's session
+  timezone, which defaults to the host's, so the same eventstream gave
+  different answers on different machines: two events at 23:30 and 00:30
+  Moscow time counted as two active days in `Europe/Moscow` and one on a
+  machine in New York. tz-naive columns are unchanged
+  ([#190](https://github.com/retentioneering/retentioneering-tools/issues/190)).
+
+- `collapse_events` and `to_daily_states` support `agg={"col": "sum"}` — the
+  example the `to_daily_states` docstring gives — and raise on an agg function
+  they do not know instead of quietly treating it as `"first"`. `"sum"` used to
+  return the group's first value, so a day holding `[10, 5]` reported a revenue
+  total of `10`, and a typo such as `"SUM"`, `"total"` or `"median"` did the
+  same with nothing to signal it
+  ([#192](https://github.com/retentioneering/retentioneering-tools/issues/192)).
+
+- The `(index, subindex)` ordering that #141's fix (below) gave
+  `collapse_events` run detection now applies to every processor that still
+  ordered events by `(timestamp, subindex)` and so gave order-dependent results
+  whenever events of a path shared a timestamp: session detection
+  (`split_sessions`, `collapse_events` windows), `collapse_events` aggregates
+  and merged-row positions, `add_events(churn=...)`, `truncate_paths`,
+  `to_daily_states`. Example: a path `a, b, a` at one timestamp split with
+  `split_sessions(separator="b")` put both `a` into the session after `b`.
+  Markers added from one source row no longer tie with each other, which made
+  `collapse_events`, `transition_graph_data` and `step_matrix_data` return
+  different results between identical calls.
+- `time_median` and `time_q95` edge weights in `transition_graph` and
+  `transition_graph_data` measure the exact gap between events instead of
+  counting whole-second boundaries, so a 125 ms span no longer reads as 0 s or
+  1 s depending on where it starts. Time-weighted results computed before this
+  release can shift by up to a second per transition.
+- Time-weighted graph and Ego-view diff tooltips display duration units for both
+  groups and their signed difference, including millisecond values.
+- Graph settings identify path-ID-group comparisons instead of showing a missing
+  segment warning; the diff help text states the group 1 minus group 2 direction.
+- A `path_cols`, `event_col`, `timestamp_col` or `segment_cols` entry naming a
+  column the DataFrame does not have raises `SchemaConfigError` naming the
+  schema key, the missing name and the available columns — as `custom_cols`
+  already did. The other four used to surface as pandas' bare
+  `KeyError: 'user_di'`, which said neither which schema key was wrong nor what
+  the columns were
+  ([#197](https://github.com/retentioneering/retentioneering-tools/issues/197)).
+- An anchor spec's `at` past either end of its pattern raises
+  `InvalidParameterError` naming the valid range and the pattern's tokens, the
+  same type an `at` of the wrong type raises. `{"pattern": "a->b->.*->c", "at": -4}`
+  used to surface as the internal `ValueError: max() iterable argument is
+  empty`, and a positive overrun such as `at=3` raised `IndexError`; code
+  catching that `IndexError` needs to catch `InvalidParameterError` instead
+  ([#194](https://github.com/retentioneering/retentioneering-tools/issues/194)).
+- `collapse_events` now detects runs in the order the eventstream is laid out by,
+  `(index, subindex)`, instead of `(timestamp, subindex)`. `subindex` is the
+  event-type rank, so it is equal for every raw event, which left the
+  `ROW_NUMBER` feeding the `LAG`/`SUM` windows numbering same-timestamp rows in
+  an arbitrary order. `collapse_events(loops=True)` therefore compared each event
+  to an arbitrary tied neighbour and identical calls on the same eventstream
+  returned different results whenever events in a path shared a timestamp — five
+  calls on a 100,000-row stream that must collapse nothing returned 99,994 /
+  99,992 / 100,000 / 99,998 / 99,992 rows. `group_col` runs were built from the
+  same key and its output is now ordered by the run's first position rather than
+  by a tied `(timestamp, subindex)`
+  ([#141](https://github.com/retentioneering/retentioneering-tools/issues/141)).
+
+## [5.3.0] - 2026-10-27
+
 ### Added
 
+- Path patterns accept the regex quantifier family on gaps: `.{m,n}`, `{n}`,
+  `{m,}`, `{,n}`, `+` and `?` after `.` or a class, alongside `*`. Bounds are
+  inclusive and count the events strictly between the anchors, so
+  `add_to_cart->.{0,4}->purchase` is "bought within five steps", and
+  `cart->[shipping|payment]+->purchase` no longer matches an adjacent
+  cart/purchase the way `*` does. A bounded gap takes no ordinal, so `at=` and
+  Step Matrix centring are unchanged (#110).
+- Round-bracket groups repeat a sequence: `(B->.*->C->.*){2}` is unrolled into
+  two copies before matching. `{k,}` and `+` are accepted where a `.*` absorbs
+  the extra repetitions; an upper bound is rejected with the `NOT` condition
+  that expresses it, and a group whose copies would be glued back to back
+  despite a gap inside (`(B->.*->C){2}`) is rejected with both readings.
+  Step Sankey lays its blocks out from the unrolled pattern, so each copy gets
+  a block of its own.
+- Condition leaves for 0/1 metrics have a shorthand: `{"has_event": "purchase"}`,
+  `{"matches_pattern": "A->.*->B"}`, `{"has_any_event": ["A", "B"]}`, or
+  `{metric: metric_args}` for any of `has_event`, `has_any_event`,
+  `has_all_events`, `matches_pattern`, `in_segment`. Each means
+  `{"op": "=", "metric": ..., "metric_args": ..., "value": True}`, and works
+  in `filter_paths`, in MCP `filter_paths` steps, and in `collapse_events` name
+  cases for the 0/1 metrics those support (`has_event`, `has_any_event`,
+  `has_all_events`).
 - `method_args` of the `"kmeans"` method accepts `n_init` (`"auto"` or a positive
   int, default `"auto"`) and `random_state` (int or None, default 42) on all three
   clustering surfaces (`add_clusters`, `cluster_analysis_data`, `cluster_analysis`).
@@ -15,6 +154,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   and there was no way to ask for more initialisations; `n_init=10` now does
   that. The values you pass are carried into `best_params`, so the saved
   `add_clusters` call reproduces the split. Defaults are unchanged.
+- `transition_graph(label_scale=...)` scales every node and edge label on the
+  canvas (0.5–3, default 1), since the default sizes read too small on slides
+  and in screenshots. HTML exports keep the scale.
 
 ### Changed
 
@@ -24,6 +166,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   or segment level, instead of repeating the metric and aggregation on every row.
 
 ### Fixed
+
+- A condition node with no `op` that is not a shorthand leaf now raises
+  `PreprocessingConfigError` naming the node, instead of
+  `AttributeError: 'NoneType' object has no attribute 'upper'`.
 
 - Cluster Analysis Save/Copy use the features and path column from the displayed
   analysis even after sidebar edits. Copied code explicitly preserves

@@ -15,7 +15,7 @@ The graph highlights exactly which transitions degraded during the window. [Segm
 
 ## Open up the funnel
 
-A [Funnel](/docs/widgets/funnel) `add_to_cart` → `shipping_details` → `purchase` tells you 40% of paths drop between `shipping_details` and `purchase` — but not what those users did instead. Two moves recover the lost context.
+A [Funnel](/docs/widgets/funnel) `add_to_cart` → `shipping_details` → `purchase` tells you 26% of paths drop between `shipping_details` and `purchase` — but not what those users did instead. Two moves recover the lost context.
 
 First, look *between* the levels: trim each path to the window between two funnel steps and map what actually happens there:
 
@@ -195,7 +195,7 @@ The winner is a hint, not a verdict — scores across a range are often close en
 ```python
 result = stream.cluster_analysis_data(features=features, method_args={"n_clusters": "3-8"})
 list(zip(result["silhouette"]["params"], result["silhouette"]["silhouette"]))
-# [({'n_clusters': 3}, 0.41), ({'n_clusters': 4}, 0.40), ({'n_clusters': 5}, 0.37), ...]
+# [({'n_clusters': 3}, 0.48), ({'n_clusters': 4}, 0.42), ({'n_clusters': 5}, 0.40), ...]
 
 picked = stream.cluster_analysis_data(
     features=features, method_args={"n_clusters": "3-8"}, select={"n_clusters": 4},

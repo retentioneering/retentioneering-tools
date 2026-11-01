@@ -205,12 +205,12 @@ stream.get_conversion_rate("add_to_cart", "purchase")
 
 | start_anchor | end_anchor | paths_with_start | converted | conversion_rate | base_rate | lift |
 |---|---|---|---|---|---|---|
-| add_to_cart | purchase | 522 | 297 | 0.569 | 0.547 | 1.041 |
+| add_to_cart | purchase | 522 | 328 | 0.628 | 0.547 | 1.149 |
 
 Five columns instead of one number, because the number alone is not a finding:
 
 - **`paths_with_start`** is the denominator. 0.5 out of two paths and 0.5 out of five thousand are different claims, and nothing in a rate distinguishes them.
-- **`base_rate`** is the share of *all* paths where the target happens at all, and **`lift`** is the rate divided by it. In the run above, 57% of users who add to cart go on to purchase — but 55% of *all* users purchase anyway, so adding to cart tells you almost nothing at user grain (`lift` 1.04). A lift below 1 means the start event makes the outcome **less** likely, which reads far more directly than a paragraph about confounders.
+- **`base_rate`** is the share of *all* paths where the target happens at all, and **`lift`** is the rate divided by it. In the run above, 63% of users who add to cart go on to purchase — but 55% of *all* users purchase anyway, so at user grain adding to cart raises that only modestly (`lift` 1.15). A lift below 1 means the start event makes the outcome **less** likely, which reads far more directly than a paragraph about confounders.
 
 `lift` is the only column you cannot derive from the others, since it needs a frequency measured over the whole eventstream rather than over the paths that reached the start.
 

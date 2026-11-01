@@ -37,6 +37,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- `collapse_events` and `to_daily_states` support `agg={"col": "sum"}` — the
+  example the `to_daily_states` docstring gives — and raise on an agg function
+  they do not know instead of quietly treating it as `"first"`. `"sum"` used to
+  return the group's first value, so a day holding `[10, 5]` reported a revenue
+  total of `10`, and a typo such as `"SUM"`, `"total"` or `"median"` did the
+  same with nothing to signal it
+  ([#192](https://github.com/retentioneering/retentioneering-tools/issues/192)).
+
 - The `(index, subindex)` ordering that #141's fix (below) gave
   `collapse_events` run detection now applies to every processor that still
   ordered events by `(timestamp, subindex)` and so gave order-dependent results

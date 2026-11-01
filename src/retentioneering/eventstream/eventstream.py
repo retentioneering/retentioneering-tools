@@ -1109,7 +1109,8 @@ class Eventstream:
         agg : dict, optional
             Aggregation rules for non-event columns when rows are merged, as a
             `{column: agg_func}` dict. `agg_func` is one of `"first"` (default),
-            `"last"`, `"min"`, `"max"`, `"mean"`, `"mode"`, `"any"`. See
+            `"last"`, `"min"`, `"max"`, `"mean"`, `"sum"`, `"mode"`, `"any"`;
+            anything else raises. See
             [agg](/docs/data-processors/collapse-events#agg) below. Example:
             `{"price": "max"}`.
         path_col : str, optional
@@ -1193,7 +1194,9 @@ class Eventstream:
             Capped at the last day present in the dataset, so paths active near
             the end of the observation window get fewer trailing rows.
         agg : dict, optional
-            Per-column aggregation overrides (e.g. `{"revenue": "sum"}`).
+            Per-column aggregation overrides, as a `{column: agg_func}` dict
+            (e.g. `{"revenue": "sum"}`). Same `agg_func` values as
+            `collapse_events`.
         path_col : str, optional
             Override the path ID column.
 

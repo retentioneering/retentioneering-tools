@@ -20,6 +20,20 @@ from retentioneering.utils.sql_quoting import quote_literal
 
 PROCESSOR_NAME = "collapse_events"
 
+#: SQL for each `agg` function name. Every builder takes the quoted value
+#: column and the integer row number in event order, which `first` / `last`
+#: need (ADR-0017).
+AGG_SQL = {
+    "first": lambda col, pos: f"ARG_MIN({col}, {pos})",
+    "last": lambda col, pos: f"ARG_MAX({col}, {pos})",
+    "min": lambda col, pos: f"MIN({col})",
+    "max": lambda col, pos: f"MAX({col})",
+    "mean": lambda col, pos: f"AVG({col})",
+    "sum": lambda col, pos: f"SUM({col})",
+    "mode": lambda col, pos: f"MODE({col})",
+    "any": lambda col, pos: f"ANY_VALUE({col})",
+}
+
 BOUNDS_KEYS = ("start_event", "end_event")
 
 #: Modes that chunk a path by its events, sharing `split_sessions`' vocabulary.
@@ -352,6 +366,7 @@ class CollapseEvents(DataProcessor):
         index_col: str,
         subindex_col: str,
         rank_col: str = "_rn",
+        processor: str = PROCESSOR_NAME,
     ) -> List[str]:
         """
         Aggregates carrying the remaining columns into a merged row.
@@ -363,6 +378,16 @@ class CollapseEvents(DataProcessor):
         takes the group's first position, so `index` and `subindex` always
         come from the same, first row whatever `agg_config` says about them.
         """
+        # Check the whole config, not only the columns aggregated below, so a
+        # wrong name raises even for a column this aggregation skips.
+        for col, agg_name in sorted(agg_config.items()):
+            if agg_name not in AGG_SQL:
+                raise PreprocessingConfigError(
+                    processor,
+                    f"unknown agg function {agg_name!r} for column {col!r}. "
+                    f"agg_func is one of {sorted(AGG_SQL)}.",
+                )
+
         agg_exprs = []
         pos = rank_col
         for c in df.columns:
@@ -372,22 +397,7 @@ class CollapseEvents(DataProcessor):
             agg_name = agg_config.get(c, "first")
             if c in (index_col, subindex_col):
                 agg_name = "first"
-            if agg_name == "first":
-                agg_exprs.append(f"ARG_MIN({c_q}, {pos}) AS {c_q}")
-            elif agg_name == "last":
-                agg_exprs.append(f"ARG_MAX({c_q}, {pos}) AS {c_q}")
-            elif agg_name == "min":
-                agg_exprs.append(f"MIN({c_q}) AS {c_q}")
-            elif agg_name == "max":
-                agg_exprs.append(f"MAX({c_q}) AS {c_q}")
-            elif agg_name == "mean":
-                agg_exprs.append(f"AVG({c_q}) AS {c_q}")
-            elif agg_name == "mode":
-                agg_exprs.append(f"MODE({c_q}) AS {c_q}")
-            elif agg_name == "any":
-                agg_exprs.append(f"ANY_VALUE({c_q}) AS {c_q}")
-            else:
-                agg_exprs.append(f"ARG_MIN({c_q}, {pos}) AS {c_q}")
+            agg_exprs.append(f"{AGG_SQL[agg_name](c_q, pos)} AS {c_q}")
         return agg_exprs
 
     @staticmethod

@@ -104,7 +104,12 @@ class ToDailyStates(DataProcessor):
 
         exclude = {path_col, schema.event_col, schema.event_type}
         agg_exprs = _session_agg_exprs(
-            df, self.agg, exclude, schema.index, schema.subindex
+            df,
+            self.agg,
+            exclude,
+            schema.index,
+            schema.subindex,
+            processor=PROCESSOR_NAME,
         )
         agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
 

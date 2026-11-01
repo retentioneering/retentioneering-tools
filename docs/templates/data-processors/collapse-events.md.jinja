@@ -225,8 +225,9 @@ Before: `payment_details → shipping_details → review_page → purchase`, aft
 ## agg
 
 By default, every non-event column takes its **first** value within the
-merged rows (ordered by timestamp). `agg` overrides this per column with one
-of `"first"`, `"last"`, `"min"`, `"max"`, `"mean"`, `"mode"`, `"any"`.
+merged rows (in event order). `agg` overrides this per column with one
+of `"first"`, `"last"`, `"min"`, `"max"`, `"mean"`, `"sum"`, `"mode"`,
+`"any"`; any other name raises `PreprocessingConfigError`.
 
 Before — a `price` column alongside three consecutive `add_to_cart` events:
 

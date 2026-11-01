@@ -849,6 +849,51 @@ class TestCollapseEventsChained:
 
 
 class TestCollapseEventsAgg:
+    @staticmethod
+    def _scored_stream() -> Eventstream:
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00", 10],
+                ["user_1", "A", "2020-01-01 00:01:00", 20],
+                ["user_1", "A", "2020-01-01 00:02:00", 30],
+            ],
+            columns=["user_id", "event", "timestamp", "score"],
+        )
+        return Eventstream(df, {**SCHEMA, "custom_cols": ["score"]})
+
+    @pytest.mark.parametrize(
+        "agg_name, expected",
+        [
+            ("first", 10),
+            ("last", 30),
+            ("min", 10),
+            ("max", 30),
+            ("mean", 20),
+            ("sum", 60),
+            ("mode", 10),
+        ],
+    )
+    def test_every_documented_agg_is_distinct_from_first(self, agg_name, expected):
+        """Values are chosen so that no function gives the same result as `first`."""
+        res = self._scored_stream().collapse_events(loops=True, agg={"score": agg_name})
+        assert res.df["score"].iloc[0] == expected
+
+    @pytest.mark.parametrize("agg_name", ["SUM", "total", "count", "median", "nope"])
+    def test_unknown_agg_raises_instead_of_falling_back(self, agg_name):
+        """The error names the value, the column and every valid name."""
+        with pytest.raises(PreprocessingConfigError) as exc:
+            self._scored_stream().collapse_events(loops=True, agg={"score": agg_name})
+        message = str(exc.value)
+        assert agg_name in message
+        assert "score" in message
+        for valid in ("first", "last", "min", "max", "mean", "sum", "mode", "any"):
+            assert valid in message
+
+    def test_unknown_agg_raises_for_an_excluded_column(self):
+        """`event` is never aggregated, but a wrong name for it still raises."""
+        with pytest.raises(PreprocessingConfigError):
+            self._scored_stream().collapse_events(loops=True, agg={"event": "nope"})
+
     def test_agg_last_for_custom_col(self):
         """The 'last' aggregation picks the value from the latest event in the session."""
         df = pd.DataFrame(

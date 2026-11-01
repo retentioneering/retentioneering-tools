@@ -295,10 +295,9 @@ class StepMatrix:
             sms = [new_sms1[i] - new_sms2[i] for i in range(len(new_sms1))]
             return sms, new_sms1, new_sms2
 
-        event_col = self.eventstream.schema.event_col
         anchors.validate_pattern_tokens(
             spec.pattern,
-            set(self.eventstream.df[event_col].unique().tolist()),
+            anchors.spec_vocabulary(self.eventstream.df, self.eventstream.schema, spec),
             param="anchor",
         )
         positions = anchors.resolve_positions(

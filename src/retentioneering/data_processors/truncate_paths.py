@@ -3,6 +3,7 @@ from typing import Tuple
 import pandas as pd
 
 from retentioneering import engine
+from retentioneering.engine import dialect
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import (
@@ -32,6 +33,9 @@ class TruncatePaths(DataProcessor):
     path_col : str, optional
         Path ID column name. If None, taken from schema.
     """
+
+    # Cannot break the event order: keeps a window of each path, emitted in event order.
+    may_break_order = False
 
     def __init__(
         self,
@@ -151,7 +155,6 @@ class TruncatePaths(DataProcessor):
 
         path_col_q = engine.quote_ident(path_col)
         index_col_q = engine.quote_ident(schema.index)
-        timestamp_col_q = engine.quote_ident(schema.timestamp_col)
         subindex_col_q = engine.quote_ident(schema.subindex)
 
         start = self._bounds(df, schema, self.start_specs, "start", path_col)
@@ -182,7 +185,7 @@ class TruncatePaths(DataProcessor):
                 FROM df
                 JOIN bounds b ON df.{path_col_q} = b.{path_col_q}
                 WHERE df.{index_col_q} BETWEEN b.bound_start AND b.bound_end
-                ORDER BY df.{path_col_q}, df.{timestamp_col_q}, df.{subindex_col_q}
+                ORDER BY df.{path_col_q}, {dialect.event_order(f"df.{index_col_q}", f"df.{subindex_col_q}")}
                 """,
                 df=df,
                 bounds=bounds,

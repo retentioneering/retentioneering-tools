@@ -101,7 +101,9 @@ Reading the spec left to right:
 2. `at: 1` makes the anchor the `add_to_cart` of that sequence, not the
    `purchase` that terminates it. The event names are `["catalog",
    "add_to_cart", "purchase"]` — `.*` is not a position, so it is not counted
-   and index `1` is the cart.
+   and index `1` is the cart. The same goes for any gap, bounded or restricted
+   (`.{0,4}`, `[^cart]*`); a repeated group, by contrast, is unrolled and every
+   copy is counted — `(cart->.*){2}` contributes two positions.
 3. `occurrence: "last"` picks the sequence at 9–12 over the one at 5–8, landing
    the anchor on event **10**.
 4. `offset` turns that single point into a window: `-1` opens it one event

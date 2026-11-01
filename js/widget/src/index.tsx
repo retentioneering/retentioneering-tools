@@ -79,6 +79,11 @@ export function render({ host, el, isStatic = false }: RenderContext) {
     if (f.length === 2) store.setPopulationRange(f[0], f[1]);
   }
 
+  {
+    const scale = Number(host.get("label_scale"));
+    if (Number.isFinite(scale) && scale > 0) store.setLabelScale(scale);
+  }
+
   function App() {
     const [valuesType, setValuesType] = React.useState<MatrixValueType>(
       () => (host.get("edge_weight") as MatrixValueType) ?? DEFAULT_VALUE_TYPE,
@@ -148,6 +153,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
       ["edge_weight",    () => setValuesType((host.get("edge_weight") as MatrixValueType) ?? DEFAULT_VALUE_TYPE)],
       ["height",         () => setHeight((host.get("height") as number) ?? 500)],
       ["sidebar_open",   () => setSidebarOpen((host.get("sidebar_open") as boolean) ?? true)],
+      ["label_scale",    () => store.setLabelScale(Number(host.get("label_scale")))],
       ["path_cols",      () => setPathCols(parseJson(host.get("path_cols"), []))],
       ["path_col",    () => setPathIdCol((host.get("path_col") as string) || "")],
       ["segment_levels", () => setSegLvls(parseJson(host.get("segment_levels"), {}))],

@@ -167,6 +167,9 @@ class UrlsToEvents(DataProcessor):
                       name (empty string when no slug was applied).
     """
 
+    # Cannot break the event order: drops rows and edits columns in place.
+    may_break_order = False
+
     def __init__(
         self,
         column: str,

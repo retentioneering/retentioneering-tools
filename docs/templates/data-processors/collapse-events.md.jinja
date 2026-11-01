@@ -181,6 +181,14 @@ After — the label depends on whether `purchase` occurred inside each group:
 - user 1: `successful_checkout`
 - user 2: `abandoned_checkout`
 
+A condition comparing a 0/1 metric with `True` can use the
+[shorthand leaf](/docs/path-metrics#shorthand-leaves) — the case above is also
+written `{"condition": {"has_event": "purchase"}, "name": "successful_checkout"}`.
+Cases support the metrics computable from a group's own events: `has_event`,
+`event_count`, `has_all_events`, `has_any_event`, `duration`, `length`,
+`time_between` and `active_days`. `matches_pattern` and `in_segment` are not
+among them, shorthand or not.
+
 Because naming is orthogonal, the same list works on any mode. On `group_col` it is
 the one-liner for "name each session by what it did", which otherwise takes an
 `add_segment` with a windowed SQL query first:
@@ -217,8 +225,9 @@ Before: `payment_details → shipping_details → review_page → purchase`, aft
 ## agg
 
 By default, every non-event column takes its **first** value within the
-merged rows (ordered by timestamp). `agg` overrides this per column with one
-of `"first"`, `"last"`, `"min"`, `"max"`, `"mean"`, `"mode"`, `"any"`.
+merged rows (in event order). `agg` overrides this per column with one
+of `"first"`, `"last"`, `"min"`, `"max"`, `"mean"`, `"sum"`, `"mode"`,
+`"any"`; any other name raises `PreprocessingConfigError`.
 
 Before — a `price` column alongside three consecutive `add_to_cart` events:
 

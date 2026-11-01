@@ -1,4 +1,5 @@
 import * as React from "react";
+import { formatTime } from "../../utils/format-time";
 import { formatExactNumber, formatSignedExactNumber, resolveDiffValue } from "../../utils/diff-tooltip";
 
 interface Props {
@@ -11,9 +12,16 @@ interface Props {
   group2Value: number | null;
   diffValue: number | null;
   isDark?: boolean;
+  isTime?: boolean;
 }
 
-export function DiffBreakdownTooltip({ title, subtitle, segmentName, value1Label, value2Label, group1Value, group2Value, diffValue, isDark = true }: Props) {
+export function DiffBreakdownTooltip({ title, subtitle, segmentName, value1Label, value2Label, group1Value, group2Value, diffValue, isDark = true, isTime = false }: Props) {
+  const formatDuration = (value: number | null) =>
+    value === null || !Number.isFinite(value) ? "-" : value === 0 ? "0ms" : formatTime(value);
+  const format = isTime ? formatDuration : formatExactNumber;
+  const signed = (value: number | null) => isTime
+    ? `${value !== null && Number.isFinite(value) && value > 0 ? "+" : ""}${formatDuration(value)}`
+    : formatSignedExactNumber(value);
   const resolved = resolveDiffValue({ group1Value, group2Value, diffValue });
   const bg = isDark ? "#1f2937" : "#fff";
   const border = isDark ? "#374151" : "#e5e7eb";
@@ -26,12 +34,12 @@ export function DiffBreakdownTooltip({ title, subtitle, segmentName, value1Label
       {title && <div style={{ marginBottom: subtitle ? 2 : 8, fontWeight: 600, color: text }}>{title}</div>}
       {subtitle && <div style={{ marginBottom: 8, fontSize: 11, color: muted }}>{subtitle}</div>}
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <Row label={segmentName ? `${segmentName}: ${value1Label}` : value1Label} value={formatExactNumber(group1Value)} labelColor="#ef4444" text={text} />
-        <Row label={segmentName ? `${segmentName}: ${value2Label}` : value2Label} value={formatExactNumber(group2Value)} labelColor="#3b82f6" text={text} />
+        <Row label={segmentName ? `${segmentName}: ${value1Label}` : value1Label} value={format(group1Value)} labelColor="#ef4444" text={text} />
+        <Row label={segmentName ? `${segmentName}: ${value2Label}` : value2Label} value={format(group2Value)} labelColor="#3b82f6" text={text} />
         <div style={{ borderTop: `1px solid ${border}`, margin: "2px 0" }} />
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
           <span style={{ fontWeight: 500, color: text }}>diff ({value1Label} − {value2Label})</span>
-          <span style={{ fontFamily: "monospace", fontWeight: 600, color: diffColor }}>{formatSignedExactNumber(resolved)}</span>
+          <span style={{ fontFamily: "monospace", fontWeight: 600, color: diffColor }}>{signed(resolved)}</span>
         </div>
       </div>
     </div>

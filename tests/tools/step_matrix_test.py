@@ -1060,3 +1060,34 @@ class TestStepMatrixAnchor:
         blocks = self._stream().step_sankey_data(anchor="cart", max_steps=2)
 
         assert len(blocks) == 1
+
+
+class TestStepMatrixAnchorEventCol:
+    """An anchor naming its own `event_col` is validated against that column."""
+
+    @staticmethod
+    def _stream() -> Eventstream:
+        df = pd.DataFrame(
+            {
+                "user_id": ["u1"] * 3,
+                "event": ["main", "cart", "pay"],
+                "user_lifecycle": ["new", "returning", "loyal"],
+                "timestamp": pd.to_datetime(
+                    ["2020-01-01 00:00", "2020-01-01 00:01", "2020-01-01 00:02"]
+                ),
+            }
+        )
+        return Eventstream(df, {"custom_cols": ["user_lifecycle"]})
+
+    @pytest.mark.parametrize("method", ["step_matrix_data", "step_sankey_data"])
+    def test_anchor_on_its_own_column(self, method) -> None:
+        anchor = {"pattern": "returning", "event_col": "user_lifecycle"}
+        result = getattr(self._stream(), method)(anchor=anchor, max_steps=1)
+        # The `returning` row is `cart`, so step 0 is cart.
+        assert result[0].loc["cart", 0] == 1.0
+
+    @pytest.mark.parametrize("method", ["step_matrix_data", "step_sankey_data"])
+    def test_a_name_absent_from_that_column_raises(self, method) -> None:
+        anchor = {"pattern": "cart", "event_col": "user_lifecycle"}
+        with pytest.raises(InvalidParameterError, match="loyal"):
+            getattr(self._stream(), method)(anchor=anchor, max_steps=1)

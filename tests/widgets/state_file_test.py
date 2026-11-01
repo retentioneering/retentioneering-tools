@@ -94,6 +94,19 @@ class TestStateFileRestore:
         # ... and the override is saved back to the file
         assert json.loads(path.read_text())["state"]["max_steps"] == 8
 
+    def test__label_scale_is_exported_but_not_persisted(self, tmp_path) -> None:
+        path = tmp_path / "graph.json"
+        stream = _make_stream()
+
+        first = TransitionGraphWidget(stream, label_scale=2.5, state_file=str(path))
+        assert first._export_data()["label_scale"] == 2.5
+        assert "label_scale" not in json.loads(path.read_text())["state"]
+        assert TransitionGraphWidget(stream, state_file=str(path)).label_scale == 1.0
+
+    def test__label_scale_out_of_range_raises(self) -> None:
+        with pytest.raises(ValueError, match="label_scale"):
+            _make_stream().transition_graph(label_scale=5)
+
     def test__funnel_steps_are_restored(self, tmp_path) -> None:
         path = tmp_path / "funnel.json"
         stream = _make_stream()

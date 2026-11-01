@@ -303,6 +303,9 @@ def _interval_levels(edges: list[float]) -> list[str]:
 
 
 class AddSegment(DataProcessor):
+    # Cannot break the event order: adds a column only; rows and their order are kept.
+    may_break_order = False
+
     name: str
     rules: Collection | None
     func: Callable | None

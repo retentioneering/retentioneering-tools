@@ -13,6 +13,11 @@ PROCESSOR_NAME = "sample_paths"
 
 @dataclass
 class SamplePaths(DataProcessor):
+    # Cannot break the event order: keeps whole paths. The JOIN may return paths
+    # in any order, which the layout contract allows; within a path the scan
+    # order is kept (the test suite's strict check verifies it).
+    may_break_order = False
+
     n: int | None
     frac: float | None
     random_state: int | None
@@ -60,29 +65,23 @@ class SamplePaths(DataProcessor):
         path_col_q = engine.quote_ident(path_col)
 
         query_template = """
-            {set_threads}
              with sampled_paths as (
                 select {path_col}
-                from (select distinct {path_col} from df)
+                from (select distinct {path_col} from df {order_chunk})
                 using sample reservoir({sample_chunk}) {seed_chunk}
              )
              select * from df join sampled_paths using({path_col})
          """
 
-        seed_chunk = set_threads = ""
-        prior_threads = None
+        seed_chunk = order_chunk = ""
 
         if self.random_state is not None:
-            seed_chunk = f"repeatable({self.random_state})"
-            set_threads = "set threads = 1;"
-            # `threads` is a setting of the whole DuckDB instance, and every
-            # engine.run() call shares one instance, so note the current value
-            # and put it back once the sample is drawn.
-            prior_threads = int(
-                engine.run("SELECT current_setting('threads') AS threads")[
-                    "threads"
-                ].iloc[0]
-            )
+            seed_chunk = f"repeatable({int(self.random_state)})"
+            # A seed reproduces the sample only over the same input order, and
+            # DISTINCT returns paths in an order that depends on threading and
+            # on the frame's row order. Sorting the IDs makes the sample depend
+            # on the seed and the set of paths alone.
+            order_chunk = f"order by {path_col_q}"
 
         if self.frac is not None:
             sample_chunk = f"{self.frac * 100}%"
@@ -93,16 +92,10 @@ class SamplePaths(DataProcessor):
             path_col=path_col_q,
             sample_chunk=sample_chunk,
             seed_chunk=seed_chunk,
-            set_threads=set_threads,
+            order_chunk=order_chunk,
         )
 
-        try:
-            df = engine.run(query, df=df)
-        finally:
-            if prior_threads is not None:
-                engine.run(
-                    f"SET threads = {prior_threads}; SELECT {prior_threads} AS threads"
-                )
+        df = engine.run(query, df=df)
 
         for col in [schema.event_col] + schema.segment_cols:
             df[col] = df[col].astype("category")

@@ -65,6 +65,9 @@ class TransitionGraphWidget(RetentioneeringWidget):
     # ── display / persistent ───────────────────────────────────────────────────
     height = traitlets.Int(500).tag(sync=True)
     sidebar_open = traitlets.Bool(True).tag(sync=True)
+    # Multiplier on node/edge label font sizes. Set only from Python — no
+    # UI control, so it is not persisted to state_file either.
+    label_scale = traitlets.Float(1.0).tag(sync=True)
     node_positions = traitlets.Unicode("{}").tag(sync=True)
     # JSON GraphLayoutResponse ({"result": {event: {x, y}}, "error"?: str}),
     # computed at construction so the first paint never waits on the
@@ -111,6 +114,7 @@ class TransitionGraphWidget(RetentioneeringWidget):
         path_col=_UNSET,
         height=_UNSET,
         sidebar_open=_UNSET,
+        label_scale=_UNSET,
         views=_UNSET,
         view=_UNSET,
         state_file=None,
@@ -157,6 +161,12 @@ class TransitionGraphWidget(RetentioneeringWidget):
             pass  # keep the base class's random uuid
         self.height = height if height is not _UNSET else 500
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
+        if label_scale is not _UNSET:
+            if not 0.5 <= float(label_scale) <= 3:
+                raise ValueError(
+                    f"label_scale must be between 0.5 and 3, got {label_scale!r}"
+                )
+            self.label_scale = float(label_scale)
         self.node_positions = "{}"
 
         _views_val = views if views is not _UNSET else None
@@ -405,6 +415,7 @@ class TransitionGraphWidget(RetentioneeringWidget):
             "sidebar_open": sidebar_open
             if sidebar_open is not None
             else self.sidebar_open,
+            "label_scale": self.label_scale,
             "views": json.loads(self.views or "[]"),
             "view": self.view,
         }

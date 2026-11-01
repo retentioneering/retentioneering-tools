@@ -91,7 +91,7 @@ No equivalent in 5.x today. These were cut deliberately to get the rewrite shipp
 
 ## Requirements
 
-5.x requires **Python 3.10 or later** (3.3.0 supported 3.8–3.11). Widgets render in Jupyter, JupyterLab, VS Code, Cursor, and Google Colab — see [Installation](/docs/installation) for the one JupyterLab caveat.
+5.x requires **Python 3.11 or later** (5.0–5.3 also ran on 3.10; 3.3.0 supported 3.8–3.11). Widgets render in Jupyter, JupyterLab, VS Code, Cursor, and Google Colab — see [Installation](/docs/installation) for the one JupyterLab caveat.
 
 ## Next steps
 

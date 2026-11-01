@@ -31,7 +31,7 @@ Bring an event-level export from your analytics platform, warehouse or applicati
 
 ## Quick start
 
-Python: 3.10 - 3.13.
+Python: 3.11 - 3.13.
 
 Environment: Jupyter (Jupyter Notebook, JupyterLab, JupyterLab Desktop), VS Code, Cursor, Google Colab.
 

@@ -174,7 +174,7 @@ came from a tab). `playbook("conversion_rate")` carries the procedure.
 
 ## 8. Environment notes
 
-- Requires Python ≥ 3.10. Backend is an embedded engine (DuckDB family) — millions of rows
+- Requires Python ≥ 3.11. Backend is an embedded engine (DuckDB family) — millions of rows
   run in seconds on a laptop; no network needed.
 - Interactive widgets from a *source checkout* need the JS bundle built (`make build`,
   Node required). pip-installed wheels ship the bundle.

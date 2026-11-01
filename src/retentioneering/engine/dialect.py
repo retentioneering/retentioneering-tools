@@ -16,6 +16,7 @@ aggregation, regex matching) as plain string-returning functions.
 from __future__ import annotations
 
 __all__ = [
+    "event_order",
     "event_position",
     "epoch",
     "interval_seconds",
@@ -33,6 +34,19 @@ def event_position(index_expr: str, subindex_expr: str) -> str:
     Expressions must already contain any required identifier quoting.
     """
     return f"ROW({index_expr}, {subindex_expr})"
+
+
+def event_order(index_expr: str, subindex_expr: str) -> str:
+    """`ORDER BY` list for events within a path: `index`, then `subindex`.
+
+    The one order every window, ordered aggregation and output sort uses
+    (ADR-0017). `(index, subindex)` is unique within a path, so the order is
+    total and stable; never order events by timestamp, which ties. Use with
+    `PARTITION BY <path>` in windows, or prefix the path column in an outer
+    `ORDER BY`. Expressions must already contain any required identifier
+    quoting (and table qualifiers, if needed).
+    """
+    return f"{index_expr}, {subindex_expr}"
 
 
 def interval_seconds(seconds: float) -> str:

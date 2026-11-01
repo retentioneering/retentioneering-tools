@@ -10,6 +10,9 @@ PROCESSOR_NAME = "rename_segment_levels"
 
 
 class RenameSegmentLevels(DataProcessor):
+    # Cannot break the event order: edits a segment column only.
+    may_break_order = False
+
     segment_col: str
     mapping: Dict[str, str]
 

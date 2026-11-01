@@ -60,8 +60,9 @@ uv run python docs/scripts/generate_widget_demos.py # regen static widget demos
 - House error style: fail fast and helpful — list valid values/keys in the message
   (e.g., schema errors name valid keys; metric errors name the required arg). Silent
   data loss or silent empty results are auto-reject.
-- Determinism: seeded stochastic steps; stable ordering on timestamp ties (ORDER BY
-  timestamp, subindex in aggregations).
+- Determinism: seeded stochastic steps; events within a path are ordered by the unique
+  `(index, subindex)` key everywhere (`dialect.event_order`, ADR-0017) — never by
+  timestamp, which ties.
 - CI (GitHub Actions): `lint` + `test` matrix on Python 3.11–3.13, builds JS first.
   `master` is protected: PRs only; release is tag-driven (`v*`), not merge-driven.
 - Telemetry code paths: never send data values — method names/arg names only; any change

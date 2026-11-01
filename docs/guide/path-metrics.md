@@ -12,7 +12,7 @@ Path metrics are scalar values computed per path (see [Key concepts](/docs/event
 |---|---|---|
 | `length` | Total number of events in the path. | — |
 | `duration` | Time in seconds between the first and last event. | — |
-| `active_days` | Number of distinct calendar days with at least one event. Optionally restricted to specific events. | `active_events`: list[str] (optional) |
+| `active_days` | Number of distinct calendar days with at least one event, in the timestamp column's timezone if it has one. Optionally restricted to specific events. | `active_events`: list[str] (optional) |
 | `event_count` | Number of times a single event occurred. | `event`: str (required) |
 | `has_event` | 1 if a single event occurred at least once, 0 otherwise. | `event`: str (required) |
 | `event_count_bulk` | Number of times each event occurred, expanded into one column per event. Omit `events` (or pass `None`) to count every event in the stream — an explicit empty list is invalid. | `events`: list[str] (optional; omit/`None` for all events) |
@@ -21,7 +21,7 @@ Path metrics are scalar values computed per path (see [Key concepts](/docs/event
 | `has_any_event` | 1 if **any** of the given events occurred at least once (OR semantics), 0 otherwise. | `events`: list[str] (required, non-empty) |
 | `time_between` | Time in seconds between the first occurrences of two events. Returns null if either event is missing. Use `path_start` or `path_end` as anchors. | `start_event`: str, `end_event`: str |
 | `first_event_time` | Unix timestamp of the first event in the path. | — |
-| `matches_pattern` | 1 if the path matches a sequence pattern, 0 otherwise. Events are separated by `->` and matched as whole tokens (not substrings); `.*` matches any sequence of whole events, and one position can be a class of events (`[a\|b]`, `[^a]`, `.`). Example: `home->.*->[purchase\|cart]`. See [Path Patterns](/docs/path-patterns) for the full syntax. | `pattern`: str |
+| `matches_pattern` | 1 if the path matches a sequence pattern, 0 otherwise. Events are separated by `->` and matched as whole tokens (not substrings); `.*` matches any sequence of whole events, one position can be a class of events (`[a\|b]`, `[^a]`, `.`), a gap can be bounded (`.{0,4}`, `[a\|b]+`), and a group repeats a sequence (`(cart->.*){2}`). Example: `home->.*->[purchase\|cart]`. See [Path Patterns](/docs/path-patterns) for the full syntax. | `pattern`: str |
 | `in_segment` | Checks whether path events belong to a segment level. Mode `any`: at least one event has the level. `all`: all events have the level. `event_share`: at least a threshold share of events have the level. If multiple segment levels are selected, a separate metric is created for each level. | `segment_name`: str, `segment_level`: str or list[str], `mode`: `"any"` \| `"all"` \| `"event_share"`, `threshold`: float (for `event_share`) |
 | `in_segment_bulk` | The same membership check as `in_segment`, expanded into one column per (segment column, level) pair. Omit `segment_levels` for every level of the given segment column; omit `segment_name` as well for every level of **every** segment column. An explicit empty `segment_levels` list is invalid, and `segment_levels` requires a `segment_name` — levels belong to one column. | `segment_name`: str (optional; omit/`None` for all segment columns), `segment_levels`: list[str] (optional; omit/`None` for all levels), `mode`, `threshold`: same as `in_segment` |
 
@@ -217,6 +217,40 @@ In [Filter Paths](/docs/data-processors/filter-paths), metrics are used inside a
 ```
 
 Supported operators: `=` (or `==`), `!=`, `>`, `<`, `>=`, `<=`. Logical nodes use `and`, `or`, `not` with an `args` list.
+
+### Shorthand leaves
+
+A 0/1 metric — `has_event`, `has_any_event`, `has_all_events`, `matches_pattern`,
+`in_segment` — is almost always compared with `True`, so a leaf for one can be
+written with the metric name as its only key. The value is either its
+`metric_args`, or, for a metric with exactly one required argument, that
+argument alone:
+
+| Shorthand | Same as |
+|---|---|
+| `{"has_event": "purchase"}` | `{"op": "=", "metric": "has_event", "metric_args": {"event": "purchase"}, "value": True}` |
+| `{"matches_pattern": "cart->.*->purchase"}` | `... "metric": "matches_pattern", "metric_args": {"pattern": "cart->.*->purchase"} ...` |
+| `{"has_any_event": ["promo_view", "discount_applied"]}` | `... "metric": "has_any_event", "metric_args": {"events": [...]} ...` |
+| `{"has_all_events": ["add_to_cart", "purchase"]}` | `... "metric": "has_all_events", "metric_args": {"events": [...]} ...` |
+| `{"in_segment": {"segment_name": "channel", "segment_level": "mobile"}}` | `... "metric": "in_segment", "metric_args": {...} ...` |
+
+Shorthand leaves sit anywhere a leaf can, so they compose with branches and lists:
+
+```python
+# reached purchase without ever seeing an error page
+stream.filter_paths([{"has_event": "purchase"},
+                     {"op": "not", "args": [{"has_event": "error_page"}]}])
+
+# any event repeated back to back
+stream.filter_paths({"op": "or", "args": [
+    {"matches_pattern": f"{event}->{event}"} for event in ["A", "B", "C"]
+]})
+```
+
+`in_segment` takes the dict form only — it needs both a column and a level. A
+numeric metric (`length`, `event_count`, …) has no shorthand: `{"length": {}}`
+does not say what to compare against, so it is rejected with the full form to
+write instead.
 
 ```python
 # Keep paths that stayed in one segment level for most of their events

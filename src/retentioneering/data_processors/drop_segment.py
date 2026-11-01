@@ -10,6 +10,9 @@ PROCESSOR_NAME = "drop_segment"
 
 
 class DropSegment(DataProcessor):
+    # Cannot break the event order: drops a column only.
+    may_break_order = False
+
     name: str
 
     def __init__(self, name: str) -> None:

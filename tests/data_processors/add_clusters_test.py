@@ -272,6 +272,67 @@ class TestAddClusters:
                 method_args={"n_clusters": 2, "nmf_components": 2},
             )
 
+    def test_kmeans_init_args_pass_through(self) -> None:
+        """`n_init` / `random_state` are k-means' own arguments, so they travel in
+        `method_args` like `n_clusters`; the library used to hard-code a single
+        k-means++ run at seed 42 with no way to ask for more starts."""
+        stream = Eventstream(get_scale_conflict_df())
+        features = [{"metric": "length"}, {"metric": "duration"}]
+
+        runs = [
+            stream.add_clusters(
+                name="cluster",
+                features=features,
+                method_args={"n_clusters": 2, "n_init": 10, "random_state": seed},
+            )
+            .df.groupby("user_id")["cluster"]
+            .first()
+            for seed in (0, 1, 2)
+        ]
+        # Ten starts find the length grouping whatever the seed; labels are
+        # positional, so compare the partitions, not the names.
+        partitions = {
+            frozenset(frozenset(g.index) for _, g in r.groupby(r)) for r in runs
+        }
+        assert len(partitions) == 1
+        expected = {
+            frozenset({"user_1", "user_2", "user_3", "user_4"}),
+            frozenset({"user_5", "user_6", "user_7", "user_8"}),
+        }
+        assert partitions.pop() == expected
+
+    def test_kmeans_random_state_none_is_accepted(self) -> None:
+        stream = Eventstream(get_df())
+        result = stream.add_clusters(
+            name="cluster",
+            features=[{"metric": "length"}],
+            method_args={"n_clusters": 2, "random_state": None},
+        )
+        assert result.df["cluster"].nunique() == 2
+
+    def test_kmeans_invalid_init_args_raise(self) -> None:
+        stream = Eventstream(get_df())
+        with pytest.raises(PreprocessingConfigError, match="n_init"):
+            stream.add_clusters(
+                name="cluster",
+                features=[{"metric": "length"}],
+                method_args={"n_clusters": 2, "n_init": 0},
+            )
+        with pytest.raises(PreprocessingConfigError, match="random_state"):
+            stream.add_clusters(
+                name="cluster",
+                features=[{"metric": "length"}],
+                method_args={"n_clusters": 2, "random_state": "42"},
+            )
+        # They belong to k-means, so hdbscan rejects them like any foreign key.
+        with pytest.raises(PreprocessingConfigError, match="'kmeans' method"):
+            stream.add_clusters(
+                name="cluster",
+                features=[{"metric": "length"}],
+                method="hdbscan",
+                method_args={"min_cluster_size": 2, "n_init": 10},
+            )
+
     def test_unknown_method_raises(self) -> None:
         stream = Eventstream(get_df())
         with pytest.raises(PreprocessingConfigError, match="Unknown clustering method"):

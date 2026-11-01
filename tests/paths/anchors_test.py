@@ -3,7 +3,11 @@ import pytest
 
 from retentioneering.datasets import load_ecom
 from retentioneering.eventstream.eventstream import Eventstream
-from retentioneering.exceptions import InvalidParameterError, PatternSyntaxError
+from retentioneering.exceptions import (
+    InvalidParameterError,
+    PatternSyntaxError,
+    RetentioneeringError,
+)
 from retentioneering.paths import anchors
 from retentioneering.paths import tokens as tokens_mod
 
@@ -1131,3 +1135,41 @@ class TestAtRange:
         stream = TestResolveAnchorsSmallFixtures._stream({"u1": list("zzz")})
         with pytest.raises(InvalidParameterError, match="parameter 'at'"):
             stream.step_matrix_data(anchor={"pattern": "a->b->c", "at": -4})
+
+
+class TestWhitespaceDiagnostics:
+    @pytest.mark.parametrize("check_literals", [True, False])
+    @pytest.mark.parametrize("pattern", ["A -> B", "A-> B", "A->\tB", "A-> .* ->C"])
+    def test_whitespace_hint_is_shared_and_not_suppressed(
+        self, pattern, check_literals
+    ):
+        with pytest.raises(PatternSyntaxError, match="whitespace.*->"):
+            anchors.validate_pattern_tokens(
+                pattern, {"A", "B", "C"}, param="anchor", check_literals=check_literals
+            )
+
+    def test_real_event_names_with_spaces_remain_exact_literals(self):
+        anchors.validate_pattern_tokens(" A ->B", {" A ", "B"})
+        anchors.validate_pattern_tokens("[ A | B ]", {"A", "B"})
+
+    def test_hint_suggests_known_stripped_name(self):
+        with pytest.raises(PatternSyntaxError, match="Did you mean 'A'"):
+            anchors.validate_pattern_tokens("A ->B", {"A", "B"})
+
+    @pytest.mark.parametrize(
+        "api", ["add_events", "filter_paths", "step_matrix_data", "get_metrics"]
+    )
+    def test_public_apis_explain_spaces_around_arrows(self, api):
+        stream = TestResolveAnchorsSmallFixtures._stream({"u1": ["A", "B", "C"]})
+        pattern = "A -> B"
+        with pytest.raises(RetentioneeringError, match="whitespace.*->"):
+            if api == "add_events":
+                stream.add_events("marker", anchor=pattern)
+            elif api == "filter_paths":
+                stream.filter_paths({"matches_pattern": pattern})
+            elif api == "step_matrix_data":
+                stream.step_matrix_data(anchor=pattern)
+            else:
+                stream.get_metrics(
+                    [{"metric": "matches_pattern", "metric_args": {"pattern": pattern}}]
+                )

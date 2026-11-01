@@ -37,6 +37,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- An anchor spec naming its own `event_col`
+  (`{"pattern": "returning->loyal", "event_col": "user_lifecycle"}`) is
+  validated against that column in `add_events(anchor=...)`,
+  `get_conversion_rate`, `step_matrix_data` and `step_sankey_data`, as
+  `truncate_paths` already did. These checked it against the event vocabulary
+  instead, so the levels of that column were rejected as unknown events, while
+  real event names passed and then matched nothing: `add_events` inserted no
+  events and raised no error. `get_conversion_rate` also takes the end anchor's
+  `event_col` into account for `base_rate` and `lift`
+  ([#138](https://github.com/retentioneering/retentioneering-tools/issues/138)).
+
 - The `active_days` metric, `to_daily_states` and an `active_days` condition in
   `collapse_events`' `name` cases take the calendar day in the timestamp
   column's own timezone. For a tz-aware column they used DuckDB's session

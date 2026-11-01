@@ -491,3 +491,44 @@ class TestConversionRateValidation:
         stream = _stream([["user_1", "A", "2020-01-01 00:00:00"]])
         with pytest.raises((InvalidParameterError, ValueError)):
             stream.get_conversion_rate("A", "A", within=within)
+
+
+class TestConversionRateAnchorEventCol:
+    """An anchor naming its own `event_col` is read from that column throughout."""
+
+    @staticmethod
+    def _stream() -> Eventstream:
+        df = pd.DataFrame(
+            {
+                "user_id": ["u1"] * 4 + ["u2"] * 3 + ["u3"] * 2,
+                "event": ["main", "cart", "pay", "main"]
+                + ["main", "cart", "pay"]
+                + ["main", "pay"],
+                "user_lifecycle": ["new", "returning", "loyal", "loyal"]
+                + ["new", "new", "returning"]
+                + ["new", "loyal"],
+                "timestamp": pd.to_datetime(
+                    ["2020-01-01 00:00", "2020-01-01 00:01"]
+                    + ["2020-01-01 00:02", "2020-01-01 00:03"]
+                    + ["2020-01-01 00:00", "2020-01-01 00:01", "2020-01-01 00:02"]
+                    + ["2020-01-01 00:00", "2020-01-01 00:01"]
+                ),
+            }
+        )
+        return Eventstream(df, {"custom_cols": ["user_lifecycle"]})
+
+    def test_end_anchor_on_its_own_column(self) -> None:
+        loyal = {"pattern": "loyal", "event_col": "user_lifecycle"}
+        result = _row(self._stream().get_conversion_rate("cart", loyal))
+        # u1 and u2 reach cart; only u1 becomes loyal after it.
+        assert (result["paths_with_start"], result["converted"]) == (2, 1)
+        # u1 and u3 are loyal at some point: the base rate reads the same column.
+        assert result["base_rate"] == pytest.approx(2 / 3)
+        assert result["lift"] == pytest.approx(0.75)
+
+    @pytest.mark.parametrize("side", ["start_anchor", "end_anchor"])
+    def test_a_name_absent_from_that_column_raises(self, side) -> None:
+        spec = {"pattern": "cart", "event_col": "user_lifecycle"}
+        anchors = {"start_anchor": "main", "end_anchor": "pay", side: spec}
+        with pytest.raises(InvalidParameterError, match="loyal"):
+            self._stream().get_conversion_rate(**anchors)

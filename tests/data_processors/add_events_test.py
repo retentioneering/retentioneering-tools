@@ -514,6 +514,85 @@ class TestAddEventsByAnchor:
                 name="M", anchor="cart", path_col="nope"
             )
 
+    # ── anchor spec's own event_col ──────────────────────────────────────────
+
+    def get_state_df(self):
+        """
+        A per-row state column whose values are not event names. The run
+        boundary "the row where the user became loyal" is only expressible
+        over `user_lifecycle`, not over the event vocabulary.
+        """
+        return pd.DataFrame(
+            {
+                "user_id": ["user_1"] * 4 + ["user_2"] * 3,
+                "event": ["main", "cart", "pay", "main", "main", "cart", "pay"],
+                "user_lifecycle": [
+                    "new",
+                    "returning",
+                    "loyal",
+                    "loyal",
+                    "new",
+                    "new",
+                    "returning",
+                ],
+                "timestamp": pd.to_datetime(
+                    [
+                        "2020-01-01 00:00:00",
+                        "2020-01-01 00:01:00",
+                        "2020-01-01 00:02:00",
+                        "2020-01-01 00:03:00",
+                        "2020-01-01 00:00:00",
+                        "2020-01-01 00:01:00",
+                        "2020-01-01 00:02:00",
+                    ]
+                ),
+            }
+        )
+
+    STATE_SCHEMA = {
+        "path_cols": ["user_id"],
+        "event_col": "event",
+        "custom_cols": ["user_lifecycle"],
+    }
+
+    def test__anchor_event_col_is_validated_against_its_own_column(self) -> None:
+        """A spec naming its own `event_col` is validated against that column."""
+        stream = Eventstream(self.get_state_df(), self.STATE_SCHEMA)
+        spec = {
+            "pattern": "returning->loyal",
+            "at": "end",
+            "event_col": "user_lifecycle",
+        }
+
+        res = stream.add_events(name="became_loyal", anchor=spec)
+
+        # truncate_paths accepts the same spec.
+        stream.truncate_paths(start_anchor=spec, end_anchor="path_end")
+
+        assert self.events_of(res, "user_1") == [
+            "main",
+            "cart",
+            "became_loyal",
+            "pay",
+            "main",
+        ]
+        # user_2 never reaches `loyal`, so it gets no marker
+        assert self.events_of(res, "user_2") == ["main", "cart", "pay"]
+
+    def test__anchor_event_col_rejects_a_name_absent_from_its_own_column(self) -> None:
+        """Real events that are not values of that column are rejected."""
+        stream = Eventstream(self.get_state_df(), self.STATE_SCHEMA)
+
+        with pytest.raises(PreprocessingConfigError, match="cart"):
+            stream.add_events(
+                name="M",
+                anchor={
+                    "pattern": "cart->pay",
+                    "at": "end",
+                    "event_col": "user_lifecycle",
+                },
+            )
+
 
 # ---------------------------------------------------------------------------
 # Common validation

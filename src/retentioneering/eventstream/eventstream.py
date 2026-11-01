@@ -857,7 +857,7 @@ class Eventstream:
             Mark a *position* in each path rather than an event name: an event
             name, or an anchor spec — the same form `truncate_paths` takes for
             `start_anchor`, and the same keys (`pattern`, `at`, `occurrence`,
-            `offset`, `offset_side`); see
+            `offset`, `offset_side`, `event_col`); see
             [Path Patterns](/docs/path-patterns). One anchor per call, not a
             list. By default the anchor resolves once per path
             (`occurrence="first"`); pass `occurrence="all"` to mark every
@@ -1805,14 +1805,14 @@ class Eventstream:
         anchor : str or dict, optional
             Centre everything on one position instead, given as an anchor spec —
             the same form `truncate_paths` takes for `start_anchor`, and the same
-            keys (`pattern`, `at`, `occurrence`, `offset`, `offset_side`). Yields
-            a single block. Mutually exclusive with `path_pattern`, which lays
-            the pattern's parts out side by side; use `anchor` when the position
-            needs `occurrence` or an `offset`, neither of which a pattern can
-            express. Paths where the anchor does not resolve are absent, so it
-            selects as well as centres. `occurrence="all"` is rejected: several
-            positions per path would make a path count more than once, and the
-            cells are shares of paths.
+            keys (`pattern`, `at`, `occurrence`, `offset`, `offset_side`,
+            `event_col`). Yields a single block. Mutually exclusive with
+            `path_pattern`, which lays the pattern's parts out side by side; use
+            `anchor` when the position needs `occurrence` or an `offset`, neither
+            of which a pattern can express. Paths where the anchor does not
+            resolve are absent, so it selects as well as centres.
+            `occurrence="all"` is rejected: several positions per path would make
+            a path count more than once, and the cells are shares of paths.
 
         Returns
         -------
@@ -1887,14 +1887,14 @@ class Eventstream:
         anchor : str or dict, optional
             Centre everything on one position instead, given as an anchor spec —
             the same form `truncate_paths` takes for `start_anchor`, and the same
-            keys (`pattern`, `at`, `occurrence`, `offset`, `offset_side`). Yields
-            a single block. Mutually exclusive with `path_pattern`, which lays
-            the pattern's parts out side by side; use `anchor` when the position
-            needs `occurrence` or an `offset`, neither of which a pattern can
-            express. Paths where the anchor does not resolve are absent, so it
-            selects as well as centres. `occurrence="all"` is rejected: several
-            positions per path would make a path count more than once, and the
-            cells are shares of paths.
+            keys (`pattern`, `at`, `occurrence`, `offset`, `offset_side`,
+            `event_col`). Yields a single block. Mutually exclusive with
+            `path_pattern`, which lays the pattern's parts out side by side; use
+            `anchor` when the position needs `occurrence` or an `offset`, neither
+            of which a pattern can express. Paths where the anchor does not
+            resolve are absent, so it selects as well as centres.
+            `occurrence="all"` is rejected: several positions per path would make
+            a path count more than once, and the cells are shares of paths.
 
         Returns
         -------

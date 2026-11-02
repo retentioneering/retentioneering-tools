@@ -1175,7 +1175,9 @@ class Eventstream:
         Each path is expanded to one row per calendar day from its first event
         to `max_dormant_days` days after its last event, with days taken in the
         timestamp column's timezone if it has one. Every row is labelled with
-        one of six engagement states.
+        an engagement state. The output timestamps are timezone-naive calendar
+        midnights. This creates new daily-state positions; it does not preserve
+        the source events' indices.
 
         Active days:
             `new`          — first-ever active day for this path
@@ -1201,7 +1203,15 @@ class Eventstream:
             (e.g. `{"revenue": "sum"}`). Same aggregation functions and column-key
             validation as `collapse_events`.
         path_col : str, optional
-            Override the path ID column.
+            Daily-state grain, one of `schema.path_cols`; defaults to the primary
+            path. The result keeps this ID and all coarser path IDs, including on
+            inactive days. Finer path columns are removed from both the data and
+            schema, even for empty inputs or samples with one finer path per
+            selected path. Selecting the finest declared grain preserves the
+            schema. Positions are numbered within the retained primary path by
+            day; same-day states from different selected paths follow those
+            paths' first source positions. For session-level state transitions,
+            continue to pass `path_col="session_id"` to downstream tools.
 
         Examples
         --------

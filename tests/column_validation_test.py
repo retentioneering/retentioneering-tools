@@ -6,7 +6,6 @@ import pandas as pd
 import pytest
 
 from retentioneering import Eventstream
-from retentioneering.eventstream.ordering import EventOrderError
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import (
     InvalidParameterError,
@@ -99,18 +98,7 @@ def test_public_methods_reject_invalid_path_col(stream, method, path_col):
 
 @pytest.mark.parametrize("method", PATH_CALLS)
 @pytest.mark.parametrize("path_col", [None, "user_id", "session_id"])
-def test_public_methods_accept_declared_path_grains(stream, method, path_col, request):
-    if method == "to_daily_states" and path_col == "session_id":
-        # On master too: daily states nulls the other path IDs and resets the
-        # position per session, violating the primary path's ordering contract.
-        # Keep this known limitation visible without broadening a validation fix.
-        request.applymarker(
-            pytest.mark.xfail(
-                raises=EventOrderError,
-                strict=True,
-                reason="Pre-existing daily-states ordering failure at a secondary path grain",
-            )
-        )
+def test_public_methods_accept_declared_path_grains(stream, method, path_col):
     result = getattr(stream, method)(**PATH_CALLS[method], path_col=path_col)
     assert result is not None
     if method == "get_metrics":
@@ -188,6 +176,7 @@ def test_unknown_agg_column_raises(stream, method, path_col):
         ("collapse_events", None),
         ("collapse_events", "session_id"),
         ("to_daily_states", None),
+        ("to_daily_states", "session_id"),
     ],
 )
 @pytest.mark.parametrize(
@@ -210,6 +199,7 @@ def test_existing_excluded_agg_columns_remain_accepted(
         ("collapse_events", "user_id"),
         ("collapse_events", "session_id"),
         ("to_daily_states", "user_id"),
+        ("to_daily_states", "session_id"),
     ],
 )
 def test_valid_agg_sums_revenue_at_selected_grain(stream, method, path_col):

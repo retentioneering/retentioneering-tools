@@ -46,7 +46,10 @@ class ToDailyStates(DataProcessor):
     agg : dict, optional
         Extra column aggregation config passed to ``_session_agg_exprs``.
     path_col : str, optional
-        Override the path ID column (default: ``schema.path_col``).
+        Daily-state grain (default: ``schema.path_col``). Keep this ID and all
+        coarser path IDs; remove finer path columns from the frame and schema.
+        New positions are numbered within the retained primary path by day,
+        then by the selected path's first source position for same-day ties.
 
     Examples
     --------
@@ -81,6 +84,14 @@ class ToDailyStates(DataProcessor):
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
         path_col = schema.resolve_path_col(self.path_col)
+        # ADR-0004 guarantees a coarsest-first nesting hierarchy. The selected
+        # path identifies its ancestors on every generated day; descendants do
+        # not identify a daily state and must leave both the frame and schema.
+        # Use the declared hierarchy, not sample cardinality (also for empties).
+        path_level = schema.path_cols.index(path_col)
+        result_schema = schema.copy()
+        result_schema.path_cols = schema.path_cols[: path_level + 1]
+        ancestor_cols = result_schema.path_cols[:-1]
         event_col = schema.event_col
         timestamp_col = schema.timestamp_col
         event_type_col = schema.event_type
@@ -93,6 +104,8 @@ class ToDailyStates(DataProcessor):
         event_type_col_q = engine.quote_ident(event_type_col)
         index_col_q = engine.quote_ident(schema.index)
         subindex_col_q = engine.quote_ident(schema.subindex)
+        primary_col_q = engine.quote_ident(result_schema.path_col)
+        order = dialect.event_order(index_col_q, subindex_col_q)
         day_expr = dialect.calendar_date(
             timestamp_col_q, column_timezone(df[timestamp_col])
         )
@@ -107,7 +120,7 @@ class ToDailyStates(DataProcessor):
         else:
             is_active_today = "TRUE"
 
-        exclude = {path_col, schema.event_col, schema.event_type}
+        exclude = {*schema.path_cols, schema.event_col, schema.event_type}
         agg_exprs = _session_agg_exprs(
             df,
             self.agg,
@@ -118,12 +131,20 @@ class ToDailyStates(DataProcessor):
         )
         agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
 
-        other_path_cols = [c for c in schema.path_cols if c != path_col]
-        other_path_cols_chunk = ", ".join(
-            [f"NULL AS {engine.quote_ident(c)}" for c in other_path_cols]
+        # First source position breaks ties between calendars on the same day;
+        # path labels (e.g. session IDs) are not evidence of event order.
+        path_order_col = "_daily_path_order"
+        occupied_names = {c.lower() for c in df.columns}
+        while path_order_col.lower() in occupied_names:
+            path_order_col += "_"
+        path_order_q = engine.quote_ident(path_order_col)
+        ancestor_agg = "".join(
+            f", ANY_VALUE(b.{engine.quote_ident(c)}) AS {engine.quote_ident(c)}"
+            for c in ancestor_cols
         )
-        if other_path_cols_chunk:
-            other_path_cols_chunk = f", {other_path_cols_chunk}"
+        ancestor_select = "".join(
+            f", pb.{engine.quote_ident(c)}" for c in ancestor_cols
+        )
 
         special_cols = schema.segment_cols + schema.custom_cols
         special_cols_chunk = ", ".join(
@@ -135,18 +156,15 @@ class ToDailyStates(DataProcessor):
             ]
         )
 
-        exclude_cols = (
-            [
-                "active_today",
-                "last_active",
-                "had_week",
-                "had_month",
-                schema.index,
-                schema.subindex,
-            ]
-            + other_path_cols
-            + special_cols
-        )
+        exclude_cols = [
+            "active_today",
+            "last_active",
+            "had_week",
+            "had_month",
+            schema.index,
+            schema.subindex,
+            path_order_col,
+        ] + special_cols
         exclude_cols_sql = ", ".join(engine.quote_ident(c) for c in exclude_cols)
 
         query = f"""
@@ -169,6 +187,8 @@ class ToDailyStates(DataProcessor):
         path_bounds AS (
             SELECT
                 b.{path_col_q},
+                MIN(b._rn) AS {path_order_q}
+                {ancestor_agg},
                 MIN(b.day) AS start_day,
                 LEAST(MAX(b.day) + INTERVAL {max_dormant_days} DAY, ANY_VALUE(de.dataset_end)) AS end_day
             FROM base b
@@ -176,13 +196,13 @@ class ToDailyStates(DataProcessor):
             GROUP BY b.{path_col_q}
         ),
         cal AS (
-            SELECT pb.{path_col_q}, day
+            SELECT pb.{path_col_q}, pb.{path_order_q}{ancestor_select}, day
             FROM path_bounds AS pb,
             LATERAL (SELECT * FROM range(start_day, end_day + INTERVAL 1 DAY, INTERVAL 1 DAY)) AS r(day)
         ),
         states AS (
             SELECT
-                cal.{path_col_q},
+                cal.* EXCLUDE (day),
                 cal.day AS {timestamp_col_q},
                 p.* EXCLUDE ({path_col_q}, day, {timestamp_col_q}, active_today),
                 COALESCE(p.active_today, FALSE) AS active_today,
@@ -202,8 +222,7 @@ class ToDailyStates(DataProcessor):
             FROM cal
             LEFT JOIN per_date p USING ({path_col_q}, day)
         )
-        SELECT * EXCLUDE ({exclude_cols_sql})
-            {other_path_cols_chunk},
+        SELECT * EXCLUDE ({exclude_cols_sql}),
             CASE
                 WHEN active_today THEN
                     CASE
@@ -221,14 +240,15 @@ class ToDailyStates(DataProcessor):
             END AS {event_col_q},
             '{collapsed_event_type}' AS {event_type_col_q},
             1 AS {subindex_col_q},
-            -- A new grain: one row per path and day, so the day is unique
-            -- within the path and numbers the new positions (ADR-0017).
+            -- New daily-state positions, unique at the retained primary grain.
+            -- A day can contain several selected paths (e.g. sessions/user).
             ROW_NUMBER() OVER (
-                PARTITION BY {path_col_q} ORDER BY {timestamp_col_q}
+                PARTITION BY {primary_col_q}
+                ORDER BY {timestamp_col_q}, {path_order_q}
             ) AS {index_col_q}
             {(", " + special_cols_chunk) if special_cols_chunk else ""}
         FROM states
-        ORDER BY {path_col_q}, {index_col_q}
+        ORDER BY {primary_col_q}, {order}
         """
         # "first"/"last" aggregates read the event order off an integer row
         # number: within a path, physical order is the event order (ADR-0017),
@@ -242,4 +262,4 @@ class ToDailyStates(DataProcessor):
                 res[col] = res[col].cat.remove_unused_categories()
                 res[col] = res[col].cat.as_unordered()
 
-        return res, schema
+        return res, result_schema

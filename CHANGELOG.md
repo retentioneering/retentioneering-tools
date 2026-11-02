@@ -22,6 +22,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 
+- `to_daily_states(path_col=...)` now preserves the selected path ID and its
+  coarser ancestors on every generated day. Finer path columns are removed from
+  both the data and schema, including for empty input; selecting the finest
+  declared grain preserves the schema. New daily-state indices are unique
+  within the retained primary path, so overlapping sessions of one user no
+  longer fail event-order validation. Same-day sessions follow their first
+  source positions. Downstream tools still default to the original primary
+  grain; pass the selected `path_col` explicitly for session-level analysis.
+
 - Events within a path are ordered by `(index, subindex)` everywhere, and that
   key is unique per path
   ([ADR-0017](https://github.com/retentioneering/retentioneering-tools/blob/master/docs/adr/0017-event-order-contract.md)).

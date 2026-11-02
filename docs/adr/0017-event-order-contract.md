@@ -123,6 +123,22 @@ one query to `(index, subindex)`. This ADR makes the same choice library-wide.
    "deadline" marker), and a warning that fires on intended input would be
    noise. Time-based metrics read timestamps as given.
 
+9. **Daily states create a new grain and new positions.** `to_daily_states`
+   replaces source events with one state per selected path and calendar day;
+   these rows include inactive days without a source event to inherit. It keeps
+   the prefix of `path_cols` through the selected grain (ADR-0004): ancestor
+   IDs are constant within each selected path and are carried onto all its
+   generated days; finer IDs are removed from the frame and schema. This rule
+   depends on the declared hierarchy, not sample cardinality, and also applies
+   to empty input. Selecting the finest grain preserves the schema.
+   New `index` values are numbered within the **retained primary path**, by
+   calendar day, then by each selected path's first position in source event
+   order. Thus overlapping session calendars of one user cannot collide, and
+   same-day ties do not depend on session labels or source timestamps. Calendar
+   ordering here defines the new daily-state grain; source `first`/`last`
+   aggregates still use `(index, subindex)`. Output uses the normal ordering
+   helper and derived-stream validation, with no opt-out or repair sort.
+
 ## Consequences
 
 - Every reader gives the same answer on tied data, and repeated calls on the

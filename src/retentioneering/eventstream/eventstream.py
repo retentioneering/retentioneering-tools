@@ -756,7 +756,7 @@ class Eventstream:
             condition = {"op": "and", "args": condition}
 
         dp = FilterPaths(condition, path_col)
-        path_col = path_col or self.schema.path_col
+        path_col = self.schema.resolve_path_col(path_col)
 
         # Extract metric configs
         metric_configs = dp._get_metric_configs(condition)
@@ -870,7 +870,8 @@ class Eventstream:
             `step_matrix`, counted by a funnel, or filtered on.
         path_col : str, optional
             Path ID column the `anchor` is resolved within; defaults to
-            `schema.path_col`. Ignored by the other modes.
+            `schema.path_col`. Must be one of `schema.path_cols` in every mode;
+            other modes do not use it for grouping.
 
         Examples
         --------
@@ -1112,7 +1113,8 @@ class Eventstream:
             `"last"`, `"min"`, `"max"`, `"mean"`, `"sum"`, `"mode"`, `"any"`;
             anything else raises. See
             [agg](/docs/data-processors/collapse-events#agg) below. Example:
-            `{"price": "max"}`.
+            `{"price": "max"}`. Unknown column keys raise. Overrides for existing
+            columns excluded from aggregation are ignored.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
 
@@ -1173,7 +1175,9 @@ class Eventstream:
         Each path is expanded to one row per calendar day from its first event
         to `max_dormant_days` days after its last event, with days taken in the
         timestamp column's timezone if it has one. Every row is labelled with
-        one of six engagement states.
+        an engagement state. The output timestamps are timezone-naive calendar
+        midnights. This creates new daily-state positions; it does not preserve
+        the source events' indices.
 
         Active days:
             `new`          — first-ever active day for this path
@@ -1196,10 +1200,18 @@ class Eventstream:
             the end of the observation window get fewer trailing rows.
         agg : dict, optional
             Per-column aggregation overrides, as a `{column: agg_func}` dict
-            (e.g. `{"revenue": "sum"}`). Same `agg_func` values as
-            `collapse_events`.
+            (e.g. `{"revenue": "sum"}`). Same aggregation functions and column-key
+            validation as `collapse_events`.
         path_col : str, optional
-            Override the path ID column.
+            Daily-state grain, one of `schema.path_cols`; defaults to the primary
+            path. The result keeps this ID and all coarser path IDs, including on
+            inactive days. Finer path columns are removed from both the data and
+            schema, even for empty inputs or samples with one finer path per
+            selected path. Selecting the finest declared grain preserves the
+            schema. Positions are numbered within the retained primary path by
+            day; same-day states from different selected paths follow those
+            paths' first source positions. For session-level state transitions,
+            continue to pass `path_col="session_id"` to downstream tools.
 
         Examples
         --------
@@ -1623,7 +1635,7 @@ class Eventstream:
             s2 = self._filter_by_segment_levels(segment_col, v2_vals)
         elif len(split) == 2:
             ids1, ids2 = split[0], split[1]
-            path_col = path_col or self.schema.path_col
+            path_col = self.schema.resolve_path_col(path_col)
             available_ids = set(self._df[path_col].unique().tolist())
             missing1 = [i for i in ids1 if i not in available_ids]
             missing2 = [i for i in ids2 if i not in available_ids]
@@ -1655,7 +1667,7 @@ class Eventstream:
         from retentioneering.exceptions import PatternNoMatchError
         from retentioneering.paths import anchors
 
-        path_col = path_col or self.schema.path_col
+        path_col = self.schema.resolve_path_col(path_col)
         path_pattern = anchors.normalize_pattern(
             path_pattern, stacklevel=stacklevel, param="path_pattern"
         )
@@ -1977,6 +1989,8 @@ class Eventstream:
             stream.step_sankey(max_steps=15, path_pattern="add_to_cart->.*->purchase")
             stream.step_sankey(diff=("acquisition_channel", "paid_search", "<REST>"))
         """
+        self.schema.resolve_path_col(path_col)
+
         from retentioneering.widgets.step_sankey import StepSankeyWidget, _UNSET
 
         return StepSankeyWidget(
@@ -2059,6 +2073,8 @@ class Eventstream:
             stream.step_matrix(path_pattern="add_to_cart->.*->purchase")
             stream.step_matrix(diff=("user_lifecycle", "new", "loyal"))
         """
+        self.schema.resolve_path_col(path_col)
+
         from retentioneering.widgets.step_matrix import StepMatrixWidget, _UNSET
 
         return StepMatrixWidget(
@@ -2149,6 +2165,8 @@ class Eventstream:
                 view="Checkout",
             )
         """
+        self.schema.resolve_path_col(path_col)
+
         from retentioneering.widgets.transition_graph import (
             TransitionGraphWidget,
             _UNSET,
@@ -2217,6 +2235,8 @@ class Eventstream:
             stream.funnel(steps=["catalog", "add_to_cart", "purchase"])
             stream.funnel(steps=["add_to_cart", "purchase"], diff=("user_lifecycle", "loyal", "new"))
         """
+        self.schema.resolve_path_col(path_col)
+
         from retentioneering.widgets.funnel import FunnelWidget, _UNSET
 
         return FunnelWidget(
@@ -2267,6 +2287,8 @@ class Eventstream:
         `funnel1_*` / `funnel2_*` (one per segment) and `delta_*`
         (`funnel1_* - funnel2_*`) instead.
         """
+        self.schema.resolve_path_col(path_col)
+
         from retentioneering.tools.funnel import Funnel
 
         if not steps:
@@ -2414,6 +2436,8 @@ class Eventstream:
                 ],
             )
         """
+        self.schema.resolve_path_col(path_col)
+
         from retentioneering.widgets.segment_overview import (
             SegmentOverviewWidget,
             _UNSET,
@@ -2577,6 +2601,8 @@ class Eventstream:
                 method_args={"min_cluster_size": 50},
             )
         """
+        self.schema.resolve_path_col(path_col)
+
         from retentioneering.widgets.cluster_analysis import (
             ClusterAnalysisWidget,
             _UNSET,

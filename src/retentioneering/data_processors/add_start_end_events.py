@@ -16,7 +16,7 @@ class AddStartEndEvents(DataProcessor):
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
         event_types = EventTypes()
-        path_col = self.path_col or schema.path_col
+        path_col = schema.resolve_path_col(self.path_col)
 
         # Drop any path_start/path_end markers already present -- from a prior
         # call at this grain, or (the bug this fixes) at a *different*

@@ -366,6 +366,7 @@ class AddSegment(DataProcessor):
     def apply(
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
+        schema.resolve_path_col(self.path_col)
         has_mode = any(
             [
                 self.rules is not None,
@@ -463,12 +464,7 @@ class AddSegment(DataProcessor):
             values = list(result)
 
         elif self.funnel_events is not None:
-            pid_col = self.path_col or schema.path_col
-            if pid_col not in schema.path_cols:
-                raise PreprocessingConfigError(
-                    PROCESSOR_NAME,
-                    f"path_col '{pid_col}' must be one of schema.path_cols: {schema.path_cols}.",
-                )
+            pid_col = schema.resolve_path_col(self.path_col)
             # Add row index so we can restore original order after DuckDB execution
             eventstream = df.copy()
             eventstream[_ROW_IDX_COL] = range(len(df))
@@ -521,12 +517,7 @@ class AddSegment(DataProcessor):
             raise PreprocessingConfigError(
                 PROCESSOR_NAME, "metric_bins mode requires an eventstream."
             )
-        path_col = self.path_col or schema.path_col
-        if path_col not in schema.path_cols:
-            raise PreprocessingConfigError(
-                PROCESSOR_NAME,
-                f"path_col '{path_col}' must be one of schema.path_cols: {schema.path_cols}.",
-            )
+        path_col = schema.resolve_path_col(self.path_col)
 
         metrics = MetricBuilder(self.eventstream).build_metrics(
             [self.metric_bins["metric"]], path_col

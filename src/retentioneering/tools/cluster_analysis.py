@@ -190,7 +190,7 @@ class ClusterAnalysis:
         n_clusters = normalize_grid_param("n_clusters", n_clusters)
         nmf_components = normalize_grid_param("nmf_components", nmf_components)
 
-        path_col = path_col or self.eventstream.schema.path_col
+        path_col = self.eventstream.schema.resolve_path_col(path_col)
 
         # 1. Build feature matrix
         metric_builder = MetricBuilder(self.eventstream)
@@ -593,7 +593,7 @@ class ClusterAnalysis:
         via a throwaway temp stream, exactly like the overview heatmap does, and
         takes the same mutually-exclusive `segment_level` / `segment_levels`.
         """
-        path_col = path_col or self.eventstream.schema.path_col
+        path_col = self.eventstream.schema.resolve_path_col(path_col)
         temp_stream = self._temp_cluster_stream(cluster_labels, path_col)
         return temp_stream.get_metric_distribution(
             segment_col=SEGMENT_COL,

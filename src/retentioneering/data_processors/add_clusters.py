@@ -149,7 +149,7 @@ class AddClusters(DataProcessor):
                     f"Name '{self.name}' is already reserved in the eventstream.",
                 )
 
-        path_col = self.path_col or schema.path_col
+        path_col = schema.resolve_path_col(self.path_col)
 
         # Build features using MetricBuilder
         metric_builder = MetricBuilder(self.eventstream)

@@ -48,4 +48,30 @@ tool works on it unchanged — a [Transition Graph](/docs/widgets/transition-gra
 becomes a state-transition diagram, and a
 [Step Sankey](/docs/widgets/step-sankey) becomes a retention flow.
 
+### Multiple path grains
+
+`path_cols` is a nesting hierarchy, coarsest first. With
+`["user_id", "session_id"]`, `to_daily_states(path_col="session_id")` emits one
+state per **session and day**, preserving both IDs on active and inactive days.
+Two sessions of one user can therefore contribute two states on the same date.
+Positions remain unique within the user: days come first, and sessions on the
+same day follow their first appearance in source event order, not session-ID
+sorting. These are new daily-state positions, not source-event indices.
+
+Pass `path_col="session_id"` to downstream tools to read each session's state
+trajectory. The default grain remains `user_id`; a user-level transition graph
+would instead read the interleaved states of that user's sessions. A session's
+inactive tail describes that session's calendar, not the user's activity in
+other sessions.
+
+Calling `to_daily_states(path_col="user_id")` produces one state per **user and
+day** and removes `session_id` from both the frame and schema: a user-day may
+combine several sessions, and an inactive day has no session to assign. More
+generally, the result keeps the prefix of `path_cols` through the selected grain
+and removes finer path columns. Selecting the finest grain preserves the schema.
+This rule is unchanged for empty samples or samples that happen to have only one
+session per user. Path IDs are not aggregated by `agg`; those overrides apply to
+ordinary extra columns. Calendar dates use the source timezone; the output
+timestamps are timezone-naive midnights representing those dates.
+
 {% endblock %}

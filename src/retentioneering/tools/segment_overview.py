@@ -131,7 +131,7 @@ class SegmentOverview:
                 - Columns: unique segment levels
                 - Values: aggregated metric values for each segment
         """
-        path_col = path_col or self.eventstream.schema.path_col
+        path_col = self.eventstream.schema.resolve_path_col(path_col)
         event_col = self.eventstream.schema.event_col
         df = self.eventstream.df.copy()
 
@@ -292,13 +292,7 @@ class SegmentOverview:
         df = self.eventstream.df.copy()
 
         # Validate path_col
-        path_col = path_col or self.eventstream.schema.path_col
-        if path_col not in df.columns:
-            raise InvalidParameterError(
-                "path_col",
-                path_col,
-                allowed_values=self.eventstream.schema.path_cols,
-            )
+        path_col = self.eventstream.schema.resolve_path_col(path_col)
 
         # Validate segment_col
         if segment_col not in df.columns:

@@ -22,6 +22,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 
+- `to_daily_states(path_col=...)` now preserves the selected path ID and its
+  coarser ancestors on every generated day. Finer path columns are removed from
+  both the data and schema, including for empty input; selecting the finest
+  declared grain preserves the schema. New daily-state indices are unique
+  within the retained primary path, so overlapping sessions of one user no
+  longer fail event-order validation. Same-day sessions follow their first
+  source positions. Downstream tools still default to the original primary
+  grain; pass the selected `path_col` explicitly for session-level analysis.
+
 - Events within a path are ordered by `(index, subindex)` everywhere, and that
   key is unique per path
   ([ADR-0017](https://github.com/retentioneering/retentioneering-tools/blob/master/docs/adr/0017-event-order-contract.md)).
@@ -51,6 +60,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
     order rather than by timestamp.
 
 ### Fixed
+
+- Unknown column keys in `collapse_events(agg=...)` and `to_daily_states(agg=...)`
+  raise `PreprocessingColumnNotFoundError` with the available columns instead of
+  silently falling back to `"first"`. Existing columns excluded from aggregation
+  remain accepted. Processors, metrics and tools now resolve `path_col` through
+  the schema and raise `InvalidParameterError` listing `schema.path_cols` for
+  undeclared names, including modes that do not use the parameter
+  ([#235](https://github.com/retentioneering/retentioneering-tools/issues/235)).
 
 - The bundled ecom dataset (`rete.datasets.load_ecom`) no longer reorders events
   within a session. Each event's timestamp was `base + gap * index` with a fresh

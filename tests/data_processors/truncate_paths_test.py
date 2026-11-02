@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 
 from retentioneering.eventstream.eventstream import Eventstream
-from retentioneering.exceptions import PreprocessingConfigError
+from retentioneering.exceptions import InvalidParameterError, PreprocessingConfigError
 
 
 @pytest.fixture
@@ -237,7 +237,7 @@ def test_truncate_paths_path_col_override_rejects_undeclared_column():
         }
     )
     stream = Eventstream(data, {"path_cols": ["user_id"]})
-    with pytest.raises(PreprocessingConfigError):
+    with pytest.raises(InvalidParameterError, match="path_col"):
         stream.truncate_paths(
             start_anchor="A", end_anchor="B", path_col="not_a_path_col"
         )

@@ -38,11 +38,7 @@ class TransitionMatrix:
         path_col: str | None = None,
         path_pattern: str | None = None,
     ) -> pd.DataFrame:
-        path_col = path_col or self.eventstream.schema.path_col
-        if path_col not in self.eventstream.schema.path_cols:
-            raise InvalidParameterError(
-                "path_col", path_col, self.eventstream.schema.path_cols
-            )
+        path_col = self.eventstream.schema.resolve_path_col(path_col)
         if path_pattern is not None:
             return self._restricted(path_pattern, path_col).fit(
                 values, diff, path_col=path_col

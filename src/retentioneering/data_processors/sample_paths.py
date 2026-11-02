@@ -57,7 +57,7 @@ class SamplePaths(DataProcessor):
     def apply(
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
-        path_col = self.path_col or schema.path_col
+        path_col = schema.resolve_path_col(self.path_col)
 
         if self.frac == 1.0:
             return df, schema

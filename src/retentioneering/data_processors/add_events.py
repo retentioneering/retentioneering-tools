@@ -130,6 +130,7 @@ class AddEvents(DataProcessor):
     def apply(
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
+        schema.resolve_path_col(self.path_col)
         if self.source_event is not None:
             df_source = self._get_by_source_event(df, schema)
         elif self.sql is not None:
@@ -187,13 +188,7 @@ class AddEvents(DataProcessor):
     def _get_by_anchor(
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> pd.DataFrame:
-        path_col = self.path_col or schema.path_col
-        if path_col not in schema.path_cols:
-            raise PreprocessingConfigError(
-                PROCESSOR_NAME,
-                f"path_col '{path_col}' must be one of schema.path_cols: "
-                f"{schema.path_cols}.",
-            )
+        path_col = schema.resolve_path_col(self.path_col)
 
         # Unlike `truncate_paths`, which takes a list of anchors of which some
         # are *expected* not to resolve, a single anchor that names nothing can

@@ -849,7 +849,7 @@ class MetricBuilder:
                 event or segment level that doesn't exist, so typos fail loudly
                 instead of silently producing all-zero metrics.
         """
-        path_col = path_col or self.schema.path_col
+        path_col = self.schema.resolve_path_col(path_col)
         event_col = self.schema.event_col
 
         available_events = set(self.df[event_col].unique().tolist())

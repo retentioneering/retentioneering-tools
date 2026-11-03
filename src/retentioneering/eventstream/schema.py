@@ -8,7 +8,12 @@ from retentioneering.exceptions import SchemaConfigError
 
 @dataclass
 class EventstreamSchema:
-    """Column roles in an eventstream's frame."""
+    """Column roles in an eventstream's frame.
+
+    Column collections must be lists of strings. ``path_cols`` must be non-empty;
+    ``segment_cols`` may be empty. ``custom_cols=None`` infers extra columns,
+    while an explicit list (including ``[]``) declares which ones to keep.
+    """
 
     path_cols: List[str] = field(default_factory=lambda: ["user_id"])
     event_col: str = "event"
@@ -20,8 +25,24 @@ class EventstreamSchema:
     custom_cols: List[str] | None = None
 
     def __post_init__(self) -> None:
-        if not self.path_cols:
-            raise ValueError("EventstreamSchema: path_cols must not be empty")
+        for key in ("path_cols", "segment_cols", "custom_cols"):
+            value = getattr(self, key)
+            if key == "custom_cols" and value is None:
+                continue
+            expected = (
+                "a non-empty list of strings"
+                if key == "path_cols"
+                else "a list of strings"
+            )
+            if key == "custom_cols":
+                expected += " or None"
+            if not isinstance(value, list) or (key == "path_cols" and not value):
+                raise SchemaConfigError.invalid_parameter(key, expected, value)
+            for i, column in enumerate(value):
+                if not isinstance(column, str):
+                    raise SchemaConfigError.invalid_parameter(
+                        f"{key}[{i}]", "a str column name", column
+                    )
         if not self.event_col:
             raise ValueError("EventstreamSchema: event_col must not be empty")
         all_cols = (

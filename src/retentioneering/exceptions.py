@@ -44,6 +44,16 @@ class SchemaConfigError(RetentioneeringError):
     def __init__(self, message: str):
         super().__init__(message, "SCHEMA_CONFIG_ERROR")
 
+    @classmethod
+    def invalid_parameter(
+        cls, parameter: str, expected: str, value: object
+    ) -> "SchemaConfigError":
+        """Describe an invalid schema parameter without losing its type or value."""
+        return cls(
+            f"Schema key '{parameter}' must be {expected}; "
+            f"got {type(value).__name__} {value!r}."
+        )
+
 
 class PreprocessingConfigError(RetentioneeringError):
     def __init__(self, processor: str, message: str):

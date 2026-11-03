@@ -1,3 +1,19 @@
+import reprlib
+
+
+_SHORT_REPR = reprlib.Repr()
+_SHORT_REPR.maxstring = 120
+_SHORT_REPR.maxother = 120
+_SHORT_REPR.maxlist = _SHORT_REPR.maxtuple = _SHORT_REPR.maxset = 8
+_SHORT_REPR.maxdict = 8
+
+
+def _short_repr(value: object) -> str:
+    """``repr`` for error messages: a bad value should be recognisable, but a
+    thousand-element list or a whole DataFrame must not become the message."""
+    return _SHORT_REPR.repr(value)
+
+
 class RetentioneeringError(Exception):
     def __init__(self, message: str, error_code: str):
         self.message = message
@@ -46,12 +62,15 @@ class SchemaConfigError(RetentioneeringError):
 
     @classmethod
     def invalid_parameter(
-        cls, parameter: str, expected: str, value: object
+        cls, parameter: str, expected: str, value: object, hint: str = ""
     ) -> "SchemaConfigError":
-        """Describe an invalid schema parameter without losing its type or value."""
+        """Describe an invalid schema parameter without losing its type or value.
+
+        ``hint`` is appended verbatim (e.g. a suggested correct spelling).
+        """
         return cls(
             f"Schema key '{parameter}' must be {expected}; "
-            f"got {type(value).__name__} {value!r}."
+            f"got {type(value).__name__} {_short_repr(value)}.{hint}"
         )
 
 

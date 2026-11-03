@@ -3,7 +3,7 @@ from dataclasses import dataclass, field, fields
 from difflib import get_close_matches
 from typing import List
 
-from retentioneering.exceptions import SchemaConfigError
+from retentioneering.exceptions import SchemaConfigError, _short_repr
 
 
 @dataclass
@@ -25,24 +25,15 @@ class EventstreamSchema:
     custom_cols: List[str] | None = None
 
     def __post_init__(self) -> None:
-        for key in ("path_cols", "segment_cols", "custom_cols"):
-            value = getattr(self, key)
-            if key == "custom_cols" and value is None:
-                continue
-            expected = (
-                "a non-empty list of strings"
-                if key == "path_cols"
-                else "a list of strings"
-            )
-            if key == "custom_cols":
-                expected += " or None"
-            if not isinstance(value, list) or (key == "path_cols" and not value):
-                raise SchemaConfigError.invalid_parameter(key, expected, value)
-            for i, column in enumerate(value):
-                if not isinstance(column, str):
-                    raise SchemaConfigError.invalid_parameter(
-                        f"{key}[{i}]", "a str column name", column
-                    )
+        _check_column_list(
+            "path_cols", self.path_cols, allow_empty=False, allow_none=False
+        )
+        _check_column_list(
+            "segment_cols", self.segment_cols, allow_empty=True, allow_none=False
+        )
+        _check_column_list(
+            "custom_cols", self.custom_cols, allow_empty=True, allow_none=True
+        )
         if not self.event_col:
             raise ValueError("EventstreamSchema: event_col must not be empty")
         all_cols = (
@@ -169,3 +160,35 @@ class EventstreamSchema:
             if self.custom_cols is not None
             else None,
         )
+
+
+def _check_column_list(
+    key: str, value: object, *, allow_empty: bool, allow_none: bool
+) -> None:
+    """Reject a schema column collection that is not a list of column names.
+
+    The contract is deliberately narrow: a ``list`` of ``str``, nothing else.
+    A bare string is the common slip (`path_cols="user_id"`) and used to fail
+    deep inside list concatenation with an unrelated ``TypeError`` (#231);
+    tuples, sets, dicts and scalars are rejected the same way rather than
+    silently converted, so that what the schema reports back (``copy()``,
+    ``asdict``, the MCP layer) is always a plain list of the names the caller
+    declared (``str`` subclasses such as ``numpy.str_`` pass as strings).
+    """
+    if value is None and allow_none:
+        return
+    expected = "a list of strings" if allow_empty else "a non-empty list of strings"
+    if allow_none:
+        expected += " or None"
+    if not isinstance(value, list) or (not allow_empty and not value):
+        hint = ""
+        if isinstance(value, str) and value.strip() == value and value:
+            # One bare column name (no commas, no padding): offer the list form.
+            hint = f" Did you mean {key}=[{value!r}]?" if "," not in value else ""
+        raise SchemaConfigError.invalid_parameter(key, expected, value, hint=hint)
+    for i, column in enumerate(value):
+        if not isinstance(column, str):
+            raise SchemaConfigError(
+                f"Schema key '{key}' item {i} must be a string column name; "
+                f"got {type(column).__name__} {_short_repr(column)}."
+            )

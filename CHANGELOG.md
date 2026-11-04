@@ -52,6 +52,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- `EventstreamSchema` validates `path_cols`, `segment_cols` and `custom_cols`
+  as lists of strings before using them. Invalid containers, non-string items
+  and empty `path_cols` raise `SchemaConfigError` naming the parameter, expected
+  type and actual value; a bare string such as `path_cols="user_id"` also
+  suggests the list form. Empty segment/custom lists and `custom_cols=None`
+  retain their existing meaning
+  ([#231](https://github.com/retentioneering/retentioneering-tools/issues/231)).
+  Compatibility notes: an empty `path_cols` used to raise `ValueError` and now
+  raises `SchemaConfigError` (not a `ValueError` subclass); `custom_cols`
+  values that happened to work as "empty" (`()`, `""`, `set()`), one-element
+  numpy arrays and non-string column names such as `segment_cols=[7]` are now
+  rejected. A DataFrame whose extra (inferred) columns have non-string labels
+  is rejected when the `Eventstream` is built instead of failing in the next
+  processor call.
+
 - The bundled ecom dataset (`rete.datasets.load_ecom`) no longer reorders events
   within a session. Each event's timestamp was `base + gap * index` with a fresh
   random `gap` per event, so a later event could get an earlier timestamp; 205 of

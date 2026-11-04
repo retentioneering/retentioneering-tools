@@ -155,6 +155,18 @@ class Eventstream:
         else:
             known_cols = declared_cols | set(schema.custom_cols or [])
             extra_cols = [c for c in self._df.columns if c not in known_cols]
+            # The inferred list bypasses EventstreamSchema's own validation, so
+            # a non-string frame label (e.g. an int column from a pivot) would
+            # only blow up later, blamed on a `custom_cols` the caller never
+            # set, when a processor or copy() rebuilds the schema.
+            non_str = [c for c in extra_cols if not isinstance(c, str)]
+            if non_str:
+                raise SchemaConfigError(
+                    "DataFrame column labels must be strings to be kept as "
+                    f"custom_cols; got {non_str!r}. Rename them, e.g. "
+                    "df.columns = df.columns.astype(str), or declare custom_cols "
+                    "explicitly to drop them."
+                )
             schema.custom_cols = (schema.custom_cols or []) + extra_cols
 
     def _preprocess(self):

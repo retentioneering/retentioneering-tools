@@ -94,6 +94,8 @@ stream = rete.Eventstream(df, schema={
 | `segment_cols` | `[]` | Columns treated as segmentations, available in widgets and metrics. See [Key concepts](#key-concepts). |
 | `custom_cols` | `None` | Extra columns you may need for working with the eventstream. Left as `None`, every column not covered by the rest of the schema is included automatically. Set to a list — even `[]` — and only those columns (plus the ones already covered by the schema) are kept; anything else is dropped. |
 
+`path_cols`, `segment_cols` and `custom_cols` must be Python lists of column-name strings (`path_cols` non-empty; `custom_cols` may also be `None`). A bare string such as `"path_cols": "user_id"`, a tuple or a list with a non-string entry raises `SchemaConfigError` naming the key, the expected type and the value it got — nothing is converted implicitly. The same applies to columns inferred into `custom_cols`: a DataFrame with non-string column labels (an integer column left by a pivot, say) is rejected at construction; rename them with `df.columns = df.columns.astype(str)` or declare `custom_cols` explicitly.
+
 ## Event order
 
 Every tool reads the events of a path in one order, kept in two technical

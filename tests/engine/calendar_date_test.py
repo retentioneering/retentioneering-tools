@@ -24,6 +24,19 @@ LOCAL_TIMESTAMPS = ["2024-01-01 23:30:00", "2024-01-02 00:30:00"]
 AWAY_ZONE = "Asia/Tokyo"
 
 
+class _UnnamedZone(dt.tzinfo):
+    """A fixed +03:00 zone with neither `key` nor `zone`, and not `dt.timezone`."""
+
+    def utcoffset(self, when):
+        return dt.timedelta(hours=3)
+
+    def dst(self, when):
+        return dt.timedelta(0)
+
+    def tzname(self, when):
+        return None
+
+
 @pytest.fixture
 def eastern_session_timezone():
     """Run the body as if the host were in `AWAY_ZONE`."""
@@ -105,9 +118,11 @@ class TestCalendarDayIsTimezoneIndependent:
         assert len(_stream("Europe/Moscow").to_daily_states().df) == 2
 
     def test_a_zone_without_a_name_raises(self) -> None:
-        dateutil_tz = pytest.importorskip("dateutil.tz")
+        # A hand-rolled tzinfo stands in for zones like dateutil's: pandas
+        # cannot localize to dateutil >= 3 zones at all, which would fail the
+        # test before it reaches the check.
         with pytest.raises(SchemaConfigError, match="tz_convert"):
-            _active_days(dateutil_tz.gettz("Europe/Moscow"))
+            _active_days(_UnnamedZone())
 
     def test_tz_naive_timestamps_are_unaffected(self, eastern_session_timezone) -> None:
         # A tz-naive column carries no zone, so its days are read off the

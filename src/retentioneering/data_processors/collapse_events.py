@@ -31,7 +31,9 @@ AGG_SQL = {
     "max": lambda col, pos: f"MAX({col})",
     "mean": lambda col, pos: f"AVG({col})",
     "sum": lambda col, pos: f"SUM({col})",
-    "mode": lambda col, pos: f"MODE({col})",
+    # Ordered input breaks ties by earliest first occurrence; plain MODE picks
+    # an arbitrary tied value on DuckDB 2.x.
+    "mode": lambda col, pos: f"MODE({col} ORDER BY {pos})",
     "any": lambda col, pos: f"ANY_VALUE({col})",
 }
 

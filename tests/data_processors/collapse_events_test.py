@@ -878,6 +878,30 @@ class TestCollapseEventsAgg:
         res = self._scored_stream().collapse_events(loops=True, agg={"score": agg_name})
         assert res.df["score"].iloc[0] == expected
 
+    @pytest.mark.parametrize(
+        "scores, expected",
+        [
+            ([30, 10, 20], 30),  # all tied: the first in event order
+            ([20, 10, 10, 20], 20),  # 20 occurs first, though 10 reaches 2 first
+            ([30, 10, 10], 10),  # a strict majority wins regardless of order
+        ],
+    )
+    def test_mode_breaks_ties_by_event_order(self, scores, expected):
+        df = pd.DataFrame(
+            {
+                "user_id": "user_1",
+                "event": "A",
+                "timestamp": pd.date_range(
+                    "2020-01-01", periods=len(scores), freq="min"
+                ),
+                "score": scores,
+            }
+        )
+        stream = Eventstream(df, {**SCHEMA, "custom_cols": ["score"]})
+        for _ in range(20):  # an arbitrary pick among ties shows up as a mismatch
+            res = stream.collapse_events(loops=True, agg={"score": "mode"})
+            assert res.df["score"].iloc[0] == expected
+
     @pytest.mark.parametrize("agg_name", ["SUM", "total", "count", "median", "nope"])
     def test_unknown_agg_raises_instead_of_falling_back(self, agg_name):
         """The error names the value, the column and every valid name."""

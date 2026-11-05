@@ -62,6 +62,31 @@ One lower-bound limitation remains: DuckDB 1.1.0 truncates nanoseconds during
 therefore still land on the wrong date. This case is tracked by a strict expected
 failure on 1.1.0; the same regression test passes on 1.5.3 and 2.0.0.
 
+For reproducible review data, run the standalone generator from a repository
+checkout:
+
+```bash
+uv run python scripts/generate_calendar_cases.py --users 8 --seed 42
+# Optionally export to a new directory and verify a CSV + JSON round trip:
+uv run python scripts/generate_calendar_cases.py --output-dir /tmp/calendar-cases
+```
+
+It selects complete user paths from the bundled synthetic `load_ecom()` demo.
+Ten cases cover the original timestamps, fractional fixed offsets, misleading
+and quoted zone names, named zones, leap-day midnight, both US DST transitions
+and a nanosecond before midnight. Replays preserve events, sessions, segments,
+order and elapsed intervals within each user, while moving their starting instant.
+Preserved cohort labels are source attributes, not recomputed calendar cohorts.
+These are controlled demo cases, not production observations.
+
+Each case checks `active_days` and every daily lifecycle state against independent
+pandas/Python expectations, before and after a SQL filter. Exports include events,
+expected daily states and a manifest recording the source checksum, selected users,
+transformation, schema, timestamp precision and timezone offset/name. Use
+`load_case()` from the script to restore this metadata; reading the CSV alone
+does not restore the source timezone. Existing case directories are not overwritten.
+The same cases run in the focused minimum/modern DuckDB CI job.
+
 ## Reading event names from another column
 
 Every metric above that takes event names — `event_count`, `has_event`, their

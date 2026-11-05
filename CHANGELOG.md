@@ -52,6 +52,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Calendar-day operations preserve fixed UTC offsets on DuckDB 1.1, including
+  fractional-hour offsets and custom timezone display names. Named zones retain
+  their daylight-saving rules; day boundaries remain those of the source column.
+
 - `EventstreamSchema` validates `path_cols`, `segment_cols` and `custom_cols`
   as lists of strings before using them. Invalid containers, non-string items
   and empty `path_cols` raise `SchemaConfigError` naming the parameter, expected

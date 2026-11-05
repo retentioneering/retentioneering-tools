@@ -6,6 +6,31 @@ on:
   pull_request:
 
 jobs:
+  test-min-pandas-duckdb:
+    # A focused lower-bound check, not another full/latest-dependency matrix.
+    # Keep unrelated dependencies locked so their releases cannot break it.
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.12"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - name: Install the locked supporting dependencies
+        run: >-
+          uv sync --frozen
+          --no-install-package pandas --no-install-package duckdb
+          --no-install-package numpy --no-install-package scipy
+      - name: Install minimum pandas and DuckDB
+        # pandas 2.2.0 wheels need the NumPy 1.x ABI; SciPy 1.18 needs NumPy 2.
+        run: uv pip install "pandas==2.2.0" "duckdb==1.1.0" "numpy==1.26.4" "scipy==1.17.1"
+      - run: uv pip check
+      - name: Test calendar operations without resyncing the lock
+        run: >-
+          uv run --no-sync pytest
+          tests/engine/
+          tests/data_processors/to_daily_states_test.py
+          tests/metrics/metric_builder_test.py -q
+
   lint:
     runs-on: ubuntu-latest
     steps:

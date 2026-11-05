@@ -16,6 +16,8 @@ string-returning functions.
 
 from __future__ import annotations
 
+import datetime as dt
+
 from retentioneering.utils.sql_quoting import quote_literal
 
 __all__ = [
@@ -61,7 +63,7 @@ def interval_seconds(seconds: float) -> str:
     return f"to_seconds({float(seconds)})"
 
 
-def calendar_date(ts_expr: str, tz: str | None) -> str:
+def calendar_date(ts_expr: str, tz: str | dt.timedelta | None) -> str:
     """
     The calendar day of a timestamp expression, as a DuckDB DATE.
 
@@ -76,6 +78,12 @@ def calendar_date(ts_expr: str, tz: str | None) -> str:
     """
     if tz is None:
         return f"CAST({ts_expr} AS DATE)"
+    if isinstance(tz, dt.timedelta):
+        # DuckDB 1.1 rejects offset names such as 'UTC-05:00'. Convert to a
+        # naive UTC timestamp before adding the offset, so neither parsing
+        # conventions nor the session's timezone/DST can change the day.
+        offset = interval_seconds(tz.total_seconds())
+        return f"CAST(({ts_expr} AT TIME ZONE 'UTC') + {offset} AS DATE)"
     return f"CAST({ts_expr} AT TIME ZONE {quote_literal(tz)} AS DATE)"
 
 

@@ -1,4 +1,5 @@
 import pandas as pd
+import datetime as dt
 from dataclasses import dataclass
 from typing import Any, Dict, List, Set, Tuple
 
@@ -299,7 +300,11 @@ class CollapseEvents(DataProcessor):
     # ── naming SQL ───────────────────────────────────────────────────────────
 
     def _name_sql(
-        self, default_expr: str, event_col: str, ts_col: str, tz: str | None = None
+        self,
+        default_expr: str,
+        event_col: str,
+        ts_col: str,
+        tz: str | dt.timedelta | None = None,
     ) -> Tuple[str, str]:
         """
         Build the merged event's name expression, plus any aggregates it needs.
@@ -405,7 +410,10 @@ class CollapseEvents(DataProcessor):
 
     @staticmethod
     def _metric_agg_sql(
-        mc: Dict[str, Any], event_col: str, ts_col: str, tz: str | None = None
+        mc: Dict[str, Any],
+        event_col: str,
+        ts_col: str,
+        tz: str | dt.timedelta | None = None,
     ) -> List[Tuple[str, str]]:
         metric = mc["metric"]
         args = mc.get("metric_args") or {}

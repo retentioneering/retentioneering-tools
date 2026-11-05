@@ -9,12 +9,17 @@ repos:
       - id: check-merge-conflict
       - id: mixed-line-ending
 
+  # Notebooks are left alone on purpose: ruff's default types_or includes
+  # `jupyter`, and reformatting a tutorial's cells rewrites layout that is
+  # part of how the text explains the code.
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.8.6
     hooks:
       - id: ruff
         args: [--fix]
+        types_or: [python, pyi]
       - id: ruff-format
+        types_or: [python, pyi]
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.21.2

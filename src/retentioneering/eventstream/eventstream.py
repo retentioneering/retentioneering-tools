@@ -252,6 +252,20 @@ class Eventstream:
         """Apply a data processor and wrap its result. Only processors that
         can break the event order get their output checked (ADR-0017)."""
         new_df, new_schema = processor.apply(self._df, self.schema)
+        source_dtype = self._df[self.schema.timestamp_col].dtype
+        result_col = new_schema.timestamp_col
+        result_dtype = new_df[result_col].dtype
+        if (
+            isinstance(source_dtype, pd.DatetimeTZDtype)
+            and isinstance(result_dtype, pd.DatetimeTZDtype)
+            and result_dtype.tz != source_dtype.tz
+        ):
+            # DuckDB returns aware timestamps in its session zone. Keep the
+            # source calendar when chaining processors, without changing any
+            # instants. Naive daily-state dates/explicit SQL conversions stay
+            # naive. Copy before assignment to preserve source immutability.
+            new_df = new_df.copy(deep=False)
+            new_df[result_col] = new_df[result_col].dt.tz_convert(source_dtype.tz)
         order = "emitted" if processor.may_break_order else "trusted"
         return Eventstream(new_df, asdict(new_schema), preprocess=False, _order=order)
 

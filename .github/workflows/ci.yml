@@ -6,23 +6,34 @@ on:
   pull_request:
 
 jobs:
-  test-min-pandas-duckdb:
-    # A focused lower-bound check, not another full/latest-dependency matrix.
+  test-duckdb-compat:
+    # Focused boundary checks, not another full/latest-dependency matrix.
     # Keep unrelated dependencies locked so their releases cannot break it.
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        duckdb: ["1.1.0", "2.0.0"]
     env:
       UV_PYTHON: "3.12"
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
       - name: Install the locked supporting dependencies
+        if: matrix.duckdb == '1.1.0'
         run: >-
           uv sync --frozen
           --no-install-package pandas --no-install-package duckdb
           --no-install-package numpy --no-install-package scipy
       - name: Install minimum pandas and DuckDB
+        if: matrix.duckdb == '1.1.0'
         # pandas 2.2.0 wheels need the NumPy 1.x ABI; SciPy 1.18 needs NumPy 2.
         run: uv pip install "pandas==2.2.0" "duckdb==1.1.0" "numpy==1.26.4" "scipy==1.17.1"
+      - name: Install DuckDB 2 with the locked analytics stack
+        if: matrix.duckdb == '2.0.0'
+        run: |
+          uv sync --frozen --no-install-package duckdb
+          uv pip install "duckdb==${{ matrix.duckdb }}"
       - run: uv pip check
       - name: Test calendar operations without resyncing the lock
         run: >-

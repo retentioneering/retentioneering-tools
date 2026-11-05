@@ -38,6 +38,30 @@ overloading `events`:
   combine a list of events into one 0/1 result (AND/OR respectively) — these
   **can** be used in Filter Paths conditions.
 
+## Calendar days and recalculation
+
+For timezone-aware events, a calendar day is the date shown in the timestamp
+column's own zone, including its daylight-saving rules. SQL-backed processors
+preserve that zone when returning aware timestamps; daily-state output remains
+a sequence of timezone-naive calendar dates. A custom display name on a Python
+`datetime.timezone` does not replace its numeric UTC offset.
+
+After upgrading to the calendar compatibility fix, recalculate affected cached
+`active_days` metrics, daily lifecycle states, and filters or segments derived
+from those values. Rebuild from the original event timestamps with their intended
+timezone, not from already aggregated daily rows: aggregation may have discarded
+the information needed to recover the correct day. Compare per-path date
+assignments and active-day counts; totals can stay unchanged while individual
+events move between days. Changed results in these cases are corrections, not
+necessarily regressions. This is particularly relevant to fractional fixed
+offsets, custom timezone names, SQL preprocessing and submicrosecond events near
+midnight. The library does not automatically rebuild external caches or reports.
+
+One lower-bound limitation remains: DuckDB 1.1.0 truncates nanoseconds during
+`epoch_ns` extraction. A timestamp such as `1969-12-31 23:59:59.999999999` can
+therefore still land on the wrong date. This case is tracked by a strict expected
+failure on 1.1.0; the same regression test passes on 1.5.3 and 2.0.0.
+
 ## Reading event names from another column
 
 Every metric above that takes event names — `event_count`, `has_event`, their

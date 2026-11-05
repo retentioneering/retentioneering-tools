@@ -38,6 +38,55 @@ overloading `events`:
   combine a list of events into one 0/1 result (AND/OR respectively) — these
   **can** be used in Filter Paths conditions.
 
+## Calendar days and recalculation
+
+For timezone-aware events, a calendar day is the date shown in the timestamp
+column's own zone, including its daylight-saving rules. SQL-backed processors
+preserve that zone when returning aware timestamps; daily-state output remains
+a sequence of timezone-naive calendar dates. A custom display name on a Python
+`datetime.timezone` does not replace its numeric UTC offset.
+
+After upgrading to the calendar compatibility fix, recalculate affected cached
+`active_days` metrics, daily lifecycle states, and filters or segments derived
+from those values. Rebuild from the original event timestamps with their intended
+timezone, not from already aggregated daily rows: aggregation may have discarded
+the information needed to recover the correct day. Compare per-path date
+assignments and active-day counts; totals can stay unchanged while individual
+events move between days. Changed results in these cases are corrections, not
+necessarily regressions. This is particularly relevant to fractional fixed
+offsets, custom timezone names, SQL preprocessing and submicrosecond events near
+midnight. The library does not automatically rebuild external caches or reports.
+
+One lower-bound limitation remains: DuckDB 1.1.0 truncates nanoseconds during
+`epoch_ns` extraction. A timestamp such as `1969-12-31 23:59:59.999999999` can
+therefore still land on the wrong date. This case is tracked by a strict expected
+failure on 1.1.0; the same regression test passes on 1.5.3 and 2.0.0.
+
+For reproducible review data, run the standalone generator from a repository
+checkout:
+
+```bash
+uv run python scripts/generate_calendar_cases.py --users 8 --seed 42
+# Optionally export to a new directory and verify a CSV + JSON round trip:
+uv run python scripts/generate_calendar_cases.py --output-dir /tmp/calendar-cases
+```
+
+It selects complete user paths from the bundled synthetic `load_ecom()` demo.
+Ten cases cover the original timestamps, fractional fixed offsets, misleading
+and quoted zone names, named zones, leap-day midnight, both US DST transitions
+and a nanosecond before midnight. Replays preserve events, sessions, segments,
+order and elapsed intervals within each user, while moving their starting instant.
+Preserved cohort labels are source attributes, not recomputed calendar cohorts.
+These are controlled demo cases, not production observations.
+
+Each case checks `active_days` and every daily lifecycle state against independent
+pandas/Python expectations, before and after a SQL filter. Exports include events,
+expected daily states and a manifest recording the source checksum, selected users,
+transformation, schema, timestamp precision and timezone offset/name. Use
+`load_case()` from the script to restore this metadata; reading the CSV alone
+does not restore the source timezone. Existing case directories are not overwritten.
+The same cases run in the focused minimum/modern DuckDB CI job.
+
 ## Reading event names from another column
 
 Every metric above that takes event names — `event_count`, `has_event`, their

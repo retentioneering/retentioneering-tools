@@ -16,6 +16,8 @@ string-returning functions.
 
 from __future__ import annotations
 
+import datetime as dt
+
 from retentioneering.utils.sql_quoting import quote_literal
 
 __all__ = [
@@ -61,7 +63,7 @@ def interval_seconds(seconds: float) -> str:
     return f"to_seconds({float(seconds)})"
 
 
-def calendar_date(ts_expr: str, tz: str | None) -> str:
+def calendar_date(ts_expr: str, tz: str | dt.timedelta | None) -> str:
     """
     The calendar day of a timestamp expression, as a DuckDB DATE.
 
@@ -75,7 +77,22 @@ def calendar_date(ts_expr: str, tz: str | None) -> str:
     tz-aware value, bringing the session timezone back.
     """
     if tz is None:
-        return f"CAST({ts_expr} AS DATE)"
+        # TIMESTAMP_NS -> DATE can round through microseconds in DuckDB 2.0,
+        # moving 23:59:59.999999999 into tomorrow. Floor explicitly, including
+        # negative epochs (integer division alone truncates toward zero).
+        # Other timestamp units retain their range beyond epoch_ns's bounds.
+        ns = f"epoch_ns({ts_expr})"
+        us = f"({ns} // 1000 - CASE WHEN {ns} % 1000 < 0 THEN 1 ELSE 0 END)"
+        return (
+            f"CAST(CASE WHEN typeof({ts_expr}) = 'TIMESTAMP_NS' "
+            f"THEN make_timestamp({us}) ELSE {ts_expr} END AS DATE)"
+        )
+    if isinstance(tz, dt.timedelta):
+        # DuckDB 1.1 rejects offset names such as 'UTC-05:00'. Convert to a
+        # naive UTC timestamp before adding the offset, so neither parsing
+        # conventions nor the session's timezone/DST can change the day.
+        offset = interval_seconds(tz.total_seconds())
+        return f"CAST(({ts_expr} AT TIME ZONE 'UTC') + {offset} AS DATE)"
     return f"CAST({ts_expr} AT TIME ZONE {quote_literal(tz)} AS DATE)"
 
 

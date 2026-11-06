@@ -20,6 +20,30 @@ from retentioneering.utils.sql_quoting import quote_list
 PROCESSOR_NAME = "add_events"
 
 
+def _concat_categorical(
+    df: pd.DataFrame, new: pd.DataFrame, event_col: str
+) -> pd.DataFrame:
+    """Concatenate nonempty marker rows carrying one name without decoding events."""
+    events = df[event_col]
+    name = new[event_col].iloc[0]
+    if name not in events.cat.categories:
+        events = events.cat.add_categories([name])
+    # Shallow copies protect the source even with pandas' copy-on-write disabled.
+    df = df.copy(deep=False)
+    new = new.copy(deep=False)
+    df[event_col] = events
+    new[event_col] = pd.Categorical(new[event_col], dtype=events.dtype)
+    return pd.concat([df, new], ignore_index=True)
+
+
+def _combine_events(
+    df: pd.DataFrame, new: pd.DataFrame, schema: EventstreamSchema
+) -> pd.DataFrame:
+    return _concat_categorical(df, new, schema.event_col).sort_values(
+        schema.order_cols, kind="stable", ignore_index=True
+    )
+
+
 class AddEvents(DataProcessor):
     def __init__(
         self,
@@ -157,13 +181,7 @@ class AddEvents(DataProcessor):
         # places it after the markers of its rank already there (ADR-0017).
         df_new[schema.subindex] = marker_subindex(df, df_new, schema, marker.index)
 
-        df = (
-            pd.concat([df, df_new])
-            .sort_values(schema.order_cols, kind="stable")
-            .reset_index(drop=True)
-        )
-
-        df[schema.event_col] = df[schema.event_col].astype("category")
+        df = _combine_events(df, df_new, schema)
 
         return df, schema
 

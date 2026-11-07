@@ -11,7 +11,8 @@ for both humans and coding agents lives in [AGENTS.md](AGENTS.md).
 
 ## Prerequisites
 
-- **Python 3.11+**
+- **Python 3.11–3.13** (Python 3.14 is not supported while Gensim lacks a
+  compatible wheel)
 - **[uv](https://docs.astral.sh/uv/)** — manages the Python environment and
   dependencies (`uv sync` creates `.venv` automatically)
 - **Node.js 20+ and npm** — only needed if you touch the widget JS or want

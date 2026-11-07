@@ -8,7 +8,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Removed
 
 - Python 3.10 is no longer supported: retentioneering now requires Python 3.11
-  or later. Python 3.10 reached end of life in October 2026, and current
+  through 3.13. Python 3.10 reached end of life in October 2026, and current
   releases of several dependencies (Pillow, Tornado, filelock, virtualenv) have
   dropped it, so the security fixes below could not reach a 3.10 environment.
 
@@ -51,6 +51,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
     order rather than by timestamp.
 
 ### Fixed
+
+- Package metadata now rejects Python 3.14 while the required Gensim dependency
++  lacks a compatible wheel, so installation reports the supported version range
++  instead of failing with a native-extension build error (#137).
 
 - `EventstreamSchema` validates `path_cols`, `segment_cols` and `custom_cols`
   as lists of strings before using them. Invalid containers, non-string items

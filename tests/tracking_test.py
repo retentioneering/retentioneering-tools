@@ -1,5 +1,6 @@
 """Tests for the PostHog tracking opt-out."""
 
+import importlib
 import json
 import sys
 from functools import cached_property
@@ -8,6 +9,26 @@ from unittest.mock import MagicMock
 from retentioneering import _tracking
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.exceptions import EmptyEventstreamError
+
+
+def test_no_client_is_built_while_tracking_is_off(monkeypatch, tmp_path):
+    posthog = MagicMock()
+    monkeypatch.setitem(sys.modules, "posthog", posthog)
+    monkeypatch.setenv("RETENTIONEERING_NO_TRACK", "1")
+    # restored after the test: the module's own (never built) client state
+    monkeypatch.setattr(_tracking, "_ph", _tracking._ph)
+    monkeypatch.setattr(_tracking, "_ph_attempted", False, raising=False)
+    importlib.reload(_tracking)
+    _tracking.track("some_event")
+    _tracking.identify({"email": "user@example.com"})
+    posthog.Posthog.assert_not_called()
+
+    monkeypatch.delenv("RETENTIONEERING_NO_TRACK")
+    monkeypatch.setattr(_tracking, "_CONFIG", tmp_path / "config.json")
+    _tracking.track("some_event")
+    _tracking.track("other_event")
+    posthog.Posthog.assert_called_once()  # on the first event sent, once
+    assert posthog.Posthog.return_value.capture.call_count == 2
 
 
 def test_identify_respects_no_track(monkeypatch):

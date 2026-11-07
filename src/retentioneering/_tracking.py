@@ -9,6 +9,7 @@ import os
 import pathlib
 import platform
 import sys
+import threading
 import uuid
 
 from retentioneering.exceptions import RetentioneeringError
@@ -30,12 +31,28 @@ def _resolve_posthog_key() -> str:
 
 _KEY = _resolve_posthog_key()
 
-try:
-    from posthog import Posthog
+# The PostHog client, built by _client() when the first event is sent: never at
+# import, so an opted-out process (RETENTIONEERING_NO_TRACK, CI, offline) neither
+# imports posthog nor starts its consumer thread and connections.
+_ph = None
+_ph_attempted = False
+_ph_lock = threading.Lock()
 
-    _ph = Posthog(project_api_key=_KEY, host=_HOST)
-except Exception:
-    _ph = None  # type: ignore[assignment]
+
+def _client():
+    """The PostHog client, created on first use; None if it cannot be built."""
+    global _ph, _ph_attempted
+    if _ph is None and not _ph_attempted:
+        with _ph_lock:
+            if _ph is None and not _ph_attempted:
+                _ph_attempted = True
+                try:
+                    from posthog import Posthog
+
+                    _ph = Posthog(project_api_key=_KEY, host=_HOST)
+                except Exception:
+                    _ph = None
+    return _ph
 
 
 # ── distinct_id ────────────────────────────────────────────────────────────────
@@ -218,21 +235,27 @@ _depth = 0  # global call depth counter — suppresses nested tracked calls
 
 def track(event: str, properties: dict | None = None) -> None:
     """Fire-and-forget PostHog event. Never raises."""
-    if _ph is None or _no_track_requested():
+    if _no_track_requested():
+        return
+    client = _client()
+    if client is None:
         return
     props = {**_BASE_PROPS, "caller_type": _caller_type.get(), **(properties or {})}
     try:
-        _ph.capture(distinct_id=_DISTINCT_ID, event=event, properties=props)
+        client.capture(distinct_id=_DISTINCT_ID, event=event, properties=props)
     except Exception:
         pass
 
 
 def identify(properties: dict | None = None) -> None:
     """Fire-and-forget PostHog identify. Respects the no-track opt-out. Never raises."""
-    if _ph is None or _no_track_requested():
+    if _no_track_requested():
+        return
+    client = _client()
+    if client is None:
         return
     try:
-        _ph.identify(_DISTINCT_ID, properties=properties or {})
+        client.identify(_DISTINCT_ID, properties=properties or {})
     except Exception:
         pass
 

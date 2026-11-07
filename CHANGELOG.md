@@ -52,6 +52,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Importing the library no longer builds a PostHog client: it is built when the
+  first event is sent, and never while tracking is off (`RETENTIONEERING_NO_TRACK`
+  or the config file's opt-out). An opted-out process (CI, offline, worker
+  processes) no longer imports `posthog` or starts its consumer thread.
 - `EventstreamSchema` validates `path_cols`, `segment_cols` and `custom_cols`
   as lists of strings before using them. Invalid containers, non-string items
   and empty `path_cols` raise `SchemaConfigError` naming the parameter, expected

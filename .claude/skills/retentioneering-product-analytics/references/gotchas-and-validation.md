@@ -11,9 +11,9 @@ caught them; validate against each before shipping numbers.
 |---|---|---|
 | G1 | a bare `truncate_paths(start_anchor="A", end_anchor="B")` DROPS paths missing either anchor | pass a LIST to add a fallback: `end_anchor=["B", "path_end"]` cuts at B where there is one and keeps the rest whole. Comparing two groups, go further and bound BOTH by the same budget — `end_anchor=["B", {"pattern": "A", "offset": 10}]` — or the diff measures window length, not behaviour |
 | G2 | No order-only mode: `timestamp_col` is mandatory | for logs with click order but no clock: synthesize `base_date + order * 1s`; then durations/`time_median` are MEANINGLESS — never report them, only step counts |
-| G3 | `time_between` = first A to first B **globally**, not first-B-after-A | off-by-few on paths where B precedes A; compute strict semantics via `to_dataframe()` when it matters |
+| G3 | `time_between` = first A to first B **globally**, not first-B-after-A | can be negative when B precedes A; truncate first A→first subsequent B for completer timing (R7); retain censored entrants separately |
 | G4 | `funnel` is closed/ordered only | for presence-based ("did all of these happen, any order") use `has_all_events` via `get_metrics` |
-| G5 | Metric arg keys: single event → `event`, lists → `event_groups` (only on `has_any_event`/`has_all_events`) | copy from api-map, not from memory; errors are loud and name the requirement |
+| G5 | `has_event`/`event_count` require `event`; `has_any_event`/`has_all_events` require `events`; bulk variants also accept `events` | copy from api-map, not from memory; errors are loud and name the requirement |
 | G6 | Cluster result may LACK `best_params` when silhouette is undefined for every candidate (degenerate/duplicate feature rows) | guard `res.get("best_params")`; treat as "no cluster structure" |
 | G7 | Cluster labels are strings `"cluster_0"...`; diff values must match segment levels exactly | check `get_segment_levels()` before writing `diff=(...)` |
 | G8 | Transition matrix may be integer-typed with NaN gaps | before matrix math: `.astype(float).fillna(0)` |
@@ -41,11 +41,13 @@ Run before presenting conclusions. Each item traces to a real wrong-conclusion i
    started / of those who reached" side by side. Ratings/feedback exist only for
    finishers.
 4. **Exposure confound.** Longer paths contain more of everything (loops, feature
-   touches) AND convert more. Any "users who did X convert better" claim needs
-   stratification by path length or a matched design.
-5. **Target leakage.** No outcome events in clustering features (R5) or in
-   sequence/pattern features computed over the full path — cut paths at the first
-   outcome before mining predictive patterns.
+   touches) AND convert more. Compare exposure measured before a common decision time;
+   total path length includes future behavior and is not a universally safe adjustment.
+   Matching or stratification alone does not establish causality.
+5. **Target leakage.** For prediction/targeting, define an eligibility rule, decision
+   time and future outcome window (R5). Compute ALL features on information available
+   by that time. Cutting at each future outcome or just removing the outcome event
+   still leaks; keep evaluation outcomes separate from feature/K selection.
 6. **Structural vs behavioral lift.** If the flow FORCES step A before outcome B, "users
    who did A convert ×100" is architecture, not behavior. Say which one you measured.
 7. **Small cells.** Shares without `n` are noise bait; flag cells with n below ~30 and

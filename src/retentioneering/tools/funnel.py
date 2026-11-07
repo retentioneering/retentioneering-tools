@@ -12,6 +12,7 @@ p-value.
 from dataclasses import dataclass
 
 import numpy as np
+import pandas as pd
 
 from retentioneering import engine
 from retentioneering.engine.dialect import event_position
@@ -49,6 +50,9 @@ class Funnel:
         path_col: str | None = None,
         ci_level: float | None = None,
         correction: str = "none",
+        *,
+        assignment=None,
+        horizon=None,
     ) -> dict:
         """Funnel counts and rates; see `Eventstream.funnel_data` for the contract."""
         ci_level = _check_ci_level(ci_level)
@@ -70,6 +74,10 @@ class Funnel:
             if step not in available_events:
                 raise InvalidParameterError("steps", step, sorted(available_events))
 
+        if assignment is not None or horizon is not None:
+            return self._fit_assigned(
+                steps, diff, path_col, ci_level, correction, assignment, horizon
+            )
         if diff is None:
             result = self._fit_single(steps, path_col)
             if ci_level is not None:
@@ -104,40 +112,63 @@ class Funnel:
             f1 = Funnel(stream1)._fit_single(steps, path_col)
             f2 = Funnel(stream2)._fit_single(steps, path_col)
 
-            combined = []
-            for i, step in enumerate(steps):
-                s1, s2 = f1["steps"][i], f2["steps"][i]
-                combined.append(
-                    {
-                        "step": step,
-                        "funnel1_unique_paths": s1["unique_paths"],
-                        "funnel1_conversion_rate": s1["conversion_rate"],
-                        "funnel1_step_conversion_rate": s1["step_conversion_rate"],
-                        "funnel2_unique_paths": s2["unique_paths"],
-                        "funnel2_conversion_rate": s2["conversion_rate"],
-                        "funnel2_step_conversion_rate": s2["step_conversion_rate"],
-                        "delta_unique_paths": s1["unique_paths"] - s2["unique_paths"],
-                        "delta_conversion_rate": s1["conversion_rate"]
-                        - s2["conversion_rate"],
-                        "delta_step_conversion_rate": s1["step_conversion_rate"]
-                        - s2["step_conversion_rate"],
-                    }
-                )
-            result = {
-                "steps": combined,
-                "funnel1_total_paths": f1["total_paths"],
-                "funnel2_total_paths": f2["total_paths"],
-            }
+            result = _combine(steps, f1, f2)
             if ci_level is not None:
                 _add_diff_ci(result, ci_level, correction)
             return result
 
-    def _fit_single(self, steps: list[str], path_col: str) -> dict:
+    def _fit_assigned(
+        self, steps, diff, path_col, ci_level, correction, assignment, horizon
+    ) -> dict:
+        """The funnel of an experiment's arms on the population and window of
+        ``get_ab_test(assignment=..., horizon=...)``: every assigned path is in
+        its arm's denominator, silent ones too, and events count from
+        ``assigned_at``."""
+        from retentioneering.tools._diff import resolve_diff
+        from retentioneering.tools.ab_test import analysed_window, prepare_population
+
+        if diff is None:
+            raise InvalidParameterError(
+                "diff",
+                diff,
+                ["the arms to compare, e.g. ('arm', 'treatment', 'control')"],
+                reason="assignment and horizon compare the arms of an experiment",
+            )
+        stream = self.eventstream
+        table = prepare_population(
+            stream, diff, assignment, path_col=path_col, horizon=horizon
+        )
+        groups = resolve_diff(
+            stream, diff, path_col, require_constant=True, assignment=table
+        )
+        window = analysed_window(stream, groups, table, path_col, horizon=horizon)
+        active = window.path_ids.isin(pd.unique(window.work.df[path_col]))
+        fitted, silent = [], []
+        for g in (0, 1):
+            ids = window.path_ids[(window.arm == g) & active]
+            part = window.work.filter_events(keep={path_col: list(ids)})
+            total = int((window.arm == g).sum())
+            fitted.append(Funnel(part)._fit_single(steps, path_col, total))
+            silent.append(total - len(ids))
+        result = _combine(steps, *fitted)
+        result["population"] = "assignment"
+        result["funnel1_silent_paths"], result["funnel2_silent_paths"] = silent
+        result["unassigned_paths"] = int(groups.unassigned_paths)
+        if horizon is not None:
+            result["immature_paths"] = int(window.horizon_immature)
+        if ci_level is not None:
+            _add_diff_ci(result, ci_level, correction)
+        return result
+
+    def _fit_single(
+        self, steps: list[str], path_col: str, total_paths: int | None = None
+    ) -> dict:
         event_col = self.eventstream.schema.event_col
         index_col = self.eventstream.schema.index
 
         df = self.eventstream.df
-        total_paths = int(df[path_col].nunique())
+        if total_paths is None:
+            total_paths = int(df[path_col].nunique())
         if not steps:
             return {"steps": [], "total_paths": total_paths}
 
@@ -211,6 +242,33 @@ class Funnel:
             prev_count = count
 
         return {"steps": funnel_data, "total_paths": total_paths}
+
+
+def _combine(steps: list[str], f1: dict, f2: dict) -> dict:
+    """The two groups' funnels side by side, with their deltas."""
+    combined = []
+    for i, step in enumerate(steps):
+        s1, s2 = f1["steps"][i], f2["steps"][i]
+        combined.append(
+            {
+                "step": step,
+                "funnel1_unique_paths": s1["unique_paths"],
+                "funnel1_conversion_rate": s1["conversion_rate"],
+                "funnel1_step_conversion_rate": s1["step_conversion_rate"],
+                "funnel2_unique_paths": s2["unique_paths"],
+                "funnel2_conversion_rate": s2["conversion_rate"],
+                "funnel2_step_conversion_rate": s2["step_conversion_rate"],
+                "delta_unique_paths": s1["unique_paths"] - s2["unique_paths"],
+                "delta_conversion_rate": s1["conversion_rate"] - s2["conversion_rate"],
+                "delta_step_conversion_rate": s1["step_conversion_rate"]
+                - s2["step_conversion_rate"],
+            }
+        )
+    return {
+        "steps": combined,
+        "funnel1_total_paths": f1["total_paths"],
+        "funnel2_total_paths": f2["total_paths"],
+    }
 
 
 def _counts(steps: list[dict], prefix: str, total: int):

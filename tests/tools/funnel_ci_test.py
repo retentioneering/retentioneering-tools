@@ -256,6 +256,31 @@ class TestDiffCi:
         )
 
 
+class TestAssignment:
+    def test__silent_assigned_paths_join_the_denominator(self) -> None:
+        stream = _stream(n1=50, n2=50)
+        arm = {f"t{i}": "t" for i in range(60)} | {f"c{i}": "c" for i in range(55)}
+        assignment = pd.Series(arm)  # 10 + 5 assigned users without an event
+        diff = ("grp", "t", "c")
+        r = stream.funnel_data(STEPS, diff=diff, ci_level=0.95, assignment=assignment)
+        assert (r["funnel1_total_paths"], r["funnel2_total_paths"]) == (60, 55)
+        assert (r["funnel1_silent_paths"], r["funnel2_silent_paths"]) == (10, 5)
+        assert r["population"] == "assignment"
+        buy = {"metric": "has_event", "metric_args": {"event": "buy"}}
+        score = stream.get_ab_test(diff, [buy], assignment=assignment).iloc[0]
+        one = stream.funnel_data(
+            ["buy"], diff=diff, ci_level=0.95, assignment=assignment
+        )["steps"][0]
+        assert one["funnel1_conversion_rate"] == pytest.approx(score["group1_value"])
+        assert one["funnel2_conversion_rate"] == pytest.approx(score["group2_value"])
+        # without assignment: the paths with an event, as before
+        plain = stream.funnel_data(STEPS, diff=diff, ci_level=0.95)
+        assert (plain["funnel1_total_paths"], plain["funnel2_total_paths"]) == (50, 50)
+        assert "population" not in plain
+        with pytest.raises(InvalidParameterError):
+            stream.funnel_data(STEPS, assignment=assignment)
+
+
 class TestModeSwitches:
     def test__correction_needs_ci_level(self) -> None:
         with pytest.raises(InvalidParameterError, match="without ci_level"):

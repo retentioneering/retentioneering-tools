@@ -4112,6 +4112,9 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
         height: int | None = None,
         sidebar_open: bool | None = None,
         state_file: str | None = None,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
     ):
         """
         Interactive conversion funnel for Jupyter notebooks.
@@ -4141,6 +4144,13 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             Multiple-comparison correction over the overall-step p-values; see
             `funnel_data`. A value other than `"none"` needs `ci_level`
             (`InvalidParameterError` otherwise).
+        assignment : pandas.Series or pandas.DataFrame, optional
+            The experiment's arm table, as in `get_ab_test`: every assigned path
+            is in its arm's denominator, silent ones included; see
+            `funnel_data`.
+        horizon : str or pandas.Timedelta, optional
+            The analysed window from `assigned_at`, as in `get_ab_test`; see
+            `funnel_data`.
         height : int, default 420
             Widget height in pixels.
         sidebar_open : bool, default True
@@ -4180,6 +4190,8 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
             state_file=state_file,
+            assignment=assignment,
+            horizon=horizon,
         )
 
     @_tracked("headless_funnel")
@@ -4190,6 +4202,9 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
         path_col: str | None = None,
         ci_level: float | None = None,
         correction: str = "none",
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
     ) -> dict:
         """
         Compute funnel conversion metrics and return a dict (headless).
@@ -4228,6 +4243,21 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             error rate; `"bh"` (Benjamini–Hochberg) controls the false discovery
             rate. Steps whose p-value is undefined (`NaN`) are left out of the
             family.
+        assignment : pandas.Series or pandas.DataFrame, optional
+            The experiment's per-path arm table, as in `get_ab_test`: a Series
+            `path_id -> arm` or a DataFrame with `arm` and optionally
+            `assigned_at`. Needs `diff` (`"arm"`, or a segment that agrees with
+            the table). Each group's denominator is then every assigned path of
+            its arm, **silent ones included** (assigned, no event: they reach no
+            step), events before `assigned_at` are dropped and paths absent from
+            the table are left out: the population of `get_ab_test(assignment=...)`,
+            so a one-step funnel on the conversion event equals the scorecard's
+            conversion row. The groups are resolved per path, with or without
+            `ci_level`.
+        horizon : str or pandas.Timedelta, optional
+            As in `get_ab_test`, with an `assignment` holding `assigned_at`: only
+            events in `[assigned_at, assigned_at + horizon)` count, and paths
+            whose window has not closed at the stream's end are left out.
 
         Returns
         -------
@@ -4252,6 +4282,12 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
         - `total_paths` — paths in the eventstream, the denominator of
           `conversion_rate`; with `diff`, `funnel1_total_paths` and
           `funnel2_total_paths` instead (the paths of each group).
+
+        With `assignment`, top level: `population` (`"assignment"`),
+        `funnel1_silent_paths` and `funnel2_silent_paths` (assigned paths
+        without an event in the window, counted in the totals),
+        `unassigned_paths` (paths of the stream not in the table) and, with
+        `horizon`, `immature_paths`.
 
         With `ci_level`, per step (no `diff`):
 
@@ -4298,14 +4334,15 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
 
         Notes
         -----
-        Population: the unconditional denominator is the paths **with at least
-        one event** in the eventstream (per group with `diff`), what
-        `get_ab_test` calls `population="stream"`: users assigned to an arm who
-        never produced an event are not counted, so a funnel's first-step rate
-        can differ from the scorecard's (`get_ab_test(assignment=...)` counts
-        every assigned user, silent ones as 0, `population="assignment"`). Use
-        `get_ab_test` with an assignment table for the effect on the arms; the
-        funnel shows where the paths go. The intervals and p-values
+        Population: without `assignment` the unconditional denominator is the
+        paths **with at least one event** in the eventstream (per group with
+        `diff`), what `get_ab_test` calls `population="stream"`: users assigned
+        to an arm who never produced an event are not counted, so a funnel's
+        rates are higher than the scorecard's (`get_ab_test(assignment=...)`
+        counts every assigned user, silent ones as 0,
+        `population="assignment"`). Pass the scorecard's `assignment` (and
+        `horizon`) for an intention-to-treat funnel on the scorecard's
+        denominators. The intervals and p-values
         treat every path as an independent unit, so they assume `path_col` is
         the unit that was assigned to a group: session paths of a user-level
         experiment give intervals that are too narrow. p-values are per
@@ -4330,6 +4367,15 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
                 ci_level=0.95,
                 correction="holm",
             )
+
+            # intention to treat: every assigned user, silent ones included
+            stream.funnel_data(
+                ["catalog", "add_to_cart", "purchase"],
+                diff=("arm", "treatment", "control"),
+                ci_level=0.95,
+                assignment=assignment,
+                horizon="28D",
+            )
         """
         from retentioneering.tools.funnel import Funnel
 
@@ -4341,6 +4387,8 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             path_col=path_col,
             ci_level=ci_level,
             correction=correction,
+            assignment=assignment,
+            horizon=horizon,
         )
 
     @_tracked("get_conversion_rate")

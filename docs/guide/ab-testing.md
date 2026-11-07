@@ -570,8 +570,10 @@ events, one edge in one run after compression and none before (the step screen:
 none either way); over five permutations of this experiment's arms, 3 edges in
 all after and 5 before. Two rules follow. Fix the plan before reading the screen
 it is for, and never pick a step by its verdicts. And declare in `keep` the events
-the treatment introduces or changes, and the decision metric's: the plan cannot see
-the arms, so it cannot tell a synonym from the treatment's replacement of an event.
+the treatment introduces or changes, and pass the scorecard's metrics as `metrics=`
+(their events are kept too): the plan cannot see the arms, so it cannot tell a
+synonym from the treatment's replacement of an event, nor a conversion event from
+the end of a chain.
 
 **One plan per screen.** The transition screen wants fewer, richer edges and no
 invented transition; the step screen wants aligned steps. With

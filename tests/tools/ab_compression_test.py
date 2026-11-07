@@ -181,6 +181,35 @@ class TestOperations:
         assert plan.set_index("event").loc["Y", "action"] == "keep"
         assert "declared edges" in plan.set_index("event").loc["Y", "reason"]
 
+    def test_metric_events_are_kept_and_the_override_is_reported(self, toy):
+        # the last step applies every operation, so the test does not depend on
+        # the step the default target picks (data-dependent)
+        paid = {"name": "paid", "metric": "has_event", "metric_args": {"event": "pay"}}
+        with pytest.warns(UserWarning, match=r"'pay' \(an event of the metrics\)"):
+            plan = _last(toy, "transitions", metrics=[paid])
+        rows = plan.set_index("event")
+        assert rows.loc["pay", "action"] == "keep"
+        assert "an event of the metrics" in rows.loc["pay", "reason"]
+        assert plan.attrs["metrics_events"] == ["pay"]
+        (hit,) = [h for h in plan.attrs["protected_overrides"] if h["event"] == "pay"]
+        assert (hit["operation"], hit["with"]) == ("merge_chain", "checkout")
+        before = toy.get_ab_test(TOY, [paid])
+        after = toy.compress_events(plan).get_ab_test(TOY, [paid])
+        pd.testing.assert_series_equal(before["delta"], after["delta"])
+        with pytest.raises(InvalidParameterError):
+            toy.get_ab_compression(
+                TOY, metrics=[{"metric": "has_event", "metric_args": {"event": "x"}}]
+            )
+
+    def test_without_keep_or_metrics_the_plan_is_unchanged(self, toy):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            plan = _last(toy, "transitions")
+        assert not [w for w in caught if "protected" in str(w.message)]
+        assert _action(plan, "pay") == "merge"
+        assert plan.attrs["metrics_events"] == []
+        assert plan.attrs["protected_overrides"] == []
+
     def test_no_artificial_transitions_on_the_transitions_screen(self, toy):
         path = _last(toy, "transitions").attrs["path"]
         assert (path["artificial_transitions"] == 0).all()

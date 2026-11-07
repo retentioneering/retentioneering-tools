@@ -1854,6 +1854,7 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
         target="untestable_share",
         step: int | None = None,
         keep: list | None = None,
+        metrics: list | None = None,
         other: str = "other",
         by: str | None = None,
         by_pre_exposure: bool | None = None,
@@ -1994,7 +1995,21 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             cannot tell a synonym from the treatment's replacement of an event.
             A kept event keeps its label only: dropping or merging the events
             around it can still change what comes before or after it, and at
-            which step it stands.
+            which step it stands. When a declared event (`keep`, `metrics`,
+            `edges`) is rare, or forms a chain with a neighbour, before the
+            chosen step, so that the plan would otherwise drop, relabel or merge
+            it, a warning names it and `attrs["protected_overrides"]` lists it.
+        metrics : list of dict, optional
+            The scorecard's metrics, as for `get_ab_test` (denominators
+            included): every event they read (`event`, `events`,
+            `start_event`, `end_event`, the event names of a `pattern`) is
+            kept as with `keep`. Pass the metrics the compressed stream will be
+            read with, so that the plan cannot merge away the conversion event
+            (a chain such as `order_commit -> order_success` is otherwise
+            merged into one label, and a scorecard on `order_success` no
+            longer finds its event). An event a metric names that the stream
+            does not have raises. The `ab_compression` widget adds these
+            events to `keep`.
         other : str, default "other"
             The label of relabelled rare events; must not be an event already.
         by : str, optional
@@ -2058,7 +2073,12 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             transitions on them) and `reason` (the operation's evidence in
             words) — `status` (`"ok"`, or `"no_events_in_window"` when no
             compared path has an event in the analysed window: the plan is then
-            empty and a warning says so), `mde_basis`, `chosen_step`, `mappings` (the
+            empty and a warning says so), `mde_basis`, `chosen_step`,
+            `metrics_events` (the events `metrics` keeps),
+            `protected_overrides` (per declared event the plan would otherwise
+            have changed before the chosen step: `step`, `event`, `reason`,
+            `operation` — `"rare"` or `"merge_chain"` —, `with` and
+            `evidence`, its path share or chain strength), `mappings` (the
             `{event: label}` of every step), `homogeneity` (effective vocabulary
             size `exp(entropy)` of the event distribution, transition entropy in
             bits, distinct-path share, and the numbers before and after) and the
@@ -2072,14 +2092,18 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             with `screen="steps"`), an unknown `keep` event or `by` column, a `by`
             column that changes within a compared path, or whose levels print
             alike (`1` and `"1"`), none of whose values is on a compared path, or
-            an `other` label that is already an event raise
-            `InvalidParameterError`.
+            an `other` label that is already an event, or `metrics` that are
+            not a list of metric configs or name an event the stream does not
+            have, raise `InvalidParameterError`.
 
         Examples
         --------
             diff = ("exp_group", "treatment", "control")
+            conversion = {"name": "conversion", "metric": "has_event",
+                          "metric_args": {"event": "purchase"}}
             plan = stream.get_ab_compression(diff, assignment=assignment,
-                                             keep=["quick_add"])
+                                             keep=["quick_add"],
+                                             metrics=[conversion])
             plan.attrs["path"][["step", "operation", "events", "vocabulary",
                                 "testable", "median_mde"]]
             compact = stream.compress_events(plan)
@@ -2110,6 +2134,7 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             target=target,
             step=step,
             keep=keep,
+            metrics=metrics,
             other=other,
             by=by,
             by_pre_exposure=by_pre_exposure,
@@ -5078,6 +5103,7 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
         target=None,
         step: int | None = None,
         keep: list | None = None,
+        metrics: list | None = None,
         other: str | None = None,
         by: str | None = None,
         by_pre_exposure: bool | None = None,
@@ -5095,6 +5121,12 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
         from retentioneering.widgets._base import _UNSET
         from retentioneering.widgets.ab_compression import ABCompressionWidget
 
+        if metrics is not None:
+            # the widget's sidebar edits event names: the metrics' events join keep
+            from retentioneering.tools.ab_compression import metric_events
+
+            kept = [keep] if isinstance(keep, str) else list(keep or [])
+            keep = list(dict.fromkeys([*kept, *metric_events(self, metrics)]))
         args = {
             "screen": screen,
             "horizon": horizon,
@@ -5151,6 +5183,7 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
         target="untestable_share",
         step: int | None = None,
         keep: list | None = None,
+        metrics: list | None = None,
         other: str = "other",
         by: str | None = None,
         by_pre_exposure: bool | None = None,
@@ -5179,6 +5212,7 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
             target=target,
             step=step,
             keep=keep,
+            metrics=metrics,
             other=other,
             by=by,
             by_pre_exposure=by_pre_exposure,

@@ -69,6 +69,7 @@ Design (ADR-0017, amendment "Data sufficiency and vocabulary compression")
 from __future__ import annotations
 
 import math
+import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -99,6 +100,7 @@ __all__ = [
     "PLAN_COLUMNS",
     "PATH_COLUMNS",
     "ab_compression",
+    "metric_events",
     "plan_mapping",
 ]
 
@@ -985,6 +987,52 @@ def _mergeable(state: _State, protected: set, st: _Stats) -> np.ndarray:
     return ok
 
 
+def _protected_overrides(
+    state: _State,
+    st: _Stats,
+    watched: dict,
+    boundary: set,
+    *,
+    min_path_share: float,
+    chain_threshold: float,
+    min_support: int,
+) -> list[dict]:
+    """The operations that protection prevents at this state: a declared event
+    (``keep``, ``metrics``, ``edges``) that is rare, or that forms a chain with a
+    neighbour, which the plan would otherwise drop, relabel or merge."""
+    free = _mergeable(state, boundary, st)
+    found = []
+    for code, reason in watched.items():
+        label = int(state.label_of[code])
+        if label < 0 or not free[label]:
+            continue
+        event = state.names[label]
+        if st.path_share[label] < min_path_share:
+            found.append(
+                {
+                    "event": event,
+                    "reason": reason,
+                    "operation": "rare",
+                    "with": None,
+                    "evidence": float(st.path_share[label]),
+                }
+            )
+        for _, u, v, p_next, p_prev in _chain_candidates(
+            st, free, chain_threshold, min_support
+        ):
+            if label in (u, v):
+                found.append(
+                    {
+                        "event": event,
+                        "reason": reason,
+                        "operation": "merge_chain",
+                        "with": state.names[v if u == label else u],
+                        "evidence": float(min(p_next, p_prev)),
+                    }
+                )
+    return found
+
+
 #: A label is thin when at least this share of the paths through its cells are in
 #: cells that are not testable.
 THIN_SHARE = 0.5
@@ -1002,6 +1050,8 @@ def _build_path(
     max_events: int | None,
     other_name: str,
     max_group_size: int = MAX_GROUP_SIZE,
+    watched: dict | None = None,
+    overrides: list | None = None,
 ) -> tuple[list[dict], list[_State], list[_Op]]:
     """The greedy path: the numbers and the state after every operation.
 
@@ -1033,6 +1083,11 @@ def _build_path(
     two medium groups win over one growing group. When no admissible merge is
     left, the path stops: no frequent event is dropped or relabelled, and the
     plan takes the smallest vocabulary reached (with a warning).
+
+    ``watched`` maps the codes of the declared events (``keep``, ``metrics``,
+    ``edges``) to their reason; the operations their protection prevents at each
+    state (see :func:`_protected_overrides`) are appended to ``overrides`` with
+    the step of that state, first sighting only.
     """
     n_orig = len(data.events)
     state = _State(
@@ -1253,9 +1308,25 @@ def _build_path(
             ),
         )
 
+    boundary = protected - set(watched or ())
+    seen_overrides: set = set()
     while True:
         st = _stats_of(data, state, None)
         mergeable = _mergeable(state, protected, st)
+        if watched and overrides is not None:
+            for hit in _protected_overrides(
+                state,
+                st,
+                watched,
+                boundary,
+                min_path_share=min_path_share,
+                chain_threshold=chain_threshold,
+                min_support=screen.min_support,
+            ):
+                key = (hit["event"], hit["operation"])
+                if key not in seen_overrides:
+                    seen_overrides.add(key)
+                    overrides.append({"step": len(ops), **hit})
         op = None
         for kind in order:
             if kind == "chain":
@@ -1680,6 +1751,69 @@ def _check_events(name: str, value: Any, available: set) -> list[str]:
     return events
 
 
+#: Metric arguments that name one event, as in the metric registry.
+_METRIC_EVENT_ARGS = ("event", "start_event", "end_event")
+
+
+def _metric_events(metrics: Any, available: set, event_col: str) -> list[str]:
+    """The events the metric configs of ``metrics`` read (``get_ab_test``'s
+    format, denominators included): ``event``, ``events``, ``start_event``,
+    ``end_event`` and the event names of a ``pattern``. A config on another
+    ``event_col`` reads no event of the stream's event column."""
+    if metrics is None:
+        return []
+    if isinstance(metrics, (str, bytes, dict)) or not hasattr(metrics, "__iter__"):
+        raise InvalidParameterError(
+            "metrics", metrics, ["a list of metric configs, as in get_ab_test"]
+        )
+    found: list[str] = []
+
+    def visit(config: Any) -> None:
+        if not isinstance(config, dict):
+            raise InvalidParameterError(
+                "metrics", config, ["a metric config (a dict), as in get_ab_test"]
+            )
+        args = config.get("metric_args") or {}
+        if args.get("event_col") in (None, event_col):
+            names = [args.get(key) for key in _METRIC_EVENT_ARGS]
+            events = args.get("events")
+            names.extend([events] if isinstance(events, str) else events or [])
+            for name in names:
+                if name is None:
+                    continue
+                if name not in available:
+                    raise InvalidParameterError(
+                        "metrics", name, sorted(available, key=str)
+                    )
+                found.append(str(name))
+            pattern = args.get("pattern")
+            if isinstance(pattern, str):
+                # a token is an event, a class or a gap: keep the names it holds
+                for token in pattern.split("->"):
+                    for name in re.split(r"[\[\](){}|^*,\s]+", token):
+                        if name in available:
+                            found.append(name)
+        if config.get("denominator") is not None:
+            visit(config["denominator"])
+
+    for config in metrics:
+        visit(config)
+    return list(dict.fromkeys(found))
+
+
+def _stream_events(stream: "Eventstream") -> set:
+    """The event names a plan can name: the stream's and the path boundaries."""
+    start_name, end_name = EventTypes().PATH_START.name, EventTypes().PATH_END.name
+    events = pd.unique(stream.df[stream.schema.event_col])
+    return set(map(str, events)) | {start_name, end_name}
+
+
+def metric_events(stream: "Eventstream", metrics: Any) -> list[str]:
+    """The events of the stream that ``metrics`` (``get_ab_test``'s configs)
+    read: what ``get_ab_compression(metrics=...)`` keeps."""
+    return _metric_events(metrics, _stream_events(stream), stream.schema.event_col)
+
+
 #: ``attrs["mde_basis"]`` of a plan: what its MDE and testable cells are.
 MDE_BASIS = (
     "pooled: the spread of both arms together (linearised for ratio and count "
@@ -1839,6 +1973,7 @@ def ab_compression(
     target: Any = "untestable_share",
     step: int | None = None,
     keep=None,
+    metrics=None,
     other: str = "other",
     by: str | None = None,
     by_pre_exposure: bool | None = None,
@@ -1884,8 +2019,9 @@ def ab_compression(
     schema = stream.schema
     event_col = schema.event_col
     start_name, end_name = EventTypes().PATH_START.name, EventTypes().PATH_END.name
-    available = set(map(str, pd.unique(stream.df[event_col]))) | {start_name, end_name}
+    available = _stream_events(stream)
     keep_events = _check_events("keep", keep, available)
+    metric_events = _metric_events(metrics, available, event_col)
     declared = _check_edges(edges, available) if edges is not None else []
     if by is not None and by not in schema.segment_cols:
         raise InvalidParameterError("by", by, list(schema.segment_cols))
@@ -1931,9 +2067,13 @@ def ab_compression(
     for event in (start_name, end_name):
         if event in code_of:
             protected_reason[code_of[event]] = "a path boundary event"
+    boundary_codes = set(protected_reason)
     for event in keep_events:
         if event in code_of:
             protected_reason[code_of[event]] = "declared in keep"
+    for event in metric_events:
+        if event in code_of:
+            protected_reason.setdefault(code_of[event], "an event of the metrics")
     for pair in declared:
         for event in pair:
             if event in code_of:
@@ -1941,6 +2081,11 @@ def ab_compression(
                     code_of[event], "an event of the declared edges"
                 )
     protected = set(protected_reason)
+    watched = {
+        code: why
+        for code, why in protected_reason.items()
+        if code not in boundary_codes
+    }
 
     alpha = round(1.0 - float(ci_level), 12)
     scr = _Screen(
@@ -1997,8 +2142,12 @@ def ab_compression(
             )
 
     plan_parts, path_parts, homogeneity, chosen, mappings = [], [], [], {}, {}
+    overridden: list[dict] = []
     for value, part in groups:
-        rows, states, ops = _build_path(part, scr, **params)
+        hits: list[dict] = []
+        rows, states, ops = _build_path(
+            part, scr, **params, watched=watched, overrides=hits
+        )
         pick = (
             _choose(rows, target, params["max_events"]) if step is None else int(step)
         )
@@ -2006,6 +2155,10 @@ def ab_compression(
             raise InvalidParameterError(
                 "step", step, [f"an int from 0 to {len(states) - 1}"]
             )
+        # what the protection prevented on the way to the chosen step
+        for hit in hits:
+            if hit["step"] < pick:
+                overridden.append(hit if by is None else {by: value, **hit})
         stats0 = _stats_of(part, states[0], None)
         plan_rows = _plan_rows(part, states, ops, pick, stats0, protected_reason, scr)
         # no event in the analysed window: an empty plan (it changes nothing)
@@ -2051,6 +2204,24 @@ def ab_compression(
         )
         homogeneity.append(h)
 
+    if overridden:
+        said = []
+        for hit in overridden:
+            what = (
+                f"in {hit['evidence']:.2%} of paths, rare (< min_path_share)"
+                if hit["operation"] == "rare"
+                else f"a chain with '{hit['with']}' (P(next) and P(prev) at least "
+                f"{hit['evidence']:.2f})"
+            )
+            text = f"'{hit['event']}' ({hit['reason']}): {what}"
+            if text not in said:
+                said.append(text)
+        warn_user(
+            "the plan keeps protected events it would otherwise drop, relabel or "
+            f"merge: {'; '.join(said)}. They keep their labels, so a metric or edge "
+            "on them still reads on the compressed stream; the events around them "
+            "can still change (attrs['protected_overrides'])"
+        )
     events_analysed = sum(len(part.codes) for _, part in groups)
     if not events_analysed:
         warn_user(
@@ -2094,6 +2265,8 @@ def ab_compression(
         "target_delta": target_delta,
         "other": other,
         "keep": keep_events,
+        "metrics_events": metric_events,
+        "protected_overrides": overridden,
         "edges": [list(p) for p in declared] if declared else None,
         "min_support": int(min_support),
         "correction": correction,

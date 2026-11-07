@@ -419,6 +419,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- `get_ab_compression` no longer merges away the decision metric's event when it
+  is declared: `metrics=` takes the scorecard's metric configs (as for
+  `get_ab_test`) and keeps every event they read, as `keep` does. A chain such
+  as `order_commit -> order_success` was merged into one label, so after
+  `compress_events` a scorecard on `order_success` no longer found its event and
+  the screens lost its edges. When a declared event (`keep`, `metrics`,
+  `edges`) is one the plan would otherwise drop, relabel or merge before the
+  chosen step (rare, or in a chain), a warning names it and
+  `attrs["protected_overrides"]` lists it. Without `keep` or `metrics` the plan
+  is unchanged; which step the default picks depends on the data, so declare
+  the metrics whatever the step.
 - `get_ab_transitions_power` / `get_ab_steps_power`: support is no longer read as
   inference. A rare transition probability of 1 in both arms (every path's own
   ratio is 1) was `testable=True` at larger scales, with no MDE, and enlarged the

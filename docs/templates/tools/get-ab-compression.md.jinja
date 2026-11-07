@@ -79,8 +79,14 @@ each of its three closest neighbours (`operation = "merge_neighbour"`).
 A label of three events or more longer than 40 characters is written
 `first+…+last (k)`; the plan's `members` column, the path's `members` and the
 widget list its events. Merged neighbours can still join a funnel step with the
-next one: declare in `keep` the events the decision rests on (the treatment's and
-the metric's), and read the labels before applying the plan.
+next one: declare in `keep` the events the decision rests on (the treatment's),
+pass the scorecard's metrics as `metrics=` (their events are kept as with `keep`),
+and read the labels before applying the plan. A chain such as `order_commit ->
+order_success` is otherwise merged into one label, and a scorecard on
+`order_success` no longer finds its event on the compressed stream. Which step the
+default takes depends on the data, so declare them whatever the step; a warning
+and `attrs["protected_overrides"]` name a declared event the plan would otherwise
+have changed.
 
 ### How much data each vocabulary needs
 

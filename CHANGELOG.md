@@ -22,6 +22,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 
+- Agent analytics references use the current multi-event argument key and align
+  executable recipes with pre-decision feature windows, ordered completion timing,
+  non-converter retention and absorbing Markov outcomes. Clarify lift baselines,
+  censoring and the limits of observational and scenario-based conclusions; add
+  executable recipe checks and keep both host copies synchronized.
+
 - Events within a path are ordered by `(index, subindex)` everywhere, and that
   key is unique per path
   ([ADR-0017](https://github.com/retentioneering/retentioneering-tools/blob/master/docs/adr/0017-event-order-contract.md)).

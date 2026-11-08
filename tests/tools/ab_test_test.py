@@ -207,6 +207,48 @@ class TestSpecs:
                 ],
             )
 
+    def test_known_event_with_no_occurrence_counts_zero(self) -> None:
+        # the full stream has payment_error once, on a path outside the analysed
+        # stream; rows selected from it keep the event in the column's categories
+        full = _random().to_dataframe()
+        full = full[["user_id", "event", "timestamp", "arm", "platform", "value"]]
+        extra = full.iloc[[0]].assign(event="payment_error", user_id="outside")
+        full = pd.concat([full, extra], ignore_index=True)
+        full["event"] = full["event"].astype("category")
+        df = full[full["user_id"] != "outside"]
+        assert "payment_error" in df["event"].cat.categories
+        assert not (df["event"] == "payment_error").any()
+        stream = Eventstream(
+            df, {"segment_cols": ["arm", "platform"], "custom_cols": ["value"]}
+        )
+        errors = {
+            "name": "payment_error",
+            "metric": "has_event",
+            "metric_args": {"event": "payment_error"},
+        }
+        count = {
+            "name": "payment_errors",
+            "metric": "event_count",
+            "metric_args": {"event": "payment_error"},
+        }
+        with pytest.warns(UserWarning, match=r"\['payment_error'\] of the stream's"):
+            out = _fit(stream, [CONV, errors, count]).set_index("metric")
+        for name in ("payment_error", "payment_errors"):
+            row = out.loc[name]
+            assert row.group1_value == 0 and row.group2_value == 0 and row.delta == 0
+            assert np.isnan(row.delta_se) and np.isnan(row.p_value)
+            assert row.verdict == "insufficient_data"
+            assert row.support_warning == "no_data"
+            assert "no data in either arm" in row.reading
+        # the other metrics of the call are computed as without the unobserved one
+        alone = _fit(stream, [CONV]).set_index("metric").loc["conv"]
+        assert out.loc["conv", "delta"] == alone.delta
+        assert out.loc["conv", "p_value"] == alone.p_value
+        # an event outside the vocabulary is still a configuration error
+        typo = dict(errors, name="typo", metric_args={"event": "payment_eror"})
+        with pytest.raises(InvalidMetricConfigError, match="metric 'typo'"):
+            _fit(stream, [CONV, typo])
+
 
 class TestMatrix:
     def test_without_assignment(self) -> None:

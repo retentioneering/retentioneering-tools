@@ -269,7 +269,11 @@ def identify(properties: dict | None = None) -> None:
     if client is None:
         return
     try:
-        client.identify(_DISTINCT_ID, properties=properties or {})
+        if hasattr(client, "identify"):
+            client.identify(_DISTINCT_ID, properties=properties or {})
+        else:
+            # Newer SDKs expose keyword-only set() instead of identify().
+            client.set(distinct_id=_DISTINCT_ID, properties=properties or {})
     except Exception:
         pass
 

@@ -242,3 +242,63 @@ assert not any(name.startswith("posthog") for name in starts), starts
         """,
         tmp_path,
     )
+
+
+def test_real_sdk_client_thread_and_runtime_opt_out(tmp_path):
+    _run_python(
+        """
+        import os
+        import socket
+        from unittest.mock import patch
+        from retentioneering import _tracking
+        import posthog
+        from posthog.consumer import Consumer
+
+        def no_network(*args, **kwargs):
+            raise AssertionError("unexpected network access")
+
+        socket.socket.connect = no_network
+        sent = []
+        # Keep the actual SDK constructor, queue and consumer thread. Replace
+        # only transport so this test cannot send telemetry.
+        Consumer.request = lambda self, batch: sent.extend(batch)
+        original = posthog.Posthog
+        posthog.Posthog = lambda **kw: original(
+            **kw, flush_at=1, flush_interval=0.01
+        )
+        os.environ.pop("RETENTIONEERING_NO_TRACK")
+        _tracking.track("first")
+        client = _tracking._ph
+        try:
+            assert client is not None
+            assert any(t.is_alive() for t in client.consumers)
+            _tracking.identify({"test_property": "synthetic"})
+            client.flush()
+            assert len(sent) == 2, sent
+            os.environ["RETENTIONEERING_NO_TRACK"] = "1"
+            with patch.object(client, "capture") as capture, patch.object(
+                client, "identify" if hasattr(client, "identify") else "set"
+            ) as identify:
+                _tracking.track("blocked")
+                _tracking.identify({})
+                capture.assert_not_called()
+                identify.assert_not_called()
+            # Runtime opt-out gates new calls; it is not SDK shutdown.
+            assert any(t.is_alive() for t in client.consumers)
+        finally:
+            client.join()
+        assert not any(t.is_alive() for t in client.consumers)
+        """,
+        tmp_path,
+    )
+
+
+def test_identify_supports_sdk_set_api(lazy_client):
+    client = SimpleNamespace(set=MagicMock())
+    lazy_client.return_value = client
+    _tracking.identify({"test_property": "synthetic"})
+    lazy_client.assert_called_once()
+    client.set.assert_called_once_with(
+        distinct_id=_tracking._DISTINCT_ID,
+        properties={"test_property": "synthetic"},
+    )

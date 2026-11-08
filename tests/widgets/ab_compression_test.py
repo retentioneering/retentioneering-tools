@@ -75,6 +75,23 @@ class TestTwin:
         pd.testing.assert_frame_equal(twin.attrs["path"], plan.attrs["path"])
         assert twin.attrs["mappings"] == plan.attrs["mappings"]
 
+    def test__metrics_are_replayed_as_metrics(self, stream, assignment):
+        metrics = [
+            {
+                "name": "adjacent",
+                "metric": "matches_pattern",
+                "metric_args": {"pattern": "home->catalog"},
+            }
+        ]
+        widget = stream.ab_compression(DIFF, assignment=assignment, metrics=metrics)
+        payload = _strict(widget.result)
+        assert "metrics=" in payload["call_args"]
+        assert any("compression can change" in w for w in payload["warnings"])
+        assert (
+            payload["segments"][0]["kept_reason"]["catalog"]
+            == "kept: an event of the metrics"
+        )
+
     def test__signatures(self) -> None:
         get = inspect.signature(Eventstream.get_ab_compression).parameters
         alias = inspect.signature(Eventstream.ab_compression_data).parameters

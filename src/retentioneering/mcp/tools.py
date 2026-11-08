@@ -186,7 +186,7 @@ def describe_tool(tool: str = "") -> dict:
     Analysis tools (called directly, not as a preprocessor step):
       get_conversion_rate  get_sample_ratio  get_ab_test  get_ab_bootstrap
       get_ab_transitions  get_ab_steps  get_ab_transitions_power
-      get_ab_steps_power  get_ab_compression
+      get_ab_steps_power  get_ab_compression  funnel_data
 
     Reference topics:
       report_links   (anchor link syntax for analysis text)
@@ -227,6 +227,11 @@ def describe_tool(tool: str = "") -> dict:
 #: Analysis tools whose MCP result differs from the Python method's: describe_tool
 #: says so and adds the MCP tool's own docs (``mcp_docs``).
 _MCP_RESULT_NOTES = {
+    "funnel_data": (
+        "Through MCP funnel_data uses the session's assignment table and returns "
+        "the funnel counts, rates and intervals with warnings; undefined statistics "
+        "are JSON null. See mcp_docs."
+    ),
     "get_ab_transitions": (
         "Through MCP get_ab_transitions returns counts (n_tested, n_increase, "
         "n_decrease, ...) and the top rows by adjusted p-value (`top`), not the whole "
@@ -2258,6 +2263,55 @@ def _compression_apply(
     }
 
 
+def funnel_data(
+    session: Any,
+    steps: list[str],
+    diff: list | None = None,
+    path_col: str | None = None,
+    ci_level: float | None = None,
+    correction: str = "none",
+    horizon: str | None = None,
+    local_preprocessors: list | None = None,
+) -> dict:
+    """Return ordered funnel counts and rates, optionally with intervals.
+
+    Uses the session's assignment table (see describe()) when present. In that
+    case diff must name the compared arms, and the denominators include silent
+    paths. With horizon, events count in [assigned_at, assigned_at + horizon)
+    for paths whose windows have closed, as in get_ab_test. Undefined statistics
+    are JSON null. See Eventstream.funnel_data for the result fields.
+    """
+    if (err := _require_stream(session)) is not None:
+        return err
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
+    try:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            result = src.funnel_data(
+                steps,
+                diff,
+                path_col=path_col,
+                ci_level=ci_level,
+                correction=correction,
+                assignment=session.assignment,
+                horizon=horizon,
+            )
+    except Exception as exc:
+        return {"error": _with_table_hint(str(exc), session, horizon, None)}
+
+    for step in result["steps"]:
+        for name, value in step.items():
+            if "p_value" in name:
+                step[name] = _json_p_value(value)
+            elif isinstance(value, float) and not math.isfinite(value):
+                step[name] = None
+    result["warnings"] = list(dict.fromkeys(str(w.message) for w in caught))
+    return result
+
+
 def get_ab_compression(
     session: Any,
     diff: list,
@@ -2283,6 +2337,7 @@ def get_ab_compression(
     target_delta: float | None = None,
     top: int = 15,
     local_preprocessors: list | None = None,
+    metrics: list[dict] | None = None,
 ) -> dict:
     """
     Propose a smaller event vocabulary for an A/B screen, chosen without the arms.
@@ -2343,6 +2398,10 @@ def get_ab_compression(
     keep:
         Events never merged, relabelled or dropped: the treatment's own events and
         the decision metric's events.
+    metrics:
+        Scorecard configs, as in get_ab_test, including denominators. Their
+        named events stay in the plan. Read the decision scorecard on the
+        original stream: compression can change metric values and populations.
     other:
         The label of relabelled rare events (default "other").
     by, by_pre_exposure:
@@ -2361,7 +2420,8 @@ def get_ab_compression(
     -------
     diff, screen, edge_weight, max_steps, path_col, unit_of_paths (what one path
     is: median_scale_needed is a multiple of these), population, group sizes,
-    target, by, by_pre_exposure, arm_blind, unit, warnings and segments: per
+    target, by, by_pre_exposure, arm_blind, unit, warnings, metrics_events,
+    metrics_requiring_raw_stream, protected_overrides and segments: per
     segment (one, "all", without by): chosen_step, steps (the path length),
     before / after (vocabulary, cells, testable, untestable, untestable_share,
     median_mde, mass_retained, artificial_transitions, and with target_delta
@@ -2393,7 +2453,7 @@ def get_ab_compression(
                 tuple(diff) if diff else None,
                 screen,
                 assignment=getattr(session, "assignment", None),
-                horizon=horizon or None,
+                horizon=horizon,
                 path_col=path_col or None,
                 edge_weight=edge_weight,
                 max_steps=max_steps,
@@ -2407,6 +2467,7 @@ def get_ab_compression(
                 target=target,
                 step=step,
                 keep=keep,
+                metrics=metrics,
                 other=other,
                 by=by,
                 by_pre_exposure=by_pre_exposure,
@@ -2465,6 +2526,9 @@ def get_ab_compression(
         "group2_paths": meta.get("group2_paths"),
         "target": meta.get("target"),
         "target_delta": meta.get("target_delta"),
+        "metrics_events": meta["metrics_events"],
+        "metrics_requiring_raw_stream": meta["metrics_requiring_raw_stream"],
+        "protected_overrides": meta["protected_overrides"],
         "by": by,
         "by_pre_exposure": meta.get("by_pre_exposure"),
         "mde_basis": meta.get("mde_basis"),

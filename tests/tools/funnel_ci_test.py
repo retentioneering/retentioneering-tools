@@ -280,6 +280,93 @@ class TestAssignment:
         with pytest.raises(InvalidParameterError):
             stream.funnel_data(STEPS, assignment=assignment)
 
+    @pytest.mark.parametrize("ci_level", [None, 0.95])
+    @pytest.mark.parametrize("has_conversion", [True, False])
+    def test_horizon_boundaries_and_an_entire_silent_arm(
+        self, ci_level, has_conversion
+    ) -> None:
+        start = pd.Timestamp("2026-01-01T00:00:00Z")
+        hour = pd.Timedelta("1h")
+        before = pd.Timedelta("1us")
+        end = start + 2 * hour
+        rows = [
+            ("pre", "buy", start - before),
+            ("right", "buy", end),
+            ("late", "buy", start + hour),
+            ("unassigned", "buy", end),
+        ]
+        if has_conversion:
+            rows.extend([("left", "buy", start), ("inside", "buy", end - before)])
+        df = pd.DataFrame(rows, columns=["user_id", "event", "timestamp"])
+        df["timestamp"] = df["timestamp"].dt.tz_convert("Europe/Belgrade")
+        stream = Eventstream(df)
+        assignment = pd.DataFrame(
+            {
+                "arm": ["t", "t", "t", "t", "c", "c", "t"],
+                "assigned_at": [start] * 6 + [start + hour],
+            },
+            index=["left", "inside", "pre", "silent", "right", "silent_c", "late"],
+        )
+        diff = ("arm", "t", "c")
+        metrics = [{"metric": "has_event", "metric_args": {"event": "buy"}}]
+        args = {"assignment": assignment, "horizon": "2h"}
+        funnel = stream.funnel_data(["buy"], diff, ci_level=ci_level, **args)
+        score = stream.get_ab_test(diff, metrics, **args).iloc[0]
+
+        assert funnel["population"] == score["population"] == "assignment"
+        assert funnel["immature_paths"] == score["immature_paths"] == 1
+        assert funnel["unassigned_paths"] == score["unassigned_paths"] == 1
+        step = funnel["steps"][0]
+        for g, total, successes in [(1, 4, 2 if has_conversion else 0), (2, 2, 0)]:
+            assert funnel[f"funnel{g}_total_paths"] == score[f"group{g}_paths"] == total
+            assert (
+                funnel[f"funnel{g}_silent_paths"]
+                == score[f"group{g}_silent_paths"]
+                == total - successes
+            )
+            assert step[f"funnel{g}_unique_paths"] == successes
+            assert (
+                step[f"funnel{g}_conversion_rate"]
+                == score[f"group{g}_value"]
+                == successes / total
+            )
+        assert step["delta_conversion_rate"] == score["delta"]
+
+    @pytest.mark.parametrize(
+        ("table", "horizon", "error"),
+        [
+            ("series", "2h", "holding 'assigned_at'"),
+            ("undated", "2h", "without assigned_at"),
+            ("dated", "NaT", "fixed-length duration"),
+            ("dated", 0, "bare number"),
+            ("duplicate", None, "repeat in the index"),
+        ],
+    )
+    def test_assignment_and_horizon_validation(self, table, horizon, error) -> None:
+        stream = _stream(n1=12, n2=12)
+        start = pd.Timestamp("2026-01-01")
+        assignment = pd.DataFrame(
+            {"arm": ["t", "c"], "assigned_at": [start, start]},
+            index=["t0", "c0"],
+        )
+        if table == "series":
+            assignment = assignment["arm"]
+        elif table == "undated":
+            assignment.loc["c0", "assigned_at"] = pd.NaT
+        elif table == "duplicate":
+            assignment = pd.concat([assignment, assignment])
+        metrics = [{"metric": "has_event", "metric_args": {"event": "buy"}}]
+        for call in (
+            lambda: stream.funnel_data(
+                ["buy"], DIFF, assignment=assignment, horizon=horizon
+            ),
+            lambda: stream.get_ab_test(
+                DIFF, metrics, assignment=assignment, horizon=horizon
+            ),
+        ):
+            with pytest.raises(InvalidParameterError, match=error):
+                call()
+
 
 class TestModeSwitches:
     def test__correction_needs_ci_level(self) -> None:

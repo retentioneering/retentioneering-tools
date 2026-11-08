@@ -526,7 +526,7 @@ def _fixed_length(value: Any, param: str) -> pd.Timedelta:
                 length = pd.Timedelta(offset.nanos, unit="ns")
             except ValueError:
                 raise InvalidParameterError(param, value, allowed) from None
-    if length <= pd.Timedelta(0):
+    if pd.isna(length) or length <= pd.Timedelta(0):
         raise InvalidParameterError(param, value, allowed)
     return length
 
@@ -1885,7 +1885,7 @@ class ABTest:
             # silent assigned paths keep their stratum (rows stay ITT per stratum)
             strata_labels = assignment[strata_col].set_axis(table.index, axis=0)
         specs = parse_metrics(metrics, test)
-        _validate_on_stream(stream, specs)
+        validate_metrics_on_stream(stream, specs)
         groups = resolve_diff(
             stream, diff, path_col, require_constant=True, assignment=table
         )
@@ -3022,7 +3022,7 @@ def _t_interval(mean: float, var: float, n: int, level: float) -> tuple[float, f
     return mean - half, mean + half
 
 
-def _validate_on_stream(stream, specs: list[ABMetricSpec]) -> None:
+def validate_metrics_on_stream(stream, specs: list[ABMetricSpec]) -> None:
     """Check event names, columns and segment levels against the full stream."""
     from retentioneering.metrics.metric_builder import MetricBuilder
 

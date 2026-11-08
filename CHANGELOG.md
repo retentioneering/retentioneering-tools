@@ -419,26 +419,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
-- `get_ab_compression` no longer merges away the decision metric's event when it
-  is declared: `metrics=` takes the scorecard's metric configs (as for
-  `get_ab_test`) and keeps every event they read, as `keep` does. A chain such
-  as `order_commit -> order_success` was merged into one label, so after
-  `compress_events` a scorecard on `order_success` no longer found its event and
-  the screens lost its edges. When a declared event (`keep`, `metrics`,
-  `edges`) is one the plan would otherwise drop, relabel or merge before the
-  chosen step (rare, or in a chain), a warning names it and
-  `attrs["protected_overrides"]` lists it. Without `keep` or `metrics` the plan
-  is unchanged; which step the default picks depends on the data, so declare
-  the metrics whatever the step.
-- `funnel_data` and `funnel` take `assignment=` and `horizon=`, as `get_ab_test`
-  does: every assigned path is in its arm's denominator, silent ones included,
-  and events count from `assigned_at`, so the funnel's overall rates use the
-  scorecard's denominators (a one-step funnel on the conversion event equals the
-  scorecard's conversion row). Without an assignment, the denominator is still
-  the paths with an event, which leaves the silent assignees out and overstates
-  every rate. The result adds `population`, `funnel1_silent_paths`,
-  `funnel2_silent_paths`, `unassigned_paths` and, with `horizon`,
-  `immature_paths`.
+- `get_ab_compression(metrics=...)` protects event labels named in the
+  scorecard, including ratio denominators. It validates the configs and
+  patterns with the scorecard's parser. The Python API, widget and MCP tool
+  report when label protection alone cannot preserve a metric's value.
+  Generated labels are distinct from the source vocabulary, and a plan
+  built with a horizon preserves the source's end-of-data timestamp on replay.
+- `funnel_data` and `funnel` take `assignment=` and `horizon=` as `get_ab_test`
+  does. Mature silent paths count in the denominator, even when an entire arm
+  has no events in the window. The result adds `population`,
+  `funnel1_silent_paths`, `funnel2_silent_paths`, `unassigned_paths` and, with
+  a horizon, `immature_paths`. MCP exposes `funnel_data` using the session's
+  assignment table.
 - `get_ab_transitions_power` / `get_ab_steps_power`: support is no longer read as
   inference. A rare transition probability of 1 in both arms (every path's own
   ratio is 1) was `testable=True` at larger scales, with no MDE, and enlarged the

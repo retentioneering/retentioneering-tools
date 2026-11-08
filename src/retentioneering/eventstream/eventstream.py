@@ -1995,21 +1995,15 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             cannot tell a synonym from the treatment's replacement of an event.
             A kept event keeps its label only: dropping or merging the events
             around it can still change what comes before or after it, and at
-            which step it stands. When a declared event (`keep`, `metrics`,
-            `edges`) is rare, or forms a chain with a neighbour, before the
-            chosen step, so that the plan would otherwise drop, relabel or merge
-            it, a warning names it and `attrs["protected_overrides"]` lists it.
+            which step it stands. A warning and `attrs["protected_overrides"]`
+            list protected rare events and chain candidates through the chosen step.
         metrics : list of dict, optional
-            The scorecard's metrics, as for `get_ab_test` (denominators
-            included): every event they read (`event`, `events`,
-            `start_event`, `end_event`, the event names of a `pattern`) is
-            kept as with `keep`. Pass the metrics the compressed stream will be
-            read with, so that the plan cannot merge away the conversion event
-            (a chain such as `order_commit -> order_success` is otherwise
-            merged into one label, and a scorecard on `order_success` no
-            longer finds its event). An event a metric names that the stream
-            does not have raises. The `ab_compression` widget adds these
-            events to `keep`.
+            Scorecard metrics, as in `get_ab_test`, including ratio denominators.
+            Explicit event names in the stream's event column are protected as
+            with `keep`; invalid configs and unknown events raise. This preserves
+            the named event rows. Neighbouring rows can still change, affecting
+            patterns, duration, length or aggregates over other columns.
+            Use the original stream for the decision scorecard.
         other : str, default "other"
             The label of relabelled rare events; must not be an event already.
         by : str, optional
@@ -2075,10 +2069,11 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             compared path has an event in the analysed window: the plan is then
             empty and a warning says so), `mde_basis`, `chosen_step`,
             `metrics_events` (the events `metrics` keeps),
-            `protected_overrides` (per declared event the plan would otherwise
-            have changed before the chosen step: `step`, `event`, `reason`,
-            `operation` — `"rare"` or `"merge_chain"` —, `with` and
-            `evidence`, its path share or chain strength), `mappings` (the
+            `metrics_requiring_raw_stream` (metrics for which label protection
+            alone cannot preserve the per-path value), `protected_overrides`
+            (first protected rare or chain candidate per event and operation:
+            `step`, `event`, `reason`, `operation`, `with`, `evidence`,
+            and `segment` with `by`), `mappings` (the
             `{event: label}` of every step), `homogeneity` (effective vocabulary
             size `exp(entropy)` of the event distribution, transition entropy in
             bits, distinct-path share, and the numbers before and after) and the
@@ -4232,8 +4227,8 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             least 10 of them holding several finer paths, raises
             `InvalidParameterError` at the finer `path_col`: per-session intervals
             of a per-user experiment are too narrow (the guard of `get_ab_test`).
-            Without `ci_level` the diff keeps the widgets' event-level split and
-            no guard applies.
+            Without `ci_level` or `assignment`, the diff keeps the widgets'
+            event-level split and no guard applies.
         correction : {"none", "holm", "bonferroni", "bh"}, default "none"
             Multiple-comparison correction applied across the funnel's steps to the
             overall-delta p-values (`delta_conversion_rate_p_value_adjusted`); used
@@ -4251,8 +4246,9 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             its arm, **silent ones included** (assigned, no event: they reach no
             step), events before `assigned_at` are dropped and paths absent from
             the table are left out: the population of `get_ab_test(assignment=...)`,
-            so a one-step funnel on the conversion event equals the scorecard's
-            conversion row. The groups are resolved per path, with or without
+            so a one-step funnel matches the point estimate of a headline
+            `has_event` scorecard metric on the same event and window. The
+            groups are resolved per path, with or without
             `ci_level`.
         horizon : str or pandas.Timedelta, optional
             As in `get_ab_test`, with an `assignment` holding `assigned_at`: only
@@ -5169,12 +5165,6 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
         from retentioneering.widgets._base import _UNSET
         from retentioneering.widgets.ab_compression import ABCompressionWidget
 
-        if metrics is not None:
-            # the widget's sidebar edits event names: the metrics' events join keep
-            from retentioneering.tools.ab_compression import metric_events
-
-            kept = [keep] if isinstance(keep, str) else list(keep or [])
-            keep = list(dict.fromkeys([*kept, *metric_events(self, metrics)]))
         args = {
             "screen": screen,
             "horizon": horizon,
@@ -5206,6 +5196,7 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
             self,
             diff,
             assignment=assignment,
+            metrics=metrics,
             state_file=state_file,
             **{k: v if v is not None else _UNSET for k, v in args.items()},
         )

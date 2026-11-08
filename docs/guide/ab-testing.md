@@ -182,7 +182,7 @@ Every overall step is grey. The step-to-step column (marked †, `step_condition
 
 **Why conditional steps are descriptive.** The denominator of `checkout_start → payment` is the users who started a checkout, and the treatment changed who that is: in Northwind, the treatment build also shows a "checkout now" shortcut after every add that reaches the cart, `quick_add` or not, and it starts checkouts that never pay. The step rate compares two different populations, so its difference is a mixture of the treatment's effect and the change in who got there — of unknown sign. The overall `payment` row, out of every path in each arm, is the randomised comparison, and it is +0.06 pp. The conditional rate is still worth reading: it points at the mechanism (the "checkout now" shortcut), which is a hypothesis for the next test.
 
-Two more things the funnel's numbers assume. **The denominator is the paths with at least one event** — 4,828 and 4,905 paths here, not the 4,960 and 5,040 assigned users of the scorecard (`population="assignment"`). Pass the scorecard's `assignment=` (and `horizon=`) to the funnel and it counts every assigned user, silent ones included, from `assigned_at`: each overall rate then has the scorecard's denominator, and a one-step funnel on the conversion event equals the scorecard's conversion row. **Each path is one unit**, so use the randomised grain as `path_col`.
+Two more things the funnel's numbers assume. **The denominator is the paths with at least one event** — 4,828 and 4,905 paths here, not the 4,960 and 5,040 assigned users of the scorecard (`population="assignment"`). Pass the scorecard's `assignment=` (and `horizon=`) to the funnel and it counts every assigned user, silent ones included, from `assigned_at`: each overall rate then has the scorecard's denominator, and a one-step funnel on the conversion event matches the headline `has_event` point estimates on the same data and window. **Each path is one unit**, so use the randomised grain as `path_col`.
 
 ## Periods, horizon and novelty
 
@@ -573,7 +573,9 @@ it is for, and never pick a step by its verdicts. And declare in `keep` the even
 the treatment introduces or changes, and pass the scorecard's metrics as `metrics=`
 (their events are kept too): the plan cannot see the arms, so it cannot tell a
 synonym from the treatment's replacement of an event, nor a conversion event from
-the end of a chain.
+the end of a chain. Label protection leaves those event rows in place while
+surrounding rows can change. Run the decision scorecard on the original stream,
+especially for adjacent patterns, duration, and aggregates over other columns.
 
 **One plan per screen.** The transition screen wants fewer, richer edges and no
 invented transition; the step screen wants aligned steps. With

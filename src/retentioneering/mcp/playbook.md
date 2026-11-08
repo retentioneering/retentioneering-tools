@@ -235,7 +235,7 @@ times counts once. For a per-visit figure, carve out the subpopulation with
    each row needs to be tested (`scale_to_test`) and the median `mde` per multiple
    of the paths (`curve`): sizing for a NEW test, never a reason to run this one
    longer. `get_ab_compression(diff=[...], screen="transitions" | "steps",
-   keep=[the treatment's own events, the metric's events])` proposes a smaller
+   keep=[the treatment's own events], metrics=[the scorecard's configs])` proposes a smaller
    vocabulary (chains merged, rare events relabelled `other` or dropped) chosen
    without the arms; pass its `preprocessor` in `local_preprocessors` of the screen
    (with `by` there is none: each segment's plan is for a session of that segment
@@ -247,7 +247,9 @@ times counts once. For a per-visit figure, carve out the subpopulation with
    most `max_group_size` events, rather than dropping frequent events; when it
    stops short of the cap it warns: report it, never force the cap. Read the
    merged labels (`members`) before applying the plan; `target_delta` adds how
-   many users each vocabulary size needs.
+   many users each vocabulary size needs. Read the decision scorecard on the
+   original stream: keeping labels can still change adjacent patterns, duration,
+   and aggregates.
 7. Finish: `export_report` needs at least one tab, and the numbers-only tools
    register none. Add the scorecard as a tab with `add_ab_test(label=..., same
    arguments)` (or an `add_segment_overview` by arm) before `check_analysis` and
@@ -259,7 +261,10 @@ user, silent ones included (intention to treat, `"assignment"`), and `horizon` /
 since-assignment periods work. Without one, the stream's paths (users with at least
 one event) split by the arm segment, over the whole window: silent assigned users
 are not counted, there is no horizon, and the funnel and the scorecard can differ
-from an ITT read. Say which population a number is about. Quote `warnings` if the
+from an ITT read. Use `funnel_data(steps=[...], diff=[...], horizon=...)` for
+an ordered experiment funnel on the same assigned population and window as the
+headline scorecard. Step-to-step rates after step one condition on reaching the
+previous step. Say which population a number is about. Quote `warnings` if the
 call returns any.
 
 **A treatment that renames an event:** when the treatment logs a new event instead of

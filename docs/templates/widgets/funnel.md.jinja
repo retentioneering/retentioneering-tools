@@ -69,7 +69,8 @@ segment that is constant per path (an experiment arm attached with
   user assigned to an arm who never produced an event is not counted, and every
   rate is higher than the scorecard's. With it, every assigned user is in their
   arm's denominator, silent ones included, events count from `assigned_at`, and a
-  one-step funnel on the conversion event equals the scorecard's conversion row.
+  one-step funnel matches the headline `has_event` point estimates on the same
+  event and window. An arm with no events in the window has zero converters.
 - **Each path is one independent unit.** That holds when `path_col` is the unit
   that was randomised. Session paths of a user-level experiment are not
   independent and give intervals that are too narrow.

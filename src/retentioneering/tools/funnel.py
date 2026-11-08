@@ -146,7 +146,9 @@ class Funnel:
         fitted, silent = [], []
         for g in (0, 1):
             ids = window.path_ids[(window.arm == g) & active]
-            part = window.work.filter_events(keep={path_col: list(ids)})
+            part = window.work.filter_events(
+                func=lambda df, ids=ids: df[path_col].isin(ids)
+            )
             total = int((window.arm == g).sum())
             fitted.append(Funnel(part)._fit_single(steps, path_col, total))
             silent.append(total - len(ids))

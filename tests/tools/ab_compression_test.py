@@ -201,6 +201,93 @@ class TestOperations:
                 TOY, metrics=[{"metric": "has_event", "metric_args": {"event": "x"}}]
             )
 
+    @pytest.mark.parametrize("pattern", ["cart->missing", "cart->[^missing]*->pay"])
+    def test_metrics_reject_unknown_pattern_members(self, toy, pattern):
+        metric = {"metric": "matches_pattern", "metric_args": {"pattern": pattern}}
+        with pytest.raises(InvalidParameterError, match="missing"):
+            toy.get_ab_compression(TOY, metrics=[metric])
+
+    def test_labels_do_not_preserve_an_adjacency_metric(self, toy):
+        metric = {
+            "name": "direct",
+            "metric": "matches_pattern",
+            "metric_args": {"pattern": "catalog->product"},
+        }
+        subsequence = {
+            "name": "ordered",
+            "metric": "matches_pattern",
+            "metric_args": {"pattern": "catalog->.*->product"},
+        }
+        metrics = [metric, subsequence]
+        with pytest.warns(UserWarning, match="compression can change.*direct"):
+            plan = _last(toy, "transitions", metrics=metrics)
+        assert plan.attrs["metrics_events"] == ["catalog", "product"]
+        assert plan.attrs["metrics_requiring_raw_stream"] == ["direct"]
+        assert _action(plan, "X") == "drop"
+        before = toy.get_ab_paths(TOY, metrics)
+        after = toy.compress_events(plan).get_ab_paths(TOY, metrics)
+        affected = toy.df.loc[toy.df["event"] == "X", "user_id"].unique()
+        assert (before.loc[affected, "direct"] == 0).all()
+        assert (after.loc[affected, "direct"] == 1).all()
+        pd.testing.assert_series_equal(before["ordered"], after["ordered"])
+
+    def test_metric_pattern_uses_whole_names_and_classes(self):
+        start = pd.Timestamp("2026-01-01")
+        events = ["view product", "debug", "[checkout] submit", "checkout done", "pay"]
+        stream = Eventstream(
+            pd.DataFrame(
+                [
+                    (uid, event, start + pd.Timedelta(minutes=i))
+                    for uid in (1, 2)
+                    for i, event in enumerate(events)
+                ],
+                columns=["user_id", "event", "timestamp"],
+            )
+        )
+        metrics = [
+            {
+                "metric": "matches_pattern",
+                "metric_args": {
+                    "pattern": "[view product|pay]->[^pay]*->checkout done"
+                },
+            },
+            {
+                "metric": "has_event",
+                "metric_args": {"event": "[checkout] submit"},
+            },
+            {
+                "metric": "matches_pattern",
+                "metric_args": {"pattern": "(view product->pay){2}"},
+            },
+        ]
+        with pytest.warns(UserWarning, match="metrics_requiring_raw_stream"):
+            plan = stream.get_ab_compression(([1], [2]), metrics=metrics)
+        assert plan.attrs["metrics_events"] == [
+            "view product",
+            "pay",
+            "checkout done",
+            "[checkout] submit",
+        ]
+
+    def test_ratio_protects_the_denominator_event_rows(self, toy):
+        metric = {
+            "name": "pay_per_checkout",
+            "metric": "event_count",
+            "metric_args": {"event": "pay"},
+            "denominator": {
+                "metric": "event_count",
+                "metric_args": {"event": "checkout"},
+            },
+        }
+        with pytest.warns(UserWarning, match="protected events"):
+            plan = _last(toy, "transitions", metrics=[metric])
+        assert plan.attrs["metrics_events"] == ["pay", "checkout"]
+        assert plan.attrs["metrics_requiring_raw_stream"] == []
+        columns = ["pay_per_checkout_numerator", "pay_per_checkout_denominator"]
+        before = toy.get_ab_paths(TOY, [metric])[columns]
+        after = toy.compress_events(plan).get_ab_paths(TOY, [metric])[columns]
+        pd.testing.assert_frame_equal(before, after)
+
     def test_without_keep_or_metrics_the_plan_is_unchanged(self, toy):
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
@@ -285,6 +372,75 @@ def _stream_of(templates: list[tuple[list[str], int]]) -> Eventstream:
                 )
             user += 1
     return Eventstream(pd.DataFrame(rows), {"segment_cols": ["arm"]})
+
+
+def test_compression_reserves_labels_outside_the_analysed_window():
+    at = pd.Timestamp("2026-01-01")
+    hour = pd.Timedelta("1h")
+    stream = Eventstream(
+        pd.DataFrame(
+            [
+                (1, "A+B", at - hour),
+                (1, "A", at),
+                (1, "B", at + hour),
+                (2, "A", at),
+                (2, "B", at + hour),
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+    )
+    assignment = pd.DataFrame({"arm": ["a", "b"], "assigned_at": at}, index=[1, 2])
+    metric = {"metric": "has_event", "metric_args": {"event": "A+B"}}
+    with pytest.raises(InvalidParameterError, match="already an event"):
+        stream.get_ab_compression(TOY, assignment=assignment, other="A+B")
+    plan = stream.get_ab_compression(
+        TOY, assignment=assignment, metrics=[metric], step=1, min_support=1
+    )
+    assert set(plan["label"]) == {"A+B (merged)"}
+    compact = stream.compress_events(plan)
+    assert compact.df.loc[compact.df["event"] == "A+B", "timestamp"].tolist() == [
+        at - hour
+    ]
+    before = stream.get_ab_test(TOY, [metric], assignment=assignment)
+    after = compact.get_ab_test(TOY, [metric], assignment=assignment)
+    pd.testing.assert_frame_equal(before, after)
+
+
+def test_horizon_compression_preserves_end_of_data():
+    at = pd.Timestamp("2026-01-01")
+    hour = pd.Timedelta("1h")
+    rows = [
+        (uid, event, at + offset * hour)
+        for uid in (1, 2)
+        for event, offset in (("A", 0), ("B", 1))
+    ]
+    rows.extend([(3, "A", at + 2 * hour), (3, "B", at + 3 * hour)])
+    stream = Eventstream(pd.DataFrame(rows, columns=["user_id", "event", "timestamp"]))
+    assignment = pd.DataFrame({"arm": ["a", "b"], "assigned_at": at}, index=[1, 2])
+    with pytest.warns(UserWarning, match="reaches max_events=1"):
+        plan = stream.get_ab_compression(
+            TOY, assignment=assignment, horizon="3h", min_support=1, max_events=1
+        )
+    assert _action(plan, "B") == "keep"
+    assert plan.set_index("event").loc["B", "reason"] == "kept: the horizon cutoff"
+    compact = stream.compress_events(plan)
+    assert compact.df["timestamp"].max() == at + 3 * hour
+
+
+def test_protection_reports_a_blocked_chain_even_at_step_zero():
+    at = pd.Timestamp("2026-01-01")
+    rows = [
+        (uid, event, at + pd.Timedelta(minutes=i))
+        for uid in (1, 2)
+        for i, event in enumerate(("A", "B"))
+    ]
+    stream = Eventstream(pd.DataFrame(rows, columns=["user_id", "event", "timestamp"]))
+    metric = {"metric": "has_event", "metric_args": {"event": "B"}}
+    with pytest.warns(UserWarning, match="protected events"):
+        plan = stream.get_ab_compression(([1], [2]), metrics=[metric], min_support=1)
+    assert plan.attrs["chosen_step"] == 0
+    (hit,) = plan.attrs["protected_overrides"]
+    assert (hit["event"], hit["with"], hit["step"]) == ("B", "A", 0)
 
 
 class TestNoArtificialDrop:

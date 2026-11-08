@@ -3023,16 +3023,43 @@ def _t_interval(mean: float, var: float, n: int, level: float) -> tuple[float, f
 
 
 def _validate_on_stream(stream, specs: list[ABMetricSpec]) -> None:
-    """Check event names, columns and segment levels against the full stream."""
+    """Check event names, columns and segment levels against the full stream.
+
+    An event is known when it is a category of the stream's event column (its
+    vocabulary: a categorical column keeps its categories when rows are
+    selected) or occurs in the stream. A known event that no path has is a
+    valid outcome, 0 on every path: it warns, naming the event, and the metric
+    is computed. An event outside the vocabulary still raises.
+    """
     from retentioneering.metrics.metric_builder import MetricBuilder
 
     builder = MetricBuilder(stream)
-    available = set(stream.df[stream.schema.event_col].unique().tolist())
+    events = stream.df[stream.schema.event_col]
+    observed = set(events.unique().tolist())
+    known = observed | set(getattr(events.dtype, "categories", []))
+    unobserved = known - observed
+
+    def fails(config: dict, available: set) -> bool:
+        try:
+            builder.validate_metric_config(config, available_events=available)
+        except InvalidMetricConfigError:
+            return True
+        return False
+
     for spec in specs:
         for config in (spec.config, spec.denominator):
             if config is None:
                 continue
             try:
-                builder.validate_metric_config(config, available_events=available)
+                builder.validate_metric_config(config, available_events=known)
             except InvalidMetricConfigError as exc:
                 raise InvalidMetricConfigError(f"metric {spec.name!r}: {exc}") from None
+            if unobserved and fails(config, observed):
+                # the validator is the one reader of a config's events (patterns
+                # included): an event is needed if the config fails without it
+                missing = [e for e in sorted(unobserved) if fails(config, known - {e})]
+                warn_user(
+                    f"metric {spec.name!r}: event(s) {missing} of the stream's "
+                    "vocabulary occur on no path of this stream; the metric is "
+                    "computed with 0 of them on every path."
+                )

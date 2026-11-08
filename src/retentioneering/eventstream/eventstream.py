@@ -660,7 +660,11 @@ class Eventstream:
             (`has_event`, `has_any_event`, `has_all_events`, `matches_pattern`,
             `in_segment`) and totals (`event_count`, `length`, `active_days`,
             `column_sum`); values (`duration`, `time_between`, `column_mean`,
-            `column_last`) leave it out.
+            `column_last`) leave it out. An event of the stream's vocabulary (the
+            categories of its event column, which rows selected from a categorical
+            frame keep) that no path has is counted as 0 on every path, with a
+            warning naming it; an event outside the vocabulary raises
+            `InvalidMetricConfigError`.
         assignment : pandas.Series or pandas.DataFrame, optional
             Per-path arm table, the intention-to-treat population: a Series `path_id ->
             arm` or a DataFrame with `arm` and optionally `assigned_at`. Silent assigned

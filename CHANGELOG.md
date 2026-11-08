@@ -419,6 +419,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- `get_ab_test` (and `ab_test_data`) no longer reads a metric event that is known
+  but does not occur in the analysed stream as an unknown event. An event of the
+  stream's vocabulary, the categories of its event column (rows selected from a
+  categorical frame keep them), that no path has is a valid outcome: the metric
+  counts 0 on every path (`no_data`, no SE or p-value, as for any metric with
+  no events in either arm) and a warning names the event. Before, it raised
+  `InvalidMetricConfigError` ("Event ... not found"), and the other metrics of
+  the call were lost with it. An event outside the vocabulary still raises.
 - `get_ab_transitions_power` / `get_ab_steps_power`: support is no longer read as
   inference. A rare transition probability of 1 in both arms (every path's own
   ratio is 1) was `testable=True` at larger scales, with no MDE, and enlarged the

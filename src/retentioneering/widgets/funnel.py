@@ -53,10 +53,15 @@ class FunnelWidget(RetentioneeringWidget):
         height=_UNSET,
         sidebar_open=_UNSET,
         state_file=None,
+        assignment=None,
+        horizon=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self._eventstream = eventstream
+        # an experiment's population (see funnel_data): Python-side, not synced
+        self._assignment = assignment
+        self._horizon = horizon
         self._initialized = False
         self._load_state_file(state_file)
 
@@ -183,6 +188,8 @@ class FunnelWidget(RetentioneeringWidget):
             ci_level=ci_level,
             # the sidebar keeps its correction while intervals are off
             correction=correction if ci_level else "none",
+            assignment=self._assignment,
+            horizon=self._horizon,
         )
         if diff:
             if len(diff) == 3:

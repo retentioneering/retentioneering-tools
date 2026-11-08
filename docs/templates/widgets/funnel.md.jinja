@@ -64,9 +64,13 @@ segment that is constant per path (an experiment arm attached with
 [`add_segment(path_values=...)`](/docs/data-processors/add-segment)) or a finer
 `path_col`. Two more things the numbers assume:
 
-- **The denominator is the paths with at least one event.** A user assigned to
-  an arm who never produced an event is not counted; for an intention-to-treat
-  read that includes them, use `get_ab_test(assignment=...)`.
+- **The denominator is the paths with at least one event**, unless you pass the
+  experiment's `assignment=` (and `horizon=`), as for `get_ab_test`. Without it, a
+  user assigned to an arm who never produced an event is not counted, and every
+  rate is higher than the scorecard's. With it, every assigned user is in their
+  arm's denominator, silent ones included, events count from `assigned_at`, and a
+  one-step funnel matches the headline `has_event` point estimates on the same
+  event and window. An arm with no events in the window has zero converters.
 - **Each path is one independent unit.** That holds when `path_col` is the unit
   that was randomised. Session paths of a user-level experiment are not
   independent and give intervals that are too narrow.

@@ -76,7 +76,9 @@ import numpy as np
 import pandas as pd
 
 from retentioneering.eventstream.event_type import EventTypes
-from retentioneering.exceptions import InvalidParameterError
+from retentioneering.exceptions import InvalidMetricConfigError, InvalidParameterError
+from retentioneering.paths import anchors
+from retentioneering.paths.tokens import EventClass, Gap, Token, parse_token
 from retentioneering.tools import _stats
 from retentioneering.tools._diff import MISSING, MULTI, per_path_label, warn_user
 from retentioneering.tools.ab_test import (
@@ -86,7 +88,11 @@ from retentioneering.tools.ab_test import (
     check_levels,
     check_min_support,
     mde_alpha_of,
+    parse_metrics,
+    validate_metrics_on_stream,
 )
+
+from retentioneering.utils.sequences import PATH_DELIMITER
 
 if TYPE_CHECKING:
     from retentioneering.eventstream import Eventstream
@@ -985,6 +991,56 @@ def _mergeable(state: _State, protected: set, st: _Stats) -> np.ndarray:
     return ok
 
 
+def _protected_overrides(
+    state: _State,
+    st: _Stats,
+    watched: dict,
+    boundary: set,
+    *,
+    min_path_share: float,
+    chain_threshold: float,
+    min_support: int,
+    max_group_size: int,
+) -> list[dict]:
+    """Rare events and chain candidates excluded by declared protection."""
+    free = _mergeable(state, boundary, st)
+    found = []
+    reasons = {}
+    for code, reason in watched.items():
+        label = int(state.label_of[code])
+        if label < 0 or not free[label]:
+            continue
+        reasons[label] = reason
+        event = state.names[label]
+        if st.path_share[label] < min_path_share:
+            found.append(
+                {
+                    "event": event,
+                    "reason": reason,
+                    "operation": "rare",
+                    "with": None,
+                    "evidence": float(st.path_share[label]),
+                }
+            )
+    for _, u, v, p_next, p_prev in _chain_candidates(
+        st, free, chain_threshold, min_support
+    ):
+        if state.size(u) + state.size(v) > max_group_size:
+            continue
+        for label, neighbour in ((u, v), (v, u)):
+            if label in reasons:
+                found.append(
+                    {
+                        "event": state.names[label],
+                        "reason": reasons[label],
+                        "operation": "merge_chain",
+                        "with": state.names[neighbour],
+                        "evidence": float(min(p_next, p_prev)),
+                    }
+                )
+    return found
+
+
 #: A label is thin when at least this share of the paths through its cells are in
 #: cells that are not testable.
 THIN_SHARE = 0.5
@@ -1002,6 +1058,9 @@ def _build_path(
     max_events: int | None,
     other_name: str,
     max_group_size: int = MAX_GROUP_SIZE,
+    reserved_labels: set[str] | None = None,
+    watched: dict | None = None,
+    overrides: list | None = None,
 ) -> tuple[list[dict], list[_State], list[_Op]]:
     """The greedy path: the numbers and the state after every operation.
 
@@ -1033,6 +1092,11 @@ def _build_path(
     two medium groups win over one growing group. When no admissible merge is
     left, the path stops: no frequent event is dropped or relabelled, and the
     plan takes the smallest vocabulary reached (with a warning).
+
+    ``watched`` maps the codes of the declared events (``keep``, ``metrics``,
+    ``edges``) to their reason; the operations their protection prevents at each
+    state (see :func:`_protected_overrides`) are appended to ``overrides`` with
+    the step of that state, first sighting only.
     """
     n_orig = len(data.events)
     state = _State(
@@ -1042,7 +1106,7 @@ def _build_path(
         ordered=[[str(e)] for e in data.events],
         full=[str(e) for e in data.events],
     )
-    taken = {str(e) for e in data.events}
+    taken = set(data.events) | (reserved_labels or set()) | {other_name}
     src, _, _ = _transitions(data.codes, data.pid, n_orig)
     original_transitions = len(src)
     # the numbers of the current state, ``_thin`` included (the path rows drop it)
@@ -1253,9 +1317,26 @@ def _build_path(
             ),
         )
 
+    boundary = protected - set(watched or ())
+    seen_overrides: set = set()
     while True:
         st = _stats_of(data, state, None)
         mergeable = _mergeable(state, protected, st)
+        if watched and overrides is not None:
+            for hit in _protected_overrides(
+                state,
+                st,
+                watched,
+                boundary,
+                min_path_share=min_path_share,
+                chain_threshold=chain_threshold,
+                min_support=screen.min_support,
+                max_group_size=max_group_size,
+            ):
+                key = (hit["event"], hit["operation"])
+                if key not in seen_overrides:
+                    seen_overrides.add(key)
+                    overrides.append({"step": len(ops), **hit})
         op = None
         for kind in order:
             if kind == "chain":
@@ -1680,6 +1761,87 @@ def _check_events(name: str, value: Any, available: set) -> list[str]:
     return events
 
 
+def _is_positive_subsequence(tokens: list[Token], boundaries: set[str]) -> bool:
+    """A pattern of positive positions separated by unrestricted, unbounded gaps."""
+    for position, token in enumerate(tokens):
+        if position % 2:
+            if not isinstance(token, Gap) or not token.is_plain:
+                return False
+        elif isinstance(token, str):
+            if token in boundaries:
+                return False
+        elif (
+            not isinstance(token, EventClass)
+            or token.negated
+            or boundaries.intersection(token.members)
+        ):
+            return False
+    return True
+
+
+def _metric_protection(
+    stream: "Eventstream", metrics: Any, available: set[str]
+) -> tuple[list[str], list[str]]:
+    """Event labels to keep, and metrics whose values can change anyway."""
+    if metrics is None:
+        return [], []
+    try:
+        specs = parse_metrics(metrics)
+        validate_metrics_on_stream(stream, specs)
+    except InvalidMetricConfigError as exc:
+        raise InvalidParameterError(
+            "metrics", metrics, ["metric configs as in get_ab_test"], reason=str(exc)
+        ) from exc
+
+    event_col = stream.schema.event_col
+    boundaries = {EventTypes().PATH_START.name, EventTypes().PATH_END.name}
+    found = []
+    raw_metrics = []
+    for spec in specs:
+        for config in (spec.config, spec.denominator):
+            if config is None:
+                continue
+            metric, args = config["metric"], config["metric_args"]
+            if args.get("event_col") not in (None, event_col):
+                raw_metrics.append(spec.name)
+                continue
+
+            names = []
+            if metric in ("has_event", "event_count"):
+                names = [args["event"]]
+            elif metric in ("has_all_events", "has_any_event"):
+                names = args["events"]
+            elif metric == "time_between":
+                names = [args["start_event"], args["end_event"]]
+                if boundaries.intersection(names):
+                    raw_metrics.append(spec.name)
+            elif metric == "active_days" and args.get("active_events"):
+                events = args["active_events"]
+                names = events if isinstance(events, list) else [events]
+            elif metric == "matches_pattern":
+                # The scorecard's parser/validator handles groups, classes and gaps.
+                pattern = anchors.normalize_pattern(args["pattern"], warn=False)
+                tokens = [parse_token(raw) for raw in pattern.split(PATH_DELIMITER)]
+                for token in tokens:
+                    if isinstance(token, Gap):
+                        token = token.constraint
+                    if isinstance(token, EventClass):
+                        names.extend(token.members)
+                    elif isinstance(token, str):
+                        names.append(token)
+                if not _is_positive_subsequence(tokens, boundaries):
+                    raw_metrics.append(spec.name)
+            else:
+                raw_metrics.append(spec.name)
+
+            for name in names:
+                if not isinstance(name, str) or name not in available:
+                    raise InvalidParameterError("metrics", name, sorted(available))
+                found.append(name)
+
+    return list(dict.fromkeys(found)), list(dict.fromkeys(raw_metrics))
+
+
 #: ``attrs["mde_basis"]`` of a plan: what its MDE and testable cells are.
 MDE_BASIS = (
     "pooled: the spread of both arms together (linearised for ratio and count "
@@ -1839,6 +2001,7 @@ def ab_compression(
     target: Any = "untestable_share",
     step: int | None = None,
     keep=None,
+    metrics=None,
     other: str = "other",
     by: str | None = None,
     by_pre_exposure: bool | None = None,
@@ -1884,11 +2047,21 @@ def ab_compression(
     schema = stream.schema
     event_col = schema.event_col
     start_name, end_name = EventTypes().PATH_START.name, EventTypes().PATH_END.name
-    available = set(map(str, pd.unique(stream.df[event_col]))) | {start_name, end_name}
+    original_labels = set(map(str, stream.df[event_col].cat.categories))
+    available = set(map(str, stream.df[event_col].unique())) | {start_name, end_name}
     keep_events = _check_events("keep", keep, available)
+    metric_events, raw_metrics = _metric_protection(stream, metrics, available)
     declared = _check_edges(edges, available) if edges is not None else []
     if by is not None and by not in schema.segment_cols:
         raise InvalidParameterError("by", by, list(schema.segment_cols))
+
+    if other in original_labels or other in {start_name, end_name}:
+        raise InvalidParameterError(
+            "other",
+            other,
+            ["a name that is not an event of the stream"],
+            reason=f"'{other}' is already an event; relabelling into it would merge them",
+        )
 
     pop = _population(
         stream, diff, assignment=assignment, horizon=horizon, path_col=path_col
@@ -1909,13 +2082,6 @@ def ab_compression(
     rank = np.empty(len(by_name), dtype=np.int64)
     rank[by_name] = np.arange(len(by_name))
     events, codes = names_used[by_name], rank[codes]
-    if other in set(events.tolist()):
-        raise InvalidParameterError(
-            "other",
-            other,
-            ["a name that is not an event of the stream"],
-            reason=f"'{other}' is already an event; relabelling into it would merge them",
-        )
     n1 = float((pop.arm == 0).sum())
     n2 = float((pop.arm == 1).sum())
     data = _Data(
@@ -1931,9 +2097,41 @@ def ab_compression(
     for event in (start_name, end_name):
         if event in code_of:
             protected_reason[code_of[event]] = "a path boundary event"
+    if pop.window.assigned_at is not None:
+        # Replay collapses a merged run at its first timestamp. Keep the first
+        # in-window row when the source has a pre-assignment prefix so a run
+        # cannot absorb that row into the prefix.
+        assigned_at = pop.window.assigned_at
+        source = stream.df
+        before = source[schema.timestamp_col].lt(source[path_col].map(assigned_at))
+        prefix = source.loc[before, [path_col, event_col]]
+        mutable_prefix = prefix[event_col].astype(str).isin(code_of)
+        pre_assignment_paths = prefix.loc[mutable_prefix, path_col].unique()
+        first_in_window = work.drop_duplicates(path_col)
+        boundary_events = first_in_window.loc[
+            first_in_window[path_col].isin(pre_assignment_paths), event_col
+        ]
+        for event in pd.unique(boundary_events.dropna()):
+            protected_reason.setdefault(
+                code_of[str(event)], "an assignment window boundary"
+            )
+    if horizon is not None:
+        # Maturity is measured at the source stream's last timestamp. Keep
+        # an event at that timestamp when replaying the plan on the same stream.
+        timestamps = stream.df[schema.timestamp_col]
+        latest = stream.df.loc[timestamps.eq(timestamps.max()), event_col].dropna()
+        latest_labels = set(map(str, latest))
+        if latest_labels and latest_labels <= code_of.keys():
+            protected_reason.setdefault(
+                code_of[min(latest_labels)], "the horizon cutoff"
+            )
+    boundary_codes = set(protected_reason)
     for event in keep_events:
         if event in code_of:
             protected_reason[code_of[event]] = "declared in keep"
+    for event in metric_events:
+        if event in code_of:
+            protected_reason.setdefault(code_of[event], "an event of the metrics")
     for pair in declared:
         for event in pair:
             if event in code_of:
@@ -1941,6 +2139,11 @@ def ab_compression(
                     code_of[event], "an event of the declared edges"
                 )
     protected = set(protected_reason)
+    watched = {
+        code: why
+        for code, why in protected_reason.items()
+        if code not in boundary_codes
+    }
 
     alpha = round(1.0 - float(ci_level), 12)
     scr = _Screen(
@@ -1997,8 +2200,17 @@ def ab_compression(
             )
 
     plan_parts, path_parts, homogeneity, chosen, mappings = [], [], [], {}, {}
+    overridden: list[dict] = []
     for value, part in groups:
-        rows, states, ops = _build_path(part, scr, **params)
+        hits: list[dict] = []
+        rows, states, ops = _build_path(
+            part,
+            scr,
+            **params,
+            reserved_labels=original_labels,
+            watched=watched,
+            overrides=hits,
+        )
         pick = (
             _choose(rows, target, params["max_events"]) if step is None else int(step)
         )
@@ -2006,6 +2218,10 @@ def ab_compression(
             raise InvalidParameterError(
                 "step", step, [f"an int from 0 to {len(states) - 1}"]
             )
+        # what the protection prevented on the way to the chosen step
+        for hit in hits:
+            if hit["step"] <= pick:
+                overridden.append(hit if by is None else {"segment": str(value), **hit})
         stats0 = _stats_of(part, states[0], None)
         plan_rows = _plan_rows(part, states, ops, pick, stats0, protected_reason, scr)
         # no event in the analysed window: an empty plan (it changes nothing)
@@ -2051,6 +2267,29 @@ def ab_compression(
         )
         homogeneity.append(h)
 
+    if overridden:
+        said = []
+        for hit in overridden:
+            what = (
+                f"in {hit['evidence']:.2%} of paths, rare (< min_path_share)"
+                if hit["operation"] == "rare"
+                else f"a chain with '{hit['with']}' (P(next) and P(prev) at least "
+                f"{hit['evidence']:.2f})"
+            )
+            text = f"'{hit['event']}' ({hit['reason']}): {what}"
+            if text not in said:
+                said.append(text)
+        warn_user(
+            f"protected events with rare-event or chain candidates: {'; '.join(said)}. Their labels are preserved "
+            "(attrs['protected_overrides']); adjacency and the metric's value "
+            "can still change"
+        )
+    if raw_metrics:
+        warn_user(
+            f"compression can change the values of metrics {raw_metrics!r} even "
+            "when their named events are kept. Read these on the original stream "
+            "(attrs['metrics_requiring_raw_stream'])"
+        )
     events_analysed = sum(len(part.codes) for _, part in groups)
     if not events_analysed:
         warn_user(
@@ -2094,6 +2333,9 @@ def ab_compression(
         "target_delta": target_delta,
         "other": other,
         "keep": keep_events,
+        "metrics_events": metric_events,
+        "metrics_requiring_raw_stream": raw_metrics,
+        "protected_overrides": overridden,
         "edges": [list(p) for p in declared] if declared else None,
         "min_support": int(min_support),
         "correction": correction,

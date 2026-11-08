@@ -399,6 +399,45 @@ class TestAssignmentThroughMcp:
         assert joint["metrics"][0]["periods"][0]["period"] == "0-6"
         assert all(p["scope"] for p in joint["metrics"][0]["periods"])
 
+    def test_funnel_uses_the_same_session_population_and_horizon(self) -> None:
+        session = _itt_session()
+        result = tools.funnel_data(
+            session, ["order", "visit"], DIFF, ci_level=0.95, horizon="10D"
+        )
+        json.dumps(result, allow_nan=False)
+        assert "error" not in result, result
+        one = result["steps"][0]
+        score = tools.get_ab_test(session, DIFF, _METRICS[:1], horizon="10D")[
+            "metrics"
+        ][0]
+        assert result["population"] == score["population"] == "assignment"
+        assert result["immature_paths"] > 0
+        for g in (1, 2):
+            assert result[f"funnel{g}_total_paths"] == score[f"group{g}_paths"]
+            assert one[f"funnel{g}_conversion_rate"] == pytest.approx(
+                score[f"group{g}_value"], abs=1e-6
+            )
+        assert result["steps"][1]["step_conditional"] is True
+        assert "assignment" in tools.describe_tool("funnel_data")["through_mcp"]
+
+    def test_funnel_undefined_inference_is_json_null(self) -> None:
+        at = pd.Timestamp("2026-01-01")
+        stream = Eventstream(
+            pd.DataFrame(
+                [(1, "buy", at), (2, "buy", at)],
+                columns=["user_id", "event", "timestamp"],
+            )
+        )
+        assignment = pd.DataFrame(
+            {"arm": ["treatment", "control"], "assigned_at": at + pd.Timedelta("1h")},
+            index=[1, 2],
+        )
+        session = ReportSession(stream, {}, assignment=assignment)
+        result = tools.funnel_data(session, ["buy", "buy"], DIFF, ci_level=0.95)
+        json.dumps(result, allow_nan=False)
+        assert result["steps"][0]["delta_conversion_rate_p_value"] is None
+        assert result["steps"][1]["delta_step_conversion_rate_ci_low"] is None
+
     def test_without_a_table_horizon_is_an_error(self) -> None:
         result = tools.get_ab_test(
             _ab_session(), ["arm", "treatment", "control"], _METRICS, horizon="7D"
@@ -711,6 +750,22 @@ class TestCompressionTool:
         )
         assert screen["n_rows"] == len(direct)
 
+    def test_metric_configs_reach_the_plan(self) -> None:
+        session = _session()
+        metrics = [
+            {"metric": "has_event", "metric_args": {"event": "order"}},
+            {
+                "name": "adjacent",
+                "metric": "matches_pattern",
+                "metric_args": {"pattern": "visit->order"},
+            },
+        ]
+        result = tools.get_ab_compression(session, DIFF, metrics=metrics)
+        json.dumps(result, allow_nan=False)
+        assert result["metrics_events"] == ["order", "visit"]
+        assert result["metrics_requiring_raw_stream"] == ["adjacent"]
+        assert any("compression can change" in w for w in result["warnings"])
+
     def test_target_delta(self, northwind) -> None:
         result = tools.get_ab_compression(northwind, DIFF, target_delta=0.02)
         assert "error" not in result, result
@@ -871,6 +926,7 @@ class TestServerWrappersInSync:
             "get_ab_transitions_power",
             "get_ab_steps_power",
             "get_ab_compression",
+            "funnel_data",
         ):
             tool_params = list(inspect.signature(getattr(tools, name)).parameters)[1:]
             schema = registered[name].parameters["properties"]

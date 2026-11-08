@@ -1854,6 +1854,7 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
         target="untestable_share",
         step: int | None = None,
         keep: list | None = None,
+        metrics: list | None = None,
         other: str = "other",
         by: str | None = None,
         by_pre_exposure: bool | None = None,
@@ -1994,7 +1995,15 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             cannot tell a synonym from the treatment's replacement of an event.
             A kept event keeps its label only: dropping or merging the events
             around it can still change what comes before or after it, and at
-            which step it stands.
+            which step it stands. A warning and `attrs["protected_overrides"]`
+            list protected rare events and chain candidates through the chosen step.
+        metrics : list of dict, optional
+            Scorecard metrics, as in `get_ab_test`, including ratio denominators.
+            Explicit event names in the stream's event column are protected as
+            with `keep`; invalid configs and unknown events raise. This preserves
+            the named event rows. Neighbouring rows can still change, affecting
+            patterns, duration, length or aggregates over other columns.
+            Use the original stream for the decision scorecard.
         other : str, default "other"
             The label of relabelled rare events; must not be an event already.
         by : str, optional
@@ -2058,7 +2067,13 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             transitions on them) and `reason` (the operation's evidence in
             words) — `status` (`"ok"`, or `"no_events_in_window"` when no
             compared path has an event in the analysed window: the plan is then
-            empty and a warning says so), `mde_basis`, `chosen_step`, `mappings` (the
+            empty and a warning says so), `mde_basis`, `chosen_step`,
+            `metrics_events` (the events `metrics` keeps),
+            `metrics_requiring_raw_stream` (metrics for which label protection
+            alone cannot preserve the per-path value), `protected_overrides`
+            (first protected rare or chain candidate per event and operation:
+            `step`, `event`, `reason`, `operation`, `with`, `evidence`,
+            and `segment` with `by`), `mappings` (the
             `{event: label}` of every step), `homogeneity` (effective vocabulary
             size `exp(entropy)` of the event distribution, transition entropy in
             bits, distinct-path share, and the numbers before and after) and the
@@ -2072,14 +2087,18 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             with `screen="steps"`), an unknown `keep` event or `by` column, a `by`
             column that changes within a compared path, or whose levels print
             alike (`1` and `"1"`), none of whose values is on a compared path, or
-            an `other` label that is already an event raise
-            `InvalidParameterError`.
+            an `other` label that is already an event, or `metrics` that are
+            not a list of metric configs or name an event the stream does not
+            have, raise `InvalidParameterError`.
 
         Examples
         --------
             diff = ("exp_group", "treatment", "control")
+            conversion = {"name": "conversion", "metric": "has_event",
+                          "metric_args": {"event": "purchase"}}
             plan = stream.get_ab_compression(diff, assignment=assignment,
-                                             keep=["quick_add"])
+                                             keep=["quick_add"],
+                                             metrics=[conversion])
             plan.attrs["path"][["step", "operation", "events", "vocabulary",
                                 "testable", "median_mde"]]
             compact = stream.compress_events(plan)
@@ -2110,6 +2129,7 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             target=target,
             step=step,
             keep=keep,
+            metrics=metrics,
             other=other,
             by=by,
             by_pre_exposure=by_pre_exposure,
@@ -4087,6 +4107,9 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
         height: int | None = None,
         sidebar_open: bool | None = None,
         state_file: str | None = None,
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
     ):
         """
         Interactive conversion funnel for Jupyter notebooks.
@@ -4116,6 +4139,13 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             Multiple-comparison correction over the overall-step p-values; see
             `funnel_data`. A value other than `"none"` needs `ci_level`
             (`InvalidParameterError` otherwise).
+        assignment : pandas.Series or pandas.DataFrame, optional
+            The experiment's arm table, as in `get_ab_test`: every assigned path
+            is in its arm's denominator, silent ones included; see
+            `funnel_data`.
+        horizon : str or pandas.Timedelta, optional
+            The analysed window from `assigned_at`, as in `get_ab_test`; see
+            `funnel_data`.
         height : int, default 420
             Widget height in pixels.
         sidebar_open : bool, default True
@@ -4155,6 +4185,8 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
             state_file=state_file,
+            assignment=assignment,
+            horizon=horizon,
         )
 
     @_tracked("headless_funnel")
@@ -4165,6 +4197,9 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
         path_col: str | None = None,
         ci_level: float | None = None,
         correction: str = "none",
+        *,
+        assignment: "pd.Series | pd.DataFrame | None" = None,
+        horizon=None,
     ) -> dict:
         """
         Compute funnel conversion metrics and return a dict (headless).
@@ -4192,8 +4227,8 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             least 10 of them holding several finer paths, raises
             `InvalidParameterError` at the finer `path_col`: per-session intervals
             of a per-user experiment are too narrow (the guard of `get_ab_test`).
-            Without `ci_level` the diff keeps the widgets' event-level split and
-            no guard applies.
+            Without `ci_level` or `assignment`, the diff keeps the widgets'
+            event-level split and no guard applies.
         correction : {"none", "holm", "bonferroni", "bh"}, default "none"
             Multiple-comparison correction applied across the funnel's steps to the
             overall-delta p-values (`delta_conversion_rate_p_value_adjusted`); used
@@ -4203,6 +4238,22 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             error rate; `"bh"` (Benjamini–Hochberg) controls the false discovery
             rate. Steps whose p-value is undefined (`NaN`) are left out of the
             family.
+        assignment : pandas.Series or pandas.DataFrame, optional
+            The experiment's per-path arm table, as in `get_ab_test`: a Series
+            `path_id -> arm` or a DataFrame with `arm` and optionally
+            `assigned_at`. Needs `diff` (`"arm"`, or a segment that agrees with
+            the table). Each group's denominator is then every assigned path of
+            its arm, **silent ones included** (assigned, no event: they reach no
+            step), events before `assigned_at` are dropped and paths absent from
+            the table are left out: the population of `get_ab_test(assignment=...)`,
+            so a one-step funnel matches the point estimate of a headline
+            `has_event` scorecard metric on the same event and window. The
+            groups are resolved per path, with or without
+            `ci_level`.
+        horizon : str or pandas.Timedelta, optional
+            As in `get_ab_test`, with an `assignment` holding `assigned_at`: only
+            events in `[assigned_at, assigned_at + horizon)` count, and paths
+            whose window has not closed at the stream's end are left out.
 
         Returns
         -------
@@ -4227,6 +4278,12 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
         - `total_paths` — paths in the eventstream, the denominator of
           `conversion_rate`; with `diff`, `funnel1_total_paths` and
           `funnel2_total_paths` instead (the paths of each group).
+
+        With `assignment`, top level: `population` (`"assignment"`),
+        `funnel1_silent_paths` and `funnel2_silent_paths` (assigned paths
+        without an event in the window, counted in the totals),
+        `unassigned_paths` (paths of the stream not in the table) and, with
+        `horizon`, `immature_paths`.
 
         With `ci_level`, per step (no `diff`):
 
@@ -4273,14 +4330,15 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
 
         Notes
         -----
-        Population: the unconditional denominator is the paths **with at least
-        one event** in the eventstream (per group with `diff`), what
-        `get_ab_test` calls `population="stream"`: users assigned to an arm who
-        never produced an event are not counted, so a funnel's first-step rate
-        can differ from the scorecard's (`get_ab_test(assignment=...)` counts
-        every assigned user, silent ones as 0, `population="assignment"`). Use
-        `get_ab_test` with an assignment table for the effect on the arms; the
-        funnel shows where the paths go. The intervals and p-values
+        Population: without `assignment` the unconditional denominator is the
+        paths **with at least one event** in the eventstream (per group with
+        `diff`), what `get_ab_test` calls `population="stream"`: users assigned
+        to an arm who never produced an event are not counted, so a funnel's
+        rates are higher than the scorecard's (`get_ab_test(assignment=...)`
+        counts every assigned user, silent ones as 0,
+        `population="assignment"`). Pass the scorecard's `assignment` (and
+        `horizon`) for an intention-to-treat funnel on the scorecard's
+        denominators. The intervals and p-values
         treat every path as an independent unit, so they assume `path_col` is
         the unit that was assigned to a group: session paths of a user-level
         experiment give intervals that are too narrow. p-values are per
@@ -4305,6 +4363,15 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
                 ci_level=0.95,
                 correction="holm",
             )
+
+            # intention to treat: every assigned user, silent ones included
+            stream.funnel_data(
+                ["catalog", "add_to_cart", "purchase"],
+                diff=("arm", "treatment", "control"),
+                ci_level=0.95,
+                assignment=assignment,
+                horizon="28D",
+            )
         """
         from retentioneering.tools.funnel import Funnel
 
@@ -4316,6 +4383,8 @@ get_ab_compression : A smaller vocabulary for the same paths, so that more cells
             path_col=path_col,
             ci_level=ci_level,
             correction=correction,
+            assignment=assignment,
+            horizon=horizon,
         )
 
     @_tracked("get_conversion_rate")
@@ -5078,6 +5147,7 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
         target=None,
         step: int | None = None,
         keep: list | None = None,
+        metrics: list | None = None,
         other: str | None = None,
         by: str | None = None,
         by_pre_exposure: bool | None = None,
@@ -5126,6 +5196,7 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
             self,
             diff,
             assignment=assignment,
+            metrics=metrics,
             state_file=state_file,
             **{k: v if v is not None else _UNSET for k, v in args.items()},
         )
@@ -5151,6 +5222,7 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
         target="untestable_share",
         step: int | None = None,
         keep: list | None = None,
+        metrics: list | None = None,
         other: str = "other",
         by: str | None = None,
         by_pre_exposure: bool | None = None,
@@ -5179,6 +5251,7 @@ step_matrix : `step_matrix(diff=...)` draws the arms' differences without tests.
             target=target,
             step=step,
             keep=keep,
+            metrics=metrics,
             other=other,
             by=by,
             by_pre_exposure=by_pre_exposure,

@@ -191,7 +191,17 @@ class ABCompressionWidget(ABFrameWidget):
     _tool = "get_ab_compression"
     _export_label = "A/B Compression"
 
-    def __init__(self, eventstream, diff, assignment=None, state_file=None, **args):
+    def __init__(
+        self,
+        eventstream,
+        diff,
+        assignment=None,
+        state_file=None,
+        *,
+        metrics=None,
+        **args,
+    ):
+        self._metrics = metrics
         # The arguments as the caller wrote them are checked as the getter checks
         # them, before they become traitlets: a trait's sentinel (0 = no cap,
         # -1 = the chosen step, 0.0 = no target effect) must not turn an invalid
@@ -275,6 +285,7 @@ class ABCompressionWidget(ABFrameWidget):
             params["edges"] = None
         params.update(overrides or {})
         params["assignment"] = self._assignment
+        params["metrics"] = self._metrics
         return params
 
     def _twin(self, params: dict) -> pd.DataFrame:

@@ -419,6 +419,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- `get_ab_compression(metrics=...)` protects event labels named in the
+  scorecard, including ratio denominators. It validates the configs and
+  patterns with the scorecard's parser. The Python API, widget and MCP tool
+  report when label protection alone cannot preserve a metric's value.
+  Generated labels are distinct from the source vocabulary, and a plan
+  built with a horizon preserves the source's end-of-data timestamp on replay.
+  The first in-window event is kept where replay could otherwise merge it
+  into pre-assignment history.
+- `funnel_data` and `funnel` take `assignment=` and `horizon=` as `get_ab_test`
+  does. Mature silent paths count in the denominator, even when an entire arm
+  has no events in the window. The result adds `population`,
+  `funnel1_silent_paths`, `funnel2_silent_paths`, `unassigned_paths` and, with
+  a horizon, `immature_paths`. MCP exposes `funnel_data` using the session's
+  assignment table.
 - `get_ab_transitions_power` / `get_ab_steps_power`: support is no longer read as
   inference. A rare transition probability of 1 in both arms (every path's own
   ratio is 1) was `testable=True` at larger scales, with no MDE, and enlarged the

@@ -75,7 +75,7 @@ def serve(
         `arm` and optionally `assigned_at`). When given, the A/B tools
         (get_sample_ratio, get_ab_test, add_ab_test, get_ab_bootstrap,
         get_ab_transitions, get_ab_steps, get_ab_transitions_power,
-        get_ab_steps_power, get_ab_compression) count every assigned path, silent ones included (intention to treat), and `horizon=` /
+        get_ab_steps_power, get_ab_compression, funnel_data) count every assigned path, silent ones included (intention to treat), and `horizon=` /
         since-assignment periods become available to the agent. The table stays
         in this process; describe() reports its size and arms. Example::
 
@@ -287,7 +287,7 @@ def _build_server(
         Analysis tools (called directly, not as a preprocessor step):
           get_conversion_rate  get_sample_ratio  get_ab_test  get_ab_bootstrap
           get_ab_transitions  get_ab_steps  get_ab_transitions_power
-          get_ab_steps_power  get_ab_compression
+          get_ab_steps_power  get_ab_compression  funnel_data
 
         Reference topics:
           report_links   (anchor link syntax for analysis text)
@@ -1087,6 +1087,36 @@ def _build_server(
         return json.dumps(result, ensure_ascii=False, allow_nan=False)
 
     @_tool()
+    def funnel_data(
+        steps: list[str],
+        diff: list | None = None,
+        path_col: str | None = None,
+        ci_level: float | None = None,
+        correction: str = "none",
+        horizon: str | None = None,
+        local_preprocessors: list | None = None,
+    ) -> str:
+        """Return ordered funnel counts and rates, optionally with intervals.
+
+        With a session assignment table, pass diff=["arm", "treatment", "control"]
+        (or the stream's matching arm segment). Silent paths count in the
+        denominator. Horizon and maturity match get_ab_test; conditional
+        step-to-step rates after the first step are descriptive. See
+        describe_tool("funnel_data") for details.
+        """
+        result = tools.funnel_data(
+            session,
+            steps,
+            diff,
+            path_col,
+            ci_level,
+            correction,
+            horizon,
+            local_preprocessors,
+        )
+        return json.dumps(result, ensure_ascii=False, allow_nan=False)
+
+    @_tool()
     def get_ab_compression(
         diff: list,
         screen: str = "transitions",
@@ -1111,6 +1141,7 @@ def _build_server(
         target_delta: float | None = None,
         top: int = 15,
         local_preprocessors: list | None = None,
+        metrics: list[dict] | None = None,
     ) -> str:
         """
         Propose a smaller event vocabulary for an A/B screen, chosen without the arms.
@@ -1155,6 +1186,10 @@ def _build_server(
             Optional: the plan at this step of the path instead.
         keep:
             Events never changed: the treatment's own and the metric's events.
+        metrics:
+            Scorecard configs, as in get_ab_test. Named events are kept,
+            including those in ratio denominators. Read the decision scorecard
+            on the original stream.
         other:
             Label of relabelled rare events (default "other").
         by, by_pre_exposure:
@@ -1168,7 +1203,8 @@ def _build_server(
         Returns
         -------
         JSON with screen, population, group sizes, target, arm_blind, unit,
-        warnings and segments: chosen_step, steps, before / after (vocabulary,
+        warnings, metrics_events, metrics_requiring_raw_stream, protected_overrides
+        and segments: chosen_step, steps, before / after (vocabulary,
         cells, testable, untestable, untestable_share, median_mde, mass_retained,
         artificial_transitions), reading (quote it), homogeneity, path (to one
         step after the chosen), n_changed, changes (event, action, label, members,
@@ -1201,6 +1237,7 @@ def _build_server(
             target_delta,
             top,
             local_preprocessors,
+            metrics=metrics,
         )
         return json.dumps(result, ensure_ascii=False, allow_nan=False)
 

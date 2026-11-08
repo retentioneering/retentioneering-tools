@@ -79,8 +79,26 @@ each of its three closest neighbours (`operation = "merge_neighbour"`).
 A label of three events or more longer than 40 characters is written
 `first+…+last (k)`; the plan's `members` column, the path's `members` and the
 widget list its events. Merged neighbours can still join a funnel step with the
-next one: declare in `keep` the events the decision rests on (the treatment's and
-the metric's), and read the labels before applying the plan.
+next one: declare in `keep` the events the decision rests on (the treatment's),
+pass the scorecard's metrics as `metrics=` (their events are kept as with `keep`),
+and read the labels before applying the plan. A chain such as `order_commit ->
+order_success` is otherwise merged into one label, and a scorecard on
+`order_success` no longer finds its event on the compressed stream. Which step the
+default takes depends on the data, so declare them whatever the step.
+A warning and `attrs["protected_overrides"]` list protected rare events and
+chain candidates seen through the chosen step.
+
+Label protection preserves the rows for those events. For example, dropping a
+rare `debug` from `cart -> debug -> purchase` can create a match for the adjacent
+pattern `cart->purchase` even when both endpoints are protected. Check
+`attrs["metrics_requiring_raw_stream"]` for metrics affected by changes beyond
+their named event rows. Read the decision scorecard on the original stream and
+use the compressed stream for exploration. With a `horizon`, the plan keeps an
+event at the original stream's last timestamp so replay on that stream preserves
+the maturity cutoff. Where pre-assignment rows can be compressed, the plan
+keeps the first in-window event so replay cannot collapse it into a row before
+assignment. These protections are learned from the source stream. Applying the
+plan to a differently filtered stream can change the cutoff and population.
 
 ### How much data each vocabulary needs
 

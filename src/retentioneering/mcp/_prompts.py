@@ -116,6 +116,7 @@ _ANALYSIS_METHODS = frozenset(
         "get_ab_transitions_power",
         "get_ab_steps_power",
         "get_ab_compression",
+        "funnel_data",
     }
 )
 
@@ -377,7 +378,7 @@ def _system_instructions(
         header.append(
             "An experiment assignment table is attached (see describe()['assignment']): "
             "get_sample_ratio, get_ab_test, add_ab_test, get_ab_bootstrap, "
-            "get_ab_transitions, get_ab_steps, their _power tools and get_ab_compression count every assigned user, silent ones included (intention to treat); horizon= and "
+            "get_ab_transitions, get_ab_steps, their _power tools, get_ab_compression and funnel_data count every assigned user, silent ones included (intention to treat); horizon= and "
             "period_basis='since_assignment' use its assigned_at."
         )
     if context.get("description"):

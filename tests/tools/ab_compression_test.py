@@ -427,6 +427,43 @@ def test_horizon_compression_preserves_end_of_data():
     assert compact.df["timestamp"].max() == at + 3 * hour
 
 
+@pytest.mark.parametrize("horizon", [None, "1h"])
+def test_replay_does_not_merge_an_in_window_event_into_pre_assignment_history(horizon):
+    at = pd.Timestamp("2026-01-01")
+    hour = pd.Timedelta("1h")
+    minute = pd.Timedelta("1min")
+    rows = [(1, "A", at - hour), (1, "B", at)]
+    rows.extend(
+        (uid, event, at + offset * minute)
+        for uid in (2, 3)
+        for event, offset in (("A", 0), ("B", 1))
+    )
+    rows.extend(
+        (uid, event, at + offset * minute)
+        for uid in (1, 2, 3)
+        for event, offset in (("C", 2), ("D", 3))
+    )
+    rows.append((4, "coverage", at + hour))
+    stream = Eventstream(pd.DataFrame(rows, columns=["user_id", "event", "timestamp"]))
+    assignment = pd.DataFrame(
+        {"arm": ["a", "a", "b"], "assigned_at": at}, index=[1, 2, 3]
+    )
+    args = {"assignment": assignment, "horizon": horizon}
+    with pytest.warns(UserWarning, match="reaches max_events=2"):
+        plan = stream.get_ab_compression(
+            TOY, **args, chain_threshold=0.6, min_support=1, max_events=2
+        )
+    assert (
+        plan.set_index("event").loc["B", "reason"]
+        == "kept: an assignment window boundary"
+    )
+    assert _action(plan, "C") == _action(plan, "D") == "merge"
+    compact = stream.compress_events(plan)
+    result = compact.funnel_data(["B"], TOY, **args)
+    assert result["funnel1_silent_paths"] == 0
+    assert result["steps"][0]["funnel1_conversion_rate"] == 1.0
+
+
 def test_protection_reports_a_blocked_chain_even_at_step_zero():
     at = pd.Timestamp("2026-01-01")
     rows = [

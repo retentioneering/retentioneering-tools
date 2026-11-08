@@ -2097,6 +2097,24 @@ def ab_compression(
     for event in (start_name, end_name):
         if event in code_of:
             protected_reason[code_of[event]] = "a path boundary event"
+    if pop.window.assigned_at is not None:
+        # Replay collapses a merged run at its first timestamp. Keep the first
+        # in-window row when the source has a pre-assignment prefix so a run
+        # cannot absorb that row into the prefix.
+        assigned_at = pop.window.assigned_at
+        source = stream.df
+        before = source[schema.timestamp_col].lt(source[path_col].map(assigned_at))
+        prefix = source.loc[before, [path_col, event_col]]
+        mutable_prefix = prefix[event_col].astype(str).isin(code_of)
+        pre_assignment_paths = prefix.loc[mutable_prefix, path_col].unique()
+        first_in_window = work.drop_duplicates(path_col)
+        boundary_events = first_in_window.loc[
+            first_in_window[path_col].isin(pre_assignment_paths), event_col
+        ]
+        for event in pd.unique(boundary_events.dropna()):
+            protected_reason.setdefault(
+                code_of[str(event)], "an assignment window boundary"
+            )
     if horizon is not None:
         # Maturity is measured at the source stream's last timestamp. Keep
         # an event at that timestamp when replaying the plan on the same stream.

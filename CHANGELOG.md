@@ -425,6 +425,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   report when label protection alone cannot preserve a metric's value.
   Generated labels are distinct from the source vocabulary, and a plan
   built with a horizon preserves the source's end-of-data timestamp on replay.
+  The first in-window event is kept where replay could otherwise merge it
+  into pre-assignment history.
 - `funnel_data` and `funnel` take `assignment=` and `horizon=` as `get_ab_test`
   does. Mature silent paths count in the denominator, even when an entire arm
   has no events in the window. The result adds `population`,

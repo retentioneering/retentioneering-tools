@@ -39,20 +39,34 @@ _ph_attempted = False
 _ph_lock = threading.Lock()
 
 
-def _client():
-    """The PostHog client, created on first use; None if it cannot be built."""
-    global _ph, _ph_attempted
-    if _ph is None and not _ph_attempted:
-        with _ph_lock:
-            if _ph is None and not _ph_attempted:
-                _ph_attempted = True
-                try:
-                    from posthog import Posthog
+def _reset_client_lock_after_fork():
+    # Only the forking thread survives. Never acquire a lock inherited from
+    # another thread. Preserve attempted: even an unfinished SDK constructor
+    # may have registered exit/fork handlers and started a consumer already.
+    global _ph_lock
+    _ph_lock = threading.Lock()
 
-                    _ph = Posthog(project_api_key=_KEY, host=_HOST)
-                except Exception:
-                    _ph = None
-    return _ph
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reset_client_lock_after_fork)
+
+
+def _client():
+    """Return the shared client; do not retry a failed or inherited attempt."""
+    global _ph, _ph_attempted
+    with _ph_lock:
+        if _ph is None and not _ph_attempted:
+            # All readers hold the lock, so concurrent calls wait for the result.
+            # Mark before construction so a forked child cannot build a second
+            # client while inheriting side effects of a partial SDK constructor.
+            _ph_attempted = True
+            try:
+                from posthog import Posthog
+
+                _ph = Posthog(project_api_key=_KEY, host=_HOST)
+            except Exception:
+                _ph = None
+        return _ph
 
 
 # ── distinct_id ────────────────────────────────────────────────────────────────

@@ -1,11 +1,9 @@
 import random
-import zlib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-from gensim.models import Word2Vec
 from sklearn.cluster import AgglomerativeClustering
 
 from retentioneering import engine
@@ -23,13 +21,8 @@ if TYPE_CHECKING:
 # leftmost / rightmost interior node.
 ANCHOR_MARGIN = 150.0
 
-
-def _deterministic_hash(word: str) -> int:
-    """Word2Vec seeds each word's initial vector via hashfxn(word). The
-    default is Python's hash(), which is randomized per process
-    (PYTHONHASHSEED) — the layout would differ between kernel restarts.
-    CRC32 pins it."""
-    return zlib.crc32(str(word).encode("utf-8"))
+# Co-occurrence window of the event embedding, in steps on either side.
+EMBEDDING_WINDOW = 5
 
 
 @dataclass
@@ -40,8 +33,10 @@ class GraphLayout:
 
     1. Collect user trajectories (real paths by default, or random walks
        over the ``proba_out`` transition matrix).
-    2. Embed events with word2vec over those trajectories — events that
-       appear in similar contexts get nearby vectors.
+    2. Embed events by their co-occurrence in those trajectories: positive
+       pointwise mutual information over a sliding window, factorized with
+       SVD — the closed-form counterpart of word2vec's skip-gram objective.
+       Events that appear in similar contexts get nearby vectors.
     3. Recursively split the embedding space with agglomerative clustering
        and map the splits onto nested rectangles of the canvas, so related
        events land in the same region and the nesting reflects the cluster
@@ -49,9 +44,9 @@ class GraphLayout:
     4. Pin the flow anchors: ``path_start`` on the far left, ``path_end`` on
        the far right, both at the vertical center of the content.
 
-    Determinism: single-worker word2vec with a fixed seed and a
-    process-independent ``hashfxn``, seeded sampling/jitter — the same
-    stream produces the same layout, including across kernel restarts.
+    Determinism: the embedding is a closed-form factorization with no
+    random state, and sampling/jitter are seeded — the same stream produces
+    the same layout, including across kernel restarts.
     """
 
     eventstream: "Eventstream"
@@ -147,8 +142,9 @@ class GraphLayout:
         # guaranteed to survive GROUP BY. The cast sidesteps categorical
         # columns coming back as category codes. The outer ORDER BY pins the
         # trajectory order — DuckDB's parallel GROUP BY returns rows in
-        # varying order, and the word2vec training result depends on corpus
-        # order, so without it the layout would differ between runs.
+        # varying order, and trajectory sampling and the event order of the
+        # embedding depend on it, so without it the layout would differ
+        # between runs.
         query = f"""
         select list(cast({event_col_q} as varchar)
                     order by {index_col_q}, {subindex_col_q}) as events
@@ -223,18 +219,52 @@ class GraphLayout:
     def _embed_events(
         self, trajectories: list[list[str]], vector_size: int, seed: int
     ) -> tuple[np.ndarray, dict[int, str]]:
-        model = Word2Vec(
-            sentences=trajectories,
-            vector_size=vector_size,
-            window=5,
-            min_count=1,
-            workers=1,  # single worker — required for determinism
-            seed=seed,
-            hashfxn=_deterministic_hash,
-        )
+        """PPMI + SVD embedding (Levy & Goldberg, 2014): the factorization
+        word2vec's skip-gram with negative sampling implicitly performs,
+        computed directly. ``seed`` is unused — nothing here is random — and
+        kept so the signature matches the sampling steps around it."""
+        # Most frequent first, ties by name: a stable order, so cluster
+        # labels and grid cells are assigned the same way on every run.
+        counts: dict[str, int] = {}
+        for trajectory in trajectories:
+            for event in trajectory:
+                counts[event] = counts.get(event, 0) + 1
+        events = sorted(counts, key=lambda e: (-counts[e], e))
+        event_to_idx = {event: i for i, event in enumerate(events)}
+        n = len(events)
 
-        events = list(model.wv.index_to_key)
-        embeddings = np.array([model.wv[event] for event in events])
+        # Symmetric co-occurrence counts within the window, weighted 1/d by
+        # distance — the expected weight under word2vec's shrinking window.
+        cooc = np.zeros((n, n))
+        for trajectory in trajectories:
+            ids = np.fromiter((event_to_idx[e] for e in trajectory), dtype=np.int64)
+            for d in range(1, min(EMBEDDING_WINDOW, len(ids) - 1) + 1):
+                np.add.at(cooc, (ids[:-d], ids[d:]), 1.0 / d)
+        cooc = cooc + cooc.T
+
+        # PPMI with context-distribution smoothing (alpha = 0.75, as in
+        # word2vec's negative sampling).
+        total = cooc.sum()
+        row = cooc.sum(axis=1, keepdims=True)
+        context = cooc.sum(axis=0, keepdims=True) ** 0.75
+        context = context / context.sum() * total
+        with np.errstate(divide="ignore", invalid="ignore"):
+            pmi = np.log(cooc * total / (row * context))
+        ppmi = np.where(np.isfinite(pmi) & (pmi > 0), pmi, 0.0)
+
+        u, s, _ = np.linalg.svd(ppmi)
+        k = min(vector_size, n)
+        embeddings = u[:, :k] * np.sqrt(s[:k])
+        # SVD fixes each singular vector only up to sign; pin it so the
+        # largest-magnitude entry is positive.
+        signs = np.sign(embeddings[np.abs(embeddings).argmax(axis=0), np.arange(k)])
+        embeddings = embeddings * np.where(signs == 0, 1.0, signs)
+        # Unit length: clustering then compares directions (cosine), not
+        # magnitudes, which otherwise track event frequency and lump the
+        # frequent events into one cluster.
+        norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+        embeddings = embeddings / np.where(norms == 0, 1.0, norms)
+
         idx_to_event = {i: event for i, event in enumerate(events)}
 
         return embeddings, idx_to_event

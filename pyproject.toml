@@ -65,6 +65,8 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
 ]
 dependencies = [
     "pandas>=2.2",
@@ -86,7 +88,6 @@ dependencies = [
     # bumped to >=0.16 for httpcore2 — a dangling conflict `pip check`
     # reports. Naming httpcore gives pip a reason to upgrade that copy too.
     "httpcore>=1.0.9",
-    "gensim>=4.3.3",
 ]
 
 [project.urls]

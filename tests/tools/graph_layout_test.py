@@ -29,7 +29,7 @@ class TestGraphLayout:
         df = _linear_df()
         base = GraphLayout(Eventstream(df)).fit()
 
-        # Fixed seed + single worker + process-independent hashfxn
+        # Closed-form embedding + seeded sampling and jitter
         for _ in range(3):
             assert GraphLayout(Eventstream(df)).fit() == base
 
@@ -75,6 +75,34 @@ class TestGraphLayout:
         layout = GraphLayout(Eventstream(df)).fit()
 
         assert set(layout) == {"path_start", "path_end", "A", "B", "X", "Y"}
+
+    def test__related_events_share_a_region(self):
+        # Two flows that never meet, each walked in a varying order: their
+        # events co-occur only within the flow, so the flows get different
+        # top-level cells. (Paths are long enough for the flow, not the
+        # path_start/path_end shared by every path, to dominate the context.)
+        flows = [["A", "B", "C", "D"], ["W", "X", "Y", "Z"]]
+        users, events = [], []
+        for user in range(12):
+            flow = flows[user % 2]
+            path = [flow[(user + step * (1 + user % 3)) % 4] for step in range(10)]
+            users += [user] * len(path)
+            events += path
+        df = pd.DataFrame(
+            {
+                "user_id": users,
+                "event": events,
+                "timestamp": pd.date_range(
+                    "2024-01-01", periods=len(events), freq="1min"
+                ),
+            }
+        )
+        layout = GraphLayout(Eventstream(df)).fit(n_clusters=2)
+
+        # Two top-level clusters stack as a 2x1 grid: the cell is the sign of y.
+        cells = [{layout[e]["y"] > 0 for e in flow} for flow in flows]
+        assert all(len(cell) == 1 for cell in cells)
+        assert cells[0] != cells[1]
 
     def test__single_event(self):
         df = pd.DataFrame(

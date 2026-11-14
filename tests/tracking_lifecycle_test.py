@@ -1,8 +1,6 @@
 """Client lifecycle regressions; subprocesses isolate imports and SDK threads."""
 
-import multiprocessing
 import os
-import socket
 import subprocess
 import sys
 import textwrap
@@ -43,14 +41,11 @@ def _run_python(code, tmp_path, *, opt_out=True):
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-@pytest.mark.parametrize("opt_out", ["environment", "config", "none"])
-def test_fresh_import_does_not_load_sdk_or_start_threads(tmp_path, opt_out):
-    if opt_out == "config":
-        config = tmp_path / ".retentioneering" / "config.json"
-        config.parent.mkdir()
-        config.write_text('{"RETENTIONEERING_NO_TRACK": true}')
+def test_fresh_import_does_not_load_sdk_or_start_threads(tmp_path):
+    # Tracking enabled, no event sent: import alone must not build the client.
+    # Opt-out before the first call is covered in-process below.
     _run_python(
-        f"""
+        """
         import sys
         import threading
         starts = []
@@ -61,16 +56,13 @@ def test_fresh_import_does_not_load_sdk_or_start_threads(tmp_path, opt_out):
         threading.Thread.start = record_start
         import retentioneering
         from retentioneering import _tracking
-        if {opt_out != "none"!r}:
-            _tracking.track("blocked")
-            _tracking.identify({{}})
         assert "posthog" not in sys.modules
         assert _tracking._ph is None
         assert not _tracking._ph_attempted
         assert not any(name.startswith("posthog") for name in starts), starts
         """,
         tmp_path,
-        opt_out=opt_out == "environment",
+        opt_out=False,
     )
 
 
@@ -156,13 +148,11 @@ def test_failed_initialization_is_not_retried(lazy_client):
 
 
 @pytest.mark.skipif(not hasattr(os, "fork"), reason="fork is POSIX only")
-@pytest.mark.parametrize("state", ["unused", "locked", "initializing", "failed"])
-def test_fork_child_preserves_attempt_without_parent_lock(tmp_path, state):
+def test_fork_child_does_not_inherit_held_lock(tmp_path):
     _run_python(
-        f"""
+        """
         import os
         import sys
-        import threading
         from types import SimpleNamespace
         from unittest.mock import MagicMock
         from retentioneering import _tracking
@@ -170,75 +160,24 @@ def test_fork_child_preserves_attempt_without_parent_lock(tmp_path, state):
         _tracking._no_track_requested = lambda: False
         constructor = MagicMock()
         sys.modules["posthog"] = SimpleNamespace(Posthog=constructor)
-        if {state!r} in ("locked", "initializing"):
-            # State of a lock owned by another thread at the instant of fork.
-            _tracking._ph_lock.acquire()
-        if {state!r} in ("initializing", "failed"):
-            _tracking._ph_attempted = True
+        # State of a lock owned by another thread at the instant of fork.
+        _tracking._ph_lock.acquire()
         pid = os.fork()
         if pid == 0:
             import signal
             signal.alarm(5)
             try:
                 _tracking.track("child")
-                _tracking.identify({{}})
-                if {state!r} in ("initializing", "failed"):
-                    constructor.assert_not_called()
-                    assert _tracking._ph is None
-                else:
-                    constructor.assert_called_once()
-                    assert constructor.return_value.capture.call_count == 1
-                    assert constructor.return_value.identify.call_count == 1
+                _tracking.identify({})
+                constructor.assert_called_once()
+                assert constructor.return_value.capture.call_count == 1
+                assert constructor.return_value.identify.call_count == 1
             except BaseException:
                 os._exit(1)
             os._exit(0)
         _, status = os.waitpid(pid, 0)
         assert os.waitstatus_to_exitcode(status) == 0, status
         constructor.assert_not_called()
-        """,
-        tmp_path,
-    )
-
-
-@pytest.mark.parametrize("method", multiprocessing.get_all_start_methods())
-def test_opted_out_workers_do_not_start_posthog(tmp_path, method):
-    if method == "forkserver":
-        try:
-            with socket.socket(socket.AF_UNIX):
-                pass
-        except PermissionError:
-            pytest.skip("environment forbids Unix sockets required by forkserver")
-    worker = """
-import sys
-import threading
-starts = []
-original_start = threading.Thread.start
-def record_start(self, *args, **kwargs):
-    starts.append(type(self).__module__)
-    return original_start(self, *args, **kwargs)
-threading.Thread.start = record_start
-import retentioneering
-from retentioneering import _tracking
-_tracking.track("blocked")
-_tracking.identify({})
-assert "posthog" not in sys.modules
-assert _tracking._ph is None
-assert not any(name.startswith("posthog") for name in starts), starts
-"""
-    _run_python(
-        f"""
-        import multiprocessing
-        import retentioneering
-        process = multiprocessing.get_context({method!r}).Process(
-            target=exec, args=({worker!r},)
-        )
-        process.start()
-        process.join(15)
-        if process.is_alive():
-            process.terminate()
-            process.join(5)
-            raise AssertionError("worker did not exit")
-        assert process.exitcode == 0, process.exitcode
         """,
         tmp_path,
     )

@@ -26,7 +26,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   executable recipes with pre-decision feature windows, ordered completion timing,
   non-converter retention and absorbing Markov outcomes. Clarify lift baselines,
   censoring and the limits of observational and scenario-based conclusions; add
-  executable recipe checks and keep both host copies synchronized.
+  executable recipe checks and keep both host copies synchronized. Reject ambiguous
+  shared-index cuts and Markov boundary-name collisions in these skeletons.
+  **Acknowledgement:** these corrections build on the original contribution by
+  [@andromia3](https://github.com/andromia3) in
+  [PR #170](https://github.com/retentioneering/retentioneering-tools/pull/170).
 
 - Events within a path are ordered by `(index, subindex)` everywhere, and that
   key is unique per path

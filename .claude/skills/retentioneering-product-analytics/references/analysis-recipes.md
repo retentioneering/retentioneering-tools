@@ -155,6 +155,12 @@ For descriptive timing, resolve the first checkout after the first basket before
 computing the metric; a checkout earlier in the original path must not become the end.
 
 ```python
+# Current truncate_paths bounds use index alone, not the full (index, subindex).
+# Reject shared indices rather than silently including an event before entry.
+schema = stream.schema
+if stream.to_dataframe().duplicated([schema.path_col, schema.index]).any():
+    raise ValueError("This timing recipe requires a unique index per path; "
+                     "use explicit (index, subindex) slicing for enriched streams")
 completed = stream.truncate_paths(start_anchor="basket", end_anchor="checkout")
 if completed.is_empty():
     raise ValueError("No ordered basket-to-checkout completions")
@@ -167,11 +173,17 @@ Read: median/quantiles describe timing among observed ordered completers only.
 `time_between` on the original stream subtracts the first timestamps globally and can
 be negative when checkout precedes basket. Truncation fixes event order; elapsed-time
 analysis additionally requires trustworthy, nondecreasing timestamps within each path.
+Equal timestamps are allowed: event order, not a positive time difference, determines
+which checkout follows basket. The guard above is a limitation of this skeleton on the
+current API, not a restriction of Eventstream: enriched streams may validly share an
+index with distinct subindices. Use explicit slicing by `schema.order_cols` for them;
+do not drop rows or reset indices just to bypass the guard.
 
 For an intervention question, retain ALL basket entrants, including non-completers.
 Define time zero, eligibility, the completion horizon H and each entrant's actual
-follow-up end; record `min(completion time, follow-up end) - entry time` and an observed
-completion indicator. A last activity is not a known censoring time: use the known
+follow-up end. With elapsed completion time T and known coverage C, record
+`duration = min(T, C, H)` and `event = (T <= min(C, H))`; missing completion means T is
+infinite, not zero. State the endpoint convention (this formula includes H). A last activity is not a known censoring time: use the known
 coverage/observation end. Administrative censoring near the log boundary is not failure.
 If S is the completion-free survival function, the probability of completion by H
 among those still waiting at t is `1 - S(H) / S(t)` for `t < H` and `S(t) > 0`.
@@ -205,6 +217,15 @@ right-censored users as failures; use a censoring-aware method for an incomplete
 ```python
 import numpy as np
 
+schema = stream.schema
+frame = stream.to_dataframe()
+if frame.duplicated([schema.path_col, schema.index]).any():
+    raise ValueError("This Markov recipe requires a unique index per path; "
+                     "use explicit (index, subindex) slicing for enriched streams")
+# The graph and this model use these names for synthetic absorbing boundaries.
+if frame[schema.event_col].isin(["path_start", "path_end"]).any():
+    raise ValueError("This Markov recipe uses reserved boundary names; remove "
+                     "synthetic boundary markers or rename genuine events first")
 entrants = stream.truncate_paths(start_anchor="basket", end_anchor="path_end")
 sub = entrants.truncate_paths(start_anchor="basket", end_anchor=["purchase", "path_end"])
 path_col = stream.schema.path_col
@@ -238,6 +259,10 @@ The list bound uses the earliest resolved end after the start: purchase if prese
 otherwise path end. A bare purchase end drops non-converters. A purchase before basket
 alone is not a conversion; a later purchase is. Verify retained IDs, not just the count.
 Use transition **counts**, not `unique_paths`, to fit this chain; repeated visits matter.
+This skeleton requires unmarked input without genuine events named `path_start` or
+`path_end`: otherwise real states can be confused with the graph's synthetic boundaries.
+The unique-index guard has the same rationale as R7; it rejects unsupported input
+before fitting instead of relying on the baseline equality to detect an incorrect cut.
 
 The baseline equality above is a construction check on this finite, fully observed,
 count-fitted population. It does not validate the first-order Markov assumption or

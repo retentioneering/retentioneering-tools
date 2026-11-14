@@ -192,3 +192,73 @@ def test_lift_baseline_ignores_order_window_and_offset(paths, end, within):
     assert result["base_rate"] == 1.0
     assert result["conversion_rate"] == 0.5
     assert result["lift"] == 0.5
+
+
+@pytest.mark.parametrize("recipe, outcome", [(7, "checkout"), (9, "purchase")])
+def test_shared_index_is_rejected_before_anchor_truncation(recipe, outcome):
+    # Valid event order, but truncate_paths currently resolves index-only bounds.
+    df = pd.DataFrame(
+        {
+            "user_id": [0, 0, 0],
+            "event": [outcome, "basket", outcome if recipe == 7 else "help"],
+            "timestamp": pd.date_range("2026-01-01", periods=3, freq="min"),
+            "index": [1, 1, 2],
+            "subindex": [1.0, 2.0, 2.0],
+        }
+    )
+    with pytest.raises(ValueError, match="requires a unique index per path"):
+        run_recipe(recipe, Eventstream(df))
+
+
+@pytest.mark.parametrize("boundary", ["path_start", "path_end"])
+def test_markov_boundary_name_collision_is_explicit(boundary):
+    stream = make_stream([["basket", boundary, "purchase"], ["basket", "help"]])
+    with pytest.raises(ValueError, match="reserved boundary names"):
+        run_recipe(9, stream)
+
+
+def test_ordered_completion_with_equal_timestamps():
+    df = pd.DataFrame(
+        {
+            "user_id": [0, 0, 0, 1, 1],
+            "event": ["checkout", "basket", "checkout", "checkout", "basket"],
+            "timestamp": [pd.Timestamp("2026-01-01")] * 5,
+        }
+    )
+    result = run_recipe(7, Eventstream(df))
+    assert set(result["tb"].index) == {0}
+    assert result["tb"].iloc[0, 0] == 0.0
+
+
+def test_landmark_window_boundaries(landmark_data):
+    extra = pd.DataFrame(
+        [
+            (1, "purchase", pd.Timestamp("2026-01-08") - pd.Timedelta("1ns")),
+            (3, "purchase", pd.Timestamp("2026-01-08")),
+            (5, "purchase", pd.Timestamp("2026-01-15") - pd.Timedelta("1ns")),
+            (7, "purchase", pd.Timestamp("2026-01-15")),
+        ],
+        columns=landmark_data.columns,
+    )
+    result = run_recipe(5, Eventstream(pd.concat([landmark_data, extra])))
+    purchased = result["evaluation"]["purchased"]
+    assert not purchased.loc[1]  # Prior purchase is a feature, not a future outcome.
+    assert purchased.loc[3]
+    assert purchased.loc[5]
+    assert not purchased.loc[7]
+    assert len(purchased) == 12
+
+
+def test_markov_repeated_edges_are_counted_with_multiplicity():
+    result = run_recipe(
+        9,
+        make_stream(
+            [
+                ["basket", "a", "b", "a", "b", "a", "purchase"],
+                ["basket", "a", "b", "help"],
+            ]
+        ),
+    )
+    assert result["counts"].loc["a", "b"] == 3
+    assert result["counts"].loc["b", "a"] == 2
+    assert result["base_conversion"] == pytest.approx(0.5)

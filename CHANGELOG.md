@@ -52,6 +52,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Importing the library no longer builds a PostHog client: it is built when the
+  first event is sent, and never while tracking is off (`RETENTIONEERING_NO_TRACK`
+  or the config file's opt-out). A fresh process with tracking disabled before
+  its first tracked operation does not import `posthog` or start its consumer
+  thread. Late opt-out does not shut down an existing or inherited SDK client.
+  Concurrent first calls wait for the same client, and forked children reset the
+  initialization lock. Failed construction is not retried in the same process.
+  Person-property updates also support the current PostHog `set()` API.
 - `EventstreamSchema` validates `path_cols`, `segment_cols` and `custom_cols`
   as lists of strings before using them. Invalid containers, non-string items
   and empty `path_cols` raise `SchemaConfigError` naming the parameter, expected

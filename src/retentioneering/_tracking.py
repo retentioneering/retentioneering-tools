@@ -9,6 +9,7 @@ import os
 import pathlib
 import platform
 import sys
+import threading
 import uuid
 
 from retentioneering.exceptions import RetentioneeringError
@@ -30,12 +31,42 @@ def _resolve_posthog_key() -> str:
 
 _KEY = _resolve_posthog_key()
 
-try:
-    from posthog import Posthog
+# The PostHog client, built by _client() when the first event is sent: never at
+# import, so an opted-out process (RETENTIONEERING_NO_TRACK, CI, offline) neither
+# imports posthog nor starts its consumer thread and connections.
+_ph = None
+_ph_attempted = False
+_ph_lock = threading.Lock()
 
-    _ph = Posthog(project_api_key=_KEY, host=_HOST)
-except Exception:
-    _ph = None  # type: ignore[assignment]
+
+def _reset_client_lock_after_fork():
+    # Only the forking thread survives. Never acquire a lock inherited from
+    # another thread. Preserve attempted: even an unfinished SDK constructor
+    # may have registered exit/fork handlers and started a consumer already.
+    global _ph_lock
+    _ph_lock = threading.Lock()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reset_client_lock_after_fork)
+
+
+def _client():
+    """Return the shared client; do not retry a failed or inherited attempt."""
+    global _ph, _ph_attempted
+    with _ph_lock:
+        if _ph is None and not _ph_attempted:
+            # All readers hold the lock, so concurrent calls wait for the result.
+            # Mark before construction so a forked child cannot build a second
+            # client while inheriting side effects of a partial SDK constructor.
+            _ph_attempted = True
+            try:
+                from posthog import Posthog
+
+                _ph = Posthog(project_api_key=_KEY, host=_HOST)
+            except Exception:
+                _ph = None
+        return _ph
 
 
 # ── distinct_id ────────────────────────────────────────────────────────────────
@@ -218,21 +249,31 @@ _depth = 0  # global call depth counter — suppresses nested tracked calls
 
 def track(event: str, properties: dict | None = None) -> None:
     """Fire-and-forget PostHog event. Never raises."""
-    if _ph is None or _no_track_requested():
+    if _no_track_requested():
+        return
+    client = _client()
+    if client is None:
         return
     props = {**_BASE_PROPS, "caller_type": _caller_type.get(), **(properties or {})}
     try:
-        _ph.capture(distinct_id=_DISTINCT_ID, event=event, properties=props)
+        client.capture(distinct_id=_DISTINCT_ID, event=event, properties=props)
     except Exception:
         pass
 
 
 def identify(properties: dict | None = None) -> None:
     """Fire-and-forget PostHog identify. Respects the no-track opt-out. Never raises."""
-    if _ph is None or _no_track_requested():
+    if _no_track_requested():
+        return
+    client = _client()
+    if client is None:
         return
     try:
-        _ph.identify(_DISTINCT_ID, properties=properties or {})
+        if hasattr(client, "identify"):
+            client.identify(_DISTINCT_ID, properties=properties or {})
+        else:
+            # Newer SDKs expose keyword-only set() instead of identify().
+            client.set(distinct_id=_DISTINCT_ID, properties=properties or {})
     except Exception:
         pass
 

@@ -48,3 +48,27 @@ os.environ["RETENTIONEERING_NO_TRACK"] = "1"
 ### Google Colab
 
 Add a secret named `RETENTIONEERING_NO_TRACK` with value `1` in Colab → Settings → Secrets, then enable notebook access for it. The secret persists across all Colab sessions automatically.
+
+### Client lifecycle and worker processes
+
+Importing Retentioneering does not create a PostHog client. The first `track()` or
+`identify()` call checks opt-out before importing the SDK or creating its client
+and background consumer. Concurrent first calls share one initialization attempt.
+If construction fails, telemetry remains unavailable for the rest of that process;
+analytics operations continue without retrying client construction.
+
+For a process with no telemetry client or consumer threads, set opt-out **before
+its first tracked operation**, preferably before starting the interpreter. Changing
+opt-out later blocks subsequent calls but does not stop an existing SDK client or
+cancel events already queued. Import still computes local environment metadata.
+
+Use `spawn` for workers, or fork before any tracked operation. Retentioneering
+resets its initialization lock after `fork()` and preserves the attempt flag. A
+child that inherits a failed or unfinished attempt does not retry construction:
+even an unfinished SDK constructor may already have started a consumer. An
+already-created client's
+queues, threads and exit handlers are managed by the installed PostHog SDK.
+PostHog versions differ in fork support; a fork handler may restart SDK threads
+even if opt-out was set after the parent created its client. Do not treat runtime
+opt-out as shutdown of an inherited client. No explicit blocking flush is added
+by Retentioneering; event delivery at process exit remains best-effort.

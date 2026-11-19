@@ -25,6 +25,8 @@ import json
 import math
 from typing import Any
 
+import pandas as pd
+
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.mcp._agent_logic import (
     _apply_preprocessors,
@@ -180,7 +182,7 @@ def describe_tool(tool: str = "") -> dict:
       urls_to_events   sample_paths   split_sessions
 
     Analysis tools (called directly, not as a preprocessor step):
-      get_conversion_rate
+      get_conversion_rate  transition_graph_data  step_matrix_data
 
     Reference topics:
       report_links   (anchor link syntax for analysis text)
@@ -227,6 +229,93 @@ def describe(session: Any, context: dict) -> dict:
     if context.get("segments"):
         result["segment_descriptions"] = context["segments"]
     return result
+
+
+def _matrix_blocks(result, *, comparative: bool, seconds: bool = False) -> dict:
+    """Keep the group and block axes distinct, even for a three-block pattern."""
+    groups = {"matrix": result}
+    if comparative:
+        diff, first, second = result
+        groups = {"diff": diff, "group1": first, "group2": second}
+    by_group = [
+        frames if isinstance(frames, tuple) else (frames,) for frames in groups.values()
+    ]
+    blocks = []
+    for frames in zip(*by_group, strict=True):
+        block = {}
+        for name, frame in zip(groups, frames, strict=True):
+            if seconds:
+                frame = frame / pd.Timedelta(seconds=1)
+            block[name] = {
+                "index": frame.index.tolist(),
+                "columns": frame.columns.tolist(),
+                "data": frame.to_numpy(dtype=object, na_value=None).tolist(),
+            }
+        blocks.append(block)
+    return {"blocks": blocks}
+
+
+def transition_graph_data(
+    session: Any,
+    edge_weight: str = "proba_out",
+    path_col: str | None = None,
+    diff: list | None = None,
+    path_pattern: str | None = None,
+    local_preprocessors: list | None = None,
+) -> dict:
+    """Return the full source-by-target matrix for the selected paths."""
+    if (err := _require_stream(session)) is not None:
+        return err
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
+    try:
+        result = src.transition_graph_data(
+            edge_weight=edge_weight,
+            path_col=path_col,
+            diff=diff,
+            path_pattern=path_pattern,
+        )
+    except Exception as exc:
+        return {"error": f"transition_graph_data: {exc}"}
+    return _matrix_blocks(
+        result,
+        comparative=diff is not None,
+        seconds=edge_weight in ("time_median", "time_q95"),
+    )
+
+
+def step_matrix_data(
+    session: Any,
+    max_steps: int = 10,
+    diff: list | None = None,
+    path_col: str | None = None,
+    path_pattern: str | None = None,
+    anchor: str | dict | None = None,
+    local_preprocessors: list | None = None,
+) -> dict:
+    """Return full event-by-step matrices in pattern order."""
+    if (err := _require_stream(session)) is not None:
+        return err
+    minimum = 1 if path_pattern is None and anchor is None else 0
+    if not isinstance(max_steps, int) or max_steps < minimum:
+        return {"error": f"max_steps must be an integer >= {minimum} for this window"}
+    try:
+        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
+    except Exception as exc:
+        return {"error": f"local_preprocessors: {exc}"}
+    try:
+        result = src.step_matrix_data(
+            max_steps=max_steps,
+            diff=diff,
+            path_col=path_col,
+            path_pattern=path_pattern,
+            anchor=anchor,
+        )
+    except Exception as exc:
+        return {"error": f"step_matrix_data: {exc}"}
+    return _matrix_blocks(result, comparative=diff is not None)
 
 
 def add_transition_graph(

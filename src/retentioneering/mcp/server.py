@@ -26,6 +26,7 @@ import os
 import socket
 import threading
 from functools import wraps
+from typing import Any
 
 from mcp.server.mcpserver import MCPServer
 
@@ -39,6 +40,7 @@ from retentioneering.mcp._agent_logic import (
 )
 from retentioneering.mcp._prompts import _system_instructions
 from retentioneering.mcp._report_session import ReportSession
+from retentioneering.tools.types import T_TransitionMatrixValues
 
 __all__ = ["serve", "_apply_preprocessors", "_find_unlinked_numbers"]
 
@@ -268,7 +270,7 @@ def _build_server(
           urls_to_events   sample_paths   split_sessions
 
         Analysis tools (called directly, not as a preprocessor step):
-          get_conversion_rate
+          get_conversion_rate  transition_graph_data  step_matrix_data
 
         Reference topics:
           report_links   (anchor link syntax for analysis text)
@@ -280,6 +282,65 @@ def _build_server(
         """Return schema, event list, unique path counts and available segments.
         Reflects the current active stream (after any update_base_stream calls)."""
         return json.dumps(tools.describe(session, session.context), ensure_ascii=False)
+
+    @_tool()
+    def transition_graph_data(
+        edge_weight: T_TransitionMatrixValues = "proba_out",
+        path_col: str | None = None,
+        diff: list | None = None,
+        path_pattern: str | None = None,
+        local_preprocessors: list | None = None,
+    ) -> dict[str, Any]:
+        """Compute the full source-by-target matrix without adding a report tab.
+
+        path_col selects the path ID. path_pattern selects whole matching paths.
+        local_preprocessors apply only to this call. diff accepts [segment_col,
+        value1, value2] or [path_ids1, path_ids2]. See describe_tool for sentinels.
+
+        Returns one entry in blocks, with matrix or (in diff mode) diff, group1
+        and group2. diff is group1 minus group2. Each matrix has index (sources),
+        columns (targets) and row-major data. Time weights are seconds and
+        undefined cells are null.
+        """
+        return tools.transition_graph_data(
+            session,
+            edge_weight=edge_weight,
+            path_col=path_col,
+            diff=diff,
+            path_pattern=path_pattern,
+            local_preprocessors=local_preprocessors,
+        )
+
+    @_tool()
+    def step_matrix_data(
+        max_steps: int = 10,
+        diff: list | None = None,
+        path_col: str | None = None,
+        path_pattern: str | None = None,
+        anchor: str | dict | None = None,
+        local_preprocessors: list | None = None,
+    ) -> dict[str, Any]:
+        """Compute full event shares by step without adding a report tab.
+
+        path_col selects the path ID. local_preprocessors apply only to this call.
+        path_pattern returns one block per pattern part in order. Alternatively,
+        anchor (an event name or anchor spec) centres a single block. max_steps
+        controls the step window. diff accepts [segment_col, value1, value2] or
+        [path_ids1, path_ids2].
+
+        Each entry in blocks has matrix, or diff (group1 minus group2), group1
+        and group2. Each matrix has index (events), columns (integer steps)
+        and row-major data. Each block keeps its own step axis.
+        """
+        return tools.step_matrix_data(
+            session,
+            max_steps=max_steps,
+            diff=diff,
+            path_col=path_col,
+            path_pattern=path_pattern,
+            anchor=anchor,
+            local_preprocessors=local_preprocessors,
+        )
 
     @_tool()
     def add_transition_graph(

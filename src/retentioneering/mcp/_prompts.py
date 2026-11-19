@@ -72,7 +72,9 @@ def _playbook_index() -> dict:
 # preprocessors — they compute an answer instead of returning a new stream, so
 # they are called as their own MCP tool rather than as a step in a
 # preprocessors list, and the index has to say so.
-_ANALYSIS_METHODS = frozenset({"get_conversion_rate"})
+_ANALYSIS_METHODS = frozenset(
+    {"get_conversion_rate", "transition_graph_data", "step_matrix_data"}
+)
 
 
 def _tool_docs_index() -> dict:
@@ -146,6 +148,7 @@ def _static_instructions(tail: str = "") -> str:
         "   All subsequent add_* calls use this preprocessed stream automatically.",
         "3. Call add_transition_graph(), add_step_matrix(), and/or add_segment_overview().",
         "   Each call returns a compact summary for analysis and registers a tab in the report.",
+        "   For numerical matrices alone, call transition_graph_data() or step_matrix_data().",
         "   The full interactive visualisation is always embedded in the report.",
         "   PARALLELISM: add_* calls are independent — if your client supports parallel",
         "   tool calls, issue them simultaneously to save time.",

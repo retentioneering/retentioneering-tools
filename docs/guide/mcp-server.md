@@ -76,12 +76,20 @@ See also [Agent Skills](/docs/agent-skills) — instruction packages for coding 
 | `playbook(scenario)` | Step-by-step recipes for common analysis patterns. |
 | `describe_tool(tool)` | Full parameter reference for any preprocessor or analysis tool. |
 | `update_base_stream(preprocessors)` | Filter or transform the stream for the session. |
+| `transition_graph_data(edge_weight, ...)` | Full matrix of transitions between events. A path pattern selects whole paths. Time weights are seconds, with missing durations encoded as JSON null. |
+| `step_matrix_data(max_steps, ...)` | Full event shares by step. A path pattern produces ordered blocks, each with its own step axis. An anchor centres one block. |
 | `add_transition_graph(label, ...)` | Compute a transition graph and register it as a report tab. |
 | `add_step_matrix(label, ...)` | Compute a step matrix and register it as a report tab. |
 | `add_segment_overview(label, ...)` | Compute a segment overview and register it as a report tab. |
 | `get_conversion_rate(start_anchor, end_anchor, within, ...)` | How often one event is followed by another, with the denominator and the baseline lift. Returns numbers, not a tab — the agent quotes them in backticks. |
 | `check_analysis(analysis)` | Validate analysis text before export. |
 | `export_report(title, analysis, path)` | Generate a self-contained HTML report. |
+
+Both data tools operate on the active stream and accept one-off `local_preprocessors`.
+The JSON response contains a `blocks` array. Each block holds `matrix`, or
+`diff`, `group1` and `group2` for a comparison, where `diff = group1 - group2`.
+For each matrix, `data[i][j]` is the value for `index[i]` and `columns[j]`.
+A tool error returns an `error` message. These calls leave pending report tabs intact.
 
 ## Documentation MCP server
 

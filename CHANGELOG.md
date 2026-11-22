@@ -52,6 +52,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- `segment_overview_data` (and Cluster Analysis `overview_metrics`) accept the
+  same metric listed more than once with different `agg` values, giving one
+  row per agg (`length_mean`, `length_median`). It used to fail with
+  `ValueError: Data must be 1-dimensional`.
 - Importing the library no longer builds a PostHog client: it is built when the
   first event is sent, and never while tracking is off (`RETENTIONEERING_NO_TRACK`
   or the config file's opt-out). A fresh process with tracking disabled before

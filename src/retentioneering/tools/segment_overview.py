@@ -162,12 +162,16 @@ class SegmentOverview:
         metric_cfg = MetricConfig(metrics, available_events=available_events)
         enriched_config = metric_cfg.get_enriched_configs()
 
-        # Build column-to-agg mapping
-        column_to_agg: Dict[str, str] = {}
+        # Build column-to-aggs mapping. One column can carry several aggs: the
+        # same metric listed twice with a different `agg` each time is one
+        # per-path column summarised two ways, one output row per agg.
+        column_to_aggs: Dict[str, List[str]] = {}
         for metric_config in enriched_config:
             agg = metric_config.get("agg", "mean")
             for col in metric_config.get("cols", []):
-                column_to_agg[col] = agg
+                aggs = column_to_aggs.setdefault(col, [])
+                if agg not in aggs:
+                    aggs.append(agg)
 
         # Build metrics using MetricBuilder
         if metrics:
@@ -182,21 +186,24 @@ class SegmentOverview:
             metrics_df = pd.DataFrame(index=unique_composite_ids)
             metrics_df[segment_col] = metrics_df.index.map(segment_by_composite)
 
+        # A metric repeated with different aggs is built once per entry, so its
+        # column comes out duplicated; the values are identical, keep one.
+        metrics_df = metrics_df.loc[:, ~metrics_df.columns.duplicated()]
         metric_columns = [col for col in metrics_df.columns if col != segment_col]
         total_paths = len(metrics_df)
 
-        # Separate columns by aggregation type
-        standard_agg_cols = {}  # {col: agg_func} for standard aggregations
+        # Separate (column, agg) pairs by aggregation type
+        standard_aggs: List[Tuple[str, str]] = []  # standard aggregations
         complement_distance_cols = []  # columns requiring complement_distance
 
         for col in metric_columns:
-            agg = column_to_agg.get(col, "mean")
-            if agg == "complement_distance":
-                complement_distance_cols.append(col)
-            elif agg in AGG_FUNCTIONS:
-                standard_agg_cols[col] = AGG_FUNCTIONS[agg]
-            else:
-                raise ValueError(f"Unknown aggregation type: {agg}")
+            for agg in column_to_aggs.get(col, ["mean"]):
+                if agg == "complement_distance":
+                    complement_distance_cols.append(col)
+                elif agg in AGG_FUNCTIONS:
+                    standard_aggs.append((col, agg))
+                else:
+                    raise ValueError(f"Unknown aggregation type: {agg}")
 
         # Compute segment_size and segment_share. dropna=False keeps paths with a
         # missing (None/NaN) segment level as their own group instead of
@@ -211,12 +218,9 @@ class SegmentOverview:
             else segment_sizes * 0,
         }
 
-        # Aggregate standard columns using groupby.agg()
-        if standard_agg_cols:
-            aggregated = grouped.agg(standard_agg_cols)
-            for col in standard_agg_cols:
-                agg_name = column_to_agg.get(col, "mean")
-                result_data[f"{col}_{agg_name}"] = aggregated[col]
+        # Aggregate standard columns, one row per (column, agg) pair
+        for col, agg_name in standard_aggs:
+            result_data[f"{col}_{agg_name}"] = grouped[col].agg(AGG_FUNCTIONS[agg_name])
 
         # Compute complement_distance separately (needs full dataframe)
         for col in complement_distance_cols:

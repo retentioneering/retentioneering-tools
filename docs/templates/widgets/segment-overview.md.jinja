@@ -16,8 +16,9 @@ The computation is two steps. Each path gets a value for each of your
 metric's `agg`. Metrics become rows, segment levels become columns, and the
 colour is the metric's value read across the row.
 
-Which is why **`agg` is required here and nowhere else**. A distribution has no
-single summary: `mean` follows the tail, `median` follows the bulk, and for
+Which is why **`agg` matters here and nowhere else**. Leave it out and you get
+`mean`, but it is worth choosing on purpose: a distribution has no single
+summary — `mean` follows the tail, `median` follows the bulk, and for
 skewed quantities like session duration the two can point in opposite
 directions. Adding the same metric twice under different aggregations is a
 normal thing to do — `q95` next to `median` says whether a segment is slower

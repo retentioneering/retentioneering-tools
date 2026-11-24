@@ -98,7 +98,7 @@ one-column metric into one column per level rather than fail.
 Each entry below is a complete metric config. They are shown in a single
 `get_metrics()` call (per-path values, no `agg`); the same dicts work in
 Segment Overview `metrics` and Cluster Analysis `features` /
-`overview_metrics`, with an `agg` key added where that context requires one.
+`overview_metrics`, where an `agg` key picks how the values are aggregated.
 
 ```python
 stream.get_metrics([
@@ -151,7 +151,7 @@ The columns these produce are named after the config: `length`,
 
 Metrics appear in two different config formats depending on where they are used:
 
-- **Segment Overview** (`metrics`) and **Cluster Analysis** (`overview_metrics`) — each metric requires an `agg` field that defines how per-path values are aggregated across paths in a segment.
+- **Segment Overview** (`metrics`) and **Cluster Analysis** (`overview_metrics`) — each metric takes an optional `agg` field that defines how per-path values are aggregated across paths in a segment (`mean` if omitted). The same metric can be listed more than once with different `agg` values, one row each.
 - **Cluster Analysis** (`features`) — no `agg` field. The raw per-path values are used directly as clustering features.
 - **Filter Paths** — metrics appear inside a condition tree with comparison operators. See the [Filter Paths condition format](#filter-paths-condition-format) section below.
 
@@ -159,7 +159,7 @@ Metrics appear in two different config formats depending on where they are used:
 |---|---|---|
 | `metric` | yes | Metric name from the table above. |
 | `metric_args` | depends | Additional arguments for the metric. Required for `event_count`, `has_event`, `event_count_bulk`/`has_event_bulk` (unless the wildcard is intended), `has_all_events`/`has_any_event`, `time_between`, `matches_pattern`, and `in_segment`; optional for `active_days` and `in_segment_bulk`. |
-| `agg` | yes (Segment Overview `metrics` and Cluster Analysis `overview_metrics` only) | Aggregation function. See aggregations below. |
+| `agg` | no, defaults to `mean` (Segment Overview `metrics` and Cluster Analysis `overview_metrics` only) | Aggregation function. See aggregations below. |
 
 ```python
 metrics=[
@@ -178,7 +178,7 @@ Aggregations apply to `metrics` in Segment Overview and `overview_metrics` in Cl
 
 | Value | Description |
 |---|---|
-| `mean` | Mean value across all paths in the segment. |
+| `mean` | Mean value across all paths in the segment. The default. |
 | `median` | Median value (50th percentile). |
 | `q5` | 5th percentile. |
 | `q25` | 25th percentile. |

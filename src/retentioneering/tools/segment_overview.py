@@ -118,8 +118,8 @@ class SegmentOverview:
             metrics: List of metric configuration dicts with keys:
                 - 'metric': metric name (same as MetricBuilder)
                 - 'metric_args': optional metric arguments (same as MetricBuilder)
-                - 'agg': aggregation type ('mean', 'median', 'complement_distance',
-                         'q5', 'q25', 'q75', 'q95')
+                - 'agg': optional aggregation type ('mean' by default, 'median',
+                         'complement_distance', 'q5', 'q25', 'q75', 'q95')
 
             segment_size and segment_share are always computed automatically.
 

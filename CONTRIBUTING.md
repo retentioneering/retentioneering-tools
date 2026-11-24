@@ -128,7 +128,7 @@ tests/              # pytest suite: eventstream, data processors, headless tools
    run automatically if you installed them).
 2. Run `uv run pytest tests/ -q` and `uv run pre-commit run --all-files`.
 3. Open a PR against `master`. CI must pass: `lint` + `test` on Python
-   3.11, 3.12, and 3.13 (CI builds the JS itself).
+   3.11 through 3.15 (CI builds the JS itself).
 4. `master` is protected — PRs only. Merging does **not** publish a release;
    releases are cut by maintainers via `v*` tags
    ([ADR-0011](docs/adr/0011-versioning-and-release.md)).

@@ -5,7 +5,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added
+
+- Python 3.14 and 3.15 are supported, and CI tests every version from 3.11
+  through 3.15. Before, installing on 3.14 failed while building Gensim, which
+  has no wheel for it
+  ([#137](https://github.com/retentioneering/retentioneering-tools/issues/137)).
+  To get wheels on 3.15, the development lock file moves to DuckDB 2.0, pandas
+  3.1, pyarrow 26 and pydantic 2.14. The published package's dependency ranges
+  are unchanged and already allowed these versions.
+
 ### Removed
+
+- The `gensim` dependency. The transition graph layout was its only user and
+  now computes its event embedding with NumPy (see Changed).
 
 - Python 3.10 is no longer supported: retentioneering now requires Python 3.11
   or later. Python 3.10 reached end of life in October 2026, and current
@@ -49,6 +62,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - `collapse_events` merged rows take the `index` and `subindex` of the
     group's first event, and `agg` "first"/"last" mean first/last in event
     order rather than by timestamp.
+
+- The transition graph's default node layout embeds events with PPMI + SVD
+  over their co-occurrence in user paths instead of Gensim's word2vec. This is
+  the closed-form factorization word2vec's skip-gram approximates (Levy &
+  Goldberg, 2014). The clustering and the nested-region placement are
+  unchanged. On synthetic paths with planted event groups, the top-level
+  clusters now recover the groups better (mean adjusted Rand index 0.80, up
+  from 0.37 with word2vec), and the result no longer depends on a seed. Node positions differ from earlier releases on the first
+  open and after `Reset layout`. Positions you arranged by hand still win.
 
 ### Fixed
 

@@ -136,7 +136,7 @@ class TestLazyInstance:
         # The module is loaded on its own, from its file, rather than through
         # `import retentioneering`. It imports nothing from the package, so the
         # two are the same run of the same code, but going through the package
-        # would also pull in scipy, sklearn, gensim and mcp, which costs seconds
+        # would also pull in scipy, sklearn and mcp, which costs seconds
         # and tests nothing extra here.
         module_path = pathlib.Path(engine.__file__).resolve()
         code = (

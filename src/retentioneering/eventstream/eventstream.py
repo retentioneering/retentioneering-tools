@@ -2401,9 +2401,11 @@ class Eventstream:
             anything.
         metrics : list of dict, optional
             Metric configurations, each with a `"metric"` key, optional
-            `"metric_args"`, and an `"agg"` key (`"mean"`, `"median"`, `"q5"`,
-            `"q25"`, `"q75"`, `"q95"`, or `"complement_distance"`) controlling how
-            per-path values roll up across a segment. See the
+            `"metric_args"`, and an optional `"agg"` key (`"mean"` by default,
+            `"median"`, `"q5"`, `"q25"`, `"q75"`, `"q95"`, or
+            `"complement_distance"`) controlling how per-path values roll up
+            across a segment. The same metric may be listed more than once
+            with different aggs, one row each. See the
             [Path Metrics](/docs/path-metrics) documentation page for the
             metric reference.
         path_col : str, optional
@@ -2457,9 +2459,11 @@ class Eventstream:
             Segment column to split by; must be one of `schema.segment_cols`.
         metrics : list of dict, optional
             Metric configurations, each with a `"metric"` key, optional
-            `"metric_args"`, and an `"agg"` key (`"mean"`, `"median"`, `"q5"`,
-            `"q25"`, `"q75"`, `"q95"`, or `"complement_distance"`) controlling how
-            per-path values roll up across a segment. See the
+            `"metric_args"`, and an optional `"agg"` key (`"mean"` by default,
+            `"median"`, `"q5"`, `"q25"`, `"q75"`, `"q95"`, or
+            `"complement_distance"`) controlling how per-path values roll up
+            across a segment. The same metric may be listed more than once
+            with different aggs, one row each. See the
             [Path Metrics](/docs/path-metrics) documentation page for the
             metric reference.
         path_col : str, optional
@@ -2550,7 +2554,8 @@ class Eventstream:
             of `features`). If omitted, the sidebar starts pre-filled with a
             wildcard `event_count_bulk` metric here too (mean count per event);
             same as `features`, it only takes effect once you click "Apply" or
-            pass the argument explicitly.
+            pass the argument explicitly. Each config takes an optional `"agg"`
+            key, as in Segment Overview (default `"mean"`).
             Both `features` and `overview_metrics` accept metric configs from the
             same [Path Metrics](/docs/path-metrics) registry.
         path_col : str, optional
@@ -2679,7 +2684,8 @@ class Eventstream:
         overview_metrics : list of dict, optional
             Metrics shown in the overview heatmap after clustering (independent
             of `features`); if omitted, `overview_df` only has segment_size and
-            segment_share rows. Both `features` and `overview_metrics` accept
+            segment_share rows. Each config takes an optional `"agg"` key, as
+            in Segment Overview (default `"mean"`). Both `features` and `overview_metrics` accept
             metric configs from the same [Path Metrics](/docs/path-metrics) registry.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.

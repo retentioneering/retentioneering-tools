@@ -139,6 +139,48 @@ class TestSegmentOverview:
         # segment_1: user_1 has 1, user_2 has 3, user_3 has 5 -> median = 3
         assert result.loc["length_median", "segment_1"] == 3.0
 
+    def test_same_metric_with_several_aggs(self) -> None:
+        """One metric listed with several aggs gives one row per agg."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "s1", "2020-01-01 00:00:00"],
+                ["user_2", "A", "s1", "2020-01-01 00:00:00"],
+                ["user_2", "B", "s1", "2020-01-01 00:01:00"],
+                ["user_3", "A", "s1", "2020-01-01 00:00:00"],
+                ["user_3", "B", "s1", "2020-01-01 00:01:00"],
+                ["user_3", "C", "s1", "2020-01-01 00:02:00"],
+                ["user_3", "D", "s1", "2020-01-01 00:03:00"],
+                ["user_3", "E", "s1", "2020-01-01 00:04:00"],
+                ["user_3", "F", "s1", "2020-01-01 00:05:00"],
+                ["user_4", "A", "s2", "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "segment", "timestamp"],
+        )
+        stream = Eventstream(df, {"segment_cols": ["segment"]})
+
+        result = stream.segment_overview_data(
+            segment_col="segment",
+            metrics=[
+                {"metric": "length", "agg": "mean"},
+                {"metric": "length", "agg": "median"},
+                {"metric": "length", "agg": "complement_distance"},
+            ],
+        )
+
+        assert list(result.index) == [
+            "segment_size",
+            "segment_share",
+            "length_mean",
+            "length_median",
+            "length_complement_distance",
+        ]
+        # s1 lengths are 1, 2, 6: mean 3, median 2
+        assert result.loc["length_mean", "s1"] == 3.0
+        assert result.loc["length_median", "s1"] == 2.0
+        assert result.loc["length_complement_distance", "s1"] == pytest.approx(
+            wasserstein_distance([1, 2, 6], [1])
+        )
+
     def test_percentile_q25_aggregation(self) -> None:
         """Test q25 percentile aggregation"""
         # Create 20 users with increasing path lengths

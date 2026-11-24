@@ -242,7 +242,7 @@ not change what version the built package identifies as.
 
 Task-oriented skill packages live in `.agents/skills/` (see its README for the index and
 consumption notes) with an identical copy under `.claude/skills/` for Claude Code's
-native skill loader. Two skills ship today: `retentioneering-product-analytics`
+native skill loader (`tests/agent_skills_test.py` fails if they differ). Two skills ship today: `retentioneering-product-analytics`
 (event-log analysis workflow: inspect → recipe → execute → validate → interpret) and
 `retentioneering-contributing` (turning findings into issues/PRs that match this
 repository's conventions). When public API changes, re-verify the version-checked claims

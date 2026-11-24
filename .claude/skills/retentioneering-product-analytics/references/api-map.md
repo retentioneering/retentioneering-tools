@@ -80,8 +80,10 @@ stream.get_metrics([
 ```
 
 Argument-key convention (this exact split is version-verified):
-**single event → `event` (string); multiple events → `events` (list) and only on
-`has_any_event` / `has_all_events`.** Wrong keys raise `InvalidMetricConfigError`
+**`has_event` / `event_count` require `event` (string);
+`has_any_event` / `has_all_events` require `events` (list).**
+`has_event_bulk` / `event_count_bulk` also accept `events`, producing one column per
+event; omitting it selects all events. Wrong required keys raise `InvalidMetricConfigError`
 naming the requirement.
 
 Other metrics: `active_days`, `first_event_time`, `in_segment` (modes `any/all/event_share`),
@@ -116,8 +118,14 @@ data parameters. Common widget params: `diff=`, `path_col=`, `height=`, `sidebar
 
 **Headless-only, no widget:** `get_conversion_rate(start_anchor, end_anchor, within=None, path_col=None)`
 → DataFrame, one row per (start, end) pair: `paths_with_start` (the denominator), `converted`,
-`conversion_rate`, `base_rate` (share of ALL paths where the target occurs at all) and `lift`
-(= rate / base_rate; **< 1 means the start event makes the outcome LESS likely**). Report the
+`conversion_rate`, `base_rate` (share of ALL paths matching the end-anchor pattern,
+without conditioning on the start or applying `within` or the anchor's `offset`)
+and `lift` (= rate / base_rate).
+For event-name anchors, the numerator requires an end AFTER the start and within the
+requested window; the baseline does not impose that order/window. Thus `lift < 1` can
+reflect these different definitions even without a negative association with the start event. It is not a causal
+effect or a comparison with an unexposed control group. With no qualifying starts the
+rate/lift are undefined; with zero base rate lift is undefined. Report the window,
 denominator and the lift, never the rate alone. Both sides take event names or `truncate_paths`
 anchor specs (`path_start` / `path_end` are ordinary names — `end_anchor="path_end", within=1`
 is an exit rate); a LIST on either side FANS OUT into separate questions, one row per

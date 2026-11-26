@@ -192,6 +192,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 
+- MCP agents can call `transition_graph_data` and `step_matrix_data` for complete numerical matrices, including group comparisons and per-pattern blocks, without creating report tabs.
+
 - Path patterns accept the regex quantifier family on gaps: `.{m,n}`, `{n}`,
   `{m,}`, `{,n}`, `+` and `?` after `.` or a class, alongside `*`. Bounds are
   inclusive and count the events strictly between the anchors, so
